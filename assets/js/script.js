@@ -15,6 +15,23 @@ async function connectWallet() {
     alert("MetaMask not detected.");
     return;
   }
+  // Example to fetch total supply and user balance
+async function fetchKLYStats() {
+  if (!window.ethereum) return;
+
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
+
+  const [supply, address] = await Promise.all([
+    contract.totalSupply(),
+    provider.getSigner().getAddress()
+  ]);
+
+  const balance = await contract.balanceOf(address);
+
+  document.getElementById("total-supply").innerText = ethers.utils.formatUnits(supply, 18) + " KLY";
+  document.getElementById("user-balance").innerText = ethers.utils.formatUnits(balance, 18) + " KLY";
+}
 
   try {
     const wallet = await thirdweb.wallet.connect("injected");
