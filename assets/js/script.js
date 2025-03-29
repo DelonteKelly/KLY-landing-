@@ -1,86 +1,122 @@
 
-// ---------------- CONFIG ----------------
+// ------------ CONFIG ------------
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const USDT_TOKEN_ADDRESS = "PUT_USDT_ADDRESS_HERE";
+const USDT_TOKEN_ADDRESS = "PUT_YOUR_USDT_ADDRESS_HERE"; // Replace with actual USDT token address
 const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
-const ROUTER_ADDRESS = "0xD99D1c33F9fC3444f8101754aBC46c52416550D1"; // PancakeSwap Router for BSC Testnet
+const ROUTER_ADDRESS = "0xD99D1c33F9fC3444f8101754aBC46c52416550D1"; // PancakeSwap V3 testnet router
 
-// ---------------- ABIs ----------------
-const KLY_ABI = [/* Full ABI omitted for brevity */];
-const STAKING_ABI = [/* STAKEN ABI here */];
-const ROUTER_ABI = [/* PancakeSwap V2 Router ABI */];
+// ------------ ABIs ------------
+const KLY_ABI = [ /* full verified ABI of KLY contract */ ];
+const STAKING_ABI = [ /* ABI for staking contract */ ];
+const ROUTER_ABI = [ /* PancakeSwap V3 Router ABI snippet used */ ];
 
-// ---------------- INIT ----------------
-async function initApp() {
-  if (typeof window.ethereum === "undefined") {
-    alert("Please install MetaMask to use this feature.");
+// ------------ Connect Wallet ------------
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("Please install MetaMask!");
     return;
   }
+  await ethereum.request({ method: "eth_requestAccounts" });
+  window.provider = new ethers.providers.Web3Provider(window.ethereum);
+  window.signer = provider.getSigner();
+  window.userAddress = await signer.getAddress();
+}
 
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = provider.getSigner();
-  const userAddress = await signer.getAddress();
-
-  // Display token info
-  const klyContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
-  const supply = await klyContract.totalSupply();
-  const balance = await klyContract.balanceOf(userAddress);
+// ------------ Token Dashboard ------------
+async function loadKLYStats() {
+  const contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
+  const supply = await contract.totalSupply();
+  const balance = await contract.balanceOf(userAddress);
   document.getElementById("total-supply").innerText = ethers.utils.formatUnits(supply, 18);
-  document.getElementById("user-balance").innerText = ethers.utils.formatUnits(balance, 18);
-
-  // Store for reuse
-  window.kly = { provider, signer, userAddress, klyContract };
+  document.getElementById("wallet-balance").innerText = ethers.utils.formatUnits(balance, 18);
 }
 
-// ---------------- STAKING ----------------
-async function stakeKLY(amount) {
-  const { signer } = window.kly;
-  const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-  const klyContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
-  const amt = ethers.utils.parseUnits(amount, 18);
-  await klyContract.approve(STAKING_CONTRACT_ADDRESS, amt);
-  await contract.stake(amt);
-  alert("Staked!");
-}
-
-async function claimKLY() {
-  const { signer } = window.kly;
-  const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-  await contract.claim();
-  alert("Rewards claimed!");
+// ------------ Staking Logic ------------
+async function stakeKLY() {
+  const amount = ethers.utils.parseUnits(document.getElementById("stake-amount").value, 18);
+  const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
+  const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+  await kly.approve(STAKING_CONTRACT_ADDRESS, amount);
+  await staking.stake(amount);
 }
 
 async function withdrawKLY() {
-  const { signer } = window.kly;
-  const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-  await contract.withdraw();
-  alert("Withdrawn!");
+  const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+  await staking.withdraw();
 }
 
-// ---------------- LIQUIDITY ----------------
-async function addLiquidity(klyAmount, usdtAmount) {
-  const { signer } = window.kly;
+async function claimKLY() {
+  const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+  await staking.claim();
+}
+
+async function loadStakingData() {
+  const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, provider);
+  const userInfo = await staking.getStakeInfo(userAddress);
+  document.getElementById("staked-balance").innerText = ethers.utils.formatUnits(userInfo[0], 18);
+  document.getElementById("rewards-earned").innerText = ethers.utils.formatUnits(userInfo[1], 18);
+}
+
+// ------------ Token Launchpad ------------
+async function launchToken() {
+  const name = document.getElementById("token-name").value;
+  const symbol = document.getElementById("token-symbol").value;
+  const supply = ethers.utils.parseUnits(document.getElementById("token-supply").value, 18);
+  const factory = new thirdweb.SDK(signer);
+  const deployedToken = await factory.deployer.deployToken({
+    name, symbol, initialSupply: supply.toString(),
+    primary_sale_recipient: userAddress,
+    platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // KLY Treasury
+    platform_fee_basis_points: 500
+  });
+  alert("Token launched: " + deployedToken.address);
+}
+
+// ------------ PancakeSwap Liquidity Pool (Add/Remove) ------------
+async function addLiquidity() {
   const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
   const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
-  const usdt = new ethers.Contract(USDT_TOKEN_ADDRESS, KLY_ABI, signer);
+  const usdt = new ethers.Contract(USDT_TOKEN_ADDRESS, KLY_ABI, signer); // Same ERC20 ABI
 
-  const klyAmt = ethers.utils.parseUnits(klyAmount, 18);
-  const usdtAmt = ethers.utils.parseUnits(usdtAmount, 18);
+  const klyAmount = ethers.utils.parseUnits(document.getElementById("add-kly").value, 18);
+  const usdtAmount = ethers.utils.parseUnits(document.getElementById("add-usdt").value, 18);
 
-  await kly.approve(ROUTER_ADDRESS, klyAmt);
-  await usdt.approve(ROUTER_ADDRESS, usdtAmt);
+  await kly.approve(ROUTER_ADDRESS, klyAmount);
+  await usdt.approve(ROUTER_ADDRESS, usdtAmount);
 
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
   await router.addLiquidity(
     KLY_TOKEN_ADDRESS,
     USDT_TOKEN_ADDRESS,
-    klyAmt,
-    usdtAmt,
+    klyAmount,
+    usdtAmount,
     0,
     0,
-    window.kly.userAddress,
-    deadline
+    userAddress,
+    Math.floor(Date.now() / 1000) + 60
   );
-  alert("Liquidity added!");
 }
+
+async function removeLiquidity() {
+  const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+  // assume LP token contract address and ABI are loaded
+  const lp = new ethers.Contract("LP_TOKEN_ADDRESS_HERE", KLY_ABI, signer);
+  const liquidity = await lp.balanceOf(userAddress);
+  await lp.approve(ROUTER_ADDRESS, liquidity);
+  await router.removeLiquidity(
+    KLY_TOKEN_ADDRESS,
+    USDT_TOKEN_ADDRESS,
+    liquidity,
+    0,
+    0,
+    userAddress,
+    Math.floor(Date.now() / 1000) + 60
+  );
+}
+
+// ------------ Init ------------
+window.onload = async () => {
+  await connectWallet();
+  await loadKLYStats();
+  await loadStakingData();
+};
+
