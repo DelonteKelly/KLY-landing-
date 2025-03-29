@@ -2,192 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KLY Legacy Platform</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3.14.0/dist/browser.min.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f0f0f;
-      color: #fff;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      padding: 20px;
-      text-align: center;
-      background: #000;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 2.5rem;
-    }
-    section {
-      padding: 40px 20px;
-      max-width: 900px;
-      margin: auto;
-    }
-    .card {
-      background: #1a1a1a;
-      border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 40px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.2);
-    }
-    .card h2 {
-      color: #00ffe7;
-    }
-    label, input, button {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-      font-size: 16px;
-    }
-    input {
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #00ffe7;
-      color: #000;
-      font-weight: bold;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    button:hover {
-      background-color: #0ff;
-    }
-    a {
-      color: #00ffe7;
-    }
-    footer {
-      text-align: center;
-      padding: 30px;
-      font-size: 14px;
-      color: #888;
-    }
-  </style>
+
+  <!-- Web3 & Wallet -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider"></script>
+  <!-- Thirdweb SDK -->
+<script src="https://sdk.vercel.thirdweb.com/thirdweb.global.min.js"></script>
+
+  <!-- CSS Styles -->
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <header>
-    <h1>KLY Legacy Platform</h1>
-    <button id="connectBtn">Connect Wallet</button>
-    <p id="walletAddress"></p>
-  </header>
+  <section id="hero">
+  <h1>Welcome to KLY Legacy</h1>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="wallet-address"></p>
+</section>
+<section id="dashboard">
+  <h2>KLY Token Dashboard</h2>
+  <div id="token-stats">
+    <p>Total Supply: <span id="total-supply">Loading...</span></p>
+    <p>Your Balance: <span id="user-balance">Loading...</span></p>
+  </div>
+</section>
+<section id="staking">
+  <h2>Stake Your KLY Tokens</h2>
 
-  <section>
-    <div class="card">
-      <h2>KLY Course Access</h2>
-      <p>Complete the course modules below:</p>
-      <ul>
-        <li><a href="module1.html">Module 1: Building the Foundation</a></li>
-        <li><a href="module2.html">Module 2: Structure & Ownership</a></li>
-        <li><a href="module3.html">Module 3: Financial Literacy</a></li>
-        <li><a href="module4.html">Module 4: Tokenomics & Blockchain</a></li>
-        <li><a href="module5.html">Module 5: Web3 Income Strategy</a></li>
-        <li><a href="certification.html">Claim Your NFT Certificate</a></li>
-      </ul>
-    </div>
+  <p>Lock your KLY and earn rewards. 7-day minimum stake period. Rewards are paid in KLY.</p>
 
-    <div class="card">
-      <h2>KLY Staking</h2>
-      <p>Stake your KLY tokens and earn rewards:</p>
-      <iframe src="kly-staking-interface.html" style="width:100%; height:600px; border:none;"></iframe>
-    </div>
+  <div>
+    <label for="stakeAmount">Amount to Stake:</label>
+    <input type="number" id="stakeAmount" placeholder="Enter amount" />
+    <button onclick="stakeTokens()">Stake</button>
+  </div>
 
-    <div class="card">
-      <h2>Launch Your Own Token</h2>
-      <p>Stake 10,000 KLY to deploy your own ERC20 token. 5% goes to the KLY treasury.</p>
+  <div style="margin-top: 20px;">
+    <button onclick="withdrawTokens()">Withdraw Stake</button>
+    <button onclick="claimRewards()">Claim Rewards</button>
+  </div>
 
-      <label>Token Name</label>
-      <input id="tokenName" placeholder="My Token" />
+  <div style="margin-top: 30px;">
+    <p><strong>Staked Balance:</strong> <span id="stakedBalance">0</span> KLY</p>
+    <p><strong>Claimable Rewards:</strong> <span id="rewardBalance">0</span> KLY</p>
+  </div>
+</section>
+<section id="course">
+  <h2>KLY Legacy Course</h2>
+  <p>This course teaches you how to build wealth, protect assets, and master the KLY ecosystem.</p>
 
-      <label>Token Symbol</label>
-      <input id="tokenSymbol" placeholder="MTK" />
+  <ol>
+    <li><strong>Module 1:</strong> Business Formation & Asset Protection</li>
+    <li><strong>Module 2:</strong> LLCs, Trusts & Tax Strategy</li>
+    <li><strong>Module 3:</strong> Tokenomics & Digital Identity</li>
+    <li><strong>Module 4:</strong> DeFi Tools, Wallets & Staking</li>
+    <li><strong>Module 5:</strong> Claim NFT Certification (Requires KLY)</li>
+  </ol>
 
-      <label>Total Supply</label>
-      <input id="tokenSupply" type="number" placeholder="1000000" />
-
-      <button onclick="launchToken()">Launch My Token</button>
-      <div id="status"></div>
-    </div>
-  </section>
-
-  <footer>© 2025 Kelly Legacy Estates — All rights reserved.</footer>
-
-  <script>
-    const treasuryAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const KLY_ADDRESS = treasuryAddress;
-    const KLY_ABI = [{
-      "constant": true,
-      "inputs": [{"name": "_owner", "type": "address"}],
-      "name": "balanceOf",
-      "outputs": [{"name": "balance", "type": "uint256"}],
-      "type": "function"
-    }];
-
-    let signer;
-
-    document.getElementById("connectBtn").onclick = async () => {
-      if (!window.ethereum) return alert("MetaMask not found");
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      const address = await signer.getAddress();
-      document.getElementById("walletAddress").innerText = `Connected: ${address}`;
-    };
-
-    async function launchToken() {
-      const status = document.getElementById("status");
-      const name = document.getElementById("tokenName").value;
-      const symbol = document.getElementById("tokenSymbol").value;
-      const supply = document.getElementById("tokenSupply").value;
-
-      if (!name || !symbol || !supply) {
-        status.innerText = "Please complete all fields.";
-        status.style.color = "red";
-        return;
-      }
-
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const wallet = provider.getSigner();
-        const userAddress = await wallet.getAddress();
-        const kly = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
-        const balance = await kly.balanceOf(userAddress);
-        const balanceKLY = parseFloat(ethers.utils.formatUnits(balance, 18));
-        if (balanceKLY < 10000) {
-          status.innerText = `❌ You need at least 10,000 KLY. You have ${balanceKLY.toLocaleString()}`;
-          status.style.color = "red";
-          return;
-        }
-
-        status.innerText = "Deploying token...";
-        status.style.color = "white";
-
-        const sdk = new thirdweb.ThirdwebSDK(wallet, { chainId: 56 });
-        const deployedAddress = await sdk.deployer.deployToken({
-          name, symbol,
-          primary_sale_recipient: userAddress,
-          total_supply: ethers.utils.parseUnits(supply, 18).toString()
-        });
-
-        const token = await sdk.getToken(deployedAddress);
-        const fivePercent = ethers.utils.parseUnits((supply * 0.05).toString(), 18);
-        await token.transfer(treasuryAddress, fivePercent);
-
-        status.innerHTML = `✅ Deployed at <a href="https://bscscan.com/address/${deployedAddress}" target="_blank">${deployedAddress}</a>`;
-        status.style.color = "lime";
-      } catch (err) {
-        console.error(err);
-        status.innerText = `❌ Error: ${err.message}`;
-        status.style.color = "red";
-      }
-    }
-  </script>
+  <button onclick="startCourse()">Start Course</button>
+</section>
+</section>
+  <section id="launchpad">
+  <h2>Launch Your Token</h2>
+  <form id="launch-form">
+    <input type="text" placeholder="Token Name" required />
+    <input type="text" placeholder="Token Symbol" required />
+    <input type="number" placeholder="Total Supply" required />
+    <button type="submit">Launch</button>
+  </form>
+</section>
 </body>
 </html>
