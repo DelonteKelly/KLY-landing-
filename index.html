@@ -4,137 +4,152 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KLY Legacy Platform</title>
-
-  <!-- Web3 & Wallet -->
-  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider"></script>
-  <script src="https://sdk.vercel.thirdweb.com/thirdweb.global.min.js"></script>
-
-  <!-- Style -->
-  <link rel="stylesheet" href="assets/css/style.css" />
   <style>
+    :root {
+      --primary: #00fddc;
+      --bg: #121212;
+      --text: #ffffff;
+      --accent: #0ff;
+      --gradient: linear-gradient(135deg, #00fddc, #00cfff);
+    }
+
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #000;
-      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
     }
 
-    #hero {
-      padding: 80px 20px;
-      background: linear-gradient(135deg, #00f2ff, #00ff94);
-      color: #000;
-      text-align: center;
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid #333;
     }
 
-    #hero h1 {
-      font-size: 3em;
-      margin-bottom: 20px;
+    header h1 {
+      color: var(--primary);
+      font-size: 2rem;
     }
 
-    #hero p {
-      font-size: 1.2em;
-    }
-
-    .btn {
-      background-color: #00ffc3;
-      color: #000;
-      padding: 10px 20px;
-      font-weight: bold;
+    .button {
+      padding: 0.7rem 1.5rem;
+      background: var(--gradient);
       border: none;
-      border-radius: 5px;
-      margin: 10px;
+      color: #000;
+      font-weight: bold;
+      border-radius: 8px;
       cursor: pointer;
+      margin: 0.25rem;
     }
 
-    section {
-      padding: 60px 20px;
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      height: 100vh;
+      background: var(--gradient);
+      color: #000;
+    }
+
+    .hero h2 {
+      font-size: 3rem;
+      margin: 0.5rem 0;
+    }
+
+    .section {
+      padding: 4rem 2rem;
       max-width: 800px;
       margin: auto;
     }
 
-    h2 {
-      color: #00ffc3;
+    .section h3 {
+      color: var(--accent);
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
 
-    input, button {
-      margin-top: 10px;
-      padding: 10px;
+    .input-group {
+      margin: 1rem 0;
+    }
+
+    .input-group input {
+      padding: 0.5rem;
       width: 100%;
       border-radius: 5px;
       border: none;
-      font-size: 1em;
+      margin-top: 0.5rem;
     }
 
-    button {
-      background-color: #00ffc3;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #00e6ad;
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
+  <header>
+    <h1>KLY Legacy</h1>
+    <button class="button" onclick="connectWallet()">Connect Wallet</button>
+  </header>
 
-  <!-- Hero Banner -->
-  <section id="hero">
-    <h1>KLY Token</h1>
-    <p>The Future of Wealth is Tokenized</p>
-    <button class="btn" onclick="connectWallet()">Connect Wallet</button>
-    <p id="wallet-address"></p>
+  <div class="hero">
+    <h2>Jump Into Web3 Wealth</h2>
+    <button class="button">Get Started</button>
+  </div>
+
+  <section class="section" id="dashboard">
+    <h3>KLY Token Dashboard</h3>
+    <p>Total Supply: <span id="total-supply">Loading...</span></p>
+    <p>Your Balance: <span id="user-balance">Loading...</span></p>
   </section>
 
-  <!-- Token Dashboard -->
-  <section id="dashboard">
-    <h2>KLY Token Dashboard</h2>
-    <div id="token-stats">
-      <p>Total Supply: <span id="total-supply">Loading...</span></p>
-      <p>Your Balance: <span id="user-balance">Loading...</span></p>
+  <section class="section" id="staking">
+    <h3>Stake Your KLY</h3>
+    <p>Earn rewards with a 7-day lock period.</p>
+    <div class="input-group">
+      <label for="stakeAmount">Amount to Stake:</label>
+      <input type="number" id="stakeAmount" placeholder="Enter amount" />
     </div>
+    <button class="button" onclick="stakeTokens()">Stake</button>
+    <button class="button" onclick="withdrawTokens()">Withdraw</button>
+    <button class="button" onclick="claimRewards()">Claim Rewards</button>
+    <p>Staked Balance: <span id="stakedBalance">0</span> KLY</p>
+    <p>Rewards: <span id="rewardBalance">0</span> KLY</p>
   </section>
 
-  <!-- Staking -->
-  <section id="staking">
-    <h2>Stake Your KLY Tokens</h2>
-    <p>Lock your KLY and earn rewards. 7-day minimum stake period. Rewards are paid in KLY.</p>
-    <input type="number" id="stakeAmount" placeholder="Enter amount" />
-    <button onclick="stakeTokens()">Stake</button>
-    <button onclick="withdrawTokens()">Withdraw Stake</button>
-    <button onclick="claimRewards()">Claim Rewards</button>
-    <p><strong>Staked Balance:</strong> <span id="stakedBalance">0</span> KLY</p>
-    <p><strong>Claimable Rewards:</strong> <span id="rewardBalance">0</span> KLY</p>
+  <section class="section" id="course">
+    <h3>KLY Legacy Course</h3>
+    <p>Master tokenization, asset protection, and Web3 business building.</p>
+    <button class="button" onclick="startCourse()">Start Course</button>
   </section>
 
-  <!-- Course -->
-  <section id="course">
-    <h2>KLY Legacy Course</h2>
-    <p>This course teaches you how to build wealth, protect assets, and master the KLY ecosystem.</p>
-    <ol>
-      <li><strong>Module 1:</strong> Business Formation & Asset Protection</li>
-      <li><strong>Module 2:</strong> LLCs, Trusts & Tax Strategy</li>
-      <li><strong>Module 3:</strong> Tokenomics & Digital Identity</li>
-      <li><strong>Module 4:</strong> DeFi Tools, Wallets & Staking</li>
-      <li><strong>Module 5:</strong> Claim NFT Certification (Requires KLY)</li>
-    </ol>
-    <button onclick="startCourse()">Start Course</button>
+  <section class="section" id="launchpad">
+    <h3>Launch Your Token</h3>
+    <div class="input-group">
+      <label for="tokenName">Token Name</label>
+      <input type="text" id="tokenName" placeholder="My Token" />
+    </div>
+    <div class="input-group">
+      <label for="tokenSymbol">Token Symbol</label>
+      <input type="text" id="tokenSymbol" placeholder="MTK" />
+    </div>
+    <div class="input-group">
+      <label for="tokenSupply">Total Supply</label>
+      <input type="number" id="tokenSupply" placeholder="1000000" />
+    </div>
+    <button class="button" onclick="launchToken()">Launch My Token</button>
   </section>
 
-  <!-- Launchpad -->
-  <section id="launchpad">
-    <h2>Launch Your Token</h2>
-    <form id="launch-form">
-      <input type="text" id="tokenName" placeholder="Token Name" required />
-      <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
-      <input type="number" id="tokenSupply" placeholder="Total Supply" required />
-      <button type="submit">Launch</button>
-    </form>
-  </section>
-
-  <!-- Script -->
-  <script src="assets/js/script.js"></script>
+  <footer>
+    &copy; 2025 Kelly Legacy Estates — All rights reserved.
+  </footer>
 </body>
 </html>
