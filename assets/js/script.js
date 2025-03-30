@@ -282,10 +282,31 @@ function startCourse() {
   window.location.href = "/course.html";
 }
 
-// Mint NFT Certificate
-document.getElementById("claimCertificate").addEventListener("click", async () => {
+// ================== NFT CERTIFICATE MINTING ==================
+
+const CERTIFICATE_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+const CERTIFICATE_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "recipient", "type": "address" },
+      { "internalType": "int24", "name": "tickLower", "type": "int24" },
+      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+      { "internalType": "uint128", "name": "amount", "type": "uint128" },
+      { "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "mint",
+    "outputs": [
+      { "internalType": "uint256", "name": "amount0", "type": "uint256" },
+      { "internalType": "uint256", "name": "amount1", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
+
+async function claimCertificateNFT() {
   if (!window.ethereum) {
-    alert("Please connect MetaMask.");
+    alert("Please install MetaMask.");
     return;
   }
 
@@ -294,23 +315,14 @@ document.getElementById("claimCertificate").addEventListener("click", async () =
     await provider.send("eth_requestAccounts", []);
     const signer = provider.getSigner();
     const user = await signer.getAddress();
-    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
 
-    const tx = await contract.mint(
-      user,
-      -887220,
-      887220,
-      ethers.utils.parseUnits("1", 18),
-      "0x"
-    );
-
-    document.getElementById("claimStatus").innerText = "Minting...";
+    const certificateContract = new ethers.Contract(CERTIFICATE_CONTRACT_ADDRESS, CERTIFICATE_ABI, signer);
+    const tx = await certificateContract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
     await tx.wait();
-    document.getElementById("claimStatus").innerText =
-      "Success! NFT Certificate Minted.";
+
+    alert("Success! NFT Certificate Minted.");
   } catch (err) {
-    console.error(err);
-    document.getElementById("claimStatus").innerText =
-      "Error: " + err.message;
+    console.error("Minting failed:", err);
+    alert("Minting failed. Ensure you have at least 1 KLY in your wallet.");
   }
-});
+}
