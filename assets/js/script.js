@@ -90,6 +90,33 @@ function launchToken() {
   const supply = document.getElementById("tokenSupply").value;
   alert(`Launching Token: ${name} (${symbol}) with supply of ${supply}`);
 }
+async function launchToken() {
+  const name = document.getElementById("tokenName").value;
+  const symbol = document.getElementById("tokenSymbol").value;
+  const supply = document.getElementById("tokenSupply").value;
+
+  if (!name || !symbol || !supply) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  try {
+    const deployed = await thirdweb.deployer.deployToken({
+      name,
+      symbol,
+      primary_sale_recipient: await connectedWallet.getAddress(),
+      platform_fee_basis_points: 0,
+      platform_fee_recipient: "0x0000000000000000000000000000000000000000",
+      total_supply: supply,
+    });
+
+    console.log("Token deployed at:", deployed.address);
+    alert(`Success! Token deployed at: ${deployed.address}`);
+  } catch (err) {
+    console.error("Token deployment failed:", err);
+    alert("Token deployment failed. See console for details.");
+  }
+}
 
 // Attach event listeners after DOM loads
 window.addEventListener("DOMContentLoaded", () => {
