@@ -88,3 +88,36 @@ function launchToken() {
 function startCourse() {
   window.location.href = "/course.html";
 }
+document.getElementById('claimCertificateBtn').addEventListener('click', async () => {
+  const certificateContract = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // KLY NFT contract
+  const abi = [ // simplified ABI for mint
+    {
+      "inputs": [],
+      "name": "claimCertificate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ];
+
+  if (typeof window.ethereum !== 'undefined') {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(certificateContract, abi, signer);
+
+      const tx = await contract.claimCertificate();
+      document.getElementById('claimStatus').innerText = "Minting in progress...";
+
+      await tx.wait();
+      document.getElementById('claimStatus').innerText = "Success! NFT Certificate claimed.";
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById('claimStatus').innerText = "Error: " + err.message;
+    }
+  } else {
+    alert("Please install MetaMask to claim your certificate.");
+  }
+});
