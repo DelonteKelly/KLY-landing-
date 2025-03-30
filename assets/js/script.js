@@ -1,110 +1,90 @@
-import { ethers } from "https://cdn.ethers.io/lib/ethers-5.2.esm.min.js";
-
-// ----------- CONFIG -------------
+// Constants
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
-const USDT_TOKEN_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
-const ROUTER_ADDRESS = "0xD99D1c33F9fC3444f8101754aBC46c52416550D1"; // Pancake V3 Test Router
+const KLY_ABI = [/* Your full ABI here */];
 
-// ----------- ABIs ---------------
-const KLY_ABI = [...]; // Insert full ABI here
-const STAKING_ABI = [...]; // Insert full ABI here
-const ROUTER_ABI = [...]; // Insert PancakeRouter ABI here
+let provider, signer, contract;
 
-// ----------- Functions ----------
+// Connect Wallet
 async function connectWallet() {
-    if (!window.ethereum) return alert("Please install MetaMask");
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    return { provider, signer, address: await signer.getAddress() };
+  if (!window.ethereum) {
+    alert("Please install MetaMask.");
+    return;
+  }
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
+  const address = await signer.getAddress();
+  alert("Wallet connected: " + address);
+  fetchKLYStats();
 }
 
-async function loadTokenStats() {
-    const { provider, address } = await connectWallet();
-    const contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
-    const [totalSupply, balance] = await Promise.all([
-        contract.totalSupply(),
-        contract.balanceOf(address)
-    ]);
+// Fetch token stats
+async function fetchKLYStats() {
+  try {
+    const address = await signer.getAddress();
+    const totalSupply = await contract.totalSupply();
+    const balance = await contract.balanceOf(address);
+
     document.getElementById("total-supply").innerText = ethers.utils.formatUnits(totalSupply, 18) + " KLY";
     document.getElementById("user-balance").innerText = ethers.utils.formatUnits(balance, 18) + " KLY";
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+  }
 }
 
+// Stake tokens
 async function stakeTokens() {
-    const { provider, signer, address } = await connectWallet();
-    const amount = document.getElementById("stake-amount").value;
-    const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
-    const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+  const amount = document.getElementById("stakeAmount").value;
+  if (!amount) return alert("Enter amount to stake");
 
-    const amountWei = ethers.utils.parseUnits(amount, 18);
-    await token.approve(STAKING_CONTRACT_ADDRESS, amountWei);
-    await staking.stake(amountWei);
+  try {
+    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
+    const tx = await stakingContract.stake(ethers.utils.parseUnits(amount, 18));
+    await tx.wait();
     alert("Staked successfully!");
+    fetchKLYStats();
+  } catch (err) {
+    console.error("Staking failed:", err);
+  }
 }
 
+// Withdraw tokens
 async function withdrawTokens() {
-    const { signer } = await connectWallet();
-    const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-    await staking.withdraw();
-    alert("Withdrawn successfully!");
+  try {
+    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
+    const tx = await stakingContract.withdraw();
+    await tx.wait();
+    alert("Withdraw successful!");
+    fetchKLYStats();
+  } catch (err) {
+    console.error("Withdraw failed:", err);
+  }
 }
 
+// Claim rewards
 async function claimRewards() {
-    const { signer } = await connectWallet();
-    const staking = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-    await staking.claimRewards();
+  try {
+    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
+    const tx = await stakingContract.claimRewards();
+    await tx.wait();
     alert("Rewards claimed!");
+    fetchKLYStats();
+  } catch (err) {
+    console.error("Claim failed:", err);
+  }
 }
 
-async function launchToken() {
-    const name = document.getElementById("token-name").value;
-    const symbol = document.getElementById("token-symbol").value;
-    const supply = document.getElementById("token-supply").value;
-    // Hook to Thirdweb launch code or your factory logic
-    alert(`Launching ${name} (${symbol}) with ${supply} supply`);
+// Launch Token
+function launchToken() {
+  const name = document.getElementById("tokenName").value;
+  const symbol = document.getElementById("tokenSymbol").value;
+  const supply = document.getElementById("tokenSupply").value;
+  alert(`Launching token: ${name} (${symbol}) with ${supply} supply. This feature is in development.`);
 }
 
-async function addLiquidity() {
-    const { signer } = await connectWallet();
-    const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-    const tokenA = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
-    const tokenB = new ethers.Contract(USDT_TOKEN_ADDRESS, KLY_ABI, signer);
-
-    const klyAmount = document.getElementById("kly-amount").value;
-    const usdtAmount = document.getElementById("usdt-amount").value;
-    const klyWei = ethers.utils.parseUnits(klyAmount, 18);
-    const usdtWei = ethers.utils.parseUnits(usdtAmount, 18);
-
-    await tokenA.approve(ROUTER_ADDRESS, klyWei);
-    await tokenB.approve(ROUTER_ADDRESS, usdtWei);
-
-    await router.addLiquidity(
-        KLY_TOKEN_ADDRESS,
-        USDT_TOKEN_ADDRESS,
-        klyWei,
-        usdtWei,
-        0,
-        0,
-        await signer.getAddress(),
-        Math.floor(Date.now() / 1000) + 60
-    );
-
-    alert("Liquidity added successfully!");
+// Start Course
+function startCourse() {
+  window.location.href = "/course.html";
 }
-
-async function removeLiquidity() {
-    // Implement logic if you have LP token ID or NFT
-    alert("Remove liquidity coming soon");
-}
-
-// Auto-load on connect
-window.addEventListener('load', loadTokenStats);
-
-// Bind buttons
-document.getElementById("stake-btn").onclick = stakeTokens;
-document.getElementById("withdraw-btn").onclick = withdrawTokens;
-document.getElementById("claim-btn").onclick = claimRewards;
-document.getElementById("launch-btn").onclick = launchToken;
-document.getElementById("add-liquidity-btn").onclick = addLiquidity;
-document.getElementById("remove-liquidity-btn").onclick = removeLiquidity;
