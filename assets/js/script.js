@@ -1,76 +1,81 @@
-// Constants
+// Initialize Thirdweb SDK for Binance Smart Chain
+const thirdweb = new ThirdwebSDK("binance");
+
+// Your contract addresses
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
 
-const KLY_ABI = [
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "totalSupply",
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "type": "function",
-  },
-  {
-    "constant": true,
-    "inputs": [{ "name": "_owner", "type": "address" }],
-    "name": "balanceOf",
-    "outputs": [{ "name": "balance", "type": "uint256" }],
-    "type": "function",
-  }
-];
-
-// NFT Mint ABI
-const NFT_ABI = [
-  {
-    "inputs": [
-      { "internalType": "address", "name": "recipient", "type": "address" },
-      { "internalType": "int24", "name": "tickLower", "type": "int24" },
-      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-      { "internalType": "uint128", "name": "amount", "type": "uint128" },
-      { "internalType": "bytes", "name": "data", "type": "bytes" }
-    ],
-    "name": "mint",
-    "outputs": [
-      { "internalType": "uint256", "name": "amount0", "type": "uint256" },
-      { "internalType": "uint256", "name": "amount1", "type": "uint256" }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
-
-let provider, signer, klyContract;
+let connectedWallet;
+let tokenContract;
+let stakingContract;
 
 // Connect Wallet
 async function connectWallet() {
   if (!window.ethereum) {
-    alert("MetaMask not found. Please install it.");
+    alert("MetaMask not detected.");
     return;
   }
 
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  klyContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
+  try {
+    const wallet = await thirdweb.wallet.connect("injected");
+    connectedWallet = wallet;
 
-  const address = await signer.getAddress();
-  alert("Wallet connected: " + address);
-  fetchKLYStats();
+    const address = await wallet.getAddress();
+    document.getElementById("user-balance").innerText = "Loading...";
+
+    tokenContract = await thirdweb.getContract(KLY_TOKEN_ADDRESS, "token");
+    stakingContract = await thirdweb.getContract(STAKING_CONTRACT_ADDRESS);
+
+    // Load token supply & user balance
+    const total = await tokenContract.totalSupply();
+    const balance = await tokenContract.balanceOf(address);
+
+    document.getElementById("total-supply").innerText = total.displayValue;
+    document.getElementById("user-balance").innerText = balance.displayValue;
+
+    alert("Wallet connected: " + address);
+  } catch (error) {
+    alert("Wallet connection failed");
+    console.error(error);
+  }
 }
 
-// Fetch Token Stats
-async function fetchKLYStats() {
-  try {
-    const address = await signer.getAddress();
-    const totalSupply = await klyContract.totalSupply();
-    const balance = await klyContract.balanceOf(address);
+// Stake Tokens
+async function stakeTokens() {
+  const amount = document.getElementById("stakeAmount").value;
+  if (!amount || isNaN(amount)) {
+    alert("Please enter a valid amount to stake.");
+    return;
+  }
 
-    document.getElementById("total-supply").innerText =
-      ethers.utils.formatUnits(totalSupply, 18) + " KLY";
-    document.getElementById("user-balance").innerText =
-      ethers.utils.formatUnits(balance, 18) + " KLY";
+  try {
+    await stakingContract.call("stake", [amount]);
+    alert("Stake successful!");
   } catch (err) {
-    console.error("Error fetching stats:", err);
+    alert("Stake failed.");
+    console.error(err);
+  }
+}
+
+// Withdraw Tokens
+async function withdrawTokens() {
+  try {
+    await stakingContract.call("withdraw");
+    alert("Withdraw successful!");
+  } catch (err) {
+    alert("Withdraw failed.");
+    console.error(err);
+  }
+}
+
+// Claim Rewards
+async function claimRewards() {
+  try {
+    await stakingContract.call("claimRewards");
+    alert("Rewards claimed!");
+  } catch (err) {
+    alert("Claim failed.");
+    console.error(err);
   }
 }
 
@@ -79,31 +84,16 @@ function startCourse() {
   window.location.href = "/course.html";
 }
 
-// Mint Certificate NFT
-async function claimCertificateNFT() {
-  if (!window.ethereum) {
-    alert("Please install MetaMask.");
-    return;
-  }
-
-  try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    const user = await signer.getAddress();
-
-    const certificateContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
-    const tx = await certificateContract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
-    await tx.wait();
-
-    alert("Success! NFT Certificate Minted.");
-  } catch (err) {
-    console.error("Minting failed:", err);
-    alert("Minting failed. Ensure you have at least 1 KLY.");
-  }
+// Launch Token (Placeholder for now)
+function launchToken() {
+  const name = document.getElementById("tokenName").value;
+  const symbol = document.getElementById("tokenSymbol").value;
+  const supply = document.getElementById("tokenSupply").value;
+  alert(`Launching Token: ${name} (${symbol}) with supply of ${supply}`);
 }
 
-// Event Listeners
-document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
-document.getElementById("claimCertificate")?.addEventListener("click", claimCertificateNFT);
-document.getElementById("startCourseBtn")?.addEventListener("click", startCourse);
+// Smooth scroll
+function scrollToSection(id) {
+  const section = document.getElementById(id);
+  if (section) {
+    section.scrollIntoView({ behavior: "sm
