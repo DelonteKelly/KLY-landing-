@@ -1,12 +1,70 @@
-
+// Constants
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
-const KLY_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"int24","name":"tickLower","type":"int24"},{"indexed":true,"internalType":"int24","name":"tickUpper","type":"int24"},{"indexed":false,"internalType":"uint128","name":"amount","type":"uint128"},{"indexed":false,"internalType":"uint256","name":"amount0","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount1","type":"uint256"}],"name":"Burn","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":false,"internalType":"address","name":"recipient","type":"address"},{"indexed":true,"internalType":"int24","name":"tickLower","type":"int24"},{"indexed":true,"internalType":"int24","name":"tickUpper","type":"int24"},{"indexed":false,"internalType":"uint128","name":"amount0","type":"uint128"},{"indexed":false,"internalType":"uint128","name":"amount1","type":"uint128"}],"name":"Collect","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":true,"internalType":"address","name":"recipient","type":"address"},{"indexed":false,"internalType":"uint128","name":"amount0","type":"uint128"},{"indexed":false,"internalType":"uint128","name":"amount1","type":"uint128"}],"name":"CollectProtocol","type":"event"}];
+const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+// INSERTED KLY TOKEN ABI
+const KLY_ABI = [
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function",
+  },
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function",
+  },
+  {
+    "inputs": [{ "name": "amount", "type": "uint256" }],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function",
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function",
+  },
+  {
+    "inputs": [],
+    "name": "claimRewards",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function",
+  },
+];
+
+// NFT Mint ABI
+const NFT_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "recipient", "type": "address" },
+      { "internalType": "int24", "name": "tickLower", "type": "int24" },
+      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+      { "internalType": "uint128", "name": "amount", "type": "uint128" },
+      { "internalType": "bytes", "name": "data", "type": "bytes" },
+    ],
+    "name": "mint",
+    "outputs": [
+      { "internalType": "uint256", "name": "amount0", "type": "uint256" },
+      { "internalType": "uint256", "name": "amount1", "type": "uint256" },
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+  },
+];
 
 let provider, signer, contract;
 
-document.getElementById("connectWallet").addEventListener("click", connectWallet);
-
+// Connect Wallet
 async function connectWallet() {
   if (!window.ethereum) {
     alert("Please install MetaMask.");
@@ -16,28 +74,45 @@ async function connectWallet() {
   await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
   contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
+
   const address = await signer.getAddress();
+  console.log("Wallet connected:", address);
   alert("Wallet connected: " + address);
   fetchKLYStats();
 }
 
+document.getElementById("connectWallet").addEventListener("click", connectWallet);
+
+// Fetch KLY Token Stats
 async function fetchKLYStats() {
   try {
+    const address = await signer.getAddress();
     const totalSupply = await contract.totalSupply();
-    const balance = await contract.balanceOf(await signer.getAddress());
-    document.getElementById("total-supply").innerText = ethers.utils.formatUnits(totalSupply, 18) + " KLY";
-    document.getElementById("user-balance").innerText = ethers.utils.formatUnits(balance, 18) + " KLY";
+    const balance = await contract.balanceOf(address);
+
+    document.getElementById("total-supply").innerText =
+      ethers.utils.formatUnits(totalSupply, 18) + " KLY";
+    document.getElementById("user-balance").innerText =
+      ethers.utils.formatUnits(balance, 18) + " KLY";
   } catch (error) {
     console.error("Error fetching stats:", error);
   }
 }
 
+// Stake Tokens
 async function stakeTokens() {
   const amount = document.getElementById("stakeAmount").value;
   if (!amount) return alert("Enter amount to stake");
+
   try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
-    const tx = await stakingContract.stake(ethers.utils.parseUnits(amount, 18));
+    const stakingContract = new ethers.Contract(
+      STAKING_CONTRACT_ADDRESS,
+      KLY_ABI,
+      signer
+    );
+    const tx = await stakingContract.stake(
+      ethers.utils.parseUnits(amount, 18)
+    );
     await tx.wait();
     alert("Staked successfully!");
     fetchKLYStats();
@@ -46,9 +121,14 @@ async function stakeTokens() {
   }
 }
 
+// Withdraw Staked Tokens
 async function withdrawTokens() {
   try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
+    const stakingContract = new ethers.Contract(
+      STAKING_CONTRACT_ADDRESS,
+      KLY_ABI,
+      signer
+    );
     const tx = await stakingContract.withdraw();
     await tx.wait();
     alert("Withdraw successful!");
@@ -58,9 +138,14 @@ async function withdrawTokens() {
   }
 }
 
+// Claim Staking Rewards
 async function claimRewards() {
   try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
+    const stakingContract = new ethers.Contract(
+      STAKING_CONTRACT_ADDRESS,
+      KLY_ABI,
+      signer
+    );
     const tx = await stakingContract.claimRewards();
     await tx.wait();
     alert("Rewards claimed!");
@@ -70,45 +155,59 @@ async function claimRewards() {
   }
 }
 
+// Launch Token - Placeholder
 function launchToken() {
   const name = document.getElementById("tokenName").value;
   const symbol = document.getElementById("tokenSymbol").value;
   const supply = document.getElementById("tokenSupply").value;
-  alert(`Launching token: ${name} (${symbol}) with ${supply} supply.`);
+  alert(
+    `Launching token: ${name} (${symbol}) with ${supply} supply. This feature is in development.`
+  );
 }
 
+// Liquidity Placeholder Functions
+function addLiquidity() {
+  alert("Liquidity feature in development.");
+}
+
+function removeLiquidity() {
+  alert("Liquidity feature in development.");
+}
+
+// Course Button Redirect
+function startCourse() {
+  window.location.href = "/course.html";
+}
+
+// Mint NFT Certificate
 document.getElementById("claimCertificate").addEventListener("click", async () => {
-  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const ABI = [
-    {
-      "inputs": [
-        { "internalType": "address", "name": "recipient", "type": "address" },
-        { "internalType": "int24", "name": "tickLower", "type": "int24" },
-        { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-        { "internalType": "uint128", "name": "amount", "type": "uint128" },
-        { "internalType": "bytes", "name": "data", "type": "bytes" }
-      ],
-      "name": "mint",
-      "outputs": [
-        { "internalType": "uint256", "name": "amount0", "type": "uint256" },
-        { "internalType": "uint256", "name": "amount1", "type": "uint256" }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ];
+  if (!window.ethereum) {
+    alert("Please connect MetaMask.");
+    return;
+  }
 
   try {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     const signer = provider.getSigner();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     const user = await signer.getAddress();
-    const tx = await contract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
+    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
+
+    const tx = await contract.mint(
+      user,
+      -887220,
+      887220,
+      ethers.utils.parseUnits("1", 18),
+      "0x"
+    );
+
+    document.getElementById("claimStatus").innerText = "Minting...";
     await tx.wait();
-    alert("NFT Certificate Successfully Minted!");
+    document.getElementById("claimStatus").innerText =
+      "Success! NFT Certificate Minted.";
   } catch (err) {
     console.error(err);
-    alert("Transaction failed. Make sure you have at least 1 KLY.");
+    document.getElementById("claimStatus").innerText =
+      "Error: " + err.message;
   }
 });
