@@ -1,7 +1,7 @@
-// Initialize Thirdweb SDK for Binance Smart Chain
+import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+
 const thirdweb = new ThirdwebSDK("binance");
 
-// Your contract addresses
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
 
@@ -9,7 +9,6 @@ let connectedWallet;
 let tokenContract;
 let stakingContract;
 
-// Connect Wallet
 async function connectWallet() {
   if (!window.ethereum) {
     alert("MetaMask not detected.");
@@ -26,7 +25,6 @@ async function connectWallet() {
     tokenContract = await thirdweb.getContract(KLY_TOKEN_ADDRESS, "token");
     stakingContract = await thirdweb.getContract(STAKING_CONTRACT_ADDRESS);
 
-    // Load token supply & user balance
     const total = await tokenContract.totalSupply();
     const balance = await tokenContract.balanceOf(address);
 
@@ -40,7 +38,6 @@ async function connectWallet() {
   }
 }
 
-// Stake Tokens
 async function stakeTokens() {
   const amount = document.getElementById("stakeAmount").value;
   if (!amount || isNaN(amount)) {
@@ -57,7 +54,6 @@ async function stakeTokens() {
   }
 }
 
-// Withdraw Tokens
 async function withdrawTokens() {
   try {
     await stakingContract.call("withdraw");
@@ -68,7 +64,6 @@ async function withdrawTokens() {
   }
 }
 
-// Claim Rewards
 async function claimRewards() {
   try {
     await stakingContract.call("claimRewards");
@@ -79,12 +74,10 @@ async function claimRewards() {
   }
 }
 
-// Start Course
 function startCourse() {
   window.location.href = "/course.html";
 }
 
-// Launch Token (Placeholder for now)
 function launchToken() {
   const name = document.getElementById("tokenName").value;
   const symbol = document.getElementById("tokenSymbol").value;
@@ -92,8 +85,12 @@ function launchToken() {
   alert(`Launching Token: ${name} (${symbol}) with supply of ${supply}`);
 }
 
-// Smooth scroll
-function scrollToSection(id) {
-  const section = document.getElementById(id);
-  if (section) {
-    section.scrollIntoView({ behavior: "sm
+// Attach event listeners
+window.onload = () => {
+  document.getElementById("connectWallet").onclick = connectWallet;
+  document.getElementById("stakeButton").onclick = stakeTokens;
+  document.getElementById("withdrawButton").onclick = withdrawTokens;
+  document.getElementById("claimButton").onclick = claimRewards;
+  document.getElementById("startCourse").onclick = startCourse;
+  document.getElementById("launchToken").onclick = launchToken;
+};
