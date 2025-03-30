@@ -1,3 +1,4 @@
+
 // Constants
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
@@ -88,75 +89,46 @@ function launchToken() {
 function startCourse() {
   window.location.href = "/course.html";
 }
-document.getElementById('claimCertificateBtn').addEventListener('click', async () => {
-  const certificateContract = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // KLY NFT contract
-  const abi = [ // simplified ABI for mint
-    {
-      "inputs": [],
-      "name": "claimCertificate",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ];
-  if (typeof window.ethereum !== 'undefined') {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
-      const contract = new ethers.Contract(certificateContract, abi, signer);
-      const tx = await contract.claimCertificate();
-      document.getElementById('claimStatus').innerText = "Minting in progress...";
 
-      await tx.wait();
-      document.getElementById('claimStatus').innerText = "Success! NFT Certificate claimed.";
+// NFT Minting Script
+const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+const ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "recipient", "type": "address" },
+      { "internalType": "int24", "name": "tickLower", "type": "int24" },
+      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+      { "internalType": "uint128", "name": "amount", "type": "uint128" },
+      { "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "mint",
+    "outputs": [
+      { "internalType": "uint256", "name": "amount0", "type": "uint256" },
+      { "internalType": "uint256", "name": "amount1", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
-    } catch (err) {
-      console.error(err);
-      document.getElementById('claimStatus').innerText = "Error: " + err.message;
-    }
-  } else {
-    alert("Please install MetaMask to claim your certificate.");
+document.getElementById("claimCertificate").addEventListener("click", async () => {
+  if (!window.ethereum) {
+    alert("Please connect MetaMask.");
+    return;
+  }
+
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  const signer = provider.getSigner();
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  const user = await signer.getAddress();
+
+  try {
+    const tx = await contract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
+    await tx.wait();
+    alert("NFT Certificate Successfully Minted!");
+  } catch (err) {
+    console.error(err);
+    alert("Transaction failed. Make sure you have at least 1 KLY.");
   }
 });
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script>
-  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const ABI = [
-    {
-      "inputs": [
-        { "internalType": "address", "name": "recipient", "type": "address" },
-        { "internalType": "int24", "name": "tickLower", "type": "int24" },
-        { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-        { "internalType": "uint128", "name": "amount", "type": "uint128" },
-        { "internalType": "bytes", "name": "data", "type": "bytes" }
-      ],
-      "name": "mint",
-      "outputs": [
-        { "internalType": "uint256", "name": "amount0", "type": "uint256" },
-        { "internalType": "uint256", "name": "amount1", "type": "uint256" }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ];
-  document.getElementById("claimCertificate").addEventListener("click", async () => {
-    if (!window.ethereum) {
-      alert("Please connect MetaMask.");
-      return;
-    }
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    const user = await signer.getAddress();
-    try {
-      const tx = await contract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
-      await tx.wait();
-      alert("NFT Certificate Successfully Minted!");
-    } catch (err) {
-      console.error(err);
-      alert("Transaction failed. Make sure you have at least 1 KLY.");
-    }
-  });
-</script>
