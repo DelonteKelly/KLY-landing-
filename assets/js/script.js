@@ -15,18 +15,25 @@ const CONFIG = {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
     STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"
   },
-  gasOptions: { gasLimit: 300000 }
+  gasOptions: {
+    gasLimit: 300000
+  }
 };
 
 const state = {
   sdk: null,
   wallet: null,
-  contracts: { token: null, staking: null },
-  transactionInProgress: false
+  contracts: {
+    token: null,
+    staking: null
+  }
 };
 
 async function initApp() {
-  if (!window.ethereum) return showStatus("Install MetaMask", true);
+  if (!window.ethereum) {
+    showStatus("Please install MetaMask", true);
+    return;
+  }
 
   state.sdk = new ThirdwebSDK(CONFIG.chain);
   setupEventListeners();
@@ -34,10 +41,6 @@ async function initApp() {
   if (window.ethereum.selectedAddress) {
     await connectWallet();
   }
-
-  document.querySelectorAll('.card').forEach(card => {
-    setTimeout(() => card.classList.add('visible'), 200);
-  });
 }
 
 async function connectWallet() {
@@ -48,23 +51,24 @@ async function connectWallet() {
     state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
     updateWalletInfo(address);
     updateTokenInfo();
-    showStatus(`Connected: ${shortenAddress(address)}`);
+    showStatus("Wallet connected!");
   } catch (err) {
-    showStatus("Connection Failed", true);
+    console.error(err);
+    showStatus("Wallet connection failed", true);
   }
 }
 
 async function stakeTokens() {
   const amount = document.getElementById("stakeAmount").value;
-  if (!amount || parseFloat(amount) <= 0) return showStatus("Enter amount", true);
-
+  if (!amount || parseFloat(amount) <= 0) return showStatus("Enter valid amount", true);
   try {
     await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
     await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
     showStatus(`Staked ${amount} KLY`);
     updateTokenInfo();
-  } catch {
-    showStatus("Stake failed", true);
+  } catch (err) {
+    console.error(err);
+    showStatus("Staking failed", true);
   }
 }
 
@@ -73,7 +77,8 @@ async function claimRewards() {
     await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
     showStatus("Rewards claimed!");
     updateTokenInfo();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showStatus("Claim failed", true);
   }
 }
@@ -81,9 +86,10 @@ async function claimRewards() {
 async function withdrawTokens() {
   try {
     await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
-    showStatus("Withdrawn!");
+    showStatus("Tokens withdrawn!");
     updateTokenInfo();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showStatus("Withdraw failed", true);
   }
 }
@@ -94,7 +100,7 @@ async function launchToken() {
   const supply = document.getElementById("tokenSupply").value.trim();
 
   if (!name || !symbol || parseFloat(supply) <= 0) {
-    return showStatus("Invalid token info", true);
+    return showStatus("Fill in all token fields", true);
   }
 
   try {
@@ -104,31 +110,30 @@ async function launchToken() {
       primary_sale_recipient: await state.wallet.getAddress(),
       initial_supply: supply
     });
-    showStatus(`Launched: ${name} (${symbol})`);
-    console.log("Token address:", token.address);
-  } catch {
+    showStatus(`Token launched: ${symbol}`);
+  } catch (err) {
+    console.error(err);
     showStatus("Launch failed", true);
   }
 }
 
 async function updateTokenInfo() {
   try {
-    const addr = await state.wallet.getAddress();
+    const address = await state.wallet.getAddress();
     const [totalSupply, balance] = await Promise.all([
       state.contracts.token.totalSupply(),
-      state.contracts.token.balanceOf(addr)
+      state.contracts.token.balanceOf(address)
     ]);
     document.getElementById("total-supply").textContent = totalSupply.displayValue;
     document.getElementById("user-balance").textContent = balance.displayValue;
   } catch (err) {
-    console.error("Update failed", err);
+    console.error(err);
   }
 }
 
 function updateWalletInfo(address) {
   const btn = document.getElementById("connectWallet");
-  btn.textContent = shortenAddress(address);
-  btn.classList.add("connected");
+  btn.textContent = address.slice(0, 6) + "..." + address.slice(-4);
 }
 
 function setupEventListeners() {
@@ -137,9 +142,7 @@ function setupEventListeners() {
   document.getElementById("claimButton").onclick = claimRewards;
   document.getElementById("withdrawButton").onclick = withdrawTokens;
   document.getElementById("launchToken").onclick = launchToken;
-  document.getElementById("startCourse").onclick = () => {
-    window.location.href = "/course.html";
-  };
+  document.getElementById("startCourse").onclick = () => window.location.href = "/course.html";
 }
 
 function showStatus(message, isError = false) {
@@ -147,25 +150,19 @@ function showStatus(message, isError = false) {
   if (!el) {
     el = document.createElement("div");
     el.id = "transaction-status";
+    el.style.position = "fixed";
+    el.style.bottom = "20px";
+    el.style.left = "50%";
+    el.style.transform = "translateX(-50%)";
+    el.style.padding = "12px 24px";
+    el.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
+    el.style.color = "#fff";
+    el.style.borderRadius = "6px";
+    el.style.zIndex = 1000;
     document.body.appendChild(el);
   }
-
   el.textContent = message;
-  el.style.position = "fixed";
-  el.style.bottom = "20px";
-  el.style.left = "50%";
-  el.style.transform = "translateX(-50%)";
-  el.style.padding = "12px 24px";
-  el.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
-  el.style.color = "#fff";
-  el.style.borderRadius = "6px";
-  el.style.zIndex = 1000;
-
   setTimeout(() => el.remove(), 5000);
-}
-
-function shortenAddress(addr) {
-  return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
