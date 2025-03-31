@@ -15,57 +15,42 @@ const CONFIG = {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
     STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"
   },
-  gasOptions: {
-    gasLimit: 300000
-  }
+  gasOptions: { gasLimit: 300000 }
 };
 
 const state = {
   sdk: null,
   wallet: null,
-  contracts: {
-    token: null,
-    staking: null
-  },
+  contracts: { token: null, staking: null },
   transactionInProgress: false
 };
 
 async function initApp() {
-  try {
-    if (!window.ethereum) {
-      showStatus("Please install MetaMask", true);
-      return;
-    }
+  if (!window.ethereum) return showStatus("Install MetaMask", true);
 
-    state.sdk = new ThirdwebSDK(CONFIG.chain);
-    setupEventListeners();
+  state.sdk = new ThirdwebSDK(CONFIG.chain);
+  setupEventListeners();
 
-    if (window.ethereum.selectedAddress) {
-      await connectWallet();
-    }
-
-    console.log("DApp initialized.");
-  } catch (err) {
-    console.error("Init error:", err);
-    showStatus("DApp failed to load", true);
+  if (window.ethereum.selectedAddress) {
+    await connectWallet();
   }
+
+  document.querySelectorAll('.card').forEach(card => {
+    setTimeout(() => card.classList.add('visible'), 200);
+  });
 }
 
 async function connectWallet() {
   try {
     state.wallet = await state.sdk.wallet.connect("injected");
     const address = await state.wallet.getAddress();
-
     state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
     state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
-
     updateWalletInfo(address);
     updateTokenInfo();
-
     showStatus(`Connected: ${shortenAddress(address)}`);
   } catch (err) {
-    console.error("Wallet error:", err);
-    showStatus("Failed to connect wallet", true);
+    showStatus("Connection Failed", true);
   }
 }
 
@@ -78,9 +63,8 @@ async function stakeTokens() {
     await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
     showStatus(`Staked ${amount} KLY`);
     updateTokenInfo();
-  } catch (err) {
-    console.error("Stake error:", err);
-    showStatus("Staking failed", true);
+  } catch {
+    showStatus("Stake failed", true);
   }
 }
 
@@ -89,8 +73,7 @@ async function claimRewards() {
     await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
     showStatus("Rewards claimed!");
     updateTokenInfo();
-  } catch (err) {
-    console.error("Claim error:", err);
+  } catch {
     showStatus("Claim failed", true);
   }
 }
@@ -98,10 +81,9 @@ async function claimRewards() {
 async function withdrawTokens() {
   try {
     await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
-    showStatus("Tokens withdrawn!");
+    showStatus("Withdrawn!");
     updateTokenInfo();
-  } catch (err) {
-    console.error("Withdraw error:", err);
+  } catch {
     showStatus("Withdraw failed", true);
   }
 }
@@ -112,7 +94,7 @@ async function launchToken() {
   const supply = document.getElementById("tokenSupply").value.trim();
 
   if (!name || !symbol || parseFloat(supply) <= 0) {
-    return showStatus("Enter valid token details", true);
+    return showStatus("Invalid token info", true);
   }
 
   try {
@@ -122,12 +104,10 @@ async function launchToken() {
       primary_sale_recipient: await state.wallet.getAddress(),
       initial_supply: supply
     });
-
     showStatus(`Launched: ${name} (${symbol})`);
-    console.log("Token deployed at:", token.address);
-  } catch (err) {
-    console.error("Launch error:", err);
-    showStatus("Token launch failed", true);
+    console.log("Token address:", token.address);
+  } catch {
+    showStatus("Launch failed", true);
   }
 }
 
@@ -141,7 +121,7 @@ async function updateTokenInfo() {
     document.getElementById("total-supply").textContent = totalSupply.displayValue;
     document.getElementById("user-balance").textContent = balance.displayValue;
   } catch (err) {
-    console.error("Update error:", err);
+    console.error("Update failed", err);
   }
 }
 
@@ -163,27 +143,25 @@ function setupEventListeners() {
 }
 
 function showStatus(message, isError = false) {
-  let statusEl = document.getElementById("transaction-status");
-  if (!statusEl) {
-    statusEl = document.createElement("div");
-    statusEl.id = "transaction-status";
-    document.body.appendChild(statusEl);
+  let el = document.getElementById("transaction-status");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "transaction-status";
+    document.body.appendChild(el);
   }
 
-  statusEl.textContent = message;
-  statusEl.style.position = "fixed";
-  statusEl.style.bottom = "20px";
-  statusEl.style.left = "50%";
-  statusEl.style.transform = "translateX(-50%)";
-  statusEl.style.padding = "12px 24px";
-  statusEl.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
-  statusEl.style.color = "#fff";
-  statusEl.style.borderRadius = "6px";
-  statusEl.style.zIndex = 1000;
+  el.textContent = message;
+  el.style.position = "fixed";
+  el.style.bottom = "20px";
+  el.style.left = "50%";
+  el.style.transform = "translateX(-50%)";
+  el.style.padding = "12px 24px";
+  el.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
+  el.style.color = "#fff";
+  el.style.borderRadius = "6px";
+  el.style.zIndex = 1000;
 
-  setTimeout(() => {
-    statusEl.remove();
-  }, 5000);
+  setTimeout(() => el.remove(), 5000);
 }
 
 function shortenAddress(addr) {
