@@ -4,43 +4,32 @@ const CONFIG = {
   chain: {
     chainId: 56,
     rpc: ["https://bsc-dataseed.binance.org/"],
-    nativeCurrency: {
-      name: "BNB",
-      symbol: "BNB",
-      decimals: 18
-    },
-    slug: "binance"
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+    slug: "binance",
   },
   contracts: {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"
+    STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1",
   },
-  gasOptions: {
-    gasLimit: 300000
-  }
+  gasOptions: { gasLimit: 300000 },
 };
 
 const state = {
   sdk: null,
   wallet: null,
-  contracts: {
-    token: null,
-    staking: null
-  }
+  contracts: { token: null, staking: null },
 };
 
 async function initApp() {
   if (!window.ethereum) {
-    showStatus("Please install MetaMask", true);
+    showStatus("Install MetaMask", true);
     return;
   }
 
   state.sdk = new ThirdwebSDK(CONFIG.chain);
   setupEventListeners();
 
-  if (window.ethereum.selectedAddress) {
-    await connectWallet();
-  }
+  if (window.ethereum.selectedAddress) await connectWallet();
 }
 
 async function connectWallet() {
@@ -51,19 +40,20 @@ async function connectWallet() {
     state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
     state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
 
-    updateWalletInfo(address);
-    updateTokenInfo();
+    document.getElementById("connectWallet").textContent = shortenAddress(address);
+    document.getElementById("connectWallet").classList.add("connected");
 
-    showStatus("Wallet connected");
+    updateTokenInfo();
+    showStatus(`Connected: ${shortenAddress(address)}`);
   } catch (err) {
-    console.error("Wallet error:", err);
-    showStatus("Failed to connect wallet", true);
+    console.error(err);
+    showStatus("Wallet connection failed", true);
   }
 }
 
 async function stakeTokens() {
   const amount = document.getElementById("stakeAmount").value;
-  if (!amount || parseFloat(amount) <= 0) return showStatus("Enter valid amount", true);
+  if (!amount || parseFloat(amount) <= 0) return showStatus("Enter amount", true);
 
   try {
     await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
@@ -71,18 +61,18 @@ async function stakeTokens() {
     showStatus(`Staked ${amount} KLY`);
     updateTokenInfo();
   } catch (err) {
-    console.error("Staking error:", err);
-    showStatus("Staking failed", true);
+    console.error(err);
+    showStatus("Stake failed", true);
   }
 }
 
 async function claimRewards() {
   try {
     await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
-    showStatus("Rewards claimed");
+    showStatus("Rewards claimed!");
     updateTokenInfo();
   } catch (err) {
-    console.error("Claim error:", err);
+    console.error(err);
     showStatus("Claim failed", true);
   }
 }
@@ -90,10 +80,10 @@ async function claimRewards() {
 async function withdrawTokens() {
   try {
     await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
-    showStatus("Tokens withdrawn");
+    showStatus("Withdraw successful!");
     updateTokenInfo();
   } catch (err) {
-    console.error("Withdraw error:", err);
+    console.error(err);
     showStatus("Withdraw failed", true);
   }
 }
@@ -104,7 +94,7 @@ async function launchToken() {
   const supply = document.getElementById("tokenSupply").value;
 
   if (!name || !symbol || parseFloat(supply) <= 0) {
-    return showStatus("Fill out all fields", true);
+    return showStatus("Invalid token details", true);
   }
 
   try {
@@ -112,12 +102,11 @@ async function launchToken() {
       name,
       symbol,
       primary_sale_recipient: await state.wallet.getAddress(),
-      initial_supply: supply
+      initial_supply: supply,
     });
-
-    showStatus(`Token Launched: ${name} (${symbol})`);
+    showStatus(`Launched ${name} (${symbol})`);
   } catch (err) {
-    console.error("Launch error:", err);
+    console.error(err);
     showStatus("Launch failed", true);
   }
 }
@@ -127,14 +116,39 @@ async function updateTokenInfo() {
     const address = await state.wallet.getAddress();
     const [totalSupply, balance] = await Promise.all([
       state.contracts.token.totalSupply(),
-      state.contracts.token.balanceOf(address)
+      state.contracts.token.balanceOf(address),
     ]);
-
     document.getElementById("total-supply").textContent = totalSupply.displayValue;
     document.getElementById("user-balance").textContent = balance.displayValue;
   } catch (err) {
-    console.error("Update token info error:", err);
+    console.error("Info error:", err);
   }
+}
+
+function showStatus(message, isError = false) {
+  let status = document.getElementById("transaction-status");
+  if (!status) {
+    status = document.createElement("div");
+    status.id = "transaction-status";
+    document.body.appendChild(status);
+  }
+
+  status.textContent = message;
+  status.style.position = "fixed";
+  status.style.bottom = "20px";
+  status.style.left = "50%";
+  status.style.transform = "translateX(-50%)";
+  status.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
+  status.style.padding = "12px 24px";
+  status.style.borderRadius = "6px";
+  status.style.color = "#fff";
+  status.style.zIndex = 1000;
+
+  setTimeout(() => status.remove(), 4000);
+}
+
+function shortenAddress(addr) {
+  return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
 function setupEventListeners() {
@@ -143,29 +157,7 @@ function setupEventListeners() {
   document.getElementById("claimButton").onclick = claimRewards;
   document.getElementById("withdrawButton").onclick = withdrawTokens;
   document.getElementById("launchToken").onclick = launchToken;
-  document.getElementById("startCourse").onclick = () => {
-    window.location.href = "/course.html";
-  };
-}
-
-function updateWalletInfo(address) {
-  const btn = document.getElementById("connectWallet");
-  btn.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function showStatus(msg, isError = false) {
-  let el = document.getElementById("transaction-status");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "transaction-status";
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.backgroundColor = isError ? "#e63946" : "#4CAF50";
-
-  setTimeout(() => {
-    el.remove();
-  }, 5000);
+  document.getElementById("startCourse").onclick = () => location.href = "/course.html";
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
