@@ -69,23 +69,28 @@ const stakingABI = [
   }
 ];
 
-async function initApp() {
-  if (window.ethereum) {
-    web3 = new Web3(window.ethereum);
-    try {
-      accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      await switchToBSC();
-      await loadContracts();
-      updateWalletDisplay();
-      updateTokenData();
-      setupListeners();
-    } catch (err) {
-      showStatus("Wallet connection failed", true);
-    }
-  } else {
-    showStatus("Please install MetaMask!", true);
+// Connect Wallet Logic
+connectBtn.onclick = async () => {
+  if (!window.ethereum) {
+    return showStatus("MetaMask not detected", true);
   }
-}
+
+  try {
+    web3 = new Web3(window.ethereum);
+    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log("Connected account:", accounts[0]);
+
+    await switchToBSC();
+    await loadContracts();
+    updateWalletDisplay();
+    await updateTokenData();
+    setupListeners();
+    showStatus("Wallet connected");
+  } catch (err) {
+    console.error(err);
+    showStatus("Connection failed", true);
+  }
+};
 
 async function switchToBSC() {
   try {
@@ -121,6 +126,11 @@ function updateWalletDisplay() {
 }
 
 async function updateTokenData() {
+  if (!accounts.length) {
+    console.warn("Wallet not connected");
+    return;
+  }
+
   try {
     const [supply, balance] = await Promise.all([
       klyTokenContract.methods.totalSupply().call(),
@@ -129,6 +139,7 @@ async function updateTokenData() {
     totalSupplyEl.textContent = parseFloat(web3.utils.fromWei(supply)).toLocaleString() + " KLY";
     userBalanceEl.textContent = parseFloat(web3.utils.fromWei(balance)).toLocaleString() + " KLY";
   } catch (err) {
+    console.error("Failed to fetch token data", err);
     showStatus("Failed to load token data", true);
   }
 }
@@ -136,6 +147,7 @@ async function updateTokenData() {
 async function stakeTokens() {
   const amount = stakeAmountInput.value;
   if (!amount || parseFloat(amount) <= 0) return showStatus("Enter valid amount", true);
+
   const amountWei = web3.utils.toWei(amount, 'ether');
 
   try {
@@ -148,11 +160,11 @@ async function stakeTokens() {
       .send({ from: accounts[0] });
 
     showStatus("Staked successfully!");
-    updateTokenData();
     stakeAmountInput.value = "";
+    await updateTokenData();
   } catch (err) {
-    showStatus("Stake failed", true);
     console.error(err);
+    showStatus("Stake failed", true);
   }
 }
 
@@ -161,7 +173,7 @@ async function claimRewards() {
     showStatus("Claiming rewards...");
     await stakingContract.methods.claimRewards().send({ from: accounts[0] });
     showStatus("Rewards claimed!");
-    updateTokenData();
+    await updateTokenData();
   } catch (err) {
     showStatus("Claim failed", true);
   }
@@ -172,18 +184,13 @@ async function withdrawTokens() {
     showStatus("Withdrawing...");
     await stakingContract.methods.withdraw().send({ from: accounts[0] });
     showStatus("Withdrawal complete!");
-    updateTokenData();
+    await updateTokenData();
   } catch (err) {
     showStatus("Withdraw failed", true);
   }
 }
 
 function setupListeners() {
-  connectBtn.onclick = async () => {
-    if (!window.ethereum) return showStatus("MetaMask not detected", true);
-    if (accounts.length === 0) await initApp();
-  };
-
   stakeBtn.onclick = stakeTokens;
   claimBtn.onclick = claimRewards;
   withdrawBtn.onclick = withdrawTokens;
@@ -206,4 +213,9 @@ function showStatus(message, isError = false) {
   }, 4000);
 }
 
-window.addEventListener('load', initApp);
+// Optional auto-init on load (can be removed if you only want connect button to trigger it)
+window.addEventListener('load', () => {
+  if (window.ethereum && window.ethereum.selectedAddress) {
+    connectBtn.click();
+  }
+});
