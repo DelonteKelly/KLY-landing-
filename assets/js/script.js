@@ -47,27 +47,31 @@ async function connectWallet() {
   try {
     state.wallet = await state.sdk.wallet.connect("injected");
     const address = await state.wallet.getAddress();
+
     state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
     state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
+
     updateWalletInfo(address);
     updateTokenInfo();
-    showStatus("Wallet connected!");
+
+    showStatus("Wallet connected");
   } catch (err) {
-    console.error(err);
-    showStatus("Wallet connection failed", true);
+    console.error("Wallet error:", err);
+    showStatus("Failed to connect wallet", true);
   }
 }
 
 async function stakeTokens() {
   const amount = document.getElementById("stakeAmount").value;
   if (!amount || parseFloat(amount) <= 0) return showStatus("Enter valid amount", true);
+
   try {
     await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
     await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
     showStatus(`Staked ${amount} KLY`);
     updateTokenInfo();
   } catch (err) {
-    console.error(err);
+    console.error("Staking error:", err);
     showStatus("Staking failed", true);
   }
 }
@@ -75,10 +79,10 @@ async function stakeTokens() {
 async function claimRewards() {
   try {
     await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
-    showStatus("Rewards claimed!");
+    showStatus("Rewards claimed");
     updateTokenInfo();
   } catch (err) {
-    console.error(err);
+    console.error("Claim error:", err);
     showStatus("Claim failed", true);
   }
 }
@@ -86,21 +90,21 @@ async function claimRewards() {
 async function withdrawTokens() {
   try {
     await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
-    showStatus("Tokens withdrawn!");
+    showStatus("Tokens withdrawn");
     updateTokenInfo();
   } catch (err) {
-    console.error(err);
+    console.error("Withdraw error:", err);
     showStatus("Withdraw failed", true);
   }
 }
 
 async function launchToken() {
-  const name = document.getElementById("tokenName").value.trim();
-  const symbol = document.getElementById("tokenSymbol").value.trim();
-  const supply = document.getElementById("tokenSupply").value.trim();
+  const name = document.getElementById("tokenName").value;
+  const symbol = document.getElementById("tokenSymbol").value;
+  const supply = document.getElementById("tokenSupply").value;
 
   if (!name || !symbol || parseFloat(supply) <= 0) {
-    return showStatus("Fill in all token fields", true);
+    return showStatus("Fill out all fields", true);
   }
 
   try {
@@ -110,9 +114,10 @@ async function launchToken() {
       primary_sale_recipient: await state.wallet.getAddress(),
       initial_supply: supply
     });
-    showStatus(`Token launched: ${symbol}`);
+
+    showStatus(`Token Launched: ${name} (${symbol})`);
   } catch (err) {
-    console.error(err);
+    console.error("Launch error:", err);
     showStatus("Launch failed", true);
   }
 }
@@ -124,16 +129,12 @@ async function updateTokenInfo() {
       state.contracts.token.totalSupply(),
       state.contracts.token.balanceOf(address)
     ]);
+
     document.getElementById("total-supply").textContent = totalSupply.displayValue;
     document.getElementById("user-balance").textContent = balance.displayValue;
   } catch (err) {
-    console.error(err);
+    console.error("Update token info error:", err);
   }
-}
-
-function updateWalletInfo(address) {
-  const btn = document.getElementById("connectWallet");
-  btn.textContent = address.slice(0, 6) + "..." + address.slice(-4);
 }
 
 function setupEventListeners() {
@@ -142,27 +143,29 @@ function setupEventListeners() {
   document.getElementById("claimButton").onclick = claimRewards;
   document.getElementById("withdrawButton").onclick = withdrawTokens;
   document.getElementById("launchToken").onclick = launchToken;
-  document.getElementById("startCourse").onclick = () => window.location.href = "/course.html";
+  document.getElementById("startCourse").onclick = () => {
+    window.location.href = "/course.html";
+  };
 }
 
-function showStatus(message, isError = false) {
+function updateWalletInfo(address) {
+  const btn = document.getElementById("connectWallet");
+  btn.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function showStatus(msg, isError = false) {
   let el = document.getElementById("transaction-status");
   if (!el) {
     el = document.createElement("div");
     el.id = "transaction-status";
-    el.style.position = "fixed";
-    el.style.bottom = "20px";
-    el.style.left = "50%";
-    el.style.transform = "translateX(-50%)";
-    el.style.padding = "12px 24px";
-    el.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
-    el.style.color = "#fff";
-    el.style.borderRadius = "6px";
-    el.style.zIndex = 1000;
     document.body.appendChild(el);
   }
-  el.textContent = message;
-  setTimeout(() => el.remove(), 5000);
+  el.textContent = msg;
+  el.style.backgroundColor = isError ? "#e63946" : "#4CAF50";
+
+  setTimeout(() => {
+    el.remove();
+  }, 5000);
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
