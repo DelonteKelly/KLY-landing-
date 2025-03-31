@@ -249,8 +249,24 @@ function setupEventListeners() {
   document.getElementById("claimButton").onclick = claimRewards;
   document.getElementById("withdrawButton").onclick = withdrawTokens;
   document.getElementById("launchToken").onclick = launchToken;
-  document.getElementById("startCourse").onclick = () => 
-    window.location.href = "/course.html";
+
+  // Updated Start Course button logic
+  document.getElementById("startCourse").onclick = async () => {
+    if (!state.wallet) {
+      try {
+        await connectWallet();
+      } catch (error) {
+        showStatus("Please connect your wallet to access the course", true);
+        return;
+      }
+    }
+
+    if (state.wallet) {
+      window.location.href = "/course.html";
+    } else {
+      showStatus("Please connect your wallet to access the course", true);
+    }
+  };
 }
 
 /**
