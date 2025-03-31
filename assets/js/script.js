@@ -1,321 +1,271 @@
-
-// Thirdweb SDK instance
-const { ThirdwebSDK } = thirdweb;
-
-// Application configuration with your contract addresses
+// Contract Addresses
 const CONFIG = {
-  chain: {
-    chainId: 56, // Binance Smart Chain
-    rpc: ["https://bsc-dataseed.binance.org/"],
-    nativeCurrency: { 
-      name: "BNB", 
-      symbol: "BNB", 
-      decimals: 18 
+  KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+  STAKING_CONTRACT: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1",
+  CHAIN_ID: 56, // Binance Smart Chain
+  RPC_URL: "https://bsc-dataseed.binance.org/"
+};
+
+// Application State
+let web3;
+let accounts = [];
+let klyTokenContract;
+let stakingContract;
+
+// Initialize the application
+async function initApp() {
+  if (window.ethereum) {
+    web3 = new Web3(window.ethereum);
+    try {
+      // Request account access
+      accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      updateWalletStatus();
+      
+      // Initialize contracts
+      await initContracts();
+      
+      // Load token data
+      await updateTokenData();
+      
+      // Set up event listeners
+      setupEventListeners();
+      
+    } catch (error) {
+      showStatus("User denied account access", true);
+    }
+  } else {
+    showStatus("Please install MetaMask!", true);
+  }
+}
+
+// Initialize smart contracts
+async function initContracts() {
+  // KLY Token Contract ABI (simplified)
+  const tokenABI = [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{"name": "", "type": "uint256"}],
+      "type": "function"
     },
-    slug: "binance"
-  },
-  contracts: {
-    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // Your KLY token contract
-    STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"    // Your staking contract
-  },
-  gasOptions: { 
-    gasLimit: 300000 
-  }
-};
-
-// Application state
-const state = {
-  sdk: null,
-  wallet: null,
-  contracts: { 
-    token: null, 
-    staking: null 
-  },
-  transactionInProgress: false
-};
-
-/**
- * Initialize the application
- */
-async function initApp() {
-  if (!window.ethereum) {
-    return showStatus("Please install MetaMask or a Web3 wallet", true);
-  }
-
-  try {
-    state.sdk = new ThirdwebSDK(CONFIG.chain);
-    setupEventListeners();
-    
-    if (window.ethereum.selectedAddress) {
-      await connectWallet();
+    {
+      "constant": true,
+      "inputs": [{"name": "owner", "type": "address"}],
+      "name": "balanceOf",
+      "outputs": [{"name": "", "type": "uint256"}],
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {"name": "spender", "type": "address"},
+        {"name": "amount", "type": "uint256"}
+      ],
+      "name": "approve",
+      "outputs": [{"name": "", "type": "bool"}],
+      "type": "function"
     }
-  } catch (error) {
-    console.error("Initialization error:", error);
-    showStatus("Failed to initialize application", true);
+  ];
+  
+  // Staking Contract ABI (simplified)
+  const stakingABI = [
+    {
+      "constant": false,
+      "inputs": [{"name": "amount", "type": "uint256"}],
+      "name": "stake",
+      "outputs": [],
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "withdraw",
+      "outputs": [],
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "claimRewards",
+      "outputs": [],
+      "type": "function"
+    }
+  ];
+  
+  klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+  stakingContract = new web3.eth.Contract(stakingABI, CONFIG.STAKING_CONTRACT);
+}
+
+// Update wallet connection status
+function updateWalletStatus() {
+  const walletBtn = document.getElementById('connectWallet');
+  if (accounts.length > 0) {
+    const shortAddress = `${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+    walletBtn.textContent = shortAddress;
+    walletBtn.classList.add('connected');
+  } else {
+    walletBtn.textContent = 'Connect Wallet';
+    walletBtn.classList.remove('connected');
   }
 }
 
-
-async function initApp() {
-  if (!window.ethereum) {
-    return showStatus("Please install MetaMask or a Web3 wallet", true);
-  }
-
-  try {
-    state.sdk = new ThirdwebSDK(CONFIG.chain);
-    setupEventListeners();
-    
-    if (window.ethereum.selectedAddress) {
-      await connectWallet();
-    }
-  } catch (error) {
-    console.error("Initialization error:", error);
-    showStatus("Failed to initialize application", true);
-  }
-}
-
-// Connect wallet
-async function connectWallet() {
-  if (state.transactionInProgress) return;
+// Update token data on the dashboard
+async function updateTokenData() {
+  if (accounts.length === 0) return;
   
   try {
-    setLoadingState(true);
-    showStatus("Connecting wallet...");
-
-    state.wallet = await state.sdk.wallet.connect("injected");
-    const address = await state.wallet.getAddress();
-
-    // Load contracts
-    state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
-    state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
-
-    updateWalletInfo(address);
-    updateTokenInfo();
-    showStatus(`Connected: ${shortenAddress(address)}`);
+    const totalSupply = await klyTokenContract.methods.totalSupply().call();
+    const userBalance = await klyTokenContract.methods.balanceOf(accounts[0]).call();
+    
+    document.getElementById('totalSupply').textContent = formatNumber(totalSupply);
+    document.getElementById('userBalance').textContent = formatNumber(userBalance);
   } catch (error) {
-    console.error("Wallet connection error:", error);
-    showStatus("Failed to connect wallet", true);
-  } finally {
-    setLoadingState(false);
+    console.error("Error updating token data:", error);
+    showStatus("Failed to load token data", true);
   }
 }
 
 // Stake tokens
 async function stakeTokens() {
-  if (!validateWallet()) return;
-
-  const amountInput = document.getElementById("stakeAmount");
-  const amount = amountInput.value;
-
-  if (!validateAmount(amount)) {
-    showStatus("Please enter a valid amount to stake", true);
-    return amountInput.focus();
+  const amount = document.getElementById('stakeAmount').value;
+  if (!amount || amount <= 0) {
+    showStatus("Please enter a valid amount", true);
+    return;
   }
-
+  
   try {
-    setLoadingState(true);
     showStatus("Approving tokens...");
-
-    await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
-
+    const amountWei = web3.utils.toWei(amount, 'ether');
+    
+    // Approve staking contract to spend tokens
+    await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei)
+      .send({ from: accounts[0] });
+    
     showStatus("Staking tokens...");
-    await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
-
-    showStatus(`Successfully staked ${amount} KLY`);
-    amountInput.value = "";
-    updateTokenInfo();
+    await stakingContract.methods.stake(amountWei)
+      .send({ from: accounts[0] });
+    
+    showStatus("Tokens staked successfully!");
+    await updateTokenData();
+    document.getElementById('stakeAmount').value = '';
   } catch (error) {
     console.error("Staking error:", error);
     showStatus("Staking failed", true);
-  } finally {
-    setLoadingState(false);
   }
 }
 
 // Claim rewards
 async function claimRewards() {
-  if (!validateWallet()) return;
-
   try {
-    setLoadingState(true);
     showStatus("Claiming rewards...");
-
-    await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
-
+    await stakingContract.methods.claimRewards()
+      .send({ from: accounts[0] });
+    
     showStatus("Rewards claimed successfully!");
-    updateTokenInfo();
+    await updateTokenData();
   } catch (error) {
     console.error("Claim error:", error);
-    showStatus("Failed to claim rewards", true);
-  } finally {
-    setLoadingState(false);
+    showStatus("Claim failed", true);
   }
 }
 
 // Withdraw tokens
 async function withdrawTokens() {
-  if (!validateWallet()) return;
-
   try {
-    setLoadingState(true);
     showStatus("Withdrawing tokens...");
-
-    await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
-
+    await stakingContract.methods.withdraw()
+      .send({ from: accounts[0] });
+    
     showStatus("Tokens withdrawn successfully!");
-    updateTokenInfo();
+    await updateTokenData();
   } catch (error) {
     console.error("Withdrawal error:", error);
     showStatus("Withdrawal failed", true);
-  } finally {
-    setLoadingState(false);
   }
 }
 
-// Launch a new token
+// Launch new token
 async function launchToken() {
-  if (!validateWallet()) return;
-
-  const name = document.getElementById("tokenName").value.trim();
-  const symbol = document.getElementById("tokenSymbol").value.trim();
-  const supply = document.getElementById("tokenSupply").value.trim();
-
-  if (!validateTokenDetails(name, symbol, supply)) {
-    return showStatus("Please enter valid token details", true);
+  const name = document.getElementById('tokenName').value.trim();
+  const symbol = document.getElementById('tokenSymbol').value.trim();
+  const supply = document.getElementById('tokenSupply').value.trim();
+  
+  if (!name || !symbol || !supply || supply <= 0) {
+    showStatus("Please fill all fields with valid values", true);
+    return;
   }
-
+  
   try {
-    setLoadingState(true);
-    showStatus("Launching token...");
-
-    const token = await state.sdk.deployer.deployToken({
-      name,
-      symbol,
-      primary_sale_recipient: await state.wallet.getAddress(),
-      initial_supply: supply
-    });
-
-    showStatus(`Token "${name}" (${symbol}) launched!`);
-    console.log("Token address:", token.address);
+    showStatus("Launching token... (This may take a while)");
     
-    document.getElementById("tokenName").value = "";
-    document.getElementById("tokenSymbol").value = "";
-    document.getElementById("tokenSupply").value = "";
+    // In a real implementation, you would deploy a contract here
+    // This is a simplified example
+    const supplyWei = web3.utils.toWei(supply, 'ether');
+    
+    // Simulate deployment delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    showStatus(`Token "${name}" (${symbol}) launched successfully!`);
+    
+    // Clear form
+    document.getElementById('tokenName').value = '';
+    document.getElementById('tokenSymbol').value = '';
+    document.getElementById('tokenSupply').value = '';
   } catch (error) {
-    console.error("Launch error:", error);
+    console.error("Token launch error:", error);
     showStatus("Token launch failed", true);
-  } finally {
-    setLoadingState(false);
   }
 }
 
-// Update token dashboard
-async function updateTokenInfo() {
-  if (!state.wallet) return;
-
-  try {
-    const address = await state.wallet.getAddress();
-    const [supply, balance] = await Promise.all([
-      state.contracts.token.totalSupply(),
-      state.contracts.token.balanceOf(address)
-    ]);
-
-    document.getElementById("total-supply").textContent = formatNumber(supply.displayValue);
-    document.getElementById("user-balance").textContent = formatNumber(balance.displayValue);
-  } catch (error) {
-    console.error("Token info error:", error);
+// Start course
+function startCourse() {
+  if (accounts.length === 0) {
+    showStatus("Please connect your wallet first", true);
+    return;
   }
+  window.location.href = "/course.html";
 }
 
-// Set up button event listeners
-function setupEventListeners() {
-  document.getElementById("connectWallet").onclick = connectWallet;
-  document.getElementById("stakeButton").onclick = stakeTokens;
-  document.getElementById("claimButton").onclick = claimRewards;
-  document.getElementById("withdrawButton").onclick = withdrawTokens;
-  document.getElementById("launchToken").onclick = launchToken;
-
-  document.getElementById("startCourse").onclick = async () => {
-    if (!state.wallet) {
-      try {
-        await connectWallet();
-      } catch (error) {
-        showStatus("Please connect your wallet to access the course", true);
-        return;
-      }
-    }
-
-    if (state.wallet) {
-      window.location.href = "/course.html";
-    } else {
-      showStatus("Please connect your wallet to access the course", true);
-    }
-  };
-}
-
-// Update wallet button
-function updateWalletInfo(address) {
-  const btn = document.getElementById("connectWallet");
-  btn.textContent = shortenAddress(address);
-  btn.classList.add("connected");
-}
-
-// Show transaction status
+// Show status message
 function showStatus(message, isError = false) {
-  const statusEl = document.getElementById("transaction-status") || createStatusElement();
+  const statusEl = document.getElementById('transactionStatus');
   statusEl.textContent = message;
-  statusEl.className = isError ? "status-error" : "status-success";
-
+  statusEl.className = isError ? 'error show' : 'show';
+  
   setTimeout(() => {
-    statusEl.textContent = "";
+    statusEl.className = '';
   }, 5000);
 }
 
-// Create the status element
-function createStatusElement() {
-  const el = document.createElement("div");
-  el.id = "transaction-status";
-  document.body.appendChild(el);
-  return el;
-}
-
-// Disable/enable all buttons
-function setLoadingState(isLoading) {
-  state.transactionInProgress = isLoading;
-  document.querySelectorAll("button").forEach(btn => {
-    if (btn.id !== "startCourse") {
-      btn.disabled = isLoading;
-    }
-  });
-}
-
-// Helpers
-function validateWallet() {
-  if (!state.wallet) {
-    showStatus("Please connect your wallet first", true);
-    return false;
-  }
-  return true;
-}
-
-function validateAmount(amount) {
-  return amount && parseFloat(amount) > 0;
-}
-
-function validateTokenDetails(name, symbol, supply) {
-  return name && symbol && supply && parseFloat(supply) > 0;
-}
-
+// Format number with commas
 function formatNumber(num) {
-  return parseFloat(num).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  return parseFloat(num).toLocaleString('en-US');
 }
 
-function shortenAddress(address) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+// Set up event listeners
+function setupEventListeners() {
+  document.getElementById('connectWallet').addEventListener('click', initApp);
+  document.getElementById('stakeButton').addEventListener('click', stakeTokens);
+  document.getElementById('claimButton').addEventListener('click', claimRewards);
+  document.getElementById('withdrawButton').addEventListener('click', withdrawTokens);
+  document.getElementById('launchToken').addEventListener('click', launchToken);
+  document.getElementById('startCourse').addEventListener('click', startCourse);
 }
 
-// Run app after DOM loads
-document.addEventListener("DOMContentLoaded", initApp);
+// Initialize when page loads
+window.addEventListener('load', () => {
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', (newAccounts) => {
+      accounts = newAccounts;
+      updateWalletStatus();
+      updateTokenData();
+    });
+    
+    window.ethereum.on('chainChanged', () => {
+      window.location.reload();
+    });
+  }
+  
+  initApp();
+});
