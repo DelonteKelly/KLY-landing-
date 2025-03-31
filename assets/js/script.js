@@ -1,7 +1,8 @@
+
 // Thirdweb SDK instance
 const { ThirdwebSDK } = thirdweb;
 
-// Application configuration
+// Application configuration with your contract addresses
 const CONFIG = {
   chain: {
     chainId: 56, // Binance Smart Chain
@@ -14,8 +15,8 @@ const CONFIG = {
     slug: "binance"
   },
   contracts: {
-    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"
+    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // Your KLY token contract
+    STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"    // Your staking contract
   },
   gasOptions: { 
     gasLimit: 300000 
@@ -54,9 +55,26 @@ async function initApp() {
   }
 }
 
-/**
- * Connect wallet handler
- */
+
+async function initApp() {
+  if (!window.ethereum) {
+    return showStatus("Please install MetaMask or a Web3 wallet", true);
+  }
+
+  try {
+    state.sdk = new ThirdwebSDK(CONFIG.chain);
+    setupEventListeners();
+    
+    if (window.ethereum.selectedAddress) {
+      await connectWallet();
+    }
+  } catch (error) {
+    console.error("Initialization error:", error);
+    showStatus("Failed to initialize application", true);
+  }
+}
+
+// Connect wallet
 async function connectWallet() {
   if (state.transactionInProgress) return;
   
@@ -67,14 +85,9 @@ async function connectWallet() {
     state.wallet = await state.sdk.wallet.connect("injected");
     const address = await state.wallet.getAddress();
 
-    // Initialize contracts
-    state.contracts.token = await state.sdk.getContract(
-      CONFIG.contracts.KLY_TOKEN, 
-      "token"
-    );
-    state.contracts.staking = await state.sdk.getContract(
-      CONFIG.contracts.STAKING
-    );
+    // Load contracts
+    state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
+    state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
 
     updateWalletInfo(address);
     updateTokenInfo();
@@ -87,9 +100,7 @@ async function connectWallet() {
   }
 }
 
-/**
- * Stake tokens handler
- */
+// Stake tokens
 async function stakeTokens() {
   if (!validateWallet()) return;
 
@@ -105,17 +116,10 @@ async function stakeTokens() {
     setLoadingState(true);
     showStatus("Approving tokens...");
 
-    await state.contracts.token.setAllowance(
-      CONFIG.contracts.STAKING, 
-      amount
-    );
+    await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
 
     showStatus("Staking tokens...");
-    await state.contracts.staking.call(
-      "stake", 
-      [amount], 
-      CONFIG.gasOptions
-    );
+    await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
 
     showStatus(`Successfully staked ${amount} KLY`);
     amountInput.value = "";
@@ -128,9 +132,7 @@ async function stakeTokens() {
   }
 }
 
-/**
- * Claim rewards handler
- */
+// Claim rewards
 async function claimRewards() {
   if (!validateWallet()) return;
 
@@ -138,11 +140,7 @@ async function claimRewards() {
     setLoadingState(true);
     showStatus("Claiming rewards...");
 
-    await state.contracts.staking.call(
-      "claimRewards", 
-      [], 
-      CONFIG.gasOptions
-    );
+    await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
 
     showStatus("Rewards claimed successfully!");
     updateTokenInfo();
@@ -154,9 +152,7 @@ async function claimRewards() {
   }
 }
 
-/**
- * Withdraw tokens handler
- */
+// Withdraw tokens
 async function withdrawTokens() {
   if (!validateWallet()) return;
 
@@ -164,11 +160,7 @@ async function withdrawTokens() {
     setLoadingState(true);
     showStatus("Withdrawing tokens...");
 
-    await state.contracts.staking.call(
-      "withdraw", 
-      [], 
-      CONFIG.gasOptions
-    );
+    await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
 
     showStatus("Tokens withdrawn successfully!");
     updateTokenInfo();
@@ -180,9 +172,7 @@ async function withdrawTokens() {
   }
 }
 
-/**
- * Token launch handler
- */
+// Launch a new token
 async function launchToken() {
   if (!validateWallet()) return;
 
@@ -208,7 +198,6 @@ async function launchToken() {
     showStatus(`Token "${name}" (${symbol}) launched!`);
     console.log("Token address:", token.address);
     
-    // Clear form
     document.getElementById("tokenName").value = "";
     document.getElementById("tokenSymbol").value = "";
     document.getElementById("tokenSupply").value = "";
@@ -220,9 +209,7 @@ async function launchToken() {
   }
 }
 
-/**
- * Update token information display
- */
+// Update token dashboard
 async function updateTokenInfo() {
   if (!state.wallet) return;
 
@@ -240,9 +227,7 @@ async function updateTokenInfo() {
   }
 }
 
-/**
- * Set up event listeners
- */
+// Set up button event listeners
 function setupEventListeners() {
   document.getElementById("connectWallet").onclick = connectWallet;
   document.getElementById("stakeButton").onclick = stakeTokens;
@@ -250,7 +235,6 @@ function setupEventListeners() {
   document.getElementById("withdrawButton").onclick = withdrawTokens;
   document.getElementById("launchToken").onclick = launchToken;
 
-  // Updated Start Course button logic
   document.getElementById("startCourse").onclick = async () => {
     if (!state.wallet) {
       try {
@@ -269,33 +253,25 @@ function setupEventListeners() {
   };
 }
 
-/**
- * Update wallet connection UI
- */
+// Update wallet button
 function updateWalletInfo(address) {
   const btn = document.getElementById("connectWallet");
   btn.textContent = shortenAddress(address);
   btn.classList.add("connected");
 }
 
-/**
- * Show status message
- */
+// Show transaction status
 function showStatus(message, isError = false) {
-  const statusEl = document.getElementById("transaction-status") || 
-    createStatusElement();
-  
+  const statusEl = document.getElementById("transaction-status") || createStatusElement();
   statusEl.textContent = message;
   statusEl.className = isError ? "status-error" : "status-success";
-  
+
   setTimeout(() => {
     statusEl.textContent = "";
   }, 5000);
 }
 
-/**
- * Create status element if it doesn't exist
- */
+// Create the status element
 function createStatusElement() {
   const el = document.createElement("div");
   el.id = "transaction-status";
@@ -303,9 +279,7 @@ function createStatusElement() {
   return el;
 }
 
-/**
- * Set loading state for buttons
- */
+// Disable/enable all buttons
 function setLoadingState(isLoading) {
   state.transactionInProgress = isLoading;
   document.querySelectorAll("button").forEach(btn => {
@@ -315,9 +289,7 @@ function setLoadingState(isLoading) {
   });
 }
 
-/**
- * Validate wallet connection
- */
+// Helpers
 function validateWallet() {
   if (!state.wallet) {
     showStatus("Please connect your wallet first", true);
@@ -326,23 +298,14 @@ function validateWallet() {
   return true;
 }
 
-/**
- * Validate stake amount
- */
 function validateAmount(amount) {
   return amount && parseFloat(amount) > 0;
 }
 
-/**
- * Validate token details
- */
 function validateTokenDetails(name, symbol, supply) {
   return name && symbol && supply && parseFloat(supply) > 0;
 }
 
-/**
- * Format number with 2 decimal places
- */
 function formatNumber(num) {
   return parseFloat(num).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -350,12 +313,9 @@ function formatNumber(num) {
   });
 }
 
-/**
- * Shorten Ethereum address
- */
 function shortenAddress(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-// Initialize app when DOM is loaded
+// Run app after DOM loads
 document.addEventListener("DOMContentLoaded", initApp);
