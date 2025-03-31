@@ -18,89 +18,45 @@ const withdrawBtn = document.getElementById('withdrawButton');
 const stakeAmountInput = document.getElementById('stakeAmount');
 const statusEl = document.getElementById('transactionStatus');
 
+// Token Contract ABI
 const tokenABI = [
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "totalSupply",
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [{ "name": "account", "type": "address" }],
-    "name": "balanceOf",
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      { "name": "spender", "type": "address" },
-      { "name": "amount", "type": "uint256" }
-    ],
-    "name": "approve",
-    "outputs": [{ "name": "", "type": "bool" }],
-    "type": "function"
-  }
+  { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+  { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+  { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
 ];
 
+// Staking Contract ABI
 const stakingABI = [
-  {
-    "constant": false,
-    "inputs": [{ "name": "amount", "type": "uint256" }],
-    "name": "stake",
-    "outputs": [],
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "claimRewards",
-    "outputs": [],
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "withdraw",
-    "outputs": [],
-    "type": "function"
-  }
+  { "constant": false, "inputs": [{ "name": "amount", "type": "uint256" }], "name": "stake", "outputs": [], "type": "function" },
+  { "constant": false, "inputs": [], "name": "claimRewards", "outputs": [], "type": "function" },
+  { "constant": false, "inputs": [], "name": "withdraw", "outputs": [], "type": "function" }
 ];
 
-// Connect Wallet Logic
-connectBtn.onclick = async () => {
-  if (!window.ethereum) {
-    return showStatus("MetaMask not detected", true);
-  }
+async function initApp() {
+  if (!window.ethereum) return showStatus("Please install MetaMask!", true);
 
+  web3 = new Web3(window.ethereum);
   try {
-    web3 = new Web3(window.ethereum);
-    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    console.log("Connected account:", accounts[0]);
-
+    accounts = await ethereum.request({ method: 'eth_requestAccounts' });
     await switchToBSC();
     await loadContracts();
     updateWalletDisplay();
-    await updateTokenData();
+    updateTokenData();
     setupListeners();
-    showStatus("Wallet connected");
   } catch (err) {
-    console.error(err);
-    showStatus("Connection failed", true);
+    showStatus("Wallet connection failed", true);
   }
-};
+}
 
 async function switchToBSC() {
   try {
-    await window.ethereum.request({
+    await ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: '0x38' }]
     });
   } catch (e) {
     if (e.code === 4902) {
-      await window.ethereum.request({
+      await ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [{
           chainId: '0x38',
@@ -120,17 +76,14 @@ async function loadContracts() {
 }
 
 function updateWalletDisplay() {
-  const shortAddr = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
-  connectBtn.textContent = shortAddr;
-  connectBtn.classList.add('connected');
+  if (accounts.length > 0) {
+    const shortAddr = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+    connectBtn.textContent = shortAddr;
+    connectBtn.classList.add('connected');
+  }
 }
 
 async function updateTokenData() {
-  if (!accounts.length) {
-    console.warn("Wallet not connected");
-    return;
-  }
-
   try {
     const [supply, balance] = await Promise.all([
       klyTokenContract.methods.totalSupply().call(),
@@ -138,8 +91,7 @@ async function updateTokenData() {
     ]);
     totalSupplyEl.textContent = parseFloat(web3.utils.fromWei(supply)).toLocaleString() + " KLY";
     userBalanceEl.textContent = parseFloat(web3.utils.fromWei(balance)).toLocaleString() + " KLY";
-  } catch (err) {
-    console.error("Failed to fetch token data", err);
+  } catch {
     showStatus("Failed to load token data", true);
   }
 }
@@ -147,7 +99,6 @@ async function updateTokenData() {
 async function stakeTokens() {
   const amount = stakeAmountInput.value;
   if (!amount || parseFloat(amount) <= 0) return showStatus("Enter valid amount", true);
-
   const amountWei = web3.utils.toWei(amount, 'ether');
 
   try {
@@ -160,10 +111,9 @@ async function stakeTokens() {
       .send({ from: accounts[0] });
 
     showStatus("Staked successfully!");
+    updateTokenData();
     stakeAmountInput.value = "";
-    await updateTokenData();
   } catch (err) {
-    console.error(err);
     showStatus("Stake failed", true);
   }
 }
@@ -173,7 +123,7 @@ async function claimRewards() {
     showStatus("Claiming rewards...");
     await stakingContract.methods.claimRewards().send({ from: accounts[0] });
     showStatus("Rewards claimed!");
-    await updateTokenData();
+    updateTokenData();
   } catch (err) {
     showStatus("Claim failed", true);
   }
@@ -184,24 +134,28 @@ async function withdrawTokens() {
     showStatus("Withdrawing...");
     await stakingContract.methods.withdraw().send({ from: accounts[0] });
     showStatus("Withdrawal complete!");
-    await updateTokenData();
+    updateTokenData();
   } catch (err) {
     showStatus("Withdraw failed", true);
   }
 }
 
 function setupListeners() {
+  connectBtn.onclick = async () => {
+    if (!window.ethereum) return showStatus("MetaMask not detected", true);
+    if (accounts.length === 0) await initApp();
+  };
   stakeBtn.onclick = stakeTokens;
   claimBtn.onclick = claimRewards;
   withdrawBtn.onclick = withdrawTokens;
 
-  window.ethereum.on('accountsChanged', (newAcc) => {
+  ethereum.on('accountsChanged', (newAcc) => {
     accounts = newAcc;
     updateWalletDisplay();
     updateTokenData();
   });
 
-  window.ethereum.on('chainChanged', () => window.location.reload());
+  ethereum.on('chainChanged', () => window.location.reload());
 }
 
 function showStatus(message, isError = false) {
@@ -213,9 +167,4 @@ function showStatus(message, isError = false) {
   }, 4000);
 }
 
-// Optional auto-init on load (can be removed if you only want connect button to trigger it)
-window.addEventListener('load', () => {
-  if (window.ethereum && window.ethereum.selectedAddress) {
-    connectBtn.click();
-  }
-});
+window.addEventListener('load', initApp);
