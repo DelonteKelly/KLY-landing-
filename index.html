@@ -6,31 +6,30 @@
   <title>KLY Legacy Platform</title>
   <link rel="stylesheet" href="assets/css/style.css" />
   <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.min.js"></script>
-  <script src="assets/js/script.js"></script>
 </head>
 <body>
   <header>
     <h1>KLY Legacy</h1>
-    <button id="connectWallet" aria-label="Connect wallet">Connect Wallet</button>
+    <button id="connectWallet">Connect Wallet</button>
   </header>
 
   <main>
-    <section id="hero">
+    <section>
       <h2>Jump Into Web3 Wealth</h2>
       <p>Learn tokenization, asset protection, and legacy building.</p>
       <button id="startCourse">Start Course</button>
     </section>
 
-    <section id="dashboard">
+    <section>
       <h2>KLY Token Dashboard</h2>
       <p>Total Supply: <span id="total-supply">Loading...</span></p>
       <p>Your Balance: <span id="user-balance">Loading...</span></p>
     </section>
 
-    <section id="staking">
+    <section>
       <h2>Stake Your KLY</h2>
       <p>Earn rewards by staking your KLY tokens.</p>
-      <input type="number" id="stakeAmount" placeholder="Amount to stake" min="0" step="0.01" />
+      <input type="number" id="stakeAmount" placeholder="Amount to stake" />
       <div class="button-group">
         <button id="stakeButton">Stake</button>
         <button id="claimButton">Claim Rewards</button>
@@ -38,11 +37,11 @@
       </div>
     </section>
 
-    <section id="launchpad">
+    <section>
       <h2>Launch Your Token</h2>
-      <input type="text" id="tokenName" placeholder="Token Name" required />
-      <input type="text" id="tokenSymbol" placeholder="Symbol" required />
-      <input type="number" id="tokenSupply" placeholder="Total Supply" min="1" required />
+      <input type="text" id="tokenName" placeholder="Token Name" />
+      <input type="text" id="tokenSymbol" placeholder="Symbol" />
+      <input type="number" id="tokenSupply" placeholder="Total Supply" />
       <button id="launchToken">Launch Token</button>
     </section>
   </main>
@@ -50,5 +49,137 @@
   <footer>
     <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
   </footer>
+
+  <!-- LIVE SCRIPT AT BOTTOM (NO MODULE) -->
+  <script>
+    const { ThirdwebSDK } = thirdweb;
+
+    const CONFIG = {
+      chain: {
+        chainId: 56,
+        rpc: ["https://bsc-dataseed.binance.org/"],
+        nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+        slug: "binance"
+      },
+      contracts: {
+        KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+        STAKING: "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1"
+      },
+      gasOptions: { gasLimit: 300000 }
+    };
+
+    const state = {
+      sdk: null,
+      wallet: null,
+      contracts: { token: null, staking: null },
+    };
+
+    async function initApp() {
+      if (!window.ethereum) {
+        showStatus("Install MetaMask", true);
+        return;
+      }
+
+      state.sdk = new ThirdwebSDK(CONFIG.chain);
+      setupEventListeners();
+
+      if (window.ethereum.selectedAddress) {
+        await connectWallet();
+      }
+    }
+
+    async function connectWallet() {
+      state.wallet = await state.sdk.wallet.connect("injected");
+      const address = await state.wallet.getAddress();
+      state.contracts.token = await state.sdk.getContract(CONFIG.contracts.KLY_TOKEN, "token");
+      state.contracts.staking = await state.sdk.getContract(CONFIG.contracts.STAKING);
+      document.getElementById("connectWallet").textContent = shortenAddress(address);
+      updateTokenInfo();
+      showStatus(`Connected: ${shortenAddress(address)}`);
+    }
+
+    async function stakeTokens() {
+      const amount = document.getElementById("stakeAmount").value;
+      if (!amount || parseFloat(amount) <= 0) return showStatus("Enter amount", true);
+      await state.contracts.token.setAllowance(CONFIG.contracts.STAKING, amount);
+      await state.contracts.staking.call("stake", [amount], CONFIG.gasOptions);
+      showStatus(`Staked ${amount} KLY`);
+      updateTokenInfo();
+    }
+
+    async function claimRewards() {
+      await state.contracts.staking.call("claimRewards", [], CONFIG.gasOptions);
+      showStatus("Rewards claimed!");
+      updateTokenInfo();
+    }
+
+    async function withdrawTokens() {
+      await state.contracts.staking.call("withdraw", [], CONFIG.gasOptions);
+      showStatus("Tokens withdrawn!");
+      updateTokenInfo();
+    }
+
+    async function launchToken() {
+      const name = document.getElementById("tokenName").value.trim();
+      const symbol = document.getElementById("tokenSymbol").value.trim();
+      const supply = document.getElementById("tokenSupply").value.trim();
+      if (!name || !symbol || parseFloat(supply) <= 0) {
+        return showStatus("Fill in all fields", true);
+      }
+
+      const token = await state.sdk.deployer.deployToken({
+        name, symbol,
+        primary_sale_recipient: await state.wallet.getAddress(),
+        initial_supply: supply
+      });
+
+      showStatus(`Token Launched: ${name} (${symbol})`);
+    }
+
+    async function updateTokenInfo() {
+      const addr = await state.wallet.getAddress();
+      const [totalSupply, balance] = await Promise.all([
+        state.contracts.token.totalSupply(),
+        state.contracts.token.balanceOf(addr)
+      ]);
+      document.getElementById("total-supply").textContent = totalSupply.displayValue;
+      document.getElementById("user-balance").textContent = balance.displayValue;
+    }
+
+    function shortenAddress(addr) {
+      return addr.slice(0, 6) + "..." + addr.slice(-4);
+    }
+
+    function setupEventListeners() {
+      document.getElementById("connectWallet").onclick = connectWallet;
+      document.getElementById("stakeButton").onclick = stakeTokens;
+      document.getElementById("claimButton").onclick = claimRewards;
+      document.getElementById("withdrawButton").onclick = withdrawTokens;
+      document.getElementById("launchToken").onclick = launchToken;
+      document.getElementById("startCourse").onclick = () => window.location.href = "/course.html";
+    }
+
+    function showStatus(message, isError = false) {
+      let statusEl = document.getElementById("transaction-status");
+      if (!statusEl) {
+        statusEl = document.createElement("div");
+        statusEl.id = "transaction-status";
+        document.body.appendChild(statusEl);
+      }
+      statusEl.textContent = message;
+      statusEl.style.position = "fixed";
+      statusEl.style.bottom = "20px";
+      statusEl.style.left = "50%";
+      statusEl.style.transform = "translateX(-50%)";
+      statusEl.style.padding = "12px 24px";
+      statusEl.style.backgroundColor = isError ? "#ff4444" : "#4CAF50";
+      statusEl.style.color = "#fff";
+      statusEl.style.borderRadius = "6px";
+      statusEl.style.zIndex = 1000;
+      setTimeout(() => statusEl.remove(), 5000);
+    }
+
+    document.addEventListener("DOMContentLoaded", initApp);
+  </script>
 </body>
 </html>
