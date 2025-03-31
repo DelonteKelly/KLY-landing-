@@ -179,6 +179,10 @@ async function withdrawTokens() {
 }
 
 function setupListeners() {
+  connectBtn.onclick = async () => {
+  if (!window.ethereum || accounts.length > 0) return;
+  await initApp();
+};
   connectBtn.onclick = initApp;
   stakeBtn.onclick = stakeTokens;
   claimBtn.onclick = claimRewards;
