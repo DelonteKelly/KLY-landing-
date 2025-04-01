@@ -350,12 +350,12 @@
       const wallet = await thirdweb.connect("injected");
       const signer = await wallet.getSigner();
 
-      const sdk = new thirdweb.ThirdwebSDK(signer);
+      const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
 
       const deployedToken = await sdk.deployer.deployToken({
         name,
         symbol,
-        total_supply: supply,
+        total_supply: ethers.utils.parseUnits(supply, 18),
         primary_sale_recipient: await signer.getAddress(),
         platform_fee_basis_points: 500,
         platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
@@ -365,7 +365,7 @@
       console.log("Launched Token:", deployedToken);
     } catch (err) {
       console.error("Launch Failed:", err);
-      alert("Token launch failed. Please check your wallet and try again.");
+      alert("Token launch failed:\n" + (err?.message || "Unknown error"));
     } finally {
       button.disabled = false;
       button.textContent = "Launch My Token";
