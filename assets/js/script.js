@@ -178,6 +178,9 @@ function setupListeners() {
   stakeBtn.onclick = stakeTokens;
   claimBtn.onclick = claimRewards;
   withdrawBtn.onclick = withdrawTokens;
+  startCourseBtn.onclick = () => {
+  window.location.href = "course.html";
+};
 
   window.ethereum.on("accountsChanged", (acc) => {
     accounts = acc;
