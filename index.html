@@ -121,7 +121,7 @@
 
     .features-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(1, 1fr);
       gap: 1rem;
     }
 
@@ -198,7 +198,7 @@
     </div>
   </section>
 
-  <section id="features">
+  <section id="features" class="panel">
     <h2>Features</h2>
     <div class="features-grid">
       <div class="feature-card">
@@ -225,10 +225,6 @@
   </section>
 
   <div id="transactionStatus"></div>
-
-  <footer>
-    <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
-  </footer>
 
   <script>
     const CONFIG = {
@@ -264,27 +260,9 @@
     ];
 
     const stakingABI = [
-      {
-        "constant": false,
-        "inputs": [{ "name": "amount", "type": "uint256" }],
-        "name": "stake",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "constant": false,
-        "inputs": [],
-        "name": "claimRewards",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "constant": false,
-        "inputs": [],
-        "name": "withdraw",
-        "outputs": [],
-        "type": "function"
-      }
+      { "constant": false, "inputs": [{ "name": "amount", "type": "uint256" }], "name": "stake", "outputs": [], "type": "function" },
+      { "constant": false, "inputs": [], "name": "claimRewards", "outputs": [], "type": "function" },
+      { "constant": false, "inputs": [], "name": "withdraw", "outputs": [], "type": "function" }
     ];
 
     let web3;
@@ -301,7 +279,11 @@
     const claimBtn = document.getElementById("claimButton");
     const withdrawBtn = document.getElementById("withdrawButton");
     const statusEl = document.getElementById("transactionStatus");
-    const courseBtn = document.getElementById("startCourseBtn");
+
+    connectBtn.onclick = connectWallet;
+    stakeBtn.onclick = stakeTokens;
+    claimBtn.onclick = claimRewards;
+    withdrawBtn.onclick = withdrawTokens;
 
     async function connectWallet() {
       if (!window.ethereum) return alert("MetaMask not detected.");
@@ -323,10 +305,10 @@
           klyTokenContract.methods.totalSupply().call(),
           klyTokenContract.methods.balanceOf(accounts[0]).call()
         ]);
-        totalSupplyEl.textContent = parseFloat(web3.utils.fromWei(supply)).toLocaleString() + " KLY";
-        userBalanceEl.textContent = parseFloat(web3.utils.fromWei(balance)).toLocaleString() + " KLY";
-      } catch (e) {
-        console.error(e);
+        totalSupplyEl.textContent = web3.utils.fromWei(supply) + " KLY";
+        userBalanceEl.textContent = web3.utils.fromWei(balance) + " KLY";
+      } catch (err) {
+        console.error(err);
       }
     }
 
@@ -341,7 +323,7 @@
         await stakingContract.methods.stake(amountWei).send({ from: accounts[0] });
         showStatus("Staked!");
         updateStats();
-      } catch (e) {
+      } catch (err) {
         showStatus("Staking failed", true);
       }
     }
@@ -351,7 +333,8 @@
         showStatus("Claiming...");
         await stakingContract.methods.claimRewards().send({ from: accounts[0] });
         showStatus("Rewards claimed!");
-      } catch (e) {
+        updateStats();
+      } catch (err) {
         showStatus("Claim failed", true);
       }
     }
@@ -362,7 +345,7 @@
         await stakingContract.methods.withdraw().send({ from: accounts[0] });
         showStatus("Withdrawn!");
         updateStats();
-      } catch (e) {
+      } catch (err) {
         showStatus("Withdraw failed", true);
       }
     }
@@ -370,28 +353,28 @@
     function showStatus(msg, error = false) {
       statusEl.textContent = msg;
       statusEl.style.display = "block";
-      statusEl.style.background = error ? "#ff4d4d" : "#00ffe0";
-      setTimeout(() => { statusEl.style.display = "none"; }, 4000);
+      statusEl.style.background = error ? "red" : "#00ffe0";
+      setTimeout(() => {
+        statusEl.style.display = "none";
+      }, 4000);
     }
 
-    connectBtn.onclick = connectWallet;
-    stakeBtn.onclick = stakeTokens;
-    claimBtn.onclick = claimRewards;
-    withdrawBtn.onclick = withdrawTokens;
-
-    courseBtn.addEventListener("click", async () => {
+    // Course Button Redirect
+    document.getElementById("startCourseBtn").addEventListener("click", async () => {
       if (!window.ethereum) {
-        alert("Please install MetaMask to continue.");
+        alert("Please connect MetaMask to continue.");
         return;
       }
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const accounts = await provider.send("eth_requestAccounts", []);
-      if (accounts.length === 0) {
-        alert("Please connect your wallet to access the course.");
-        return;
+      if (accounts.length > 0) {
+        window.location.href = "/course.html";
       }
-      window.location.href = "/course.html";
     });
   </script>
+
 </body>
+<footer>
+  <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
+</footer>
 </html>
