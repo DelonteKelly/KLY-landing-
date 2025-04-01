@@ -190,3 +190,8 @@ function showStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? "red" : "#00ffe0";
 }
+window.addEventListener("load", () => {
+  if (typeof window.ethereum !== 'undefined') {
+    init(); // try connecting on load
+  }
+});
