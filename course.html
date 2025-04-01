@@ -315,144 +315,16 @@
 </div>
   </div>
     <div class="module" id="certificate-claim">
+<!-- NFT Certificate Claim Section -->
+<div class="module" id="certificate-claim">
   <h3>Claim Your NFT Certificate</h3>
   <p>You've completed the KLY Legacy Course. Now you can claim your official NFT Certificate on BNB Smart Chain to verify your knowledge and commitment to legacy building.</p>
-<button id="claimCertificate" class="claim-nft-button">Claim NFT Certificate</button>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script>
+  <button id="claimCertificateBtn" class="claim-nft-button">Claim NFT Certificate</button>
+</div>
+
 <!-- Ethers.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script>
-  window.addEventListener("load", async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to access the course.");
-      window.location.href = "/";
-      return;
-    }
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const accounts = await provider.listAccounts();
-
-    if (accounts.length === 0) {
-      alert("Please connect your wallet to access the course.");
-      window.location.href = "/";
-    }
-  });
-</script>
-
-<script type="module">
-// === Constants ===
-const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const STAKING_CONTRACT_ADDRESS = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
-const CERTIFICATE_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-const KLY_ABI = [/* Your full KLY ABI here */];
-const CERTIFICATE_ABI = [
-  {
-    "inputs": [
-      { "internalType": "address", "name": "recipient", "type": "address" },
-      { "internalType": "int24", "name": "tickLower", "type": "int24" },
-      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-      { "internalType": "uint128", "name": "amount", "type": "uint128" },
-      { "internalType": "bytes", "name": "data", "type": "bytes" }
-    ],
-    "name": "mint",
-    "outputs": [
-      { "internalType": "uint256", "name": "amount0", "type": "uint256" },
-      { "internalType": "uint256", "name": "amount1", "type": "uint256" }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
-
-let provider, signer, contract;
-
-// === Connect Wallet ===
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("Please install MetaMask.");
-    return;
-  }
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  contract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
-  const address = await signer.getAddress();
-  alert("Wallet connected: " + address);
-  fetchKLYStats();
-}
-
-// === Fetch KLY Stats ===
-async function fetchKLYStats() {
-  try {
-    const address = await signer.getAddress();
-    const totalSupply = await contract.totalSupply();
-    const balance = await contract.balanceOf(address);
-    document.getElementById("total-supply").innerText = ethers.utils.formatUnits(totalSupply, 18) + " KLY";
-    document.getElementById("user-balance").innerText = ethers.utils.formatUnits(balance, 18) + " KLY";
-  } catch (error) {
-    console.error("Error fetching stats:", error);
-  }
-}
-
-// === Stake ===
-async function stakeTokens() {
-  const amount = document.getElementById("stakeAmount").value;
-  if (!amount) return alert("Enter amount to stake");
-  try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
-    const tx = await stakingContract.stake(ethers.utils.parseUnits(amount, 18));
-    await tx.wait();
-    alert("Staked successfully!");
-    fetchKLYStats();
-  } catch (err) {
-    console.error("Staking failed:", err);
-  }
-}
-
-// === Withdraw ===
-async function withdrawTokens() {
-  try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
-    const tx = await stakingContract.withdraw();
-    await tx.wait();
-    alert("Withdraw successful!");
-    fetchKLYStats();
-  } catch (err) {
-    console.error("Withdraw failed:", err);
-  }
-}
-
-// === Claim Rewards ===
-async function claimRewards() {
-  try {
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, KLY_ABI, signer);
-    const tx = await stakingContract.claimRewards();
-    await tx.wait();
-    alert("Rewards claimed!");
-    fetchKLYStats();
-  } catch (err) {
-    console.error("Claim failed:", err);
-  }
-}
-
-// === Launch Token Placeholder ===
-function launchToken() {
-  const name = document.getElementById("tokenName").value;
-  const symbol = document.getElementById("tokenSymbol").value;
-  const supply = document.getElementById("tokenSupply").value;
-  alert(`Launching token: ${name} (${symbol}) with ${supply} supply. This feature is in development.`);
-}
-
-// === Start Course Redirect ===
-function startCourse() {
-  window.location.href = "/course.html";
-}
-
-<!-- Claim NFT Button -->
-<button id="claimCertificateBtn">Claim NFT Certificate</button>
-
-<!-- Paste this script BEFORE closing body tag -->
 <script>
   document.getElementById("claimCertificateBtn").addEventListener("click", async () => {
     if (typeof window.ethereum === "undefined") {
@@ -498,9 +370,6 @@ function startCourse() {
       alert("Minting failed. Please try again.");
     }
   });
-</script>
-</body>
-</html>
 </script>
 </body>
 
