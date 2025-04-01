@@ -146,3 +146,12 @@
     }
   }
 </script>
+<section id="launchTokenSection" class="section">
+  <h2 class="section-title">Launch Your Own Token</h2>
+  <p>Fill in your token details to deploy instantly on BNB Smart Chain.</p>
+
+  <input type="text" id="tokenName" placeholder="Token Name" />
+  <input type="text" id="tokenSymbol" placeholder="Token Symbol" />
+  <input type="number" id="tokenSupply" placeholder="Total Supply" />
+  <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
+</section>
