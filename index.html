@@ -2,39 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KLY Test Connect</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+  <title>MetaMask Test | KLY</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <style>
     body {
-      background: #0b0b0b;
-      color: #fff;
-      font-family: sans-serif;
+      background: #000;
+      color: #00ffe0;
+      font-family: monospace;
+      padding: 40px;
       text-align: center;
-      padding: 2rem;
+    }
+    h1 {
+      color: #00ffe0;
     }
     button {
       padding: 12px 24px;
       background: #00ffe0;
       color: #000;
+      font-weight: bold;
+      font-size: 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
+      margin: 20px 0;
     }
-    #status {
-      margin-top: 1rem;
-      font-size: 1.2rem;
+    #output {
+      margin-top: 20px;
+      color: white;
     }
   </style>
 </head>
 <body>
-  <h1>Connect to MetaMask</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="status">MetaMask Status: <span id="walletStatus">Not connected</span></div>
-  <div id="walletAddress"></div>
-  <div id="tokenBalance"></div>
 
-  <script src="app.js"></script>
+  <h1>MetaMask Wallet Diagnostics</h1>
+  <button onclick="testMetaMask()">Test Wallet</button>
+
+  <div id="output">
+    <p><b>Status:</b> <span id="status">Not tested</span></p>
+    <p><b>Ethereum Detected:</b> <span id="ethDetected">--</span></p>
+    <p><b>Connected Account:</b> <span id="account">--</span></p>
+    <p><b>Network Chain ID:</b> <span id="chainId">--</span></p>
+  </div>
+
+  <script>
+    async function testMetaMask() {
+      const statusEl = document.getElementById('status');
+      const ethDetectedEl = document.getElementById('ethDetected');
+      const accountEl = document.getElementById('account');
+      const chainEl = document.getElementById('chainId');
+
+      if (typeof window.ethereum === 'undefined') {
+        statusEl.textContent = "MetaMask NOT detected.";
+        ethDetectedEl.textContent = "No";
+        return;
+      }
+
+      try {
+        const web3 = new Web3(window.ethereum);
+        ethDetectedEl.textContent = "Yes";
+
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+        accountEl.textContent = accounts[0];
+        chainEl.textContent = chainId;
+        statusEl.textContent = "Connected successfully.";
+      } catch (error) {
+        statusEl.textContent = "Error connecting: " + error.message;
+        console.error(error);
+      }
+    }
+  </script>
+
 </body>
 </html>
