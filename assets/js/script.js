@@ -160,5 +160,20 @@ window.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       statusEl.style.display = "none";
     }, 4000);
+    const nftABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "int24", "name": "tickLower", "type": "int24" },
+      { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+      { "internalType": "uint128", "name": "amount", "type": "uint128" },
+      { "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
   }
 });
