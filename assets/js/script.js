@@ -211,14 +211,13 @@ if (claimBtnEl) {
       const signer = provider.getSigner();
       const nftContract = new ethers.Contract(contractAddress, contractABI, signer);
 
-      const tickLower = -10000;
-      const tickUpper = 10000;
-      const amount = ethers.BigNumber.from("1000000000000000000"); // 1.0 in wei
-      const data = "0x";
+      const tickLower = 0;
+      const tickUpper = 0;
+      const amount = ethers.utils.parseEther("1"); // 1 KLY
 
-      const tx = await nftContract.mint(user, tickLower, tickUpper, amount, data);
-      await tx.wait();
-
+      const tx = await nftContract.mint(user, tickLower, tickUpper, amount, data, {
+  gasLimit: 300000
+});
       alert("NFT Certificate Minted Successfully!");
     } catch (err) {
       console.error(err);
