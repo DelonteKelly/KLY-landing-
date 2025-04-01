@@ -317,77 +317,49 @@
   </ul>
 </div>
 
-    <!-- Claim NFT Certificate Section -->
-    <div class="module" id="certificate-claim">
-      <h2>Claim Your NFT Certificate</h2>
-      <p>Click below to mint your on-chain certificate on BNB Smart Chain.</p>
-      <button id="claimCertificateBtn" class="claim-nft-button">Claim NFT Certificate</button>
-    </div>
-  
+ <div class="launch-token-container">
+  <h2>Launch Your Own Token</h2>
+  <p>Fill out the form to deploy your ERC-20 token on BNB Smart Chain.</p>
 
-  <!-- Web3 Functionality -->
- <script>
-  // Connect wallet on page load
-  window.addEventListener("load", async () => {
-    if (typeof window.ethereum !== "undefined") {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      try {
-        await provider.send("eth_requestAccounts", []);
-        console.log("Wallet connected");
-      } catch (err) {
-        console.warn("Wallet connection not approved.");
-      }
-    } else {
-      alert("Please install MetaMask to use this feature.");
-    }
-  });
+  <input type="text" id="tokenName" placeholder="Token Name" required />
+  <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
+  <input type="number" id="tokenSupply" placeholder="Total Supply" required />
 
-  // Claim NFT Certificate button click
-  document.getElementById("claimCertificateBtn").addEventListener("click", async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to continue.");
+  <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
+</div>
+  <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
+<script>
+  const client = new thirdweb.ThirdwebSDK("binance");
+
+  document.getElementById("launchTokenBtn").addEventListener("click", async () => {
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim();
+    const supply = document.getElementById("tokenSupply").value.trim();
+
+    if (!name || !symbol || !supply || isNaN(supply) || Number(supply) <= 0) {
+      alert("Please enter valid token information.");
       return;
     }
 
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      const user = accounts[0];
+      const wallet = await thirdweb.connect("injected");
+      const signer = await wallet.getSigner();
 
-      const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-      const contractABI = [
-        {
-          "inputs": [
-            { "internalType": "address", "name": "to", "type": "address" },
-            { "internalType": "int24", "name": "tickLower", "type": "int24" },
-            { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-            { "internalType": "uint128", "name": "amount", "type": "uint128" },
-            { "internalType": "bytes", "name": "data", "type": "bytes" }
-          ],
-          "name": "mint",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        }
-      ];
+      const deployedToken = await client.deployer.deployToken({
+        name,
+        symbol,
+        total_supply: supply,
+        primary_sale_recipient: signer.address,
+        platform_fee_basis_points: 500,
+        platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // KLY Treasury
+      });
 
-      const signer = provider.getSigner();
-      const nftContract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      const tickLower = -10000;
-      const tickUpper = 10000;
-      const amount = ethers.BigNumber.from("1000000000000000000"); // 1.0 in wei
-      const data = "0x";
-
-      const tx = await nftContract.mint(user, tickLower, tickUpper, amount, data);
-      await tx.wait();
-
-      alert("NFT Certificate Minted Successfully!");
+      alert("Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
+      console.log("Launched Token:", deployedToken);
     } catch (err) {
-      console.error(err);
-      alert("Minting failed. Check your wallet and try again.");
+      console.error("Launch Failed:", err);
+      alert("Token launch failed. Please check your wallet and try again.");
     }
   });
 </script>
-</body>
-</html>
+      
