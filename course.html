@@ -449,26 +449,58 @@ function startCourse() {
   window.location.href = "/course.html";
 }
 
-// === Claim NFT Certificate ===
-document.getElementById("claimCertificate").addEventListener("click", async () => {
-  if (!window.ethereum) {
-    alert("Please connect MetaMask.");
-    return;
-  }
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = provider.getSigner();
-  const contract = new ethers.Contract(CERTIFICATE_CONTRACT_ADDRESS, CERTIFICATE_ABI, signer);
-  const user = await signer.getAddress();
-  try {
-    const tx = await contract.mint(user, -887220, 887220, ethers.utils.parseUnits("1", 18), "0x");
-    await tx.wait();
-    alert("NFT Certificate Successfully Minted!");
-  } catch (err) {
-    console.error(err);
-    alert("Transaction failed. Make sure you have at least 1 KLY.");
-  }
-});
+<!-- Claim NFT Button -->
+<button id="claimCertificateBtn">Claim NFT Certificate</button>
+
+<!-- Paste this script BEFORE closing body tag -->
+<script>
+  document.getElementById("claimCertificateBtn").addEventListener("click", async () => {
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask to continue.");
+      return;
+    }
+
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      const user = accounts[0];
+
+      if (!user) {
+        alert("Please connect your wallet to mint your certificate.");
+        return;
+      }
+
+      const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+      const nftABI = [
+        {
+          "inputs": [
+            { "internalType": "address", "name": "to", "type": "address" },
+            { "internalType": "int24", "name": "tickLower", "type": "int24" },
+            { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+            { "internalType": "uint128", "name": "amount", "type": "uint128" },
+            { "internalType": "bytes", "name": "data", "type": "bytes" }
+          ],
+          "name": "mint",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ];
+
+      const signer = provider.getSigner();
+      const nftContract = new ethers.Contract(nftContractAddress, nftABI, signer);
+
+      await nftContract.mint(user, -887220, 887220, 1, "0x");
+
+      alert("NFT Certificate Minted Successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Minting failed. Please try again.");
+    }
+  });
+</script>
+</body>
+</html>
 </script>
 </body>
 
