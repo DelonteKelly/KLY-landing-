@@ -377,3 +377,43 @@
     }
   });
 </script>
+      <!-- Course Completion Gating & NFT Minting -->
+<script>
+  // Wait for page to load
+  window.addEventListener("DOMContentLoaded", () => {
+    const mintSection = document.getElementById("mintSection");
+    const completeCourseBtn = document.getElementById("completeCourseBtn");
+
+    // If user already completed course, show mint button
+    if (localStorage.getItem("courseComplete") === "true") {
+      completeCourseBtn.style.display = "none";
+      mintSection.style.display = "block";
+    }
+
+    // On completion click
+    completeCourseBtn.addEventListener("click", () => {
+      localStorage.setItem("courseComplete", "true");
+      completeCourseBtn.style.display = "none";
+      mintSection.style.display = "block";
+    });
+  });
+
+  // NFT Mint Function
+  const sdk = new thirdweb.ThirdwebSDK("binance");
+  const nftDropAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+  document.getElementById("mintNFTBtn").addEventListener("click", async () => {
+    const status = document.getElementById("mintStatus");
+    status.textContent = "Minting your NFT...";
+
+    try {
+      const wallet = await sdk.wallet.connect();
+      const nftDrop = await sdk.getContract(nftDropAddress, "nft-drop");
+      const tx = await nftDrop.erc721.claim(1);
+      status.textContent = "✅ NFT minted successfully!";
+    } catch (err) {
+      console.error(err);
+      status.textContent = "❌ Mint failed: " + err.message;
+    }
+  });
+</script>
