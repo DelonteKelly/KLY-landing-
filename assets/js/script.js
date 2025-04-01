@@ -17,6 +17,7 @@ const stakeBtn = document.getElementById("stakeButton");
 const claimBtn = document.getElementById("claimButton");
 const withdrawBtn = document.getElementById("withdrawButton");
 const statusEl = document.getElementById("transactionStatus");
+const startCourseBtn = document.getElementById("startCourseBtn");
 
 const tokenABI = [
   {
