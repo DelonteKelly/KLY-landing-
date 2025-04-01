@@ -1,4 +1,3 @@
-ndex.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,16 +33,15 @@ ndex.html
       z-index: 1000;
     }
 
-    header h1 {
-      font-size: 1.5rem;
-      color: var(--primary);
+    nav {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
     }
 
     nav a {
       color: white;
-      margin-left: 1.5rem;
       text-decoration: none;
-      font-weight: 500;
     }
 
     #connectWallet {
@@ -169,6 +167,7 @@ ndex.html
       <a href="#staking">Staking</a>
       <a href="#features">Features</a>
       <button id="connectWallet">Connect Wallet</button>
+      <span id="walletAddress" style="margin-left: 10px;"></span>
     </nav>
   </header>
 
@@ -218,7 +217,36 @@ ndex.html
 
   <div id="transactionStatus"></div>
 
-  <script src="app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const connectBtn = document.getElementById("connectWallet");
+      const walletDisplay = document.getElementById("walletAddress");
+
+      async function connectWallet() {
+        if (typeof window.ethereum === 'undefined') {
+          alert("MetaMask is not installed");
+          return;
+        }
+
+        const web3 = new Web3(window.ethereum);
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const userAddress = accounts[0];
+
+          connectBtn.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+          walletDisplay.textContent = "Connected";
+          connectBtn.classList.add("connected");
+
+          // Optional: Trigger token stats update here
+        } catch (err) {
+          console.error("Wallet connection failed:", err);
+          alert("Failed to connect wallet.");
+        }
+      }
+
+      connectBtn.addEventListener("click", connectWallet);
+    });
+  </script>
 </body>
 <footer>
   <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
