@@ -177,3 +177,52 @@ window.addEventListener("DOMContentLoaded", () => {
 ];
   }
 });
+const claimBtnEl = document.getElementById("claimCertificateBtn");
+
+if (claimBtnEl) {
+  claimBtnEl.addEventListener("click", async () => {
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask to continue.");
+      return;
+    }
+
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      const user = accounts[0];
+
+      const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Replace if needed
+      const contractABI = [
+        {
+          "inputs": [
+            { "internalType": "address", "name": "to", "type": "address" },
+            { "internalType": "int24", "name": "tickLower", "type": "int24" },
+            { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+            { "internalType": "uint128", "name": "amount", "type": "uint128" },
+            { "internalType": "bytes", "name": "data", "type": "bytes" }
+          ],
+          "name": "mint",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ];
+
+      const signer = provider.getSigner();
+      const nftContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+      const tickLower = -10000;
+      const tickUpper = 10000;
+      const amount = ethers.BigNumber.from("1000000000000000000"); // 1.0 in wei
+      const data = "0x";
+
+      const tx = await nftContract.mint(user, tickLower, tickUpper, amount, data);
+      await tx.wait();
+
+      alert("NFT Certificate Minted Successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Minting failed. Check your wallet and try again.");
+    }
+  });
+}
