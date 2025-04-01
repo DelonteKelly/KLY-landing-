@@ -16,57 +16,56 @@ const stakeAmountInput = document.getElementById("stakeAmount");
 const stakeBtn = document.getElementById("stakeButton");
 const claimBtn = document.getElementById("claimButton");
 const withdrawBtn = document.getElementById("withdrawButton");
-const walletDisplay = document.getElementById("walletAddress");
 const statusEl = document.getElementById("transactionStatus");
 
 const tokenABI = [
   {
-    "constant": true,
-    "inputs": [],
-    "name": "totalSupply",
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "type": "function"
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
   },
   {
-    "constant": true,
-    "inputs": [{ "name": "account", "type": "address" }],
-    "name": "balanceOf",
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "type": "function"
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      { "name": "spender", "type": "address" },
-      { "name": "amount", "type": "uint256" }
+    constant: false,
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
     ],
-    "name": "approve",
-    "outputs": [{ "name": "", "type": "bool" }],
-    "type": "function"
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function"
   }
 ];
 
 const stakingABI = [
   {
-    "constant": false,
-    "inputs": [{ "name": "amount", "type": "uint256" }],
-    "name": "stake",
-    "outputs": [],
-    "type": "function"
+    constant: false,
+    inputs: [{ name: "amount", type: "uint256" }],
+    name: "stake",
+    outputs: [],
+    type: "function"
   },
   {
-    "constant": false,
-    "inputs": [],
-    "name": "claimRewards",
-    "outputs": [],
-    "type": "function"
+    constant: false,
+    inputs: [],
+    name: "claimRewards",
+    outputs: [],
+    type: "function"
   },
   {
-    "constant": false,
-    "inputs": [],
-    "name": "withdraw",
-    "outputs": [],
-    "type": "function"
+    constant: false,
+    inputs: [],
+    name: "withdraw",
+    outputs: [],
+    type: "function"
   }
 ];
 
@@ -84,9 +83,8 @@ async function init() {
   klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
   stakingContract = new web3.eth.Contract(stakingABI, CONFIG.STAKING_CONTRACT);
 
-  walletDisplay.textContent = `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+  updateWalletDisplay();
   updateStats();
-
   setupListeners();
 }
 
@@ -112,13 +110,18 @@ async function switchToBSC() {
   }
 }
 
+function updateWalletDisplay() {
+  const short = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+  connectBtn.textContent = short;
+  connectBtn.classList.add("connected");
+}
+
 async function updateStats() {
   try {
     const [supply, balance] = await Promise.all([
       klyTokenContract.methods.totalSupply().call(),
       klyTokenContract.methods.balanceOf(accounts[0]).call()
     ]);
-
     totalSupplyEl.textContent = parseFloat(web3.utils.fromWei(supply)).toLocaleString() + " KLY";
     userBalanceEl.textContent = parseFloat(web3.utils.fromWei(balance)).toLocaleString() + " KLY";
   } catch (e) {
@@ -128,14 +131,12 @@ async function updateStats() {
 
 async function stakeTokens() {
   const amount = stakeAmountInput.value;
-  if (!amount || parseFloat(amount) <= 0) {
-    return showStatus("Enter a valid amount", true);
-  }
+  if (!amount || parseFloat(amount) <= 0) return showStatus("Enter a valid amount", true);
 
   const amountWei = web3.utils.toWei(amount, "ether");
 
   try {
-    showStatus("Approving KLY...");
+    showStatus("Approving...");
     await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei).send({ from: accounts[0] });
 
     showStatus("Staking...");
@@ -145,7 +146,8 @@ async function stakeTokens() {
     stakeAmountInput.value = "";
     updateStats();
   } catch (err) {
-    showStatus("Staking failed", true);
+    console.error(err);
+    showStatus("Stake failed", true);
   }
 }
 
@@ -179,7 +181,7 @@ function setupListeners() {
 
   window.ethereum.on("accountsChanged", (acc) => {
     accounts = acc;
-    walletDisplay.textContent = `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+    updateWalletDisplay();
     updateStats();
   });
 
@@ -188,10 +190,10 @@ function setupListeners() {
 
 function showStatus(message, isError = false) {
   statusEl.textContent = message;
-  statusEl.style.color = isError ? "red" : "#00ffe0";
+  statusEl.style.display = "block";
+  statusEl.style.background = isError ? "#ff4d4d" : "#00ffe0";
+  statusEl.style.color = isError ? "white" : "black";
+  setTimeout(() => {
+    statusEl.style.display = "none";
+  }, 4000);
 }
-window.addEventListener("load", () => {
-  if (typeof window.ethereum !== 'undefined') {
-    init(); // try connecting on load
-  }
-});
