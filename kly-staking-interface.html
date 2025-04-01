@@ -1,89 +1,37 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KLY Staking Interface</title>
-  <style>
-    body {
-      background: #0c0c0c;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      padding: 40px;
-      text-align: center;
-    }
-    h1 {
-      color: #00ffcc;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background-color: #00ffcc;
-      border: none;
-      border-radius: 4px;
-      margin: 10px;
-      cursor: pointer;
-    }
-    input {
-      padding: 10px;
-      margin: 10px;
-      width: 200px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kelly Legacy | KLY Staking</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>KLY Token Staking</h1>
-  <button onclick="connectWallet()">Connect Wallet</button>
-  <div id="walletAddress"></div>
-  <br />
-  <input type="number" id="stakeAmount" placeholder="Amount to stake" />
-  <button onclick="stakeTokens()">Stake</button>
-  <br />
-  <button onclick="withdrawTokens()">Withdraw</button>
-  <button onclick="claimRewards()">Claim Rewards</button>
+  <header>
+    <h1>KLY Token Staking</h1>
+    <button id="connectWallet">Connect Wallet</button>
+    <p id="walletAddress"></p>
+  </header>
 
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-  <script>
-    const stakingAddress = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
-    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const stakingABI = [/* Paste your ABI here */];
+  <main>
+    <section class="dashboard">
+      <p><strong>Total Supply:</strong> <span id="totalSupply">--</span></p>
+      <p><strong>Your Balance:</strong> <span id="userBalance">--</span></p>
+    </section>
 
-    let web3, userAccount, contract;
+    <section class="staking-panel">
+      <input type="number" id="stakeAmount" placeholder="Amount to stake" />
+      <div class="button-group">
+        <button id="stakeButton">Stake</button>
+        <button id="claimButton">Claim Rewards</button>
+        <button id="withdrawButton">Withdraw</button>
+      </div>
+    </section>
 
-    async function connectWallet() {
-      if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        await window.ethereum.enable();
-        const accounts = await web3.eth.getAccounts();
-        userAccount = accounts[0];
-        document.getElementById("walletAddress").innerText = "Connected: " + userAccount;
-        contract = new web3.eth.Contract(stakingABI, stakingAddress);
-      } else {
-        alert("MetaMask is not installed!");
-      }
-    }
+    <p id="transactionStatus"></p>
+  </main>
 
-    async function stakeTokens() {
-      const amount = document.getElementById("stakeAmount").value;
-      const amountWei = web3.utils.toWei(amount, 'ether');
-      const token = new web3.eth.Contract([
-        { "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" }
-      ], tokenAddress);
-      await token.methods.approve(stakingAddress, amountWei).send({ from: userAccount });
-      await contract.methods.stake(amountWei).send({ from: userAccount });
-      alert("Staked successfully!");
-    }
-
-    async function withdrawTokens() {
-      await contract.methods.withdraw().send({ from: userAccount });
-      alert("Withdrawn successfully!");
-    }
-
-    async function claimRewards() {
-      await contract.methods.claimRewards().send({ from: userAccount });
-      alert("Rewards claimed!");
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
