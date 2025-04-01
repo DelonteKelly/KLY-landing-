@@ -317,103 +317,111 @@
     <li>Use KLY to unlock tools or legal templates for digital estate planning.</li>
   </ul>
 </div>
+ <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
+</head>
+<body>
 
-<div class="launch-token-container">
-  <h2>Launch Your Own Token</h2>
-  <p>Fill out the form to deploy your ERC-20 token on BNB Smart Chain.</p>
+  <!-- Course Completion Section -->
+  <button id="completeCourseBtn" class="action-btn">Complete Course</button>
 
-  <input type="text" id="tokenName" placeholder="Token Name" required />
-  <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
-  <input type="number" id="tokenSupply" placeholder="Total Supply" required />
+  <!-- NFT Mint Section -->
+  <div id="mintSection" style="display:none;">
+    <button id="mintNFTBtn" class="action-btn">Claim Your NFT Certification</button>
+    <p id="mintStatus"></p>
+  </div>
 
-  <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
-</div>
+  <!-- Token Launch Section -->
+  <div class="launch-token-container">
+    <h2>Launch Your Own Token</h2>
+    <input type="text" id="tokenName" placeholder="Token Name" required />
+    <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
+    <input type="number" id="tokenSupply" placeholder="Total Supply" required />
+    <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
+  </div>
 
-<!-- Thirdweb SDK & Ethers -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
+  <!-- App Logic -->
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const completeCourseBtn = document.getElementById("completeCourseBtn");
+      const mintSection = document.getElementById("mintSection");
+      const mintNFTBtn = document.getElementById("mintNFTBtn");
+      const mintStatus = document.getElementById("mintStatus");
+      const launchBtn = document.getElementById("launchTokenBtn");
 
-<script>
-  window.addEventListener("DOMContentLoaded", () => {
-    // Course completion and NFT gating elements
-    const completeCourseBtn = document.getElementById("completeCourseBtn");
-    const mintSection = document.getElementById("mintSection");
-    const mintNFTBtn = document.getElementById("mintNFTBtn");
-    const mintStatus = document.getElementById("mintStatus");
-
-    // Token launch elements
-    const launchBtn = document.getElementById("launchTokenBtn");
-
-    // === COURSE GATING ===
-    if (localStorage.getItem("courseComplete") === "true") {
-      completeCourseBtn.style.display = "none";
-      mintSection.style.display = "block";
-    }
-
-    completeCourseBtn?.addEventListener("click", () => {
-      localStorage.setItem("courseComplete", "true");
-      completeCourseBtn.style.display = "none";
-      mintSection.style.display = "block";
-    });
-
-    // === NFT MINTING (DropERC721) ===
-    mintNFTBtn?.addEventListener("click", async () => {
-      mintStatus.textContent = "Minting NFT...";
-      try {
-        const wallet = await thirdweb.connect("injected");
-        const signer = await wallet.getSigner();
-        const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
-
-        const contractAddress = "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e"; // Replace if needed
-        const nftDrop = await sdk.getContract(contractAddress, "nft-drop");
-
-        const tx = await nftDrop.claim(1); // Claim 1 NFT
-        mintStatus.textContent = "✅ NFT Minted!";
-        console.log("Minted NFT:", tx);
-      } catch (err) {
-        console.error("Mint Failed:", err);
-        mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
-      }
-    });
-
-    // === TOKEN LAUNCH ===
-    launchBtn?.addEventListener("click", async () => {
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim();
-      const supply = document.getElementById("tokenSupply").value.trim();
-
-      if (!name || !symbol || isNaN(supply) || Number(supply) <= 0) {
-        alert("Please enter valid token information.");
-        return;
+      // === COURSE COMPLETION LOGIC ===
+      if (localStorage.getItem("courseComplete") === "true") {
+        completeCourseBtn.style.display = "none";
+        mintSection.style.display = "block";
       }
 
-      launchBtn.disabled = true;
-      launchBtn.textContent = "Launching...";
+      completeCourseBtn?.addEventListener("click", () => {
+        localStorage.setItem("courseComplete", "true");
+        completeCourseBtn.style.display = "none";
+        mintSection.style.display = "block";
+      });
 
-      try {
-        const wallet = await thirdweb.connect("injected");
-        const signer = await wallet.getSigner();
+      // === NFT MINT LOGIC ===
+      mintNFTBtn?.addEventListener("click", async () => {
+        mintStatus.textContent = "Minting NFT...";
+        try {
+          const wallet = await thirdweb.connect("injected");
+          const signer = await wallet.getSigner();
+          const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
 
-        const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+          const contractAddress = "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e"; // Replace with your DropERC721 contract
+          const nftDrop = await sdk.getContract(contractAddress, "nft-drop");
 
-        const deployedToken = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          total_supply: ethers.utils.parseUnits(supply, 18),
-          primary_sale_recipient: await signer.getAddress(),
-          platform_fee_basis_points: 500,
-          platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52" // KLY Treasury
-        });
+          const tx = await nftDrop.claim(1);
+          mintStatus.textContent = "✅ NFT Minted!";
+          console.log("Minted NFT:", tx);
+        } catch (err) {
+          console.error("Mint Failed:", err);
+          mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
+        }
+      });
 
-        alert("✅ Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
-        console.log("Launched Token:", deployedToken);
-      } catch (err) {
-        console.error("Launch Failed:", err);
-        alert("❌ Token launch failed:\n" + (err?.message || "Unknown error"));
-      } finally {
-        launchBtn.disabled = false;
-        launchBtn.textContent = "Launch My Token";
-      }
+      // === TOKEN LAUNCH LOGIC ===
+      launchBtn?.addEventListener("click", async () => {
+        const name = document.getElementById("tokenName").value.trim();
+        const symbol = document.getElementById("tokenSymbol").value.trim();
+        const supply = document.getElementById("tokenSupply").value.trim();
+
+        if (!name || !symbol || isNaN(supply) || Number(supply) <= 0) {
+          alert("Please enter valid token information.");
+          return;
+        }
+
+        launchBtn.disabled = true;
+        launchBtn.textContent = "Launching...";
+
+        try {
+          const wallet = await thirdweb.connect("injected");
+          const signer = await wallet.getSigner();
+          const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+
+          const deployedToken = await sdk.deployer.deployToken({
+            name,
+            symbol,
+            total_supply: ethers.utils.parseUnits(supply, 18),
+            primary_sale_recipient: await signer.getAddress(),
+            platform_fee_basis_points: 500,
+            platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
+          });
+
+          alert("✅ Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
+          console.log("Launched Token:", deployedToken);
+        } catch (err) {
+          console.error("Launch Failed:", err);
+          alert("❌ Token launch failed:\n" + (err?.message || "Unknown error"));
+        } finally {
+          launchBtn.disabled = false;
+          launchBtn.textContent = "Launch My Token";
+        }
+      });
     });
-  });
-</script>
+  </script>
+
+</body>
+</html>
