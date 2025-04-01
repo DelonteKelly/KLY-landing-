@@ -196,3 +196,10 @@ function showStatus(message, isError = false) {
   setTimeout(() => {
     statusEl.style.display = "none";
   }, 4000);
+  // Redirect to course page on button click
+const courseBtn = document.getElementById('startCourseBtn');
+if (courseBtn) {
+  courseBtn.addEventListener('click', () => {
+    window.location.href = '/course.html';
+  });
+}
