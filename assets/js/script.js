@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KLY Token Platform</title>
   
-  <!-- Thirdweb SDK and Web3 -->
+  <!-- Thirdweb SDK -->
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@latest"></script>
 </head>
@@ -31,30 +31,44 @@
   </div>
 
   <script>
-    const CONFIG = {
-      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-      STAKING_CONTRACT: "0xa8380b1311B9316dbf87D5110E8CC35BcB835056",
-      CHAIN_ID: 56
-    };
+    let thirdwebClient;
 
-    let web3;
-    let accounts = [];
-    let klyTokenContract;
-    let stakingContract;
+    // Check for SDK Load before proceeding
+    window.addEventListener("DOMContentLoaded", async () => {
+      // Initialize Thirdweb SDK and check for its availability
+      if (typeof thirdweb === "undefined") {
+        alert("Thirdweb SDK not loaded properly.");
+        return;
+      }
 
-    const tokenABI = [
-      { constant: true, inputs: [], name: "totalSupply", outputs: [{ name: "", type: "uint256" }], type: "function" },
-      { constant: true, inputs: [{ name: "account", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
-      { constant: false, inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], name: "approve", outputs: [{ name: "", type: "bool" }], type: "function" }
-    ];
+      // Load Thirdweb SDK
+      thirdwebClient = new thirdweb.ThirdwebSDK("binance");
 
-    const stakingABI = [
-      { constant: false, inputs: [{ name: "amount", type: "uint256" }], name: "stake", outputs: [], type: "function" },
-      { constant: false, inputs: [], name: "claimRewards", outputs: [], type: "function" },
-      { constant: false, inputs: [], name: "withdraw", outputs: [], type: "function" }
-    ];
+      console.log("Thirdweb SDK loaded successfully.");
 
-    window.addEventListener("DOMContentLoaded", () => {
+      const CONFIG = {
+        KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+        STAKING_CONTRACT: "0xa8380b1311B9316dbf87D5110E8CC35BcB835056",
+        CHAIN_ID: 56
+      };
+
+      let web3;
+      let accounts = [];
+      let klyTokenContract;
+      let stakingContract;
+
+      const tokenABI = [
+        { constant: true, inputs: [], name: "totalSupply", outputs: [{ name: "", type: "uint256" }], type: "function" },
+        { constant: true, inputs: [{ name: "account", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
+        { constant: false, inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], name: "approve", outputs: [{ name: "", type: "bool" }], type: "function" }
+      ];
+
+      const stakingABI = [
+        { constant: false, inputs: [{ name: "amount", type: "uint256" }], name: "stake", outputs: [], type: "function" },
+        { constant: false, inputs: [], name: "claimRewards", outputs: [], type: "function" },
+        { constant: false, inputs: [], name: "withdraw", outputs: [], type: "function" }
+      ];
+
       const connectBtn = document.getElementById("connectWallet");
       const stakeBtn = document.getElementById("stakeButton");
       const claimBtn = document.getElementById("claimButton");
@@ -65,15 +79,6 @@
       if (stakeBtn) stakeBtn.onclick = stakeTokens;
       if (claimBtn) claimBtn.onclick = claimRewards;
       if (withdrawBtn) withdrawBtn.onclick = withdrawTokens;
-
-      // Check if thirdweb is loaded
-      if (typeof thirdweb === "undefined") {
-        alert("Thirdweb SDK not loaded properly.");
-      } else {
-        console.log("Thirdweb SDK loaded successfully.");
-      }
-
-      const client = new thirdweb.ThirdwebSDK("binance");
 
       if (launchBtn) {
         launchBtn.addEventListener("click", async (e) => {
@@ -88,10 +93,10 @@
           }
 
           try {
-            const wallet = await thirdweb.connect("injected");
+            const wallet = await thirdwebClient.connect("injected");
             const signer = await wallet.getSigner();
 
-            const deployedToken = await client.deployer.deployToken({
+            const deployedToken = await thirdwebClient.deployer.deployToken({
               name,
               symbol,
               total_supply: ethers.utils.parseUnits(supply, 18),
@@ -194,7 +199,7 @@
         const tokenAddress = CONFIG.KLY_TOKEN;
 
         try {
-          const wallet = await thirdweb.connect("injected");
+          const wallet = await thirdwebClient.connect("injected");
           const address = await wallet.getAddress();
 
           const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
