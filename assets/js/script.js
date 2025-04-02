@@ -1,5 +1,22 @@
-<script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
-<script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KLY Staking DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+
+<section id="launchTokenSection" class="section">
+  <h2 class="section-title">Launch Your Own Token</h2>
+  <p>Fill in your token details to deploy instantly on BNB Smart Chain.</p>
+  <input type="text" id="tokenName" placeholder="Token Name" />
+  <input type="text" id="tokenSymbol" placeholder="Token Symbol" />
+  <input type="number" id="tokenSupply" placeholder="Total Supply" />
+  <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
+</section>
 
 <script>
   const CONFIG = {
@@ -30,14 +47,12 @@
     const stakeBtn = document.getElementById("stakeButton");
     const claimBtn = document.getElementById("claimButton");
     const withdrawBtn = document.getElementById("withdrawButton");
-    const stakeAmountInput = document.getElementById("stakeAmount");
 
     if (connectBtn) connectBtn.onclick = init;
     if (stakeBtn) stakeBtn.onclick = stakeTokens;
     if (claimBtn) claimBtn.onclick = claimRewards;
     if (withdrawBtn) withdrawBtn.onclick = withdrawTokens;
 
-    // Token Launch Section
     const client = new thirdweb.ThirdwebSDK("binance");
 
     const launchBtn = document.getElementById("launchTokenBtn");
@@ -62,10 +77,10 @@
             total_supply: supply,
             primary_sale_recipient: signer.address,
             platform_fee_basis_points: 500,
-            platform_fee_recipient: CONFIG.KLY_TOKEN
+            platform_fee_recipient: signer.address // Use wallet address instead of token contract
           });
 
-          alert("Token Launched Successfully!\n\nAddress:\n" + deployedToken);
+          alert("Token Launched Successfully!\\n\\nAddress:\\n" + deployedToken);
         } catch (err) {
           console.error("Token launch failed:", err);
           alert("Token launch failed. Check console and wallet.");
@@ -88,7 +103,7 @@
     klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
     stakingContract = new web3.eth.Contract(stakingABI, CONFIG.STAKING_CONTRACT);
 
-    document.getElementById("connectWallet").textContent = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+    document.getElementById("connectWallet").textContent = \`\${accounts[0].slice(0, 6)}...\${accounts[0].slice(-4)}\`;
   }
 
   async function switchToBSC() {
@@ -114,6 +129,7 @@
   }
 
   async function stakeTokens() {
+    const stakeAmountInput = document.getElementById("stakeAmount");
     const amount = stakeAmountInput.value;
     if (!amount || parseFloat(amount) <= 0) return alert("Enter a valid amount");
     const amountWei = web3.utils.toWei(amount, "ether");
@@ -133,6 +149,7 @@
       await stakingContract.methods.claimRewards().send({ from: accounts[0] });
       alert("Rewards claimed!");
     } catch (err) {
+      console.error(err);
       alert("Claim failed");
     }
   }
@@ -142,47 +159,32 @@
       await stakingContract.methods.withdraw().send({ from: accounts[0] });
       alert("Withdrawn successfully!");
     } catch (err) {
+      console.error(err);
       alert("Withdraw failed");
     }
   }
-</script>
-<section id="launchTokenSection" class="section">
-  <h2 class="section-title">Launch Your Own Token</h2>
-  <p>Fill in your token details to deploy instantly on BNB Smart Chain.</p>
 
-  <input type="text" id="tokenName" placeholder="Token Name" />
-  <input type="text" id="tokenSymbol" placeholder="Token Symbol" />
-  <input type="number" id="tokenSupply" placeholder="Total Supply" />
-  <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
-</section>
-<script>
-<script>
-  document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
+  document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
     const requiredAmount = "500";
-    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const tokenAddress = CONFIG.KLY_TOKEN;
 
     try {
-      // 1. Connect wallet
       const wallet = await thirdweb.connect("injected");
       const address = await wallet.getAddress();
 
-      // 2. Set up SDK with signer and chain
       const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
-
-      // 3. Get KLY token and balance
       const token = await sdk.getToken(tokenAddress);
       const balance = await token.balanceOf(address);
 
       const required = ethers.utils.parseUnits(requiredAmount, 18);
 
-      // 4. Grant access if they hold enough
       if (balance.gte(required)) {
         document.getElementById("courseContent").style.display = "block";
         document.getElementById("verifyAccessBtn").style.display = "none";
         document.getElementById("lockedMessage").textContent = "";
       } else {
         document.getElementById("lockedMessage").textContent =
-          `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balance, 18)}.`;
+          \`Access denied: You need at least \${requiredAmount} KLY. Your balance is \${ethers.utils.formatUnits(balance, 18)}.\`;
       }
     } catch (err) {
       console.error("Access check failed:", err);
@@ -191,3 +193,6 @@
     }
   });
 </script>
+
+</body>
+</html>
