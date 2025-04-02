@@ -156,20 +156,26 @@
   <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
 </section>
 <script>
-  <script>
+<script>
   document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
     const requiredAmount = "500";
     const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
     try {
+      // 1. Connect wallet
       const wallet = await thirdweb.connect("injected");
       const address = await wallet.getAddress();
+
+      // 2. Set up SDK with signer and chain
       const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
 
+      // 3. Get KLY token and balance
       const token = await sdk.getToken(tokenAddress);
       const balance = await token.balanceOf(address);
+
       const required = ethers.utils.parseUnits(requiredAmount, 18);
 
+      // 4. Grant access if they hold enough
       if (balance.gte(required)) {
         document.getElementById("courseContent").style.display = "block";
         document.getElementById("verifyAccessBtn").style.display = "none";
@@ -181,7 +187,7 @@
     } catch (err) {
       console.error("Access check failed:", err);
       document.getElementById("lockedMessage").textContent =
-        "Error verifying access. Please try again.";
+        "Error verifying access. Make sure your wallet is connected and try again.";
     }
   });
 </script>
