@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <title>KLY Legacy Course</title>
   <link rel="stylesheet" href="assets/css/style.css">
-  <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://sdk.vercel.thirdweb.com/thirdweb/latest/thirdweb.umd.js"></script>
 </head>
 <body>
-  <button id="verifyAccessBtn">Verify KLY Access</button>
-<div id="lockedMessage" style="margin-top: 1rem; color: #ff0066;"></div>
 
-  <!-- Course Content Container -->
-  <div class="course-container" id="courseContent" style="display: none;">
-    <h1 class="course-title">KLY Legacy Course</h1>
+  <button id="verifyAccessBtn">Verify KLY Access</button>
+  <div id="lockedMessage" style="margin-top: 1rem; color: #ff0066;"></div>
+
+  <div id="courseContent" style="display: none;">
+    <h1>KLY Legacy Course</h1>
+
   <section class="module" id="module1">
   <h2>Module 1: Foundation</h2>
 
@@ -502,29 +503,54 @@ console.log(value.toString());
 </head>
 <body>
 
-  <!-- Course Completion Section -->
-  <button id="completeCourseBtn" class="action-btn">Complete Course</button>
 
-  <!-- NFT Mint Section -->
-  <div id="mintSection" style="display:none;">
-    <button id="mintNFTBtn" class="action-btn">Claim Your NFT Certification</button>
-    <p id="mintStatus"></p>
+    <button id="completeCourseBtn" class="action-btn">Complete Course</button>
+
+    <div id="mintSection" style="display:none;">
+      <button id="mintNFTBtn" class="action-btn">Claim Your NFT Certification</button>
+      <p id="mintStatus"></p>
+    </div>
+
+    <div class="launch-token-container">
+      <h2>Launch Your Own Token</h2>
+      <form id="launchTokenForm">
+        <input type="text" id="tokenName" placeholder="Token Name" required />
+        <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
+        <input type="number" id="tokenSupply" placeholder="Total Supply" required />
+        <button id="launchTokenBtn" class="action-btn" type="submit">Launch My Token</button>
+      </form>
+    </div>
   </div>
 
-  <!-- Token Launch Section -->
-  <div class="launch-token-container">
-    <h2>Launch Your Own Token</h2>
-    <form id="launchTokenForm">
-      <input type="text" id="tokenName" placeholder="Token Name" required />
-      <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
-      <input type="number" id="tokenSupply" placeholder="Total Supply" required />
-      <button id="launchTokenBtn" class="action-btn" type="submit">Launch My Token</button>
-    </form>
-  </div>
-
-  <!-- App Logic -->
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const requiredAmount = "500";
+      const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+      document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
+        try {
+          const wallet = await thirdweb.connect("injected");
+          const address = await wallet.getAddress();
+          const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
+          const token = await sdk.getToken(tokenAddress);
+          const balance = await token.balanceOf(address);
+          const required = ethers.utils.parseUnits(requiredAmount, 18);
+
+          if (balance.gte(required)) {
+            document.getElementById("courseContent").style.display = "block";
+            document.getElementById("verifyAccessBtn").style.display = "none";
+            document.getElementById("lockedMessage").textContent = "";
+          } else {
+            document.getElementById("lockedMessage").textContent =
+              `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balance, 18)}.`;
+          }
+        } catch (err) {
+          console.error("Access check failed:", err);
+          document.getElementById("lockedMessage").textContent =
+            "Error verifying access. Make sure your wallet is connected and try again.";
+        }
+      });
+
       const completeCourseBtn = document.getElementById("completeCourseBtn");
       const mintSection = document.getElementById("mintSection");
       const mintNFTBtn = document.getElementById("mintNFTBtn");
@@ -554,7 +580,6 @@ console.log(value.toString());
 
           const tx = await nftDrop.claim(1);
           mintStatus.textContent = "✅ NFT Minted!";
-          console.log("Minted NFT:", tx);
         } catch (err) {
           console.error("Mint Failed:", err);
           mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
@@ -589,11 +614,10 @@ console.log(value.toString());
             platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
           });
 
-          alert("✅ Token Launched Successfully!\\n\\nToken Address:\\n" + deployedToken);
-          console.log("Launched Token:", deployedToken);
+          alert("✅ Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
         } catch (err) {
           console.error("Launch Failed:", err);
-          alert("❌ Token launch failed:\\n" + (err?.message || "Unknown error"));
+          alert("❌ Token launch failed:\n" + (err?.message || "Unknown error"));
         } finally {
           launchBtn.disabled = false;
           launchBtn.textContent = "Launch My Token";
@@ -601,6 +625,5 @@ console.log(value.toString());
       });
     });
   </script>
-
 </body>
 </html>
