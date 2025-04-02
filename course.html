@@ -521,13 +521,18 @@ console.log(value.toString());
       </form>
     </div>
   </div>
-  <script>
+<script>
   document.addEventListener("DOMContentLoaded", () => {
-    const requiredAmount = "500"; // Amount of KLY needed to unlock
+    const requiredAmount = "500";
     const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
-    document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
+    const verifyBtn = document.getElementById("verifyAccessBtn");
+    const lockedMsg = document.getElementById("lockedMessage");
+    const courseContent = document.getElementById("courseContent");
+
+    verifyBtn?.addEventListener("click", async () => {
       try {
+        verifyBtn.textContent = "Verifying...";
         const wallet = await thirdweb.connect("injected");
         const address = await wallet.getAddress();
 
@@ -535,22 +540,21 @@ console.log(value.toString());
         const token = await sdk.getToken(tokenAddress);
         const balance = await token.balanceOf(address);
 
-        // Handle both balance object formats (some return BigNumber.value, some ._hex)
         const balanceBig = ethers.BigNumber.from(balance.value || balance._hex);
         const required = ethers.utils.parseUnits(requiredAmount, 18);
 
         if (balanceBig.gte(required)) {
-          document.getElementById("courseContent").style.display = "block";
-          document.getElementById("verifyAccessBtn").style.display = "none";
-          document.getElementById("lockedMessage").textContent = "";
+          courseContent.style.display = "block";
+          verifyBtn.style.display = "none";
+          lockedMsg.textContent = "";
         } else {
-          document.getElementById("lockedMessage").textContent =
-            `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balanceBig, 18)}.`;
+          lockedMsg.textContent = `Access denied: You need at least ${requiredAmount} KLY. You have ${ethers.utils.formatUnits(balanceBig, 18)} KLY.`;
         }
       } catch (err) {
-        console.error("Access check failed:", err);
-        document.getElementById("lockedMessage").textContent =
-          "Error verifying access. Make sure your wallet is connected and try again.";
+        console.error("Access error:", err);
+        lockedMsg.textContent = "Error verifying access. Make sure wallet is connected and try again.";
+      } finally {
+        verifyBtn.textContent = "Verify KLY Access";
       }
     });
   });
