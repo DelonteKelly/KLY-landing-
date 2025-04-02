@@ -156,3 +156,32 @@
   <button id="launchTokenBtn" class="action-btn">Launch My Token</button>
 </section>
 <script>
+  <script>
+  document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
+    const requiredAmount = "500";
+    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+    try {
+      const wallet = await thirdweb.connect("injected");
+      const address = await wallet.getAddress();
+      const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
+
+      const token = await sdk.getToken(tokenAddress);
+      const balance = await token.balanceOf(address);
+      const required = ethers.utils.parseUnits(requiredAmount, 18);
+
+      if (balance.gte(required)) {
+        document.getElementById("courseContent").style.display = "block";
+        document.getElementById("verifyAccessBtn").style.display = "none";
+        document.getElementById("lockedMessage").textContent = "";
+      } else {
+        document.getElementById("lockedMessage").textContent =
+          `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balance, 18)}.`;
+      }
+    } catch (err) {
+      console.error("Access check failed:", err);
+      document.getElementById("lockedMessage").textContent =
+        "Error verifying access. Please try again.";
+    }
+  });
+</script>
