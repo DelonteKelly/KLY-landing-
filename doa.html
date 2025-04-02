@@ -49,3 +49,44 @@
     alert("Vote submitted!");
   }
 </script>
+<script type="module">
+  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@latest";
+  import { ethers } from "https://esm.sh/ethers";
+
+  let sdk, signer;
+
+  async function connectWallet() {
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      signer = await provider.getSigner();
+      sdk = ThirdwebSDK.fromSigner(signer, "binance");
+
+      loadProposals();
+    } else {
+      alert("Please install MetaMask.");
+    }
+  }
+
+  async function loadProposals() {
+    const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+    const proposals = await vote.getAll();
+
+    const list = document.getElementById("proposalList");
+    proposals.forEach(p => {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <h4>${p.description}</h4>
+        <button onclick="vote(${p.proposalId}, 1)">Yes</button>
+        <button onclick="vote(${p.proposalId}, 0)">No</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  async function vote(proposalId, choice) {
+    const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+    await vote.vote(proposalId, choice);
+    alert("Vote submitted!");
+  }
+</script>
