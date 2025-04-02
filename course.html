@@ -647,4 +647,57 @@ console.log(value.toString());
 </script>
 
 </body>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const requiredAmount = "500";
+    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    
+    // Token ABI for balance check
+    const tokenABI = [
+      {
+        constant: true,
+        inputs: [{ name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        type: "function"
+      }
+    ];
+
+    // Verify button logic
+    document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
+      if (!window.ethereum) {
+        alert("MetaMask is not installed.");
+        return;
+      }
+
+      try {
+        // Connect to wallet
+        const web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        const account = accounts[0];
+
+        // Interact with token contract
+        const contract = new web3.eth.Contract(tokenABI, tokenAddress);
+        const balance = await contract.methods.balanceOf(account).call();
+
+        const balanceKLY = web3.utils.fromWei(balance);
+        const required = web3.utils.toWei(requiredAmount, "ether");
+
+        // Check if balance meets required KLY
+        if (parseFloat(balance) >= parseFloat(required)) {
+          document.getElementById("courseContent").style.display = "block";
+          document.getElementById("verifyAccessBtn").style.display = "none";
+          document.getElementById("lockedMessage").textContent = "";
+        } else {
+          document.getElementById("lockedMessage").textContent =
+            `Access denied: You need at least ${requiredAmount} KLY. You have ${balanceKLY} KLY.`;
+        }
+      } catch (err) {
+        console.error("Verification failed:", err);
+        document.getElementById("lockedMessage").textContent =
+          "Error verifying access. Make sure your wallet is connected and try again.";
+      }
+    });
+  });
+</script>
 </html>
