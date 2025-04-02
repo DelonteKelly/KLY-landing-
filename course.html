@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KLY Legacy Course</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -9,12 +10,70 @@
 </head>
 <body>
 
+  <!-- Verify KLY Access Button -->
   <button id="verifyAccessBtn">Verify KLY Access</button>
   <div id="lockedMessage" style="margin-top: 1rem; color: #ff0066;"></div>
 
+  <!-- Course Content -->
   <div id="courseContent" style="display: none;">
     <h1>KLY Legacy Course</h1>
+    <p>Welcome to the course!</p>
+  </div>
 
+  <script>
+    // Define configuration variables
+    const CONFIG = {
+      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",  // KLY token contract address
+      REQUIRED_KLY: "500",  // Minimum KLY required to access the course
+    };
+
+    // Initialize the Thirdweb SDK
+    let thirdwebClient;
+    let provider;
+    let signer;
+    let walletAddress;
+
+    // Initialize Thirdweb SDK after DOM content loaded
+    document.addEventListener("DOMContentLoaded", async () => {
+      thirdwebClient = new ThirdwebSDK("binance");  // Using Binance Smart Chain
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+    });
+
+    // Verify access button functionality
+    document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask!");
+        return;
+      }
+
+      try {
+        // Request accounts to connect to MetaMask
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        signer = provider.getSigner();
+        walletAddress = await signer.getAddress();
+
+        const tokenContract = await thirdwebClient.getToken(CONFIG.KLY_TOKEN);
+        const balance = await tokenContract.balanceOf(walletAddress);
+
+        // Check if the user has the required KLY balance
+        const requiredBalance = ethers.utils.parseUnits(CONFIG.REQUIRED_KLY, 18);  // Convert to wei
+        if (balance.gte(requiredBalance)) {
+          document.getElementById("courseContent").style.display = "block";
+          document.getElementById("lockedMessage").textContent = "";
+          document.getElementById("verifyAccessBtn").style.display = "none";
+        } else {
+          document.getElementById("lockedMessage").textContent =
+            `Access denied: You need at least ${CONFIG.REQUIRED_KLY} KLY. You have ${ethers.utils.formatUnits(balance, 18)} KLY.`;
+        }
+      } catch (err) {
+        console.error("Error accessing wallet or checking balance", err);
+        document.getElementById("lockedMessage").textContent =
+          "Error verifying access. Please try again.";
+      }
+    });
+  </script>
+</body>
+</html>
   <section class="module" id="module1">
   <h2>Module 1: Foundation</h2>
 
