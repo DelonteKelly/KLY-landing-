@@ -177,3 +177,8 @@
     });
   });
 </script>
+if (typeof thirdweb === "undefined") {
+  alert("thirdweb SDK is not loaded properly.");
+} else {
+  console.log("thirdweb SDK loaded successfully.");
+}
