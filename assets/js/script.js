@@ -1,125 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KLY Token Platform</title>
-  
-  <!-- Web3.js for interacting with Ethereum-based contracts -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KLY Legacy Course</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-  <!-- Wallet Connect & Course Access UI -->
+
+  <!-- Access Verification -->
   <button id="verifyAccessBtn">Verify KLY Access</button>
   <div id="lockedMessage" style="margin-top: 1rem; color: #ff0066;"></div>
 
-  <!-- Course Content Section -->
+  <!-- Course Content -->
   <div id="courseContent" style="display:none;">
-    <h2>Course Content</h2>
+    <h1>KLY Legacy Course</h1>
     <p>Welcome to the course!</p>
-    <button id="completeCourseBtn" class="action-btn">Complete Course</button>
+    <button id="completeCourseBtn" class="action-btn" style="display:none;">Complete Course</button>
   </div>
 
-  <!-- Mint NFT Section -->
+  <!-- Mint Section -->
   <div id="mintSection" style="display:none;">
     <button id="mintNFTBtn" class="action-btn">Claim Your NFT Certification</button>
     <p id="mintStatus"></p>
   </div>
 
-  <script>
+<script>
+    const CONFIG = {
+      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+      REQUIRED_KLY: "500",
+      NFT_CONTRACT_ADDRESS: "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e"
+    };
+
     let web3;
     let accounts;
     let klyTokenContract;
+    let nftContract;
 
-    // Define configuration variables
-    const CONFIG = {
-      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // KLY token contract address
-      REQUIRED_KLY: "500", // Minimum KLY required to access the course
-      NFT_CONTRACT_ADDRESS: "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e", // NFT contract address for minting
-    };
-
-    // Initialize Web3 and contract
     window.addEventListener("DOMContentLoaded", async () => {
-      if (!window.ethereum) {
-        alert("MetaMask is not installed.");
-        return;
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await ethereum.request({ method: "eth_requestAccounts" });
+        accounts = await web3.eth.getAccounts();
+
+        // Load contracts
+        klyTokenContract = new web3.eth.Contract([
+          {
+            constant: true,
+            inputs: [{ name: "account", type: "address" }],
+            name: "balanceOf",
+            outputs: [{ name: "", type: "uint256" }],
+            type: "function"
+          }
+        ], CONFIG.KLY_TOKEN);
+
+        nftContract = new web3.eth.Contract([
+          {
+            constant: false,
+            inputs: [{ name: "to", type: "address" }],
+            name: "mint",
+            outputs: [],
+            type: "function"
+          }
+        ], CONFIG.NFT_CONTRACT_ADDRESS);
+      } else {
+        alert("Please install MetaMask to continue.");
       }
+    });
 
-      web3 = new Web3(window.ethereum);
-      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-
-      // KLY Token ABI for balance check
-      const tokenABI = [
-        {
-          constant: true,
-          inputs: [{ name: "account", type: "address" }],
-          name: "balanceOf",
-          outputs: [{ name: "", type: "uint256" }],
-          type: "function"
-        }
-      ];
-
-      // Initialize KLY Token Contract
-      klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
-
-      // Verify Access Button Logic
-      document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
-        const account = accounts[0];
-        const balance = await klyTokenContract.methods.balanceOf(account).call();
-
-        const balanceKLY = web3.utils.fromWei(balance);
+    // Verify Access
+    document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
+      try {
+        const balance = await klyTokenContract.methods.balanceOf(accounts[0]).call();
         const required = web3.utils.toWei(CONFIG.REQUIRED_KLY, "ether");
 
         if (parseFloat(balance) >= parseFloat(required)) {
           document.getElementById("courseContent").style.display = "block";
-          document.getElementById("lockedMessage").textContent = "";
           document.getElementById("verifyAccessBtn").style.display = "none";
+          document.getElementById("lockedMessage").textContent = "";
+          document.getElementById("completeCourseBtn").style.display = "inline-block";
         } else {
-          document.getElementById("lockedMessage").textContent =
-            `Access denied: You need at least ${CONFIG.REQUIRED_KLY} KLY. You have ${balanceKLY} KLY.`;
+          document.getElementById("lockedMessage").textContent = 
+            `Access denied: You need at least ${CONFIG.REQUIRED_KLY} KLY. You have ${web3.utils.fromWei(balance)} KLY.`;
         }
-      });
-
-      // Complete Course Button Logic
-      const completeCourseBtn = document.getElementById("completeCourseBtn");
-      const mintSection = document.getElementById("mintSection");
-
-      if (localStorage.getItem("courseComplete") === "true") {
-        completeCourseBtn.style.display = "none";
-        mintSection.style.display = "block";
+      } catch (err) {
+        console.error(err);
+        document.getElementById("lockedMessage").textContent = "Error verifying access.";
       }
+    });
 
-      completeCourseBtn?.addEventListener("click", () => {
-        localStorage.setItem("courseComplete", "true");
-        completeCourseBtn.style.display = "none";
-        mintSection.style.display = "block";
-      });
+    // Complete Course
+    document.getElementById("completeCourseBtn").addEventListener("click", () => {
+      localStorage.setItem("courseComplete", "true");
+      document.getElementById("completeCourseBtn").style.display = "none";
+      document.getElementById("mintSection").style.display = "block";
+    });
 
-      // Mint NFT Logic
-      const mintNFTBtn = document.getElementById("mintNFTBtn");
-      const mintStatus = document.getElementById("mintStatus");
-
-      mintNFTBtn?.addEventListener("click", async () => {
-        mintStatus.textContent = "Minting NFT...";
-        try {
-          const wallet = await web3.currentProvider;
-          const signer = web3.eth.accounts.privateKeyToAccount(wallet);
-
-          // Using ethers.js to interact with the contract
-          const nftContract = new ethers.Contract(CONFIG.NFT_CONTRACT_ADDRESS, [
-            "function claim(uint256 quantity) public", // Claim function in NFT contract
-          ], signer);
-
-          const tx = await nftContract.claim(1); // Mint 1 NFT
-          await tx.wait();
-
-          mintStatus.textContent = "✅ NFT Minted!";
-        } catch (err) {
-          console.error("Mint Failed:", err);
-          mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
-        }
-      });
+    // Mint NFT
+    document.getElementById("mintNFTBtn").addEventListener("click", async () => {
+      try {
+        document.getElementById("mintStatus").textContent = "Minting NFT...";
+        await nftContract.methods.mint(accounts[0]).send({ from: accounts[0] });
+        document.getElementById("mintStatus").textContent = "✅ NFT Minted!";
+      } catch (err) {
+        console.error("Mint Failed:", err);
+        document.getElementById("mintStatus").textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
+      }
     });
   </script>
 </body>
