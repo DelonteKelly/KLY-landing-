@@ -521,40 +521,51 @@ console.log(value.toString());
       </form>
     </div>
   </div>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const requiredAmount = "500";
     const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
-    const verifyBtn = document.getElementById("verifyAccessBtn");
-    const lockedMsg = document.getElementById("lockedMessage");
-    const courseContent = document.getElementById("courseContent");
+    const tokenABI = [
+      {
+        constant: true,
+        inputs: [{ name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        type: "function"
+      }
+    ];
 
-    verifyBtn?.addEventListener("click", async () => {
+    document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
+      if (!window.ethereum) {
+        alert("MetaMask is not installed.");
+        return;
+      }
+
       try {
-        verifyBtn.textContent = "Verifying...";
-        const wallet = await thirdweb.connect("injected");
-        const address = await wallet.getAddress();
+        const web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        const account = accounts[0];
 
-        const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
-        const token = await sdk.getToken(tokenAddress);
-        const balance = await token.balanceOf(address);
+        const contract = new web3.eth.Contract(tokenABI, tokenAddress);
+        const balance = await contract.methods.balanceOf(account).call();
 
-        const balanceBig = ethers.BigNumber.from(balance.value || balance._hex);
-        const required = ethers.utils.parseUnits(requiredAmount, 18);
+        const balanceKLY = web3.utils.fromWei(balance);
+        const required = web3.utils.toWei(requiredAmount, "ether");
 
-        if (balanceBig.gte(required)) {
-          courseContent.style.display = "block";
-          verifyBtn.style.display = "none";
-          lockedMsg.textContent = "";
+        if (parseFloat(balance) >= parseFloat(required)) {
+          document.getElementById("courseContent").style.display = "block";
+          document.getElementById("verifyAccessBtn").style.display = "none";
+          document.getElementById("lockedMessage").textContent = "";
         } else {
-          lockedMsg.textContent = `Access denied: You need at least ${requiredAmount} KLY. You have ${ethers.utils.formatUnits(balanceBig, 18)} KLY.`;
+          document.getElementById("lockedMessage").textContent =
+            `Access denied: You need at least ${requiredAmount} KLY. You have ${balanceKLY} KLY.`;
         }
       } catch (err) {
-        console.error("Access error:", err);
-        lockedMsg.textContent = "Error verifying access. Make sure wallet is connected and try again.";
-      } finally {
-        verifyBtn.textContent = "Verify KLY Access";
+        console.error("Verification failed:", err);
+        document.getElementById("lockedMessage").textContent =
+          "Error verifying access. Make sure your wallet is connected and try again.";
       }
     });
   });
