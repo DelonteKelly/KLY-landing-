@@ -569,80 +569,78 @@ console.log(value.toString());
       }
     });
   });
+<!-- At the very end of course.html -->
+<script>
+  const completeCourseBtn = document.getElementById("completeCourseBtn");
+  const mintSection = document.getElementById("mintSection");
+  const mintNFTBtn = document.getElementById("mintNFTBtn");
+  const mintStatus = document.getElementById("mintStatus");
+  const launchBtn = document.getElementById("launchTokenBtn");
+
+  if (localStorage.getItem("courseComplete") === "true") {
+    completeCourseBtn.style.display = "none";
+    mintSection.style.display = "block";
+  }
+
+  completeCourseBtn?.addEventListener("click", () => {
+    localStorage.setItem("courseComplete", "true");
+    completeCourseBtn.style.display = "none";
+    mintSection.style.display = "block";
+  });
+
+  mintNFTBtn?.addEventListener("click", async () => {
+    mintStatus.textContent = "Minting NFT...";
+    try {
+      const wallet = await thirdweb.connect("injected");
+      const signer = await wallet.getSigner();
+      const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+      const contractAddress = "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e";
+      const nftDrop = await sdk.getContract(contractAddress, "nft-drop");
+      const tx = await nftDrop.claim(1);
+      mintStatus.textContent = "✅ NFT Minted!";
+    } catch (err) {
+      console.error("Mint Failed:", err);
+      mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
+    }
+  });
+
+  launchBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim();
+    const supply = document.getElementById("tokenSupply").value.trim();
+
+    if (!name || !symbol || isNaN(supply) || Number(supply) <= 0) {
+      alert("Please enter valid token information.");
+      return;
+    }
+
+    launchBtn.disabled = true;
+    launchBtn.textContent = "Launching...";
+
+    try {
+      const wallet = await thirdweb.connect("injected");
+      const signer = await wallet.getSigner();
+      const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+
+      const deployedToken = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        total_supply: ethers.utils.parseUnits(supply, 18),
+        primary_sale_recipient: await signer.getAddress(),
+        platform_fee_basis_points: 500,
+        platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
+      });
+
+      alert("✅ Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
+    } catch (err) {
+      console.error("Launch Failed:", err);
+      alert("❌ Token launch failed:\n" + (err?.message || "Unknown error"));
+    } finally {
+      launchBtn.disabled = false;
+      launchBtn.textContent = "Launch My Token";
+    }
+  });
 </script>
-      const completeCourseBtn = document.getElementById("completeCourseBtn");
-      const mintSection = document.getElementById("mintSection");
-      const mintNFTBtn = document.getElementById("mintNFTBtn");
-      const mintStatus = document.getElementById("mintStatus");
-      const launchBtn = document.getElementById("launchTokenBtn");
-
-      if (localStorage.getItem("courseComplete") === "true") {
-        completeCourseBtn.style.display = "none";
-        mintSection.style.display = "block";
-      }
-
-      completeCourseBtn?.addEventListener("click", () => {
-        localStorage.setItem("courseComplete", "true");
-        completeCourseBtn.style.display = "none";
-        mintSection.style.display = "block";
-      });
-
-      mintNFTBtn?.addEventListener("click", async () => {
-        mintStatus.textContent = "Minting NFT...";
-        try {
-          const wallet = await thirdweb.connect("injected");
-          const signer = await wallet.getSigner();
-          const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
-
-          const contractAddress = "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e";
-          const nftDrop = await sdk.getContract(contractAddress, "nft-drop");
-
-          const tx = await nftDrop.claim(1);
-          mintStatus.textContent = "✅ NFT Minted!";
-        } catch (err) {
-          console.error("Mint Failed:", err);
-          mintStatus.textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
-        }
-      });
-
-      launchBtn?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const name = document.getElementById("tokenName").value.trim();
-        const symbol = document.getElementById("tokenSymbol").value.trim();
-        const supply = document.getElementById("tokenSupply").value.trim();
-
-        if (!name || !symbol || isNaN(supply) || Number(supply) <= 0) {
-          alert("Please enter valid token information.");
-          return;
-        }
-
-        launchBtn.disabled = true;
-        launchBtn.textContent = "Launching...";
-
-        try {
-          const wallet = await thirdweb.connect("injected");
-          const signer = await wallet.getSigner();
-          const sdk = new thirdweb.ThirdwebSDK(signer, "binance");
-
-          const deployedToken = await sdk.deployer.deployToken({
-            name,
-            symbol,
-            total_supply: ethers.utils.parseUnits(supply, 18),
-            primary_sale_recipient: await signer.getAddress(),
-            platform_fee_basis_points: 500,
-            platform_fee_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
-          });
-
-          alert("✅ Token Launched Successfully!\n\nToken Address:\n" + deployedToken);
-        } catch (err) {
-          console.error("Launch Failed:", err);
-          alert("❌ Token launch failed:\n" + (err?.message || "Unknown error"));
-        } finally {
-          launchBtn.disabled = false;
-          launchBtn.textContent = "Launch My Token";
-        }
-      });
-    });
-  </script>
 </body>
 </html>
