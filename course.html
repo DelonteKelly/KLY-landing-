@@ -521,39 +521,40 @@ console.log(value.toString());
       </form>
     </div>
   </div>
-    <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const requiredAmount = "500";
-  const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const requiredAmount = "500"; // Amount of KLY needed to unlock
+    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
-  document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
-    try {
-      const wallet = await thirdweb.connect("injected");
-      const address = await wallet.getAddress();
+    document.getElementById("verifyAccessBtn")?.addEventListener("click", async () => {
+      try {
+        const wallet = await thirdweb.connect("injected");
+        const address = await wallet.getAddress();
 
-      const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
-      const token = await sdk.getToken(tokenAddress);
-      const balance = await token.balanceOf(address);
-      const balanceBig = ethers.BigNumber.from(balance.value);
+        const sdk = new thirdweb.ThirdwebSDK(wallet, "binance");
+        const token = await sdk.getToken(tokenAddress);
+        const balance = await token.balanceOf(address);
 
-      const required = ethers.utils.parseUnits(requiredAmount, 18);
+        // Handle both balance object formats (some return BigNumber.value, some ._hex)
+        const balanceBig = ethers.BigNumber.from(balance.value || balance._hex);
+        const required = ethers.utils.parseUnits(requiredAmount, 18);
 
-      if (balanceBig.gte(required)) {
-        document.getElementById("courseContent").style.display = "block";
-        document.getElementById("verifyAccessBtn").style.display = "none";
-        document.getElementById("lockedMessage").textContent = "";
-      } else {
+        if (balanceBig.gte(required)) {
+          document.getElementById("courseContent").style.display = "block";
+          document.getElementById("verifyAccessBtn").style.display = "none";
+          document.getElementById("lockedMessage").textContent = "";
+        } else {
+          document.getElementById("lockedMessage").textContent =
+            `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balanceBig, 18)}.`;
+        }
+      } catch (err) {
+        console.error("Access check failed:", err);
         document.getElementById("lockedMessage").textContent =
-          `Access denied: You need at least ${requiredAmount} KLY. Your balance is ${ethers.utils.formatUnits(balanceBig, 18)}.`;
+          "Error verifying access. Make sure your wallet is connected and try again.";
       }
-    } catch (err) {
-      console.error("Access check failed:", err);
-      document.getElementById("lockedMessage").textContent =
-        "Error verifying access. Make sure your wallet is connected and try again.";
-    }
+    });
   });
-});
-
+</script>
       const completeCourseBtn = document.getElementById("completeCourseBtn");
       const mintSection = document.getElementById("mintSection");
       const mintNFTBtn = document.getElementById("mintNFTBtn");
