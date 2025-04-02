@@ -125,3 +125,24 @@
     });
   }
 </script>
+    // Complete Course
+    document.getElementById("completeCourseBtn").addEventListener("click", () => {
+      localStorage.setItem("courseComplete", "true");
+      document.getElementById("completeCourseBtn").style.display = "none";
+      document.getElementById("mintSection").style.display = "block";
+    });
+
+    // Mint NFT
+    document.getElementById("mintNFTBtn").addEventListener("click", async () => {
+      try {
+        document.getElementById("mintStatus").textContent = "Minting NFT...";
+        await nftContract.methods.mint(accounts[0]).send({ from: accounts[0] });
+        document.getElementById("mintStatus").textContent = "✅ NFT Minted!";
+      } catch (err) {
+        console.error("Mint Failed:", err);
+        document.getElementById("mintStatus").textContent =
+          "❌ Mint failed: " + (err?.message || "Unknown error");
+      }
+    });
+  }
+</script>
