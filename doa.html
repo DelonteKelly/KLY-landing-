@@ -1,64 +1,102 @@
-<section id="daoSection" class="card">
-  <h2>KLY DAO Voting</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KLY DAO Voting</title>
+  <style>
+    body {
+      background-color: #0a0a0a;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    a {
+      color: #00ffe0;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    button {
+      background-color: #00ffe0;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .proposal {
+      border: 1px solid #00ffe0;
+      margin: 20px auto;
+      padding: 15px;
+      max-width: 600px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>KLY DAO Voting</h1>
   <p>Propose, vote, and shape the future of the KLY ecosystem.</p>
-  <a href="https://thirdweb.com/0x796Bce7F95662774243177D1F546eBA0B3465579/governance" target="_blank">
-    View Full DAO Dashboard
-  </a>
-  <button onclick="connectWallet()">Connect Wallet</button>
+  <a href="https://thirdweb.com" target="_blank">View Thirdweb</a>
+  <br><br>
+  <button id="connectButton">Connect Wallet</button>
   <div id="proposalList"></div>
-</section>
 
-<script type="module">
-  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@latest";
-  import { ethers } from "https://esm.sh/ethers";
+  <script type="module">
+    import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@latest";
+    import { ethers } from "https://esm.sh/ethers";
 
-  let sdk, signer;
+    let sdk, signer;
 
-  window.connectWallet = async function () {
-    if (window.ethereum) {
+    const connectButton = document.getElementById("connectButton");
+
+    connectButton.addEventListener("click", async () => {
+      if (!window.ethereum) return alert("Please install MetaMask.");
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = await provider.getSigner();
       sdk = ThirdwebSDK.fromSigner(signer, "binance");
 
+      connectButton.innerText = "Wallet Connected";
       loadProposals();
-    } else {
-      alert("Please install MetaMask.");
+    });
+
+    async function loadProposals() {
+      try {
+        const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+        const proposals = await vote.getAll();
+
+        const list = document.getElementById("proposalList");
+        list.innerHTML = "";
+
+        proposals.forEach(p => {
+          const div = document.createElement("div");
+          div.className = "proposal";
+          div.innerHTML = `
+            <h3>${p.description}</h3>
+            <button onclick="voteOn(${p.proposalId}, 1)">Yes</button>
+            <button onclick="voteOn(${p.proposalId}, 0)">No</button>
+          `;
+          list.appendChild(div);
+        });
+      } catch (e) {
+        console.error("Failed to load proposals", e);
+        document.getElementById("proposalList").innerText = "Error loading proposals.";
+      }
     }
-  };
 
-  async function loadProposals() {
-    try {
-      const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
-      const proposals = await vote.getAll();
-
-      const list = document.getElementById("proposalList");
-      list.innerHTML = ""; // Clear previous content
-
-      proposals.forEach((p) => {
-        const div = document.createElement("div");
-        div.innerHTML = `
-          <h4>${p.description}</h4>
-          <button onclick="submitVote('${p.proposalId}', 1)">Yes</button>
-          <button onclick="submitVote('${p.proposalId}', 0)">No</button>
-          <hr>
-        `;
-        list.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Failed to load proposals:", err);
-      document.getElementById("proposalList").innerText = "Error loading proposals.";
-    }
-  }
-
-  window.submitVote = async function (proposalId, choice) {
-    try {
-      const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
-      await vote.vote(proposalId, choice);
-      alert("Vote submitted!");
-    } catch (err) {
-      console.error("Vote failed:", err);
-      alert("Failed to submit vote.");
-    }
-  };
-</script>
+    window.voteOn = async function (proposalId, choice) {
+      try {
+        const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+        await vote.vote(proposalId, choice);
+        alert("Vote submitted!");
+      } catch (e) {
+        console.error("Vote error:", e);
+        alert("Error submitting vote.");
+      }
+    };
+  </script>
+</body>
+</html>
