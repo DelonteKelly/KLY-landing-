@@ -29,7 +29,7 @@
 <script>
   const CONFIG = {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    REQUIRED_KLY: "500", // Human-readable, will convert to wei
+    REQUIRED_KLY: "500",
     NFT_CONTRACT_ADDRESS: "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e"
   };
 
@@ -38,7 +38,6 @@
   let klyTokenContract;
   let nftContract;
 
-  // Token ABI
   const tokenABI = [
     {
       constant: true,
@@ -49,7 +48,6 @@
     }
   ];
 
-  // NFT ABI (basic mint)
   const nftABI = [
     {
       constant: false,
@@ -66,11 +64,9 @@
       await ethereum.request({ method: "eth_requestAccounts" });
       accounts = await web3.eth.getAccounts();
 
-      // Load Contracts
       klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
       nftContract = new web3.eth.Contract(nftABI, CONFIG.NFT_CONTRACT_ADDRESS);
 
-      // Setup event listeners
       setupUIActions();
     } else {
       alert("Please install MetaMask to use this application.");
@@ -78,14 +74,10 @@
   });
 
   function setupUIActions() {
-    // Verify Access
     document.getElementById("verifyAccessBtn").addEventListener("click", async () => {
       try {
         const balance = await klyTokenContract.methods.balanceOf(accounts[0]).call();
         const required = web3.utils.toWei(CONFIG.REQUIRED_KLY, "ether");
-
-        console.log("KLY Balance (wei):", balance);
-        console.log("Required KLY (wei):", required);
 
         if (BigInt(balance) >= BigInt(required)) {
           document.getElementById("courseContent").style.display = "block";
@@ -104,35 +96,12 @@
       }
     });
 
-    // Complete Course
     document.getElementById("completeCourseBtn").addEventListener("click", () => {
       localStorage.setItem("courseComplete", "true");
       document.getElementById("completeCourseBtn").style.display = "none";
       document.getElementById("mintSection").style.display = "block";
     });
 
-    // Mint NFT
-    document.getElementById("mintNFTBtn").addEventListener("click", async () => {
-      try {
-        document.getElementById("mintStatus").textContent = "Minting NFT...";
-        await nftContract.methods.mint(accounts[0]).send({ from: accounts[0] });
-        document.getElementById("mintStatus").textContent = "✅ NFT Minted!";
-      } catch (err) {
-        console.error("Mint Failed:", err);
-        document.getElementById("mintStatus").textContent =
-          "❌ Mint failed: " + (err?.message || "Unknown error");
-      }
-    });
-  }
-</script>
-    // Complete Course
-    document.getElementById("completeCourseBtn").addEventListener("click", () => {
-      localStorage.setItem("courseComplete", "true");
-      document.getElementById("completeCourseBtn").style.display = "none";
-      document.getElementById("mintSection").style.display = "block";
-    });
-
-    // Mint NFT
     document.getElementById("mintNFTBtn").addEventListener("click", async () => {
       try {
         document.getElementById("mintStatus").textContent = "Minting NFT...";
