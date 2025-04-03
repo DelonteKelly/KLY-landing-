@@ -15,82 +15,115 @@
     button {
       background-color: #00ffe0;
       border: none;
-      padding: 12px 24px;
+      padding: 10px 20px;
+      margin: 10px;
       font-size: 16px;
       font-weight: bold;
-      border-radius: 6px;
-      margin: 10px;
+      border-radius: 5px;
       cursor: pointer;
       color: #000;
     }
-    a {
-      color: #00ffe0;
-      text-decoration: none;
-      display: block;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
     .proposal {
+      background: #111;
       border: 1px solid #00ffe0;
-      padding: 1rem;
       margin: 1rem auto;
+      padding: 1rem;
       width: 90%;
-      max-width: 500px;
-      border-radius: 8px;
-      background-color: #111;
+      max-width: 600px;
+      border-radius: 10px;
+    }
+    .status {
+      font-size: 14px;
+      margin-bottom: 0.5rem;
+    }
+    #createForm {
+      background: #111;
+      padding: 1rem;
+      margin-top: 3rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 10px;
+      border: 1px solid #00ffe0;
+    }
+    input, textarea {
+      width: 90%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <h1>KLY DAO Voting</h1>
+  <h1>KLY DAO</h1>
   <p>Propose, vote, and shape the future of the KLY ecosystem.</p>
-  <a href="https://thirdweb.com" target="_blank">View Thirdweb</a>
+
   <button id="connectButton" onclick="connectWallet()">Connect Wallet</button>
+  <div id="walletStatus"></div>
+
   <div id="proposalList"></div>
+
+  <div id="createForm" style="display:none;">
+    <h2>Create Proposal</h2>
+    <input type="text" id="proposalTitle" placeholder="Proposal Title" />
+    <textarea id="proposalDesc" rows="4" placeholder="Proposal Description"></textarea>
+    <button onclick="createProposal()">Submit Proposal</button>
+  </div>
 
   <script type="module">
     import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@latest";
     import { ethers } from "https://esm.sh/ethers";
 
-    let sdk, signer;
+    const voteContractAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+    const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
-    async function connectWallet() {
+    let sdk, signer, walletAddress;
+
+    window.connectWallet = async function () {
       if (!window.ethereum) {
-        alert("MetaMask is not installed");
+        alert("Please install MetaMask.");
         return;
       }
 
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      walletAddress = await signer.getAddress();
 
-        sdk = ThirdwebSDK.fromSigner(signer, "binance");
-        document.getElementById("connectButton").innerText = "Wallet Connected";
-        loadProposals();
-      } catch (err) {
-        console.error("Wallet connection failed:", err);
-        alert("Wallet connection error.");
-      }
-    }
+      sdk = ThirdwebSDK.fromSigner(signer, "binance");
+      document.getElementById("connectButton").innerText = "Wallet Connected";
+      document.getElementById("walletStatus").innerText = walletAddress;
 
-    // Auto-connect if already authorized
+      loadProposals();
+      checkTokenBalance();
+    };
+
+    // Auto-connect
     window.addEventListener("load", async () => {
       if (window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: "eth_accounts" });
-          if (accounts.length > 0) {
-            await connectWallet();
-          }
-        } catch (err) {
-          console.warn("Auto-connect skipped:", err);
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        if (accounts.length > 0) {
+          signer = await provider.getSigner();
+          walletAddress = await signer.getAddress();
+          sdk = ThirdwebSDK.fromSigner(signer, "binance");
+          document.getElementById("connectButton").innerText = "Wallet Connected";
+          document.getElementById("walletStatus").innerText = walletAddress;
+
+          loadProposals();
+          checkTokenBalance();
+        } else {
+          sdk = ThirdwebSDK.fromPrivateKey("0x0000000000000000000000000000000000000000000000000000000000000000", "binance"); // read-only
+          loadProposals();
         }
       }
     });
 
     async function loadProposals() {
       try {
-        const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+        const vote = await sdk.getContract(voteContractAddress, "vote");
         const proposals = await vote.getAll();
 
         const list = document.getElementById("proposalList");
@@ -99,32 +132,66 @@
         proposals.forEach((p) => {
           const div = document.createElement("div");
           div.className = "proposal";
+
+          const status = p.state === 1 ? "Active" : p.state === 4 ? "Executed" : "Closed";
+
           div.innerHTML = `
             <h3>${p.description}</h3>
-            <button onclick="voteOn(${p.proposalId}, 1)">Yes</button>
-            <button onclick="voteOn(${p.proposalId}, 0)">No</button>
+            <p class="status">Status: ${status}</p>
+            ${p.state === 1 ? `
+              <button onclick="voteOn(${p.proposalId}, 1)">Yes</button>
+              <button onclick="voteOn(${p.proposalId}, 0)">No</button>
+            ` : ""}
           `;
+
           list.appendChild(div);
         });
       } catch (e) {
-        console.error("Proposal load failed:", e);
-        document.getElementById("proposalList").innerText = "No proposals found.";
+        console.error("Error loading proposals:", e);
+        document.getElementById("proposalList").innerText = "Failed to load proposals.";
       }
     }
 
     window.voteOn = async function (proposalId, choice) {
       try {
-        const vote = await sdk.getContract("0x796Bce7F95662774243177D1F546eBA0B3465579", "vote");
+        const vote = await sdk.getContract(voteContractAddress, "vote");
         await vote.vote(proposalId, choice);
         alert("Vote submitted!");
       } catch (e) {
-        console.error("Voting failed:", e);
-        alert("Failed to vote.");
+        console.error("Vote failed:", e);
+        alert("Vote failed.");
       }
     };
 
-    // Expose manually to the button
-    window.connectWallet = connectWallet;
+    async function checkTokenBalance() {
+      try {
+        const token = await sdk.getContract(klyTokenAddress, "token");
+        const balance = await token.balanceOf(walletAddress);
+        if (Number(balance.displayValue) > 0) {
+          document.getElementById("createForm").style.display = "block";
+        }
+      } catch (e) {
+        console.error("Token check failed:", e);
+      }
+    }
+
+    window.createProposal = async function () {
+      const desc = document.getElementById("proposalDesc").value.trim();
+      const title = document.getElementById("proposalTitle").value.trim();
+      if (!desc || !title) return alert("Fill out both fields.");
+
+      try {
+        const vote = await sdk.getContract(voteContractAddress, "vote");
+        await vote.propose({
+          description: `${title} — ${desc}`,
+          executions: [] // no function call, just text-based proposal
+        });
+        alert("Proposal submitted!");
+      } catch (e) {
+        console.error("Proposal creation failed:", e);
+        alert("Failed to submit proposal.");
+      }
+    };
   </script>
 </body>
 </html>
