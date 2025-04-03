@@ -1,63 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Legacy Course</title>
-
-  <!-- Stylesheets -->
-  <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/course_theme_override.css">
-
-  <!-- Web3.js -->
+  <link rel="stylesheet" href="assets/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 </head>
-<body>
-    <!-- Main Content -->
-    <main>
-      <!-- KLY Legacy Course Section -->
-      <section id="courseAccess" class="card">
-        <h2 id="courseTitle">KLY Legacy Course</h2>
-        <p class="course-subtext">Complete the journey. Unlock legacy knowledge. Mint your NFT certification.</p>
+<body style="background-color: #000; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 2rem;">
 
-        <button id="verifyAccessBtn" class="btn-primary">Verify Access</button>
-        <p id="lockedMessage" class="status-message"></p>
+  <h2 style="color: #00ffaa; font-size: 2rem;">KLY Legacy Course</h2>
+  <p style="color: #ccc; max-width: 600px; margin: 0 auto 2rem;">
+    Complete the journey. Unlock legacy knowledge. Mint your NFT certification.
+  </p>
 
-        <div id="courseContent" class="hidden-content">
-          <div class="module-card">
-            <h2>Module 1: Foundation</h2>
-            <h3>Overview</h3>
-            <p>This module lays the groundwork for understanding legal structures, control, and asset protection using business law.</p>
-          </div>
+  <!-- Verify Button -->
+  <button id="verifyAccessBtn" style="background: #00ffaa; color: #000; padding: 1rem 2rem; border-radius: 8px; font-weight: bold;">Verify Access</button>
+  <p id="lockedMessage" style="margin-top: 1rem; color: #ff0066;"></p>
 
-          <div class="module-card">
-            <h2>Module 2: Tokenization</h2>
-            <h3>Overview</h3>
-            <p>Learn how to tokenize your business, digital content, or service using smart contracts and blockchain protocols.</p>
-          </div>
+  <!-- Course Content -->
+  <div id="courseContent" style="display:none; margin-top: 3rem;">
+    <h3 style="color: #00ffaa;">Welcome to the Course!</h3>
+    <p>Access granted. Begin your legacy journey.</p>
 
-          <div class="module-card">
-            <h2>Module 3: Web3 Business</h2>
-            <h3>Overview</h3>
-            <p>Discover how to structure a decentralized business using Web3 tools like DAOs, NFTs, and smart contract automation.</p>
-          </div>
+    <!-- Course Modules (optional content here) -->
+    <div style="margin: 2rem auto; padding: 1rem; background: #111; border-radius: 10px; max-width: 600px;">
+      <p>Module 1: Foundation</p>
+      <p>Module 2: Tokenization</p>
+      <p>Module 3: Web3 Business</p>
+      <p>Module 4: Credit & Capital</p>
+      <p>Module 5: Ownership & Legacy</p>
+    </div>
 
-          <div class="module-card">
-            <h2>Module 4: Credit & Capital</h2>
-            <h3>Overview</h3>
-            <p>Master funding strategies using credit, grants, and capital stacking — with KLY tools built for legacy leverage.</p>
-          </div>
+    <!-- Complete Course Button -->
+    <button id="completeCourseBtn" style="background: #00ffaa; color: #000; padding: 1rem 2rem; border-radius: 8px; font-weight: bold;">Complete Course</button>
 
-          <div class="module-card">
-            <h2>Module 5: Ownership & Legacy</h2>
-            <h3>Overview</h3>
-            <p>Combine your knowledge to create a legacy plan — mint your certification NFT and secure your digital future.</p>
-          </div>
+    <!-- Mint Section -->
+    <div id="mintSection" style="display:none; margin-top: 2rem;">
+      <h3 style="color: #00ffaa;">Claim Your NFT Certificate</h3>
+      <button id="mintCertificate" style="background: #00ffaa; color: #000; padding: 1rem 2rem; border-radius: 8px; font-weight: bold;">Mint NFT Certificate</button>
+      <p id="mintStatus" style="margin-top: 1rem;"></p>
+    </div>
+  </div>
 
-         
+  <footer style="margin-top: 4rem; color: #888;">
+    <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
+  </footer>
 
-  <!-- JavaScript -->
-  <script src="assets/js/main.js"></script>
+  <!-- JavaScript Logic -->
+  <script>
+    const CONFIG = {
+      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+      REQUIRED_KLY: "500",
+      NFT_CONTRACT_ADDRESS: "0x90517fa3d053e2dcdbd422848afa76f0da2ca54e"
+    };
+
+    const tokenABI = [
+      {
+        constant: true,
+        inputs: [{ name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        type: "function"
+      }
+    ];
+
+    const nftABI = [
+      {
+        constant: false,
+        inputs: [{ name: "to", type: "address" }],
+        name: "mint",
+        outputs: [],
+        type: "function"
+      }
+    ];
+
+    let web3, accounts, klyTokenContract, nftContract;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        accounts = await web3.eth.getAccounts();
+
+        klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+        nftContract = new web3.eth.Contract(nftABI, CONFIG.NFT_CONTRACT_ADDRESS);
+
+        setupUIActions();
+      } else {
+        alert("Please install MetaMask to use this application.");
+      }
+    });
+
+    function setupUIActions() {
+      const verifyBtn = document.getElementById("verifyAccessBtn");
+      const completeBtn = document.getElementById("completeCourseBtn");
+      const mintBtn = document.getElementById("mintCertificate");
+
+      verifyBtn.addEventListener("click", async () => {
+        const balance = await klyTokenContract.methods.balanceOf(accounts[0]).call();
+        const required = web3.utils.toWei(CONFIG.REQUIRED_KLY, "ether");
+
+        if (BigInt(balance) >= BigInt(required)) {
+          document.getElementById("courseContent").style.display = "block";
+          verifyBtn.style.display = "none";
+          document.getElementById("lockedMessage").textContent = "";
+        } else {
+          const formatted = web3.utils.fromWei(balance);
+          document.getElementById("lockedMessage").textContent = `Access denied: You need at least ${CONFIG.REQUIRED_KLY} KLY. You have ${formatted} KLY.`;
+        }
+      });
+
+      completeBtn.addEventListener("click", () => {
+        localStorage.setItem("courseComplete", "true");
+        completeBtn.style.display = "none";
+        document.getElementById("mintSection").style.display = "block";
+        window.scrollTo({ top: document.getElementById("mintSection").offsetTop, behavior: "smooth" });
+      });
+
+      mintBtn.addEventListener("click", async () => {
+        try {
+          document.getElementById("mintStatus").textContent = "Minting NFT...";
+          await nftContract.methods.mint(accounts[0]).send({ from: accounts[0] });
+          document.getElementById("mintStatus").textContent = "✅ NFT Certificate Minted!";
+        } catch (err) {
+          console.error("Mint Failed:", err);
+          document.getElementById("mintStatus").textContent = "❌ Mint failed: " + (err?.message || "Unknown error");
+        }
+      });
+    }
+  </script>
 </body>
 </html>
     <!-- NFT Minting Section -->
