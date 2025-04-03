@@ -41,12 +41,13 @@
   <div id="walletStatus"></div>
   <div id="proposalList"></div>
 
+  <!-- Include libraries -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
 
   <script>
     const voteAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-    const klyAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
     let sdk, signer, wallet;
 
     async function connectWallet() {
@@ -55,45 +56,64 @@
         return;
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-      sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        wallet = await signer.getAddress();
 
-      document.getElementById("connectBtn").innerText = "Wallet Connected";
-      document.getElementById("walletStatus").innerText = wallet;
-      loadProposals();
+        sdk = new thirdweb.ThirdwebSDK("binance", { signer });
+
+        document.getElementById("connectBtn").innerText = "Wallet Connected";
+        document.getElementById("walletStatus").innerText = wallet;
+        loadProposals();
+      } catch (err) {
+        console.error("Wallet connection error:", err);
+        alert("Failed to connect wallet.");
+      }
     }
 
     async function loadProposals() {
-      const vote = await sdk.getContract(voteAddress, "vote");
-      const proposals = await vote.getAll();
-      const list = document.getElementById("proposalList");
-      list.innerHTML = "";
+      try {
+        const vote = await sdk.getContract(voteAddress, "vote");
+        const proposals = await vote.getAll();
+        console.log("Proposals:", proposals);
 
-      proposals.forEach((p) => {
-        const div = document.createElement("div");
-        div.className = "proposal";
-        div.innerHTML = `
-          <h3>${p.description}</h3>
-          <p>Status: ${p.state === 1 ? "Active" : "Closed"}</p>
-          ${p.state === 1 ? `
-            <button onclick="voteOn(${p.proposalId}, 1)">Yes</button>
-            <button onclick="voteOn(${p.proposalId}, 0)">No</button>
-          ` : ""}
-        `;
-        list.appendChild(div);
-      });
+        const list = document.getElementById("proposalList");
+        list.innerHTML = "";
+
+        proposals.forEach((p) => {
+          const div = document.createElement("div");
+          div.className = "proposal";
+          div.innerHTML = `
+            <h3>${p.description}</h3>
+            <p>Status: ${p.state === 1 ? "Active" : "Closed"}</p>
+            ${p.state === 1 ? `
+              <button onclick="voteOn('${p.proposalId}', 1)">Yes</button>
+              <button onclick="voteOn('${p.proposalId}', 0)">No</button>
+            ` : ""}
+          `;
+          list.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Error loading proposals:", err);
+        alert("Failed to load proposals.");
+      }
     }
 
-    async function voteOn(id, choice) {
-      const vote = await sdk.getContract(voteAddress, "vote");
-      await vote.vote(id, choice);
-      alert("Vote submitted!");
+    async function voteOn(proposalId, voteType) {
+      try {
+        const vote = await sdk.getContract(voteAddress, "vote");
+        await vote.vote(proposalId, voteType);
+        alert("Vote submitted!");
+        loadProposals(); // Reload to reflect status
+      } catch (err) {
+        console.error("Vote error:", err);
+        alert("Failed to vote.");
+      }
     }
 
-    // Auto-connect if previously authorized
+    // Auto-connect on page load
     window.addEventListener("load", async () => {
       if (window.ethereum) {
         const accounts = await window.ethereum.request({ method: "eth_accounts" });
