@@ -44,6 +44,7 @@
   <!-- Include libraries -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
     const voteAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
@@ -126,5 +127,31 @@
     document.getElementById("connectBtn").onclick = connectWallet;
     window.voteOn = voteOn;
   </script>
+  async function connectWallet() {
+  if (window.ethereum) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+  } else {
+    // Fallback to WalletConnect if no MetaMask
+    const walletConnectProvider = new WalletConnectProvider.default({
+      rpc: {
+        56: "https://bsc-dataseed.binance.org/" // Binance Smart Chain Mainnet
+      }
+    });
+
+    await walletConnectProvider.enable();
+    web3 = new Web3(walletConnectProvider);
+    const provider = new ethers.BrowserProvider(walletConnectProvider);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+  }
+
+  sdk = new thirdweb.ThirdwebSDK("binance", { signer });
+  document.getElementById("connectBtn").innerText = "Wallet Connected";
+  document.getElementById("walletStatus").innerText = wallet;
+  loadProposals();
+}
 </body>
 </html>
