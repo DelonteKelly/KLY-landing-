@@ -145,4 +145,34 @@
       }
     });
   }
+
+// Token Launch Logic
+document.getElementById("launch-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("token-name").value;
+  const symbol = document.getElementById("token-symbol").value;
+  const supply = document.getElementById("initial-supply").value;
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const sdk = ThirdwebSDK.fromSigner(signer, "binance");
+
+    const token = await sdk.deployer.deployToken({
+      name,
+      symbol,
+      primary_sale_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // Treasury wallet
+      initial_supply: ethers.utils.parseUnits(supply.toString(), 18),
+    });
+
+    document.getElementById("launch-status").innerText = `✅ Token Launched: ${token}`;
+  } catch (err) {
+    console.error("Token launch failed:", err);
+    document.getElementById("launch-status").innerText = "❌ Token launch failed.";
+  }
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script type="module">
+  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk";
 </script>
