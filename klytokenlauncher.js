@@ -27,12 +27,7 @@
           alert("Please install MetaMask.");
           return;
         }
-        async function launchToken() {
-  if (!sdk) {
-    alert("Wallet not connected.");
-    return;
-  }
-
+       
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         const signer = await provider.getSigner();
@@ -54,6 +49,11 @@
         alert("Please fill all fields.");
         return;
       }
+       async function launchToken() {
+  if (!sdk) {
+    alert("Wallet not connected."); pop
+    return;
+  }
 
       try {
         document.getElementById("launch-status").textContent = "Launching token...";
