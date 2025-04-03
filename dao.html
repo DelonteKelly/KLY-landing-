@@ -43,115 +43,87 @@
 
   <!-- Include libraries -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
-  <script>
-    const voteAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+<script>
+  const voteAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+  let sdk, signer, wallet;
 
-    let sdk, signer, wallet;
+  async function connectWallet() {
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+    } else {
+      const walletConnectProvider = new WalletConnectProvider.default({
+        rpc: {
+          56: "https://bsc-dataseed.binance.org/"
+        }
+      });
 
-    async function connectWallet() {
-      if (!window.ethereum) {
-        alert("MetaMask is not installed.");
-        return;
-      }
-
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
-        wallet = await signer.getAddress();
-
-        sdk = new thirdweb.ThirdwebSDK("binance", { signer });
-
-        document.getElementById("connectBtn").innerText = "Wallet Connected";
-        document.getElementById("walletStatus").innerText = wallet;
-        loadProposals();
-      } catch (err) {
-        console.error("Wallet connection error:", err);
-        alert("Failed to connect wallet.");
-      }
+      await walletConnectProvider.enable();
+      const provider = new ethers.BrowserProvider(walletConnectProvider);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
     }
 
-    async function loadProposals() {
-      try {
-        const vote = await sdk.getContract(voteAddress, "vote");
-        const proposals = await vote.getAll();
-        console.log("Proposals:", proposals);
-
-        const list = document.getElementById("proposalList");
-        list.innerHTML = "";
-
-        proposals.forEach((p) => {
-          const div = document.createElement("div");
-          div.className = "proposal";
-          div.innerHTML = `
-            <h3>${p.description}</h3>
-            <p>Status: ${p.state === 1 ? "Active" : "Closed"}</p>
-            ${p.state === 1 ? `
-              <button onclick="voteOn('${p.proposalId}', 1)">Yes</button>
-              <button onclick="voteOn('${p.proposalId}', 0)">No</button>
-            ` : ""}
-          `;
-          list.appendChild(div);
-        });
-      } catch (err) {
-        console.error("Error loading proposals:", err);
-        alert("Failed to load proposals.");
-      }
-    }
-
-    async function voteOn(proposalId, voteType) {
-      try {
-        const vote = await sdk.getContract(voteAddress, "vote");
-        await vote.vote(proposalId, voteType);
-        alert("Vote submitted!");
-        loadProposals(); // Reload to reflect status
-      } catch (err) {
-        console.error("Vote error:", err);
-        alert("Failed to vote.");
-      }
-    }
-     async function connectWallet() {
-  if (window.ethereum) {
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    wallet = await signer.getAddress();
-  } else {
-    // Fallback to WalletConnect if no MetaMask
-    const walletConnectProvider = new WalletConnectProvider.default({
-      rpc: {
-        56: "https://bsc-dataseed.binance.org/" // Binance Smart Chain Mainnet
-      }
-    });
-
-    await walletConnectProvider.enable();
-    web3 = new Web3(walletConnectProvider);
-    const provider = new ethers.BrowserProvider(walletConnectProvider);
-    signer = await provider.getSigner();
-    wallet = await signer.getAddress();
+    sdk = new thirdweb.ThirdwebSDK("binance", { signer });
+    document.getElementById("connectBtn").innerText = "Wallet Connected";
+    document.getElementById("walletStatus").innerText = wallet;
+    loadProposals();
   }
 
-  sdk = new thirdweb.ThirdwebSDK("binance", { signer });
-  document.getElementById("connectBtn").innerText = "Wallet Connected";
-  document.getElementById("walletStatus").innerText = wallet;
-  loadProposals();
-}
+  async function loadProposals() {
+    try {
+      const vote = await sdk.getContract(voteAddress, "vote");
+      const proposals = await vote.getAll();
 
-    // Auto-connect on page load
-    window.addEventListener("load", async () => {
-      if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: "eth_accounts" });
-        if (accounts.length > 0) {
-          connectWallet();
-        }
+      const list = document.getElementById("proposalList");
+      list.innerHTML = "";
+
+      proposals.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "proposal";
+        div.innerHTML = `
+          <h3>${p.description}</h3>
+          <p>Status: ${p.state === 1 ? "Active" : "Closed"}</p>
+          ${p.state === 1 ? `
+            <button onclick="voteOn('${p.proposalId}', 1)">Yes</button>
+            <button onclick="voteOn('${p.proposalId}', 0)">No</button>
+          ` : ""}
+        `;
+        list.appendChild(div);
+      });
+    } catch (err) {
+      console.error("Error loading proposals:", err);
+      alert("Failed to load proposals.");
+    }
+  }
+
+  async function voteOn(proposalId, voteType) {
+    try {
+      const vote = await sdk.getContract(voteAddress, "vote");
+      await vote.vote(proposalId, voteType);
+      alert("Vote submitted!");
+      loadProposals();
+    } catch (err) {
+      console.error("Vote error:", err);
+      alert("Failed to vote.");
+    }
+  }
+
+  window.addEventListener("load", async () => {
+    if (window.ethereum) {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (accounts.length > 0) {
+        connectWallet();
       }
-    });
+    }
+  });
 
-    document.getElementById("connectBtn").onclick = connectWallet;
-    window.voteOn = voteOn;
-  </script>
-</body>
-</html>
+  document.getElementById("connectBtn").onclick = connectWallet;
+  window.voteOn = voteOn;
+</script>
