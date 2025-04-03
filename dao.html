@@ -74,6 +74,23 @@
     const voteContractAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
     const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     let sdk, signer, address;
+    window.addEventListener("load", async () => {
+  if (window.ethereum) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts.length > 0) {
+      signer = await provider.getSigner();
+      address = await signer.getAddress();
+      sdk = new thirdweb.ThirdwebSDK(signer, "binance");
+
+      document.getElementById("walletStatus").innerText = "Connected: " + address;
+      document.querySelector("button").innerText = "Wallet Connected";
+
+      loadProposals();
+      checkTokenAccess();
+    }
+  }
+});
 
     async function connectWallet() {
       if (!window.ethereum) {
