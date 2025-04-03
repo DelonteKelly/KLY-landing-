@@ -147,32 +147,57 @@
   }
 
 // Token Launch Logic
-document.getElementById("launch-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.getElementById("token-name").value;
-  const symbol = document.getElementById("token-symbol").value;
-  const supply = document.getElementById("initial-supply").value;
-
-  try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const sdk = ThirdwebSDK.fromSigner(signer, "binance");
-
-    const token = await sdk.deployer.deployToken({
-      name,
-      symbol,
-      primary_sale_recipient: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", // Treasury wallet
-      initial_supply: ethers.utils.parseUnits(supply.toString(), 18),
-    });
-
-    document.getElementById("launch-status").innerText = `✅ Token Launched: ${token}`;
-  } catch (err) {
-    console.error("Token launch failed:", err);
-    document.getElementById("launch-status").innerText = "❌ Token launch failed.";
-  }
-});
-</script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script type="module">
-  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk";
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.skypack.dev/ethers";
+
+  const chain = "binance"; // or "binance-testnet"
+  const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // Your KLY treasury
+
+  let sdk;
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    sdk = new ThirdwebSDK(signer, chain);
+    console.log("Wallet connected");
+  }
+
+  window.addEventListener("load", connectWallet);
+
+  document.getElementById("launchBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById("token-name").value;
+    const symbol = document.getElementById("token-symbol").value;
+    const supply = document.getElementById("initial-supply").value;
+
+    if (!name || !symbol || !supply) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    try {
+      const token = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: treasuryWallet,
+        platform_fee_basis_points: 0,
+        platform_fee_recipient: treasuryWallet,
+        total_supply: supply.toString(),
+      });
+
+      document.getElementById("launch-status").innerText =
+        `✅ Token launched at: ${token}`;
+    } catch (err) {
+      console.error(err);
+      document.getElementById("launch-status").innerText =
+        "❌ Token launch failed.";
+    }
+  });
 </script>
