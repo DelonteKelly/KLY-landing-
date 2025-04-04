@@ -393,6 +393,54 @@
       window.location.href = "/course.html";
     });
   </script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+<script>
+  const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const tokenABI = [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [{ "name": "account", "type": "address" }],
+      "name": "balanceOf",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{ "name": "", "type": "uint8" }],
+      "type": "function"
+    }
+  ];
+
+  async function loadTokenStats() {
+    if (window.ethereum) {
+      const web3 = new Web3(window.ethereum);
+      await ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await web3.eth.getAccounts();
+      const token = new web3.eth.Contract(tokenABI, klyTokenAddress);
+
+      const decimals = await token.methods.decimals().call();
+      const supply = await token.methods.totalSupply().call();
+      const balance = await token.methods.balanceOf(accounts[0]).call();
+
+      const formattedSupply = (supply / 10 ** decimals).toLocaleString();
+      const formattedBalance = (balance / 10 ** decimals).toLocaleString();
+
+      document.getElementById("klyTotalSupply").textContent = `${formattedSupply} KLY`;
+      document.getElementById("klyWalletBalance").textContent = `${formattedBalance} KLY`;
+    }
+  }
+
+  window.addEventListener("load", loadTokenStats);
+</script>
 
   <footer style="text-align: center; padding: 2rem; color: #aaa;">
     <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
