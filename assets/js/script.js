@@ -136,3 +136,6 @@ window.addEventListener("DOMContentLoaded", () => {
     window.ethereum.on("chainChanged", () => window.location.reload());
   }
 });
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("connectWallet").onclick = init;
+});
