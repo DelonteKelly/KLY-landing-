@@ -1,8 +1,3 @@
-<!-- Load libraries -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script src="assets/js/script.js"></script>
-<!-- Fix wallet + launch logic -->
 const CONFIG = {
   KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
   STAKING_CONTRACT: "0xa8380b1311B9316dbf87D5110E8CC35BcB835056",
@@ -46,10 +41,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (launchBtn) launchBtn.onclick = launchToken;
 
   async function init() {
-    if (!window.ethereum) {
-      alert("Please install MetaMask.");
-      return;
-    }
+    if (!window.ethereum) return alert("MetaMask required.");
 
     web3 = new Web3(window.ethereum);
     accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -101,63 +93,38 @@ window.addEventListener("DOMContentLoaded", () => {
       totalSupplyEl.textContent = web3.utils.fromWei(supply, "ether");
       userBalanceEl.textContent = web3.utils.fromWei(balance, "ether");
     } catch (e) {
-      showStatus("Error loading stats", true);
+      console.error("Stats load error", e);
     }
   }
 
   async function stakeTokens() {
     const amount = stakeAmountInput.value;
-    if (!amount || parseFloat(amount) <= 0) return showStatus("Enter a valid amount", true);
+    if (!amount || parseFloat(amount) <= 0) return;
     const amountWei = web3.utils.toWei(amount, "ether");
 
-    try {
-      showStatus("Approving...");
-      await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei).send({ from: accounts[0] });
-
-      showStatus("Staking...");
-      await stakingContract.methods.stake(amountWei).send({ from: accounts[0] });
-
-      showStatus("Staked successfully!");
-      stakeAmountInput.value = "";
-      updateStats();
-    } catch (err) {
-      showStatus("Stake failed", true);
-    }
+    await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei).send({ from: accounts[0] });
+    await stakingContract.methods.stake(amountWei).send({ from: accounts[0] });
+    updateStats();
   }
 
   async function claimRewards() {
-    try {
-      showStatus("Claiming rewards...");
-      await stakingContract.methods.claimRewards().send({ from: accounts[0] });
-      showStatus("Rewards claimed!");
-      updateStats();
-    } catch (err) {
-      showStatus("Claim failed", true);
-    }
+    await stakingContract.methods.claimRewards().send({ from: accounts[0] });
+    updateStats();
   }
 
   async function withdrawTokens() {
-    try {
-      showStatus("Withdrawing...");
-      await stakingContract.methods.withdraw().send({ from: accounts[0] });
-      showStatus("Withdrawn successfully!");
-      updateStats();
-    } catch (err) {
-      showStatus("Withdraw failed", true);
-    }
+    await stakingContract.methods.withdraw().send({ from: accounts[0] });
+    updateStats();
   }
 
   async function launchToken() {
     const name = document.getElementById("tokenName").value;
     const symbol = document.getElementById("tokenSymbol").value;
     const supply = document.getElementById("initialSupply").value;
+    if (!name || !symbol || !supply) return (launchStatus.textContent = "Please fill out all fields.");
 
-    if (!name || !symbol || !supply) {
-      return (launchStatus.textContent = "All fields are required.");
-    }
-
-    // Replace this with your actual contract logic
-    launchStatus.textContent = `Launch simulated: ${name} (${symbol}) with ${supply} tokens.`;
+    // Simulate launch for now
+    launchStatus.textContent = `Launching ${name} (${symbol}) with ${supply} tokens... (mocked)`;
   }
 
   function setupListeners() {
@@ -166,18 +133,6 @@ window.addEventListener("DOMContentLoaded", () => {
       updateWalletDisplay();
       updateStats();
     });
-
     window.ethereum.on("chainChanged", () => window.location.reload());
-  }
-
-  function showStatus(message, isError = false) {
-    if (!statusEl) return;
-    statusEl.textContent = message;
-    statusEl.style.display = "block";
-    statusEl.style.background = isError ? "#ff4d4d" : "#00ffe0";
-    statusEl.style.color = isError ? "white" : "black";
-    setTimeout(() => {
-      statusEl.style.display = "none";
-    }, 4000);
   }
 });
