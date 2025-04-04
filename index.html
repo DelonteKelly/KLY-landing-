@@ -1,236 +1,128 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY Token | Kelly Legacy Estates</title>
+  <title>KLY Token Platform</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
   <style>
-    :root {
-      --primary: #00ffe0;
-      --background: #0a0a0a;
-      --accent: #00ffd0;
-      --error: #ff4d4d;
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: var(--background);
-      color: white;
-      scroll-behavior: smooth;
-      padding: 2rem;
-    }
-
-    header {
-      background: #000;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 2rem;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-
-    nav {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    nav a {
-      color: white;
-      text-decoration: none;
-    }
-
-    #connectWallet {
-      background: var(--primary);
-      color: black;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 10px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .hero {
-      text-align: center;
-      margin-bottom: 4rem;
-    }
-
-    .hero h2 {
-      font-size: 2.8rem;
-    }
-
-    .hero p {
-      color: #ccc;
-      font-size: 1.1rem;
-    }
-
-    .hero button {
-      margin-top: 1.5rem;
-      background: var(--primary);
-      color: black;
-      border: none;
-      padding: 1rem 2rem;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    #kly-dashboard-card {
-      background: #0d0d0d;
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: 0 0 25px rgba(0, 255, 200, 0.25);
-      border: 1px solid rgba(0, 255, 200, 0.15);
-      margin: 3rem auto;
-      text-align: left;
-      max-width: 600px;
-    }
-
-    #kly-dashboard-card h2 {
-      color: #00ffe0;
-      font-size: 1.6rem;
-      margin-bottom: 1rem;
-    }
-
-    #kly-dashboard-card p {
-      color: #ccc;
-      margin: 0.4rem 0;
-    }
-
-    .panel {
-      background: #111;
-      border-radius: 16px;
-      padding: 2rem;
-      margin: 2rem auto;
-      max-width: 600px;
-      box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
-    }
-
-    .panel h2 {
-      color: var(--primary);
-    }
-
-    .panel button {
-      padding: 0.8rem 1.2rem;
-      background: var(--primary);
-      color: black;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem;
-      color: #aaa;
-    }
+    body { background: #0c0c0c; color: white; font-family: Inter, sans-serif; margin: 0; padding: 2rem; }
+    header { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 1rem 2rem; }
+    nav a { color: white; margin: 0 10px; text-decoration: none; font-weight: bold; }
+    .hero, section { margin-top: 3rem; text-align: center; }
+    section.panel { background: #111; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px #00ffe066; margin: 2rem auto; max-width: 700px; }
+    input, button { padding: 0.7rem 1rem; margin-top: 1rem; border-radius: 6px; font-size: 1rem; }
+    button { background: #00ffe0; color: #000; border: none; cursor: pointer; }
+    h2 { color: #00ffe0; }
+    p { color: #ccc; }
+    #launchStatus { margin-top: 1rem; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>KLY Token</h1>
-    <nav>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#staking">Staking</a>
-      <a href="#dao">DAO</a>
-      <a href="#course">Course</a>
-      <button id="connectWallet">Connect Wallet</button>
-      <span id="walletAddress" style="margin-left: 10px;"></span>
-    </nav>
-  </header>
+<header>
+  <h1>KLY Token</h1>
+  <nav>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#staking">Staking</a>
+    <a href="#dao">DAO</a>
+    <a href="#course">Course</a>
+    <a href="#launchpad">Launchpad</a>
+  </nav>
+</header>
 
-  <section class="hero">
-    <h2>The Future of Wealth is Tokenized</h2>
-    <p>Kelly Legacy Token (KLY) powers a new economy of education, ownership, and decentralized opportunity.</p>
-    <a href="https://bscscan.com/token/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52" target="_blank">
-      <button>View on BscScan</button>
-    </a>
-  </section>
+<section id="dashboard" class="panel">
+  <h2>KLY Token Dashboard</h2>
+  <p><strong>Total Supply:</strong> <span id="klyTotalSupply">--</span></p>
+  <p><strong>Your Balance:</strong> <span id="klyWalletBalance">--</span></p>
+</section>
 
-  <section id="dashboard">
-    <div id="kly-dashboard-card">
-      <h2>KLY Token Dashboard</h2>
-      <p>Connect your wallet to see real-time KLY token stats and your portfolio summary.</p>
-      <p><strong>Total Supply:</strong> <span id="klyTotalSupply">--</span></p>
-      <p><strong>Your Balance:</strong> <span id="klyWalletBalance">--</span></p>
-    </div>
-  </section>
+<section id="dao" class="panel">
+  <h2>KLY DAO Governance</h2>
+  <p>Participate in decentralized decisions and help shape the future of KLY.</p>
+  <a href="dao.html"><button>Enter DAO</button></a>
+</section>
 
-  <section id="staking" class="panel">
-    <h2>Stake Your KLY</h2>
-    <p>Stake your tokens and earn rewards while contributing to the ecosystem.</p>
-    <button onclick="window.location.href='kly-staking-interface.html'">Go to Staking</button>
-  </section>
+<section id="course" class="panel">
+  <h2>Start the KLY Legacy Course</h2>
+  <p>Learn how to build legacy through tokenization and asset protection.</p>
+  <a href="course.html"><button>Access Course</button></a>
+</section>
 
-  <section id="dao" class="panel">
-    <h2>KLY DAO Governance</h2>
-    <p>Participate in decentralized decisions and help shape the future of KLY.</p>
-    <button onclick="window.location.href='dao.html'">Enter DAO</button>
-  </section>
+<section id="launchpad" class="panel">
+  <h2>Launch Your Own Token</h2>
+  <p>You must hold at least 10,000 KLY to launch.</p>
+  <input type="text" id="tokenName" placeholder="Token Name"/><br/>
+  <input type="text" id="tokenSymbol" placeholder="Token Symbol"/><br/>
+  <input type="number" id="initialSupply" placeholder="Initial Supply"/><br/>
+  <button id="launchTokenBtn">Launch Token</button>
+  <p id="launchStatus"></p>
+</section>
 
-  <section id="course" class="panel">
-    <h2>Start the KLY Legacy Course</h2>
-    <p>Learn the foundations of Web3, tokenization, and legacy wealth creation.</p>
-    <button onclick="window.location.href='course.html'">Access Course</button>
-  </section>
+<script type="module">
+  const sdk = new thirdweb.ThirdwebSDK("binance");
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  let signer;
+  let wallet;
+  const CONFIG = {
+    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+    TREASURY: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"
+  };
 
-  <footer>
-    <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
-  </footer>
+  const tokenABI = [
+    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" }
+  ];
 
-  <script>
-    const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const tokenABI = [
-      { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-      { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-      { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" }
-    ];
+  async function init() {
+    await ethereum.request({ method: "eth_requestAccounts" });
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+    const web3 = new Web3(window.ethereum);
+    const kly = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+    const balance = await kly.methods.balanceOf(wallet).call();
+    const decimals = 18;
+    document.getElementById("klyTotalSupply").textContent = "1,000,000,000 KLY";
+    document.getElementById("klyWalletBalance").textContent = (balance / 10 ** decimals).toLocaleString() + " KLY";
+  }
 
-    let web3;
-    let accounts;
+  document.getElementById("launchTokenBtn").addEventListener("click", async () => {
+    const name = document.getElementById("tokenName").value;
+    const symbol = document.getElementById("tokenSymbol").value;
+    const supply = document.getElementById("initialSupply").value;
+    const status = document.getElementById("launchStatus");
+    if (!name || !symbol || !supply) return status.textContent = "Please fill all fields.";
 
-    async function connectWallet() {
-      if (!window.ethereum) return alert("MetaMask not installed.");
-      web3 = new Web3(window.ethereum);
-      accounts = await ethereum.request({ method: "eth_requestAccounts" });
-      document.getElementById("connectWallet").textContent = accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
-      document.getElementById("walletAddress").textContent = "Connected";
-      loadTokenStats();
+    const web3 = new Web3(window.ethereum);
+    const kly = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+    const balance = await kly.methods.balanceOf(wallet).call();
+    const required = web3.utils.toWei("10000", "ether");
+    if (BigInt(balance) < BigInt(required)) return status.textContent = "Insufficient KLY balance.";
+
+    try {
+      status.textContent = "Deploying token...";
+      const deployed = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: wallet,
+        total_supply: web3.utils.toWei(supply, "ether")
+      });
+
+      const newToken = new web3.eth.Contract(tokenABI, deployed);
+      const treasuryAmount = web3.utils.toWei((supply * 0.05).toString(), "ether");
+      await newToken.methods.transfer(CONFIG.TREASURY, treasuryAmount).send({ from: wallet });
+
+      status.innerHTML = `✅ Token launched at <a href="https://bscscan.com/token/${deployed}" target="_blank">${deployed}</a>`;
+    } catch (err) {
+      console.error(err);
+      status.textContent = "❌ Launch failed. See console.";
     }
+  });
 
-    async function loadTokenStats() {
-      const token = new web3.eth.Contract(tokenABI, klyTokenAddress);
-      const decimals = await token.methods.decimals().call();
-      const supply = await token.methods.totalSupply().call();
-      const balance = await token.methods.balanceOf(accounts[0]).call();
-      const formattedSupply = (supply / 10 ** decimals).toLocaleString();
-      const formattedBalance = (balance / 10 ** decimals).toLocaleString();
-      document.getElementById("klyTotalSupply").textContent = `${formattedSupply} KLY`;
-      document.getElementById("klyWalletBalance").textContent = `${formattedBalance} KLY`;
-    }
+  init();
+</script>
 
-    // Auto connect if previously authorized
-    window.addEventListener("load", async () => {
-      if (window.ethereum) {
-        const savedAccounts = await ethereum.request({ method: "eth_accounts" });
-        if (savedAccounts.length > 0) {
-          connectWallet();
-        }
-      }
-    });
-
-    document.getElementById("connectWallet").addEventListener("click", connectWallet);
-  </script>
 </body>
 </html>
