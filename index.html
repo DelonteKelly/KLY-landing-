@@ -149,15 +149,42 @@
 
   let sdk, signer, wallet;
 
+  // Connect Wallet Button Logic
+  document.getElementById("connectWallet").addEventListener("click", async () => {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask to connect your wallet.");
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+
+      sdk = new ThirdwebSDK(signer);
+
+      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      alert("Wallet connection failed. See console for details.");
+    }
+  });
+
+  // Initialize if wallet already connected
   async function init() {
-    if (!window.ethereum) return alert("Please install MetaMask.");
+    if (!window.ethereum) return;
 
     const provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    wallet = await signer.getAddress();
+    const accounts = await provider.send("eth_accounts", []);
 
-    sdk = new ThirdwebSDK(signer);
+    if (accounts.length > 0) {
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+      sdk = new ThirdwebSDK(signer);
+
+      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    }
 
     document.getElementById("launchTokenBtn").addEventListener("click", launchToken);
   }
