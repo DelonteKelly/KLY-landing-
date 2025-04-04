@@ -277,173 +277,70 @@
   <!-- Load external logic AFTER the form and inputs -->
 <script type="module" src="klytokenlauncher.js"></script>
 
-  <script>
-    const CONFIG = {
-      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-      STAKING_CONTRACT: "0xa8380b1311B9316dbf87D5110E8CC35BcB835056"
-    };
+  <section id="kly-dashboard-card">
+  <h2>KLY Token Dashboard</h2>
+  <p>Connect your wallet to see real-time KLY token stats and your portfolio summary.</p>
+  <p><strong>Total Supply:</strong> <span id="klyTotalSupply">--</span></p>
+  <p><strong>Your Balance:</strong> <span id="klyWalletBalance">--</span></p>
+</section>
 
-    const tokenABI = [
-      { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-      { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-      { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
-    ];
+<style>
+  #kly-dashboard-card {
+    background: #0d0d0d;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 0 25px rgba(0, 255, 200, 0.25);
+    border: 1px solid rgba(0, 255, 200, 0.15);
+    margin-top: 3rem;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 
-    const stakingABI = [
-      { "constant": false, "inputs": [{ "name": "amount", "type": "uint256" }], "name": "stake", "outputs": [], "type": "function" },
-      { "constant": false, "inputs": [], "name": "claimRewards", "outputs": [], "type": "function" },
-      { "constant": false, "inputs": [], "name": "withdraw", "outputs": [], "type": "function" }
-    ];
+  #kly-dashboard-card h2 {
+    color: #00ffe0;
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+  }
 
-    let web3;
-    let accounts = [];
-    let klyTokenContract;
-    let stakingContract;
+  #kly-dashboard-card p {
+    color: #ccc;
+    margin: 0.4rem 0;
+  }
+</style>
 
-    const connectBtn = document.getElementById("connectWallet");
-    const walletDisplay = document.getElementById("walletAddress");
-    const totalSupplyEl = document.getElementById("totalSupply");
-    const userBalanceEl = document.getElementById("userBalance");
-    const stakeInput = document.getElementById("stakeAmount");
-    const stakeBtn = document.getElementById("stakeButton");
-    const claimBtn = document.getElementById("claimButton");
-    const withdrawBtn = document.getElementById("withdrawButton");
-    const statusEl = document.getElementById("transactionStatus");
-
-    connectBtn.onclick = connectWallet;
-    stakeBtn.onclick = stakeTokens;
-    claimBtn.onclick = claimRewards;
-    withdrawBtn.onclick = withdrawTokens;
-
-    async function connectWallet() {
-      if (!window.ethereum) return alert("MetaMask not detected.");
-      web3 = new Web3(window.ethereum);
-      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-
-      klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
-      stakingContract = new web3.eth.Contract(stakingABI, CONFIG.STAKING_CONTRACT);
-
-      connectBtn.textContent = accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
-      walletDisplay.textContent = "Connected";
-
-      updateStats();
-    }
-
-    async function updateStats() {
-      try {
-        const [supply, balance] = await Promise.all([
-          klyTokenContract.methods.totalSupply().call(),
-          klyTokenContract.methods.balanceOf(accounts[0]).call()
-        ]);
-        totalSupplyEl.textContent = web3.utils.fromWei(supply) + " KLY";
-        userBalanceEl.textContent = web3.utils.fromWei(balance) + " KLY";
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function stakeTokens() {
-      const amount = stakeInput.value;
-      if (!amount || parseFloat(amount) <= 0) return;
-      const amountWei = web3.utils.toWei(amount, "ether");
-      try {
-        showStatus("Approving...");
-        await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei).send({ from: accounts[0] });
-        showStatus("Staking...");
-        await stakingContract.methods.stake(amountWei).send({ from: accounts[0] });
-        showStatus("Staked!");
-        updateStats();
-      } catch (err) {
-        showStatus("Staking failed", true);
-      }
-    }
-
-    async function claimRewards() {
-      try {
-        showStatus("Claiming...");
-        await stakingContract.methods.claimRewards().send({ from: accounts[0] });
-        showStatus("Rewards claimed!");
-        updateStats();
-      } catch (err) {
-        showStatus("Claim failed", true);
-      }
-    }
-
-    async function withdrawTokens() {
-      try {
-        showStatus("Withdrawing...");
-        await stakingContract.methods.withdraw().send({ from: accounts[0] });
-        showStatus("Withdrawn!");
-        updateStats();
-      } catch (err) {
-        showStatus("Withdraw failed", true);
-      }
-    }
-
-    function showStatus(msg, error = false) {
-      statusEl.textContent = msg;
-      statusEl.style.display = "block";
-      statusEl.style.background = error ? "red" : "#00ffe0";
-      setTimeout(() => {
-        statusEl.style.display = "none";
-      }, 4000);
-    }
-
-    document.getElementById("startCourseBtn").addEventListener("click", () => {
-      window.location.href = "/course.html";
-    });
-  </script>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 <script>
   const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const tokenABI = [
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "totalSupply",
-      "outputs": [{ "name": "", "type": "uint256" }],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [{ "name": "account", "type": "address" }],
-      "name": "balanceOf",
-      "outputs": [{ "name": "", "type": "uint256" }],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [{ "name": "", "type": "uint8" }],
-      "type": "function"
-    }
+    { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" }
   ];
 
-  async function loadTokenStats() {
-    if (window.ethereum) {
-      const web3 = new Web3(window.ethereum);
-      await ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      const token = new web3.eth.Contract(tokenABI, klyTokenAddress);
+  let web3;
+  let accounts;
 
-      const decimals = await token.methods.decimals().call();
-      const supply = await token.methods.totalSupply().call();
-      const balance = await token.methods.balanceOf(accounts[0]).call();
-
-      const formattedSupply = (supply / 10 ** decimals).toLocaleString();
-      const formattedBalance = (balance / 10 ** decimals).toLocaleString();
-
-      document.getElementById("klyTotalSupply").textContent = `${formattedSupply} KLY`;
-      document.getElementById("klyWalletBalance").textContent = `${formattedBalance} KLY`;
-    }
+  async function connectWallet() {
+    if (!window.ethereum) return alert("MetaMask not installed.");
+    web3 = new Web3(window.ethereum);
+    accounts = await ethereum.request({ method: "eth_requestAccounts" });
+    document.getElementById("connectWallet").textContent = accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+    document.getElementById("walletAddress").textContent = "Connected";
+    loadTokenStats();
   }
 
-  window.addEventListener("load", loadTokenStats);
-</script>
+  async function loadTokenStats() {
+    const token = new web3.eth.Contract(tokenABI, klyTokenAddress);
+    const decimals = await token.methods.decimals().call();
+    const supply = await token.methods.totalSupply().call();
+    const balance = await token.methods.balanceOf(accounts[0]).call();
+    const formattedSupply = (supply / 10 ** decimals).toLocaleString();
+    const formattedBalance = (balance / 10 ** decimals).toLocaleString();
+    document.getElementById("klyTotalSupply").textContent = `${formattedSupply} KLY`;
+    document.getElementById("klyWalletBalance").textContent = `${formattedBalance} KLY`;
+  }
 
-  <footer style="text-align: center; padding: 2rem; color: #aaa;">
-    <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
-  </footer>
-</body>
-</html>
+  document.getElementById("connectWallet").addEventListener("click", connectWallet);
+</script>
