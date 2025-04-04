@@ -14,11 +14,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const walletSpan = document.getElementById("walletAddress");
   const totalSupplyEl = document.getElementById("klyTotalSupply");
   const userBalanceEl = document.getElementById("klyWalletBalance");
-  const stakeAmountInput = document.getElementById("stakeAmount");
+
   const stakeBtn = document.getElementById("stakeButton");
   const claimBtn = document.getElementById("claimButton");
   const withdrawBtn = document.getElementById("withdrawButton");
-  const statusEl = document.getElementById("transactionStatus");
+  const stakeAmountInput = document.getElementById("stakeAmount");
   const launchBtn = document.getElementById("launchTokenBtn");
   const launchStatus = document.getElementById("launchStatus");
 
@@ -41,47 +41,23 @@ window.addEventListener("DOMContentLoaded", () => {
   if (launchBtn) launchBtn.onclick = launchToken;
 
   async function init() {
-    if (!window.ethereum) return alert("MetaMask required.");
+    if (!window.ethereum) {
+      alert("MetaMask is not installed.");
+      return;
+    }
 
     web3 = new Web3(window.ethereum);
     accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    await switchToBSC();
 
     klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
     stakingContract = new web3.eth.Contract(stakingABI, CONFIG.STAKING_CONTRACT);
 
-    updateWalletDisplay();
-    updateStats();
-    setupListeners();
-  }
-
-  async function switchToBSC() {
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }]
-      });
-    } catch (e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: "0x38",
-            chainName: "BNB Smart Chain",
-            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-            rpcUrls: ["https://bsc-dataseed.binance.org/"],
-            blockExplorerUrls: ["https://bscscan.com"]
-          }]
-        });
-      }
-    }
-  }
-
-  function updateWalletDisplay() {
+    // Update UI
     const short = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
     connectBtn.textContent = short;
-    connectBtn.classList.add("connected");
     if (walletSpan) walletSpan.textContent = short;
+
+    updateStats();
   }
 
   async function updateStats() {
@@ -90,20 +66,23 @@ window.addEventListener("DOMContentLoaded", () => {
         klyTokenContract.methods.totalSupply().call(),
         klyTokenContract.methods.balanceOf(accounts[0]).call()
       ]);
+
       totalSupplyEl.textContent = web3.utils.fromWei(supply, "ether");
       userBalanceEl.textContent = web3.utils.fromWei(balance, "ether");
-    } catch (e) {
-      console.error("Stats load error", e);
+    } catch (err) {
+      console.error("Stats error:", err);
     }
   }
 
   async function stakeTokens() {
     const amount = stakeAmountInput.value;
     if (!amount || parseFloat(amount) <= 0) return;
+
     const amountWei = web3.utils.toWei(amount, "ether");
 
     await klyTokenContract.methods.approve(CONFIG.STAKING_CONTRACT, amountWei).send({ from: accounts[0] });
     await stakingContract.methods.stake(amountWei).send({ from: accounts[0] });
+
     updateStats();
   }
 
@@ -121,21 +100,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const name = document.getElementById("tokenName").value;
     const symbol = document.getElementById("tokenSymbol").value;
     const supply = document.getElementById("initialSupply").value;
-    if (!name || !symbol || !supply) return (launchStatus.textContent = "Please fill out all fields.");
 
-    // Simulate launch for now
-    launchStatus.textContent = `Launching ${name} (${symbol}) with ${supply} tokens... (mocked)`;
-  }
+    if (!name || !symbol || !supply) {
+      launchStatus.textContent = "Please fill out all fields.";
+      return;
+    }
 
-  function setupListeners() {
-    window.ethereum.on("accountsChanged", (acc) => {
-      accounts = acc;
-      updateWalletDisplay();
-      updateStats();
-    });
-    window.ethereum.on("chainChanged", () => window.location.reload());
+    launchStatus.textContent = `Launching ${name} (${symbol}) with ${supply} tokens... (simulated)`;
   }
-});
-window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("connectWallet").onclick = init;
 });
