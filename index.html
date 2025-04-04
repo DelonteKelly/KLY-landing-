@@ -272,6 +272,87 @@
     if (connectBtn) connectBtn.addEventListener("click", connectWallet);
   });
 </script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+<script>
+  const CONFIG = {
+    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+  };
+
+  const tokenABI = [
+    {
+      constant: true,
+      inputs: [],
+      name: "totalSupply",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
+    },
+    {
+      constant: true,
+      inputs: [{ name: "account", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
+    },
+    {
+      constant: true,
+      inputs: [],
+      name: "decimals",
+      outputs: [{ name: "", type: "uint8" }],
+      type: "function"
+    }
+  ];
+
+  let web3;
+  let wallet;
+  let tokenContract;
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
+      wallet = accounts[0];
+
+      const shortWallet = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("walletAddress").textContent = shortWallet;
+
+      // Initialize token contract
+      tokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+
+      // Load token stats
+      loadTokenStats();
+    } catch (err) {
+      console.error("Wallet connect failed:", err);
+      document.getElementById("walletAddress").textContent = "Connection failed";
+    }
+  }
+
+  async function loadTokenStats() {
+    try {
+      const decimals = await tokenContract.methods.decimals().call();
+      const supply = await tokenContract.methods.totalSupply().call();
+      const balance = await tokenContract.methods.balanceOf(wallet).call();
+
+      const formattedSupply = (supply / 10 ** decimals).toLocaleString();
+      const formattedBalance = (balance / 10 ** decimals).toLocaleString();
+
+      document.getElementById("klyTotalSupply").textContent = `${formattedSupply} KLY`;
+      document.getElementById("klyWalletBalance").textContent = `${formattedBalance} KLY`;
+    } catch (err) {
+      console.error("Error loading token stats:", err);
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const connectBtn = document.getElementById("connectWallet");
+    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
+  });
+</script>
   <footer style="text-align: center; margin-top: 3rem; color: #777;">
   &copy; 2025 Kelly Legacy Estates — All Rights Reserved
 </footer>
