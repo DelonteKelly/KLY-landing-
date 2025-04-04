@@ -20,6 +20,13 @@ const tokenABI = [
     name: "decimals",
     outputs: [{ name: "", type: "uint8" }],
     type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
   }
 ];
 
@@ -43,7 +50,7 @@ async function connectWallet() {
   wallet = accounts[0];
 
   document.getElementById("connectWallet").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-  document.getElementById("walletAddress").textContent = "Connected";
+  document.getElementById("walletAddress").textContent = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
 
   klyTokenContract = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
   nftContract = new web3.eth.Contract(nftABI, CONFIG.NFT_CONTRACT_ADDRESS);
