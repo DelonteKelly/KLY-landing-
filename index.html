@@ -125,6 +125,73 @@
 
   init();
 </script>
+  <script>
+  const tokenABI = [
+    {
+      constant: true,
+      inputs: [],
+      name: "totalSupply",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
+    },
+    {
+      constant: true,
+      inputs: [{ name: "account", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
+    },
+    {
+      constant: true,
+      inputs: [],
+      name: "decimals",
+      outputs: [{ name: "", type: "uint8" }],
+      type: "function"
+    }
+  ];
+
+  const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+  let web3;
+  let accounts;
+
+  async function connectWallet() {
+    if (!window.ethereum) return alert("MetaMask is not installed.");
+    web3 = new Web3(window.ethereum);
+    await ethereum.request({ method: "eth_requestAccounts" });
+    accounts = await web3.eth.getAccounts();
+
+    // Update UI
+    document.getElementById("connectWallet").textContent =
+      accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+
+    loadTokenStats();
+  }
+
+  async function loadTokenStats() {
+    const token = new web3.eth.Contract(tokenABI, klyTokenAddress);
+    const decimals = await token.methods.decimals().call();
+    const supply = await token.methods.totalSupply().call();
+    const balance = await token.methods.balanceOf(accounts[0]).call();
+
+    document.getElementById("klyTotalSupply").textContent =
+      (supply / 10 ** decimals).toLocaleString() + " KLY";
+    document.getElementById("klyWalletBalance").textContent =
+      (balance / 10 ** decimals).toLocaleString() + " KLY";
+  }
+
+  // Auto-connect if already authorized
+  window.addEventListener("load", async () => {
+    if (window.ethereum) {
+      const existing = await ethereum.request({ method: "eth_accounts" });
+      if (existing.length > 0) {
+        connectWallet();
+      }
+    }
+  });
+
+  document.getElementById("connectWallet").addEventListener("click", connectWallet);
+</script>
 
 </body>
 </html>
