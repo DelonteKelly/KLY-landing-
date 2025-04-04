@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stake KLY Tokens</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <style>
+    body {
+      background-color: #0a0a0a;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      padding: 2rem;
+      text-align: center;
+    }
+    h1 {
+      color: #00ffe0;
+    }
+    input, button {
+      padding: 0.8rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background: #00ffe0;
+      color: #000;
+      cursor: pointer;
+    }
+    .panel {
+      background: #111;
+      border-radius: 12px;
+      box-shadow: 0 0 16px #00ffe088;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
+    #status {
+      margin-top: 1rem;
+      color: #0f0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Stake KLY Tokens</h1>
+
+<div class="panel">
+  <p>Wallet: <span id="walletAddress">Not connected</span></p>
+  <input type="number" id="stakeAmount" placeholder="Amount to Stake">
+  <button onclick="stakeKLY()">Stake</button><br/>
+  <button onclick="claimRewards()">Claim Rewards</button>
+  <button onclick="withdrawStake()">Withdraw</button>
+  <p id="status"></p>
+</div>
+
+<script>
+  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0"; // Liquidity Pool contract
+  const ABI = [
+    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+  ];
+
+  const TOKEN_ABI = [
+    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+  ];
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+  let web3, wallet, contract, token;
+
+  async function connect() {
+    if (!window.ethereum) return alert("Please install MetaMask.");
+    web3 = new Web3(window.ethereum);
+    await ethereum.request({ method: "eth_requestAccounts" });
+    const accounts = await web3.eth.getAccounts();
+    wallet = accounts[0];
+    document.getElementById("walletAddress").textContent = wallet.slice(0,6) + "..." + wallet.slice(-4);
+    contract = new web3.eth.Contract(ABI, STAKE_CONTRACT);
+    token = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
+  }
+
+  async function stakeKLY() {
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount) return alert("Enter amount to stake");
+
+    const amountWei = web3.utils.toWei(amount, "ether");
+    document.getElementById("status").textContent = "Approving KLY...";
+
+    await token.methods.approve(STAKE_CONTRACT, amountWei).send({ from: wallet });
+
+    document.getElementById("status").textContent = "Staking KLY...";
+    await contract.methods.stake(amountWei).send({ from: wallet });
+    document.getElementById("status").textContent = "✅ Staked successfully!";
+  }
+
+  async function claimRewards() {
+    document.getElementById("status").textContent = "Claiming rewards...";
+    await contract.methods.claim().send({ from: wallet });
+    document.getElementById("status").textContent = "✅ Rewards claimed!";
+  }
+
+  async function withdrawStake() {
+    document.getElementById("status").textContent = "Withdrawing stake...";
+    await contract.methods.withdraw().send({ from: wallet });
+    document.getElementById("status").textContent = "✅ Stake withdrawn!";
+  }
+
+  window.addEventListener("load", connect);
+</script>
+
+</body>
+</html>
