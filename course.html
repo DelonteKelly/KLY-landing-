@@ -207,15 +207,14 @@
     const sdk = new thirdweb.ThirdwebSDK("binance", { signer });
     const nftContract = await sdk.getContract(CONFIG.NFT_CONTRACT_ADDRESS);
 
-    // Confirm method name exists (check contract in Remix or BscScan ABI viewer)
-    // You can use `nftContract.call("functionName", [...args])`
-    const result = await nftContract.call("mint", [
-      wallet,
-      -887220,       // tickLower (Uniswap full range)
-      887220,        // tickUpper
-      "1000000000000000000", // amount (1e18 for 1 full token if expecting uint128)
-      "0x"
-    ]);
+    await nftContract.call("mintTo", [wallet]);
+
+    document.getElementById("mintStatus").textContent = "NFT successfully minted!";
+  } catch (err) {
+    console.error("Minting failed:", err);
+    document.getElementById("mintStatus").textContent = "❌ Mint failed: " + err.message;
+  }
+});
 
     console.log("Mint result:", result);
     document.getElementById("mintStatus").textContent = "NFT successfully minted!";
