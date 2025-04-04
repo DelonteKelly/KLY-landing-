@@ -1,8 +1,7 @@
 <!-- Load libraries -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
-<script src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="script.js"></script>
 <!-- Fix wallet + launch logic -->
 const CONFIG = {
   KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
