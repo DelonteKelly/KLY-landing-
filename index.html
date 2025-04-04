@@ -240,6 +240,38 @@
 
   init();
 </script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+<script>
+  let web3;
+  let wallet;
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
+      wallet = accounts[0];
+
+      const shortWallet = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("walletAddress").textContent = shortWallet;
+
+      sessionStorage.setItem("wallet", wallet);
+    } catch (err) {
+      console.error("Wallet connect failed:", err);
+      document.getElementById("walletAddress").textContent = "Connection failed";
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const connectBtn = document.getElementById("connectWallet");
+    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
+  });
+</script>
   <footer style="text-align: center; margin-top: 3rem; color: #777;">
   &copy; 2025 Kelly Legacy Estates — All Rights Reserved
 </footer>
