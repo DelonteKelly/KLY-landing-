@@ -244,3 +244,56 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+const CONFIG = {
+  KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+  CHAIN_ID: 56 // BNB Smart Chain
+};
+
+let web3;
+let accounts = [];
+
+const tokenABI = [
+  {
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }
+];
+
+window.addEventListener("DOMContentLoaded", () => {
+  const verifyBtn = document.getElementById("verifyAccess");
+  const accessStatus = document.getElementById("accessStatus");
+
+  if (verifyBtn) {
+    verifyBtn.addEventListener("click", async () => {
+      try {
+        if (!window.ethereum) {
+          throw new Error("MetaMask not found. Please install it.");
+        }
+
+        web3 = new Web3(window.ethereum);
+        accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+
+        const chainId = await web3.eth.getChainId();
+        if (chainId !== CONFIG.CHAIN_ID) {
+          throw new Error("Please switch to BNB Smart Chain.");
+        }
+
+        const kly = new web3.eth.Contract(tokenABI, CONFIG.KLY_TOKEN);
+        const balance = await kly.methods.balanceOf(accounts[0]).call();
+        const balanceEth = web3.utils.fromWei(balance, "ether");
+
+        if (parseFloat(balanceEth) >= 500) {
+          accessStatus.textContent = `Access granted! You hold ${balanceEth} KLY.`;
+        } else {
+          accessStatus.textContent = `Access denied. You only have ${balanceEth} KLY.`;
+        }
+      } catch (err) {
+        console.error(err);
+        accessStatus.textContent = err.message;
+      }
+    });
+  }
+});
