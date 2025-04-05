@@ -4,14 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Token Platform</title>
+
+  <!-- Fonts and Web3 Libraries -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js"></script>
+  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
+
   <style>
     body { background: #0c0c0c; color: white; font-family: Inter, sans-serif; margin: 0; padding: 2rem; }
-    header { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 1rem 2rem; }
-    nav a { color: white; margin: 0 10px; text-decoration: none; font-weight: bold; }
+    header { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 1rem 2rem; flex-wrap: wrap; }
+    nav a, nav button { color: white; margin: 0 10px; text-decoration: none; font-weight: bold; background: none; border: none; cursor: pointer; }
+    nav span { color: #0f0; font-weight: bold; }
     .hero, section { margin-top: 3rem; text-align: center; }
     section.panel { background: #111; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px #00ffe066; margin: 2rem auto; max-width: 700px; }
     input, button { padding: 0.7rem 1rem; margin-top: 1rem; border-radius: 6px; font-size: 1rem; }
@@ -25,15 +29,15 @@
 
 <header>
   <h1>KLY Token</h1>
-<nav>
-  <a href="index.html#dashboard">Dashboard</a>
-  <a href="stake.html">Staking</a>
-  <a href="dao.html">DAO</a>
-  <a href="course.html">Course</a>
-  <a href="launchpad.html">Launchpad</a>
-  <button id="connectWallet">Connect Wallet</button>
-  <span id="walletAddress"></span>
-</nav>
+  <nav>
+    <a href="#dashboard">Dashboard</a>
+    <a href="stake.html">Staking</a>
+    <a href="dao.html">DAO</a>
+    <a href="course.html">Course</a>
+    <a href="launchpad.html">Launchpad</a>
+    <button id="connectWallet">Connect Wallet</button>
+    <span id="walletAddress"></span>
+  </nav>
 </header>
 
 <section class="hero">
@@ -42,42 +46,6 @@
     <p>Kelly Legacy Token (KLY) powers a new economy of education, ownership, and decentralized opportunity.</p>
   </div>
 </section>
-
-<style>
-  .hero {
-    padding: 4rem 2rem;
-    background: radial-gradient(circle at top, #101010 0%, #0a0a0a 100%);
-    text-align: center;
-    box-shadow: 0 0 30px rgba(0, 255, 200, 0.2);
-    border-radius: 16px;
-    margin: 3rem auto;
-    max-width: 800px;
-  }
-
-  .hero h2 {
-    font-size: 2.5rem;
-    color: #00ffe0;
-    margin-bottom: 1rem;
-    animation: glow-text 2s ease-in-out infinite alternate;
-  }
-
-  .hero p {
-    font-size: 1.1rem;
-    color: #ccc;
-    line-height: 1.6;
-    max-width: 700px;
-    margin: auto;
-  }
-
-  @keyframes glow-text {
-    from {
-      text-shadow: 0 0 10px rgba(0, 255, 224, 0.4);
-    }
-    to {
-      text-shadow: 0 0 25px rgba(0, 255, 224, 0.8);
-    }
-  }
-</style>
 
 <section id="dashboard" class="panel">
   <h2>KLY Token Dashboard</h2>
@@ -103,11 +71,11 @@
   <a href="course.html"><button>Access Course</button></a>
 </section>
 
-  
-<!-- Final Web3 + KLY Logic -->
-<script type="module" src="assets/js/script.js"></script>
-  <script>
-  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // Your KLY Token address
+<!-- Final Web3 Logic -->
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const KLY_ABI = [
     {
       "constant": true,
@@ -134,13 +102,7 @@
 
   let provider, signer, wallet;
 
-  // Function to connect wallet
   async function connectWallet() {
-    if (!window.ethereum) {
-      alert("MetaMask not detected.");
-      return;
-    }
-
     try {
       provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
@@ -148,35 +110,38 @@
       wallet = await signer.getAddress();
 
       document.getElementById("connectWallet").innerText = "Wallet Connected";
-      document.getElementById("walletAddress").innerText = wallet;
+      document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
 
       loadKLYTokenStats();
     } catch (err) {
-      console.error("Connection error:", err);
+      console.error("Wallet connection error:", err);
+      alert("Failed to connect wallet.");
     }
   }
 
-  // Load KLY token stats
   async function loadKLYTokenStats() {
-    const klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+    try {
+      const contract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+      const [decimals, userBal, totalSup] = await Promise.all([
+        contract.decimals(),
+        contract.balanceOf(wallet),
+        contract.totalSupply()
+      ]);
 
-    const [decimals, userBalanceRaw, totalSupplyRaw] = await Promise.all([
-      klyContract.decimals(),
-      klyContract.balanceOf(wallet),
-      klyContract.totalSupply()
-    ]);
+      const userBalance = ethers.formatUnits(userBal, decimals);
+      const totalSupply = ethers.formatUnits(totalSup, decimals);
 
-    const userBalance = ethers.formatUnits(userBalanceRaw, decimals);
-    const totalSupply = ethers.formatUnits(totalSupplyRaw, decimals);
-
-    document.getElementById("userKLY").innerText = parseFloat(userBalance).toFixed(2);
-    document.getElementById("totalKLY").innerText = parseFloat(totalSupply).toLocaleString();
+      document.getElementById("klyWalletBalance").innerText = `${parseFloat(userBalance).toFixed(2)} KLY`;
+      document.getElementById("klyTotalSupply").innerText = `${parseFloat(totalSupply).toLocaleString()} KLY`;
+    } catch (err) {
+      console.error("Failed to load token stats:", err);
+    }
   }
 
-  // Add event listener to connect button
   window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("connectWallet").onclick = connectWallet;
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
   });
 </script>
+
 </body>
 </html>
