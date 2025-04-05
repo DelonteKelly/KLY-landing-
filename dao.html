@@ -2,62 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KLY DAO Voting</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KLY DAO Governance</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
+  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk"></script>
   <style>
     body {
-      background-color: #0d0d0d;
-      color: #ffffff;
-      font-family: 'Inter', sans-serif;
+      background: #0c0c0c;
+      color: #00ffe0;
+      font-family: Arial, sans-serif;
+      text-align: center;
       padding: 2rem;
     }
-    h1, h2 {
-      color: #00ffe0;
-      text-align: center;
-    }
-    #connectBtn {
+    button {
       background: #00ffe0;
       color: #000;
-      font-weight: bold;
+      padding: 0.7rem 1.2rem;
       border: none;
-      padding: 10px 16px;
       border-radius: 6px;
+      font-size: 1rem;
       cursor: pointer;
-      display: block;
-      margin: 0 auto 20px;
+    }
+    input {
+      padding: 0.5rem;
+      width: 80%;
+      border-radius: 6px;
+      border: none;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    #proposals {
+      margin-top: 2rem;
     }
     .proposal {
       background: #111;
-      border: 1px solid #333;
+      color: white;
+      padding: 1rem;
       border-radius: 10px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 0 12px #00ffe044;
+      margin: 1rem auto;
+      width: 90%;
+      max-width: 500px;
+      text-align: left;
     }
-    .proposal h3 {
-      color: #fdd835;
-    }
-    .proposal p {
-      margin: 0.5rem 0;
-    }
-    .proposal button {
-      margin-right: 10px;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background-color: #00ffe0;
-      color: #000;
-      font-weight: bold;
-    }
-    #walletStatus {
-      text-align: center;
-      margin-bottom: 2rem;
-      font-size: 0.9rem;
-      color: #888;
+    h1, h2, h3 {
+      color: #00ffe0;
     }
   </style>
 </head>
@@ -65,35 +53,30 @@
 
   <h1>KLY DAO Governance</h1>
   <button id="connectBtn">Connect Wallet</button>
-  <p id="walletStatus"></p>
+  <p id="walletDisplay"></p>
 
-  <section id="createProposal" style="display:none; margin-bottom: 2rem;">
-  <h2>Create New Proposal</h2>
-  <input type="text" id="proposalDescription" placeholder="Enter your proposal..." style="width:100%; padding:10px; border-radius:6px; margin-bottom:10px;" />
-  <button onclick="submitProposal()">Submit Proposal</button>
-  <p id="proposalStatus"></p>
-</section>
+  <h2>DAO Proposals</h2>
+  <div id="proposals">Loading...</div>
 
-  <section id="proposalList">
-    <h2>DAO Proposals</h2>
-    <!-- Proposals will be injected here -->
-  </section>
+  <div id="createProposal" style="display:none; margin-top: 3rem;">
+    <h3>Create a New Proposal</h3>
+    <input type="text" id="proposalDescription" placeholder="Enter proposal description"/>
+    <br/>
+    <button onclick="submitProposal()">Submit Proposal</button>
+    <p id="proposalStatus"></p>
+  </div>
 
   <script type="module">
     import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
     import { ethers } from "https://cdn.skypack.dev/ethers";
 
-    const voteAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-
+    const voteAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Your DAO Voting Contract Address
     let sdk, signer, wallet;
 
+    // === Connect Wallet ===
     async function connectWallet() {
-      if (!window.ethereum) {
-        alert("MetaMask not found.");
-        return;
-      }
-
       try {
+        if (!window.ethereum) throw new Error("MetaMask not found.");
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
@@ -101,76 +84,85 @@
 
         sdk = new ThirdwebSDK("binance", { signer });
 
-        document.getElementById("connectBtn").innerText = "Wallet Connected";
-        document.getElementById("walletStatus").innerText = `Connected: ${wallet}`;
+        document.getElementById("connectBtn").textContent = "Wallet Connected";
+        document.getElementById("walletDisplay").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+        document.getElementById("createProposal").style.display = "block";
+
         loadProposals();
       } catch (err) {
-        console.error("Wallet connection failed:", err);
+        console.error("Connect Error:", err);
+        alert("Failed to connect wallet");
       }
     }
 
+    // === Load Proposals ===
     async function loadProposals() {
       try {
         const vote = await sdk.getContract(voteAddress, "vote");
         const proposals = await vote.getAll();
 
-        const list = document.getElementById("proposalList");
-        list.innerHTML = "<h2>DAO Proposals</h2>";
+        const container = document.getElementById("proposals");
+        container.innerHTML = proposals.length ? "" : "No proposals yet.";
 
-        proposals.forEach((p) => {
+        proposals.forEach((p, index) => {
           const div = document.createElement("div");
           div.className = "proposal";
           div.innerHTML = `
-            <h3>${p.description}</h3>
-            <p><strong>Status:</strong> ${p.state === 1 ? "Active" : "Closed"}</p>
-            ${p.state === 1 ? `
-              <button onclick="voteOn('${p.proposalId}', 1)">Yes</button>
-              <button onclick="voteOn('${p.proposalId}', 0)">No</button>
-            ` : `<p><em>Voting Closed</em></p>`}
+            <strong>#${p.proposalId}:</strong> ${p.description}<br/>
+            <em>Status:</em> ${p.state}<br/>
+            <button onclick="voteOn(${p.proposalId}, 1)">Vote For</button>
+            <button onclick="voteOn(${p.proposalId}, 0)">Vote Against</button>
           `;
-          list.appendChild(div);
+          container.appendChild(div);
         });
       } catch (err) {
-        console.error("Error loading proposals:", err);
-        alert("Failed to load DAO proposals.");
+        console.error("Load Proposals Error:", err);
+        document.getElementById("proposals").textContent = "Error loading proposals.";
       }
     }
 
+    // === Submit Proposal ===
+    window.submitProposal = async function () {
+      const input = document.getElementById("proposalDescription");
+      const status = document.getElementById("proposalStatus");
+      const description = input.value.trim();
+
+      if (!description) {
+        status.textContent = "Proposal description required.";
+        return;
+      }
+
+      try {
+        const vote = await sdk.getContract(voteAddress, "vote");
+        status.textContent = "Submitting proposal...";
+        await vote.propose(description);
+        status.textContent = "Proposal submitted!";
+        input.value = "";
+        loadProposals();
+      } catch (err) {
+        console.error("Proposal Error:", err);
+        status.textContent = "Failed to submit proposal.";
+      }
+    };
+
+    // === Vote On Proposal ===
     window.voteOn = async function (proposalId, voteType) {
       try {
         const vote = await sdk.getContract(voteAddress, "vote");
         await vote.vote(proposalId, voteType);
         alert("Vote submitted!");
-        loadProposals(); // Reload UI
+        loadProposals();
       } catch (err) {
-        console.error("Vote error:", err);
+        console.error("Vote Error:", err);
         alert("Voting failed.");
       }
-    }
-    window.submitProposal = async function () {
-  const input = document.getElementById("proposalDescription");
-  const status = document.getElementById("proposalStatus");
-  const description = input.value.trim();
+    };
 
-  if (!description) {
-    status.textContent = "Please enter a proposal description.";
-    return;
-  }
-
-  try {
-    const vote = await sdk.getContract(voteAddress, "vote");
-    status.textContent = "Submitting proposal...";
-    await vote.propose(description);
-    status.textContent = "Proposal submitted successfully!";
-    input.value = "";
-    loadProposals();
-  } catch (err) {
-    console.error("Proposal submission error:", err);
-    status.textContent = "Failed to submit proposal.";
-  }
-};
- 
-    document.getElementById("connectBtn").onclick = connectWallet;
+    // === Initialize ===
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("connectBtn").addEventListener("click", connectWallet);
+    });
   </script>
+
 </body>
 </html>
