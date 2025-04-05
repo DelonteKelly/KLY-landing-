@@ -1,25 +1,27 @@
-
+<script type="module">
 import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-// === Config ===
-const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+const CONFIG = {
+  KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+  NFT_CONTRACT: "0xDA76d35742190283E340dbeE2038ecc978a56950",
+  CHAIN_ID: 56
+};
 
 const KLY_ABI = [
   {
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
+    "constant": true,
+    "inputs": [{ "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function"
   },
   {
-    constant: true,
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
+    "constant": true,
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function"
   }
 ];
 
@@ -34,23 +36,20 @@ async function connectWallet() {
     wallet = await signer.getAddress();
     sdk = ThirdwebSDK.fromSigner(signer, "binance");
 
-    // Display connected address
-    document.getElementById("accessStatus").innerText = `Wallet connected: ${wallet}`;
-    document.getElementById("connectWalletBtn").innerText = "Wallet Connected";
+    document.getElementById("walletAddress")?.innerText = `Connected: ${wallet}`;
+    document.getElementById("connectWallet").innerText = "Wallet Connected";
 
-    // Update token dashboard
     updateKLYDashboard();
   } catch (err) {
     console.error("Wallet connection failed:", err);
-    alert("Wallet connection failed.");
   }
 }
 
-// === Update Token Dashboard ===
+// === Update Dashboard ===
 async function updateKLYDashboard() {
   try {
     const web3 = new Web3(window.ethereum);
-    const kly = new web3.eth.Contract(KLY_ABI, klyTokenAddress);
+    const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
 
     const [supply, balance] = await Promise.all([
       kly.methods.totalSupply().call(),
@@ -63,15 +62,15 @@ async function updateKLYDashboard() {
     document.getElementById("klyTotalSupply").innerText = `${Number(supplyEth).toLocaleString()} KLY`;
     document.getElementById("klyWalletBalance").innerText = `${Number(balanceEth).toLocaleString()} KLY`;
   } catch (err) {
-    console.error("Dashboard update failed:", err);
+    console.error("Update Stats Error:", err);
   }
 }
 
-// === Verify Course Access (500 KLY) ===
+// === Verify Course Access (>= 500 KLY) ===
 async function verifyAccess() {
   try {
     const web3 = new Web3(window.ethereum);
-    const kly = new web3.eth.Contract(KLY_ABI, klyTokenAddress);
+    const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
     const balance = await kly.methods.balanceOf(wallet).call();
     const balanceEth = web3.utils.fromWei(balance, "ether");
 
@@ -83,25 +82,20 @@ async function verifyAccess() {
     }
   } catch (err) {
     console.error("Access check failed:", err);
-    document.getElementById("accessStatus").innerText = "Access check error.";
   }
 }
 
 // === Mint NFT Certificate ===
 async function mintCertificate() {
   try {
-    if (!wallet || !sdk) return alert("Connect wallet first");
-    document.getElementById("mintStatus").innerText = "Minting...";
-
-    const nft = await sdk.getContract(nftContractAddress);
+    const nft = await sdk.getContract(CONFIG.NFT_CONTRACT);
     await nft.call("mint", [
-      wallet,        // recipient
-      -276330,       // tickLower
-      276330,        // tickUpper
-      1,             // amount
-      "0x"           // data
+      wallet,
+      -276330,
+      276330,
+      1,
+      "0x"
     ]);
-
     document.getElementById("mintStatus").innerText = "NFT Certificate Minted!";
   } catch (err) {
     console.error("Minting failed:", err);
@@ -109,14 +103,10 @@ async function mintCertificate() {
   }
 }
 
-// === Event Listeners ===
+// === Bind Events ===
 window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("connectWalletBtn")?.addEventListener("click", connectWallet);
+  document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
   document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
   document.getElementById("mintCertificate")?.addEventListener("click", mintCertificate);
-
-  // Optional: Unlock mint section after course completion
-  document.getElementById("completeCourseBtn")?.addEventListener("click", () => {
-    document.getElementById("mintSection")?.classList.remove("hidden");
-  });
 });
+</script>
