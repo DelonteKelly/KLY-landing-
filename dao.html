@@ -147,7 +147,29 @@
         alert("Voting failed.");
       }
     }
+    window.submitProposal = async function () {
+  const input = document.getElementById("proposalDescription");
+  const status = document.getElementById("proposalStatus");
+  const description = input.value.trim();
 
+  if (!description) {
+    status.textContent = "Please enter a proposal description.";
+    return;
+  }
+
+  try {
+    const vote = await sdk.getContract(voteAddress, "vote");
+    status.textContent = "Submitting proposal...";
+    await vote.propose(description);
+    status.textContent = "Proposal submitted successfully!";
+    input.value = "";
+    loadProposals();
+  } catch (err) {
+    console.error("Proposal submission error:", err);
+    status.textContent = "Failed to submit proposal.";
+  }
+};
+ 
     document.getElementById("connectBtn").onclick = connectWallet;
   </script>
 </body>
