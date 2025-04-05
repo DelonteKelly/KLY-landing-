@@ -115,6 +115,77 @@
 
 <!-- Final Web3 + KLY Logic -->
 <script type="module" src="assets/js/script.js"></script>
+  <script>
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // Your KLY Token address
+  const KLY_ABI = [
+    {
+      "constant": true,
+      "inputs": [{ "name": "account", "type": "address" }],
+      "name": "balanceOf",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{ "name": "", "type": "uint8" }],
+      "type": "function"
+    }
+  ];
 
+  let provider, signer, wallet;
+
+  // Function to connect wallet
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("MetaMask not detected.");
+      return;
+    }
+
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+
+      document.getElementById("connectWallet").innerText = "Wallet Connected";
+      document.getElementById("walletAddress").innerText = wallet;
+
+      loadKLYTokenStats();
+    } catch (err) {
+      console.error("Connection error:", err);
+    }
+  }
+
+  // Load KLY token stats
+  async function loadKLYTokenStats() {
+    const klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+
+    const [decimals, userBalanceRaw, totalSupplyRaw] = await Promise.all([
+      klyContract.decimals(),
+      klyContract.balanceOf(wallet),
+      klyContract.totalSupply()
+    ]);
+
+    const userBalance = ethers.formatUnits(userBalanceRaw, decimals);
+    const totalSupply = ethers.formatUnits(totalSupplyRaw, decimals);
+
+    document.getElementById("userKLY").innerText = parseFloat(userBalance).toFixed(2);
+    document.getElementById("totalKLY").innerText = parseFloat(totalSupply).toLocaleString();
+  }
+
+  // Add event listener to connect button
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("connectWallet").onclick = connectWallet;
+  });
+</script>
 </body>
 </html>
