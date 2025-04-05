@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLY Launchpad</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk"></script>
+  <script type="module" src="https://cdn.skypack.dev/ethers"></script>
+  <style>
+    body {
+      background: #0b0b0b;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    h1 {
+      color: #00ffe0;
+    }
+
+    input, button {
+      padding: 1rem;
+      margin: 0.5rem;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+
+    input {
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+    }
+
+    button {
+      background: #00ffe0;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+
+    #walletAddress {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #ccc;
+    }
+
+    #launchStatus {
+      margin-top: 20px;
+      color: #00ffe0;
+    }
+  </style>
+</head>
+<body>
+  <h1>KLY Launchpad</h1>
+  <button id="connectWallet">Connect Wallet</button>
+  <div id="walletAddress"></div>
+
+  <div style="margin-top: 2rem;">
+    <h2>Launch Your Token</h2>
+    <input id="tokenName" placeholder="Token Name" />
+    <input id="tokenSymbol" placeholder="Token Symbol" />
+    <input id="initialSupply" placeholder="Initial Supply (whole numbers)" />
+    <button id="launchToken">Deploy Token</button>
+    <div id="launchStatus"></div>
+  </div>
+
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    import { ethers } from "https://cdn.skypack.dev/ethers";
+
+    const TREASURY = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    let walletAddress = null;
+    let sdk = null;
+    let signer = null;
+
+    document.getElementById("connectWallet").onclick = async () => {
+      if (!window.ethereum) {
+        alert("MetaMask is required.");
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      walletAddress = await signer.getAddress();
+
+      document.getElementById("walletAddress").textContent = `Connected: ${walletAddress}`;
+      document.getElementById("connectWallet").textContent = "Wallet Connected";
+
+      sdk = new ThirdwebSDK("binance", { signer });
+    };
+
+    document.getElementById("launchToken").onclick = async () => {
+      const name = document.getElementById("tokenName").value.trim();
+      const symbol = document.getElementById("tokenSymbol").value.trim();
+      const supply = parseFloat(document.getElementById("initialSupply").value);
+
+      if (!walletAddress || !sdk) {
+        return alert("Please connect your wallet first.");
+      }
+
+      if (!name || !symbol || isNaN(supply) || supply <= 0) {
+        return alert("Please fill out all fields correctly.");
+      }
+
+      try {
+        document.getElementById("launchStatus").textContent = "Deploying token...";
+
+        const token = await sdk.deployer.deployToken({
+          name,
+          symbol,
+          primary_sale_recipient: walletAddress,
+          platform_fee_basis_points: 0,
+          platform_fee_recipient: TREASURY
+        });
+
+        // Send 5% to Treasury
+        const tokenContract = await sdk.getContract(token.address);
+        const treasuryAmount = ethers.parseUnits((supply * 0.05).toString(), 18);
+        const userAmount = ethers.parseUnits((supply * 0.95).toString(), 18);
+
+        await tokenContract.mintTo(walletAddress, userAmount);
+        await tokenContract.mintTo(TREASURY, treasuryAmount);
+
+        document.getElementById("launchStatus").innerHTML = `
+          Token deployed successfully!<br>
+          Address: <a href="https://bscscan.com/address/${token.address}" target="_blank">${token.address}</a>
+        `;
+      } catch (err) {
+        console.error("Launch error:", err);
+        document.getElementById("launchStatus").textContent = "Launch failed. Check console.";
+      }
+    };
+  </script>
+</body>
+</html>
