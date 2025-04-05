@@ -92,76 +92,81 @@
     <div id="launchStatus"></div>
   </section>
 
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.skypack.dev/ethers";
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.skypack.dev/ethers";
 
-    const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    let signer, sdk, wallet;
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const TREASURY_WALLET = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  let signer, sdk, wallet;
 
-    // Connect Wallet
-    document.getElementById("connectWallet").onclick = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
+  // Connect Wallet
+  document.getElementById("connectWallet").onclick = async () => {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+
+    sdk = new ThirdwebSDK("binance", { signer });
+    document.getElementById("walletAddress").innerText = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    document.getElementById("connectWallet").innerText = "Connected";
+  };
+
+  // Launch Token
+  document.getElementById("launchBtn").onclick = async () => {
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim();
+    const supply = document.getElementById("initialSupply").value.trim();
+    const status = document.getElementById("launchStatus");
+
+    if (!signer || !wallet) return alert("Connect your wallet first.");
+    if (!name || !symbol || isNaN(supply) || parseFloat(supply) <= 0) {
+      return alert("Please enter valid token details.");
+    }
+
+    try {
+      // Check KLY balance
+      const klyContract = new ethers.Contract(KLY_ADDRESS, [
+        { name: "balanceOf", type: "function", constant: true, inputs: [{ name: "account", type: "address" }], outputs: [{ name: "", type: "uint256" }] }
+      ], signer);
+
+      const balance = await klyContract.balanceOf(wallet);
+      const kly = ethers.formatUnits(balance, 18);
+      if (parseFloat(kly) < 10000) {
+        status.innerText = "You must hold at least 10,000 KLY to launch a token.";
         return;
       }
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
 
-      sdk = new ThirdwebSDK("binance", { signer });
-      document.getElementById("walletAddress").innerText = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-      document.getElementById("connectWallet").innerText = "Connected";
-    };
+      status.innerText = "Deploying token...";
 
-    // Launch Token
-    document.getElementById("launchBtn").onclick = async () => {
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim();
-      const supply = document.getElementById("initialSupply").value.trim();
-      const status = document.getElementById("launchStatus");
+      // Deploy token
+      const token = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: wallet,
+        platform_fee_basis_points: 0,
+        platform_fee_recipient: "0x0000000000000000000000000000000000000000"
+      });
 
-      if (!signer || !wallet) return alert("Connect your wallet first.");
-      if (!name || !symbol || isNaN(supply) || parseFloat(supply) <= 0) {
-        return alert("Please enter valid token details.");
-      }
+      const contract = await sdk.getContract(token.address, "token");
+      const total = ethers.parseUnits(supply, 18);
+      const treasuryAmount = total / BigInt(20); // 5%
+      const userAmount = total - treasuryAmount;
 
-      try {
-        status.innerText = "Deploying token...";
+      await contract.call("mintTo", [wallet, userAmount]);
+      await contract.call("mintTo", [TREASURY_WALLET, treasuryAmount]);
 
-        // Deploy the token
-        const token = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          primary_sale_recipient: wallet,
-          platform_fee_basis_points: 0,
-          platform_fee_recipient: "0x0000000000000000000000000000000000000000"
-        });
-
-        // Mint to creator + 5% to treasury
-        const contract = await sdk.getContract(token.address, "token");
-        const total = ethers.parseUnits(supply, 18);
-        const treasuryAmount = total / BigInt(20); // 5%
-        const userAmount = total - treasuryAmount;
-
-        await contract.call("mintTo", [wallet, userAmount]);
-        await contract.call("mintTo", [treasuryWallet, treasuryAmount]);
-
-        status.innerHTML = `
-          Token deployed successfully!<br/>
-          <a href="https://bscscan.com/address/${token.address}" target="_blank">${token.address}</a>
-        `;
-
-        // Reset form
-        document.getElementById("tokenName").value = "";
-        document.getElementById("tokenSymbol").value = "";
-        document.getElementById("initialSupply").value = "";
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Launch failed. Check console for details.";
-      }
-    };
-  </script>
+      status.innerHTML = `${name} (${symbol}) launched with ${supply} tokens!`;
+    } catch (err) {
+      console.error(err);
+      status.innerText = "Launch failed. See console for details.";
+    }
+  };
+</script>
 </body>
 </html>
