@@ -221,3 +221,27 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("launchTokenBtn")?.addEventListener("click", launchToken);
   document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
 });
+const nftAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+document.getElementById("mintCertificate").onclick = async () => {
+  try {
+    if (!wallet) return alert("Please connect your wallet first.");
+    document.getElementById("mintStatus").innerText = "Minting in progress...";
+
+    const sdk = new thirdweb.ThirdwebSDK("binance", { signer });
+    const nftContract = await sdk.getContract(nftAddress);
+
+    await nftContract.call("mint", [
+      wallet,     // recipient
+      -60000,     // tickLower
+      60000,      // tickUpper
+      100000,     // amount
+      "0x"        // data (empty)
+    ]);
+
+    document.getElementById("mintStatus").innerText = "NFT Certificate minted successfully!";
+  } catch (err) {
+    console.error("Minting failed:", err);
+    document.getElementById("mintStatus").innerText = "Minting failed. See console for details.";
+  }
+};
