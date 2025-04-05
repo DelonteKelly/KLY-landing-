@@ -4,20 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Legacy Course</title>
-
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <!-- Web3 & Ethers -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm"></script>
 
   <style>
     body {
       background: #000;
       color: #fff;
       font-family: 'Inter', sans-serif;
-      padding: 2rem;
       text-align: center;
+      padding: 2rem;
     }
-
     button {
       background-color: #00ffe0;
       color: #000;
@@ -26,24 +27,12 @@
       font-size: 1rem;
       border-radius: 8px;
       cursor: pointer;
-      margin: 1rem auto;
+      margin: 1rem;
       box-shadow: 0 0 12px #00ffe0;
     }
-
-    .hidden {
-      display: none;
-    }
-
-    .status-message {
-      font-weight: bold;
-      margin-top: 1rem;
-    }
+    .hidden { display: none; }
+    .status { margin-top: 1rem; font-weight: bold; }
   </style>
-
-  <!-- Web3, Ethers, Thirdweb SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
-  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
 </head>
 <body>
 
@@ -51,12 +40,108 @@
   <p>Complete the journey. Unlock legacy knowledge. Mint your NFT certification.</p>
 
   <button id="connectWalletBtn">Connect Wallet</button>
-<button id="verifyAccess">Verify Access</button>
-<div id="accessStatus"></div>
+  <button id="verifyAccess">Verify Access (500 KLY)</button>
+  <div id="accessStatus" class="status"></div>
 
-  <!-- Course Modules -->
+  <!-- Course Content -->
   <div id="courseContent" class="hidden">
-    
+    <h2>Welcome to the Course!</h2>
+    <p>You have access. Read the full course content here...</p>
+
+    <!-- Complete Course Button -->
+    <button id="completeCourseBtn">Complete Course</button>
+
+    <!-- Mint Section -->
+    <section id="mintSection" class="hidden">
+      <h2>Claim Your NFT Certificate</h2>
+      <button id="mintCertificate">Mint NFT Certificate</button>
+      <p id="mintStatus" class="status"></p>
+    </section>
+  </div>
+
+  <!-- Script -->
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+
+    const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+    const KLY_ABI = [
+      {
+        "constant": true,
+        "inputs": [{ "name": "account", "type": "address" }],
+        "name": "balanceOf",
+        "outputs": [{ "name": "", "type": "uint256" }],
+        "type": "function"
+      }
+    ];
+
+    let provider, signer, wallet, sdk;
+
+    // Connect Wallet
+    async function connectWallet() {
+      try {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        wallet = await signer.getAddress();
+        sdk = ThirdwebSDK.fromSigner(signer, "binance");
+        document.getElementById("accessStatus").innerText = `Wallet connected: ${wallet}`;
+      } catch (err) {
+        console.error("Wallet error:", err);
+        document.getElementById("accessStatus").innerText = "Wallet connection failed.";
+      }
+    }
+
+    // Verify Access (>= 500 KLY)
+    async function verifyAccess() {
+      try {
+        const web3 = new Web3(window.ethereum);
+        const kly = new web3.eth.Contract(KLY_ABI, klyTokenAddress);
+        const balance = await kly.methods.balanceOf(wallet).call();
+        const balanceEth = web3.utils.fromWei(balance, "ether");
+
+        if (parseFloat(balanceEth) >= 500) {
+          document.getElementById("accessStatus").innerText = "Access granted.";
+          document.getElementById("courseContent").classList.remove("hidden");
+        } else {
+          document.getElementById("accessStatus").innerText = `Access denied: You only have ${balanceEth} KLY.`;
+        }
+      } catch (err) {
+        console.error("Access error:", err);
+        document.getElementById("accessStatus").innerText = "Error checking access.";
+      }
+    }
+
+    // Mint Certificate
+    async function mintCertificate() {
+      try {
+        document.getElementById("mintStatus").innerText = "Minting in progress...";
+        const nft = await sdk.getContract(nftContractAddress);
+        await nft.call("mint", [wallet, -276330, 276330, 1, "0x"]);
+        document.getElementById("mintStatus").innerText = "NFT Certificate Minted!";
+      } catch (err) {
+        console.error("Mint error:", err);
+        document.getElementById("mintStatus").innerText = "Minting failed.";
+      }
+    }
+
+    // Show mint button after course completion
+    document.getElementById("completeCourseBtn").addEventListener("click", () => {
+      document.getElementById("mintSection").classList.remove("hidden");
+    });
+
+    // Bind events
+    document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+    document.getElementById("verifyAccess").addEventListener("click", verifyAccess);
+    document.getElementById("mintCertificate").addEventListener("click", mintCertificate);
+  </script>
+</body>
+</html>
+
+
+
   <section class="module" id="module1">
   <h2>Module 1: Foundation</h2>
 
@@ -539,24 +624,6 @@ console.log(value.toString());
     </ol>
   </article>
 </section>
-
-
-    <!-- Complete Course Button -->
-    <button id="completeCourseBtn">Complete Course</button>
-
-    <!-- NFT Mint Section -->
-    <section id="mintSection" class="hidden">
-      <h2>Claim Your NFT Certificate</h2>
-      <button id="mintCertificate">Mint NFT Certificate</button>
-      <p id="mintStatus" class="status-message"></p>
-    </section>
-  </div>
-
-<!-- Token Dashboard -->
-<div id="klyTokenDashboard">
-  <p>Total Supply: <span id="klyTotalSupply">--</span></p>
-  <p>Your Balance: <span id="klyWalletBalance">--</span></p>
-</div>
     
   <!-- Footer -->
   <footer style="text-align: center; padding: 2rem; color: #aaa;">
