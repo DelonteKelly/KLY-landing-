@@ -69,73 +69,71 @@
     <div id="launchStatus"></div>
   </div>
 
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.skypack.dev/ethers";
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.skypack.dev/ethers";
 
-    const TREASURY = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    let walletAddress = null;
-    let sdk = null;
-    let signer = null;
+  const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  let signer, wallet, sdk;
 
-    document.getElementById("connectWallet").onclick = async () => {
-      if (!window.ethereum) {
-        alert("MetaMask is required.");
-        return;
-      }
+  // Connect Wallet
+  document.getElementById("connectWallet").onclick = async () => {
+    if (!window.ethereum) return alert("Please install MetaMask.");
 
+    try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = await provider.getSigner();
-      walletAddress = await signer.getAddress();
-
-      document.getElementById("walletAddress").textContent = `Connected: ${walletAddress}`;
-      document.getElementById("connectWallet").textContent = "Wallet Connected";
+      wallet = await signer.getAddress();
 
       sdk = new ThirdwebSDK("binance", { signer });
-    };
 
-    document.getElementById("launchToken").onclick = async () => {
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim();
-      const supply = parseFloat(document.getElementById("initialSupply").value);
+      document.getElementById("walletAddress").innerText = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("connectWallet").innerText = "Connected";
+    } catch (err) {
+      console.error("Wallet Connection Error:", err);
+      alert("Wallet connection failed.");
+    }
+  };
 
-      if (!walletAddress || !sdk) {
-        return alert("Please connect your wallet first.");
-      }
+  // Deploy Token
+  document.getElementById("launchBtn").onclick = async () => {
+    if (!signer || !wallet) return alert("Connect your wallet first.");
 
-      if (!name || !symbol || isNaN(supply) || supply <= 0) {
-        return alert("Please fill out all fields correctly.");
-      }
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim();
+    const supply = document.getElementById("initialSupply").value.trim();
+    const status = document.getElementById("launchStatus");
 
-      try {
-        document.getElementById("launchStatus").textContent = "Deploying token...";
+    if (!name || !symbol || !supply || isNaN(supply)) {
+      return alert("Please enter valid token details.");
+    }
 
-        const token = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          primary_sale_recipient: walletAddress,
-          platform_fee_basis_points: 0,
-          platform_fee_recipient: TREASURY
-        });
+    try {
+      status.innerText = "Launching token... please confirm in MetaMask";
 
-        // Send 5% to Treasury
-        const tokenContract = await sdk.getContract(token.address);
-        const treasuryAmount = ethers.parseUnits((supply * 0.05).toString(), 18);
-        const userAmount = ethers.parseUnits((supply * 0.95).toString(), 18);
+      const token = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: wallet,
+        platform_fee_basis_points: 0,
+        platform_fee_recipient: "0x0000000000000000000000000000000000000000"
+      });
 
-        await tokenContract.mintTo(walletAddress, userAmount);
-        await tokenContract.mintTo(TREASURY, treasuryAmount);
+      const contract = await sdk.getContract(token.address, "token");
+      const total = ethers.parseUnits(supply, 18);
+      const treasuryAmount = total / BigInt(20); // 5%
+      const creatorAmount = total - treasuryAmount;
 
-        document.getElementById("launchStatus").innerHTML = `
-          Token deployed successfully!<br>
-          Address: <a href="https://bscscan.com/address/${token.address}" target="_blank">${token.address}</a>
-        `;
-      } catch (err) {
-        console.error("Launch error:", err);
-        document.getElementById("launchStatus").textContent = "Launch failed. Check console.";
-      }
-    };
-  </script>
+      await contract.call("mintTo", [wallet, creatorAmount]);
+      await contract.call("mintTo", [treasuryWallet, treasuryAmount]);
+
+      status.innerText = `Token launched successfully: ${token.address}`;
+    } catch (err) {
+      console.error("Launch error:", err);
+      status.innerText = "Launch failed. See console for details.";
+    }
+  };
+</script>
 </body>
 </html>
