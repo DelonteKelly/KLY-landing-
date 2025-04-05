@@ -91,7 +91,7 @@ async function verifyAccess() {
   }
 }
 
-// === Mint NFT Certificate ===
+// === Mint NFT Certificate (ERC721) ===
 async function mintCertificate() {
   try {
     if (!wallet) return alert("Connect your wallet first.");
@@ -99,13 +99,13 @@ async function mintCertificate() {
 
     const nft = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950");
 
-    await nft.call("mint", [
-      wallet,
-      -276330,   // tickLower
-      276330,    // tickUpper
-      1,         // amount
-      "0x"       // data
-    ]);
+    await nft.erc721.mintTo(wallet, {
+      metadata: {
+        name: "KLY Legacy Certificate",
+        description: "Awarded for completing the KLY Legacy Course.",
+        image: "ipfs://your-certificate-image", // Replace with your image URL or IPFS CID
+      }
+    });
 
     document.getElementById("mintStatus").innerText = "NFT Certificate Minted Successfully!";
   } catch (err) {
