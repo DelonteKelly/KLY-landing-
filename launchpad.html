@@ -92,6 +92,11 @@
     <div id="launchStatus"></div>
   </section>
 
+  <section class="panel" id="recentTokens">
+  <h2>Recently Launched Tokens</h2>
+  <ul id="tokenList"></ul>
+</section>
+
 <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
   import { ethers } from "https://cdn.skypack.dev/ethers";
@@ -167,6 +172,22 @@
       status.innerText = "Launch failed. See console for details.";
     }
   };
+  function saveTokenToLocal(name, symbol, supply, creator) {
+  const token = { name, symbol, supply, creator, timestamp: new Date().toISOString() };
+  let tokens = JSON.parse(localStorage.getItem("recentTokens")) || [];
+  tokens.unshift(token);
+  tokens = tokens.slice(0, 10); // Keep only the last 10
+  localStorage.setItem("recentTokens", JSON.stringify(tokens));
+  displayRecentTokens();
+}
+
+function displayRecentTokens() {
+  const tokenList = document.getElementById("tokenList");
+  const tokens = JSON.parse(localStorage.getItem("recentTokens")) || [];
+  tokenList.innerHTML = tokens.map(t =>
+    `<li><strong>${t.name} (${t.symbol})</strong> - ${parseFloat(t.supply).toLocaleString()} tokens</li>`
+  ).join("");
+}
 </script>
 </body>
 </html>
