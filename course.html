@@ -7,18 +7,15 @@
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-
-  <!-- Main Stylesheet -->
   <link rel="stylesheet" href="assets/css/style.css" />
 
-  <!-- Inline Custom Styling -->
   <style>
     body {
       background: #000;
       color: #fff;
       font-family: 'Inter', sans-serif;
-      text-align: center;
       padding: 2rem;
+      text-align: center;
     }
 
     button {
@@ -26,20 +23,24 @@
       color: #000;
       border: none;
       padding: 1rem 2rem;
-      font-size: 1.2rem;
+      font-size: 1rem;
       border-radius: 8px;
       cursor: pointer;
+      margin: 1rem auto;
       box-shadow: 0 0 12px #00ffe0;
-      margin-top: 1rem;
     }
 
-    #accessStatus {
-      margin-top: 1rem;
+    .hidden {
+      display: none;
+    }
+
+    .status-message {
       font-weight: bold;
+      margin-top: 1rem;
     }
   </style>
 
-  <!-- Web3, Ethers, and Thirdweb SDK -->
+  <!-- Web3, Ethers, Thirdweb SDK -->
   <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
   <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
@@ -49,20 +50,13 @@
   <h1>KLY Legacy Course</h1>
   <p>Complete the journey. Unlock legacy knowledge. Mint your NFT certification.</p>
 
-  <button id="verifyAccess">Verify Access</button>
-  <div id="accessStatus"></div>
+  <button id="connectWalletBtn">Connect Wallet</button>
+  <button id="verifyAccess">Verify Access (500 KLY)</button>
+  <div id="accessStatus" class="status-message"></div>
 
-    <div id="mintSection" style="display:none;">
-    <p>You’re eligible! Mint your NFT Certification:</p>
-    <button id="mintCertificate">Mint NFT Certificate</button>
-    <div id="mintStatus"></div>
-  </div>
-  <!-- Main Web3 Logic -->
-  <script type="module" src="assets/js/script.js?v=2"></script>
-
-</body>
-</html>
-
+  <!-- Course Modules -->
+  <div id="courseContent" class="hidden">
+    
   <section class="module" id="module1">
   <h2>Module 1: Foundation</h2>
 
@@ -545,90 +539,25 @@ console.log(value.toString());
     </ol>
   </article>
 </section>
-  
-<!-- Complete Course Button -->
-<button id="completeCourseBtn" class="btn-primary">Complete Course</button>
 
-<!-- Mint Section -->
-<section id="mintSection" class="hidden-content" style="display: none;">
-  <h2>Claim Your NFT Certificate</h2>
-  <button id="mintCertificate" class="btn-primary">Mint NFT Certificate</button>
-  <p id="mintStatus" class="status-message"></p>
-</section>
 
-    <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    const CONFIG = {
-      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-      NFT_CONTRACT: "0xDA76d35742190283E340dbeE2038ecc978a56950",
-      CHAIN_ID: 56
-    };
+    <!-- Complete Course Button -->
+    <button id="completeCourseBtn">Complete Course</button>
 
-    const KLY_ABI = [{
-      constant: true,
-      inputs: [{ name: "account", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ name: "", type: "uint256" }],
-      type: "function"
-    }];
+    <!-- NFT Mint Section -->
+    <section id="mintSection" class="hidden">
+      <h2>Claim Your NFT Certificate</h2>
+      <button id="mintCertificate">Mint NFT Certificate</button>
+      <p id="mintStatus" class="status-message"></p>
+    </section>
+  </div>
 
-    let provider, signer, wallet;
+  <!-- Footer -->
+  <footer style="text-align: center; padding: 2rem; color: #aaa;">
+    <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
+  </footer>
 
-    async function connectWallet() {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-    }
-
-    document.getElementById("verifyAccess").onclick = async () => {
-      try {
-        await connectWallet();
-        const web3 = new Web3(window.ethereum);
-        const accounts = await web3.eth.getAccounts();
-        const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
-        const balance = await kly.methods.balanceOf(accounts[0]).call();
-        const balanceEth = web3.utils.fromWei(balance, "ether");
-
-        if (parseFloat(balanceEth) >= 500) {
-          document.getElementById("accessStatus").innerText = `Access granted: ${balanceEth} KLY`;
-          document.getElementById("mintSection").style.display = "block";
-        } else {
-          document.getElementById("accessStatus").innerText = `Access denied: ${balanceEth} KLY`;
-          document.getElementById("mintSection").style.display = "none";
-        }
-      } catch (err) {
-        console.error("Access check error:", err);
-        document.getElementById("accessStatus").innerText = "Error verifying access.";
-      }
-    };
-
-    document.getElementById("mintCertificate").onclick = async () => {
-      try {
-        document.getElementById("mintStatus").innerText = "Minting in progress...";
-        const sdk = new ThirdwebSDK("binance", { signer });
-        const nft = await sdk.getContract(CONFIG.NFT_CONTRACT);
-
-        await nft.call("mint", [
-          wallet,
-          -60000,
-          60000,
-          100000,
-          "0x"
-        ]);
-
-        document.getElementById("mintStatus").innerText = "NFT Certificate minted!";
-      } catch (err) {
-        console.error("Minting failed:", err);
-        document.getElementById("mintStatus").innerText = "Minting failed. See console.";
-      }
-    };
-  </script>
-
+  <!-- Script -->
+  <script type="module" src="assets/js/script.js?v=2"></script>
 </body>
 </html>
-
-<!-- Footer -->
-<footer style="text-align: center; padding: 2rem; color: #aaa;">
-  <p>&copy; 2025 Kelly Legacy Estates — All Rights Reserved</p>
-</footer>
