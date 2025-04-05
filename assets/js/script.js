@@ -88,21 +88,25 @@ async function verifyAccess() {
 // === Mint NFT Certificate ===
 async function mintCertificate() {
   try {
-    const nft = await sdk.getContract(CONFIG.NFT_CONTRACT);
+    if (!wallet) return alert("Connect your wallet first.");
+    document.getElementById("mintStatus").innerText = "Minting in progress...";
+
+    const nft = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950");
+
     await nft.call("mint", [
       wallet,
-      -276330,
-      276330,
-      1,
-      "0x"
+      -276330,   // tickLower
+      276330,    // tickUpper
+      1,         // amount
+      "0x"       // data
     ]);
-    document.getElementById("mintStatus").innerText = "NFT Certificate Minted!";
+
+    document.getElementById("mintStatus").innerText = "NFT Certificate Minted Successfully!";
   } catch (err) {
     console.error("Minting failed:", err);
     document.getElementById("mintStatus").innerText = "Minting failed.";
   }
 }
-
 // === Bind Events ===
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
