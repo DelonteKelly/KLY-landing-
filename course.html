@@ -52,6 +52,11 @@
   <button id="verifyAccess">Verify Access</button>
   <div id="accessStatus"></div>
 
+    <div id="mintSection" style="display:none;">
+    <p>You’re eligible! Mint your NFT Certification:</p>
+    <button id="mintCertificate">Mint NFT Certificate</button>
+    <div id="mintStatus"></div>
+  </div>
   <!-- Main Web3 Logic -->
   <script type="module" src="assets/js/script.js?v=2"></script>
 
@@ -550,6 +555,78 @@ console.log(value.toString());
   <button id="mintCertificate" class="btn-primary">Mint NFT Certificate</button>
   <p id="mintStatus" class="status-message"></p>
 </section>
+
+    <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    const CONFIG = {
+      KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+      NFT_CONTRACT: "0xDA76d35742190283E340dbeE2038ecc978a56950",
+      CHAIN_ID: 56
+    };
+
+    const KLY_ABI = [{
+      constant: true,
+      inputs: [{ name: "account", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
+    }];
+
+    let provider, signer, wallet;
+
+    async function connectWallet() {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+    }
+
+    document.getElementById("verifyAccess").onclick = async () => {
+      try {
+        await connectWallet();
+        const web3 = new Web3(window.ethereum);
+        const accounts = await web3.eth.getAccounts();
+        const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
+        const balance = await kly.methods.balanceOf(accounts[0]).call();
+        const balanceEth = web3.utils.fromWei(balance, "ether");
+
+        if (parseFloat(balanceEth) >= 500) {
+          document.getElementById("accessStatus").innerText = `Access granted: ${balanceEth} KLY`;
+          document.getElementById("mintSection").style.display = "block";
+        } else {
+          document.getElementById("accessStatus").innerText = `Access denied: ${balanceEth} KLY`;
+          document.getElementById("mintSection").style.display = "none";
+        }
+      } catch (err) {
+        console.error("Access check error:", err);
+        document.getElementById("accessStatus").innerText = "Error verifying access.";
+      }
+    };
+
+    document.getElementById("mintCertificate").onclick = async () => {
+      try {
+        document.getElementById("mintStatus").innerText = "Minting in progress...";
+        const sdk = new ThirdwebSDK("binance", { signer });
+        const nft = await sdk.getContract(CONFIG.NFT_CONTRACT);
+
+        await nft.call("mint", [
+          wallet,
+          -60000,
+          60000,
+          100000,
+          "0x"
+        ]);
+
+        document.getElementById("mintStatus").innerText = "NFT Certificate minted!";
+      } catch (err) {
+        console.error("Minting failed:", err);
+        document.getElementById("mintStatus").innerText = "Minting failed. See console.";
+      }
+    };
+  </script>
+
+</body>
+</html>
 
 <!-- Footer -->
 <footer style="text-align: center; padding: 2rem; color: #aaa;">
