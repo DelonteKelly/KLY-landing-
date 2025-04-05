@@ -3,153 +3,179 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY Launchpad</title>
+  <title>KLY Token Launchpad</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
       background: #000;
       color: #fff;
       font-family: 'Inter', sans-serif;
-      text-align: center;
       padding: 2rem;
+      text-align: center;
     }
-    input, button {
-      display: block;
-      margin: 1rem auto;
-      padding: 0.75rem;
-      font-size: 1rem;
-      width: 80%;
-      max-width: 400px;
+
+    h1, h2 {
+      color: #00ffe0;
+    }
+
+    input {
+      padding: 0.8rem;
+      margin: 0.5rem;
+      width: 90%;
+      max-width: 300px;
       border-radius: 8px;
       border: none;
-    }
-    button {
-      background: #00ffe0;
-      color: #000;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    #launchStatus {
-      margin-top: 1rem;
       font-size: 1rem;
     }
+
+    button {
+      background-color: #00ffe0;
+      color: #000;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 1rem;
+      box-shadow: 0 0 12px #00ffe0;
+    }
+
+    #launchStatus {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
     ul {
       list-style: none;
       padding: 0;
     }
+
     li {
+      margin-bottom: 1rem;
       background: #111;
-      margin: 1rem auto;
       padding: 1rem;
       border-radius: 8px;
-      max-width: 500px;
+      box-shadow: 0 0 12px #00ffe0;
     }
+
     a {
       color: #00ffe0;
-      word-break: break-all;
+      text-decoration: underline;
     }
   </style>
+
+  <!-- SDK & Dependencies -->
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js";
+
+    const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const klyTokenAddress = treasury;
+    const klyAbi = [
+      {
+        constant: true,
+        inputs: [{ name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        type: "function"
+      }
+    ];
+
+    let provider, signer, sdk, wallet;
+
+    async function connectWallet() {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+      sdk = new ThirdwebSDK("binance", { signer });
+
+      document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    }
+
+    async function deployToken() {
+      const name = document.getElementById("tokenName").value.trim();
+      const symbol = document.getElementById("tokenSymbol").value.trim();
+      const supply = parseInt(document.getElementById("initialSupply").value.trim());
+      const status = document.getElementById("launchStatus");
+
+      if (!name || !symbol || !supply) {
+        alert("All fields required");
+        return;
+      }
+
+      const web3 = new Web3(window.ethereum);
+      const kly = new web3.eth.Contract(klyAbi, klyTokenAddress);
+      const balance = await kly.methods.balanceOf(wallet).call();
+      const balanceEth = web3.utils.fromWei(balance, "ether");
+
+      if (parseFloat(balanceEth) < 10000) {
+        status.innerText = "You need 10,000 KLY to launch.";
+        return;
+      }
+
+      status.innerText = "Launching token...";
+      try {
+        const token = await sdk.deployer.deployToken({
+          name,
+          symbol,
+          primary_sale_recipient: wallet,
+          total_supply: supply.toString(),
+        });
+
+        const tokenContract = await sdk.getContract(token);
+        const fivePercent = Math.floor(supply * 0.05);
+        await tokenContract.call("transfer", [treasury, fivePercent.toString()]);
+
+        // Save to local storage
+        const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+        tokens.unshift({ name, symbol, supply, address: token });
+        localStorage.setItem("launchedTokens", JSON.stringify(tokens));
+
+        status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
+        displayLaunchedTokens();
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Token launch failed.";
+      }
+    }
+
+    function displayLaunchedTokens() {
+      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+      const list = document.getElementById("launchedTokensList");
+      list.innerHTML = tokens.map(t => `
+        <li>
+          <strong>${t.name} (${t.symbol})</strong><br/>
+          Supply: ${t.supply.toLocaleString()}<br/>
+          <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
+        </li>
+      `).join("");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("connectWallet").onclick = connectWallet;
+      document.getElementById("launchTokenBtn").onclick = deployToken;
+      displayLaunchedTokens();
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
 </head>
 <body>
   <h1>KLY Launchpad</h1>
   <button id="connectWallet">Connect Wallet</button>
-  <p id="walletAddress"></p>
+  <div id="walletStatus" style="margin-top: 1rem;"></div>
 
   <h2>Launch Your Own Token</h2>
   <p>You must hold at least 10,000 KLY to launch.</p>
   <input id="tokenName" placeholder="Token Name" />
   <input id="tokenSymbol" placeholder="Token Symbol" />
   <input id="initialSupply" placeholder="Initial Supply (e.g. 1000000)" />
+  <br/>
   <button id="launchTokenBtn">Launch Token</button>
   <p id="launchStatus"></p>
 
   <h2>Recently Launched Tokens</h2>
   <ul id="launchedTokensList"></ul>
-
-  <script type="module" src="assets/js/launchpad.js"></script>
 </body>
 </html>
-
-import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
-
-const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // same
-const klyAbi = [ { "constant":true, "inputs":[{ "name":"account","type":"address"}], "name":"balanceOf", "outputs":[{ "name":"","type":"uint256"}], "type":"function" } ];
-
-let provider, signer, sdk, wallet;
-
-async function connectWallet() {
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = await provider.getSigner();
-  wallet = await signer.getAddress();
-
-  sdk = new ThirdwebSDK("binance", { signer });
-  document.getElementById("walletAddress").innerText = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-}
-
-async function deployToken() {
-  const name = document.getElementById("tokenName").value.trim();
-  const symbol = document.getElementById("tokenSymbol").value.trim();
-  const supply = parseInt(document.getElementById("initialSupply").value.trim());
-  const status = document.getElementById("launchStatus");
-
-  if (!name || !symbol || !supply) return alert("All fields required");
-
-  // Access check
-  const web3 = new Web3(window.ethereum);
-  const kly = new web3.eth.Contract(klyAbi, klyTokenAddress);
-  const balance = await kly.methods.balanceOf(wallet).call();
-  const balanceEth = web3.utils.fromWei(balance, "ether");
-
-  if (parseFloat(balanceEth) < 10000) {
-    return (status.innerText = "You need 10,000 KLY to launch.");
-  }
-
-  status.innerText = "Launching token...";
-
-  try {
-    const token = await sdk.deployer.deployToken({
-      name,
-      symbol,
-      primary_sale_recipient: wallet,
-      total_supply: supply.toString(),
-    });
-
-    // Send 5% to treasury
-    const tokenContract = await sdk.getContract(token);
-    const fivePercent = Math.floor(supply * 0.05);
-    await tokenContract.call("transfer", [treasury, fivePercent.toString()]);
-
-    // Store locally
-    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-    tokens.unshift({ name, symbol, supply, address: token });
-    localStorage.setItem("launchedTokens", JSON.stringify(tokens));
-
-    status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
-    displayLaunchedTokens();
-  } catch (err) {
-    console.error(err);
-    status.innerText = "Token launch failed.";
-  }
-}
-
-function displayLaunchedTokens() {
-  const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-  const list = document.getElementById("launchedTokensList");
-  list.innerHTML = tokens.map(t => `
-    <li>
-      <strong>${t.name} (${t.symbol})</strong><br/>
-      Supply: ${t.supply.toLocaleString()}<br/>
-      <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
-    </li>
-  `).join("");
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("connectWallet").onclick = connectWallet;
-  document.getElementById("launchTokenBtn").onclick = deployToken;
-  displayLaunchedTokens();
-});
-
