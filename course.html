@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,142 +6,135 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Legacy Course</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-
-  <!-- Web3 & Ethers -->
   <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm"></script>
-
+  <script type="module" src="https://cdn.skypack.dev/@thirdweb-dev/sdk@latest"></script>
   <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      text-align: center;
-      padding: 2rem;
-    }
-    button {
-      background-color: #00ffe0;
-      color: #000;
-      border: none;
-      padding: 1rem 2rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      margin: 1rem;
-      box-shadow: 0 0 12px #00ffe0;
-    }
+    body { background: #0c0c0c; color: white; font-family: Inter, sans-serif; margin: 0; padding: 2rem; }
+    header { background: #000; padding: 1rem 2rem; text-align: center; box-shadow: 0 0 10px #00ffe0; }
+    header h1 { color: #00ffe0; margin-bottom: 0.5rem; }
+    nav a { color: white; margin: 0 10px; text-decoration: none; font-weight: bold; }
+    .status { margin-top: 1rem; color: #00ff88; font-weight: bold; }
+    section.panel { background: #111; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px #00ffe066; margin: 2rem auto; max-width: 700px; text-align: center; }
+    button { padding: 0.8rem 1.5rem; font-size: 1rem; background: #00ffe0; color: #000; border: none; border-radius: 8px; cursor: pointer; margin-top: 1rem; }
     .hidden { display: none; }
-    .status { margin-top: 1rem; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h1>KLY Legacy Course</h1>
-  <p>Complete the journey. Unlock legacy knowledge. Mint your NFT certification.</p>
+<header>
+  <h1>KLY Token</h1>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="stake.html">Staking</a>
+    <a href="dao.html">DAO</a>
+    <a href="course.html">Course</a>
+    <a href="launchpad.html">Launchpad</a>
+  </nav>
+  <div id="walletStatus" class="status">Wallet Not Connected</div>
+</header>
 
+<section class="panel">
+  <h2>KLY Legacy Course</h2>
+  <p>Complete the journey. Unlock legacy knowledge. Mint your NFT certification.</p>
   <button id="connectWalletBtn">Connect Wallet</button>
   <button id="verifyAccess">Verify Access (500 KLY)</button>
-  <div id="accessStatus" class="status"></div>
+  <p id="accessStatus" class="status"></p>
+</section>
 
-  <!-- Course Content -->
-  <div id="courseContent" class="hidden">
-    <h2>Welcome to the Course!</h2>
-    <p>You have access. Read the full course content here...</p>
+<section id="courseContent" class="panel hidden">
+  <h2>Course Modules</h2>
+  <p>Module 1: Foundation — Complete</p>
+  <p>Module 2: Tokenization — Complete</p>
+  <p>Module 3: Web3 Business — Complete</p>
+  <p>Module 4: Credit & Capital — Complete</p>
+  <p>Module 5: Ownership & Legacy — Complete</p>
+  <button id="completeCourseBtn">Complete Course</button>
+</section>
 
-    <!-- Complete Course Button -->
-    <button id="completeCourseBtn">Complete Course</button>
+<section id="mintSection" class="panel hidden">
+  <h2>Claim Your NFT Certificate</h2>
+  <button id="mintCertificate">Mint NFT Certificate</button>
+  <p id="mintStatus" class="status"></p>
+</section>
 
-    <!-- Mint Section -->
-    <section id="mintSection" class="hidden">
-      <h2>Claim Your NFT Certificate</h2>
-      <button id="mintCertificate">Mint NFT Certificate</button>
-      <p id="mintStatus" class="status"></p>
-    </section>
-  </div>
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  <!-- Script -->
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+  const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-    const klyTokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  const KLY_ABI = [{
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }];
 
-    const KLY_ABI = [
-      {
-        "constant": true,
-        "inputs": [{ "name": "account", "type": "address" }],
-        "name": "balanceOf",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "type": "function"
-      }
-    ];
+  let provider, signer, sdk, wallet;
 
-    let provider, signer, wallet, sdk;
-
-    // Connect Wallet
-    async function connectWallet() {
-      try {
-        provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
-        wallet = await signer.getAddress();
-        sdk = ThirdwebSDK.fromSigner(signer, "binance");
-        document.getElementById("accessStatus").innerText = `Wallet connected: ${wallet}`;
-      } catch (err) {
-        console.error("Wallet error:", err);
-        document.getElementById("accessStatus").innerText = "Wallet connection failed.";
-      }
+  async function connectWallet() {
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+      sdk = ThirdwebSDK.fromSigner(signer, "binance");
+      document.getElementById("walletStatus").innerText = `Connected: ${wallet.slice(0,6)}...${wallet.slice(-4)}`;
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
     }
+  }
 
-    // Verify Access (>= 500 KLY)
-    async function verifyAccess() {
-      try {
-        const web3 = new Web3(window.ethereum);
-        const kly = new web3.eth.Contract(KLY_ABI, klyTokenAddress);
-        const balance = await kly.methods.balanceOf(wallet).call();
-        const balanceEth = web3.utils.fromWei(balance, "ether");
+  async function verifyAccess() {
+    try {
+      const web3 = new Web3(window.ethereum);
+      const kly = new web3.eth.Contract(KLY_ABI, klyTokenAddress);
+      const balance = await kly.methods.balanceOf(wallet).call();
+      const balanceEth = web3.utils.fromWei(balance, "ether");
 
-        if (parseFloat(balanceEth) >= 500) {
-          document.getElementById("accessStatus").innerText = "Access granted.";
-          document.getElementById("courseContent").classList.remove("hidden");
-        } else {
-          document.getElementById("accessStatus").innerText = `Access denied: You only have ${balanceEth} KLY.`;
-        }
-      } catch (err) {
-        console.error("Access error:", err);
-        document.getElementById("accessStatus").innerText = "Error checking access.";
+      if (parseFloat(balanceEth) >= 500) {
+        document.getElementById("accessStatus").innerText = "Access granted.";
+        document.getElementById("courseContent").classList.remove("hidden");
+      } else {
+        document.getElementById("accessStatus").innerText = "You need at least 500 KLY to access this course.";
       }
+    } catch (err) {
+      console.error("Access check failed:", err);
     }
+  }
 
-    // Mint Certificate
-    async function mintCertificate() {
-      try {
-        document.getElementById("mintStatus").innerText = "Minting in progress...";
-        const nft = await sdk.getContract(nftContractAddress);
-        await nft.call("mint", [wallet, -276330, 276330, 1, "0x"]);
-        document.getElementById("mintStatus").innerText = "NFT Certificate Minted!";
-      } catch (err) {
-        console.error("Mint error:", err);
-        document.getElementById("mintStatus").innerText = "Minting failed.";
-      }
+  async function mintCertificate() {
+    try {
+      const nft = await sdk.getContract(nftContractAddress);
+      await nft.call("mint", [
+        wallet,
+        -276330,
+        276330,
+        1,
+        "0x"
+      ]);
+      document.getElementById("mintStatus").innerText = "NFT Certificate Minted!";
+    } catch (err) {
+      console.error("Minting failed:", err);
+      document.getElementById("mintStatus").innerText = "Minting failed.";
     }
+  }
 
-    // Show mint button after course completion
-    document.getElementById("completeCourseBtn").addEventListener("click", () => {
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("connectWalletBtn").onclick = connectWallet;
+    document.getElementById("verifyAccess").onclick = verifyAccess;
+    document.getElementById("completeCourseBtn").onclick = () => {
       document.getElementById("mintSection").classList.remove("hidden");
-    });
+    };
+    document.getElementById("mintCertificate").onclick = mintCertificate;
+  });
+</script>
 
-    // Bind events
-    document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
-    document.getElementById("verifyAccess").addEventListener("click", verifyAccess);
-    document.getElementById("mintCertificate").addEventListener("click", mintCertificate);
-  </script>
 </body>
 </html>
-
-
 
   <section class="module" id="module1">
   <h2>Module 1: Foundation</h2>
