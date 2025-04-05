@@ -30,20 +30,26 @@ let provider, signer, sdk, wallet;
 // === Connect Wallet ===
 async function connectWallet() {
   try {
+    if (!window.ethereum) throw new Error("MetaMask not found");
+    
     provider = new ethers.BrowserProvider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = await provider.getSigner();
     wallet = await signer.getAddress();
-    sdk = ThirdwebSDK.fromSigner(signer, "binance");
 
-    document.getElementById("walletAddress")?.innerText = `Connected: ${wallet}`;
-    document.getElementById("connectWallet").innerText = "Wallet Connected";
+    const shortWallet = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    document.getElementById("walletConnection").innerText = "Wallet Connected";
+    document.getElementById("walletConnection").style.color = "lime";
+    document.getElementById("walletAddress").innerText = shortWallet;
 
-    updateKLYDashboard();
+    loadKLYTokenStats();
   } catch (err) {
-    console.error("Wallet connection failed:", err);
+    console.error("Wallet Connect Error:", err);
+    document.getElementById("walletConnection").innerText = "Connection Failed";
+    document.getElementById("walletConnection").style.color = "red";
   }
 }
+
 
 // === Update Dashboard ===
 async function updateKLYDashboard() {
