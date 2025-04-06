@@ -52,7 +52,38 @@
         document.getElementById("walletAddress").innerText = "Connection Failed";
       }
     }
+    async function loadProposals() {
+  try {
+    if (!sdk) throw new Error("SDK not initialized. Connect wallet first.");
+    
+    const dao = await sdk.getContract(CONFIG.DAO_CONTRACT, "vote");
+    const proposals = await dao.getAll();
 
+    const listContainer = document.getElementById("proposalList");
+    listContainer.innerHTML = "";
+
+    if (proposals.length === 0) {
+      listContainer.innerText = "No proposals yet.";
+      return;
+    }
+
+    proposals.forEach((p) => {
+      const div = document.createElement("div");
+      div.className = "proposal";
+      div.innerHTML = `
+        <h3>${p.description}</h3>
+        <p>Status: ${p.state}</p>
+        <p>Votes For: ${p.votes.for}</p>
+        <p>Votes Against: ${p.votes.against}</p>
+      `;
+      listContainer.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error("Failed to load proposals:", err);
+    document.getElementById("proposalList").innerText = "Error loading proposals.";
+  }
+}
     async function submitProposal() {
       const title = document.getElementById("proposalTitle").value.trim();
       const description = document.getElementById("proposalDesc").value.trim();
@@ -79,10 +110,22 @@
       }
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectBtn").addEventListener("click", connectWallet);
-      document.getElementById("createProposalBtn").addEventListener("click", submitProposal);
-    });
-  </script>
+ <script type="module">
+  window.addEventListener("DOMContentLoaded", () => {
+    const connectBtn = document.getElementById("connectWallet");
+    const submitBtn = document.getElementById("submitProposal");
+
+    if (connectBtn) {
+      connectBtn.addEventListener("click", async () => {
+        await connectWallet();
+        await loadProposals(); // Load proposals after wallet connects
+      });
+    }
+
+    if (submitBtn) {
+      submitBtn.addEventListener("click", submitProposal);
+    }
+  });
+</script>
 </body>
 </html>
