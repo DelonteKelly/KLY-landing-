@@ -71,54 +71,7 @@ async function updateKLYDashboard() {
     console.error("Update Stats Error:", err);
   }
 }
-
-// === Verify Course Access (>= 500 KLY) ===
-async function verifyAccess() {
-  try {
-    const contract = new ethers.Contract(CONFIG.KLY_TOKEN, KLY_ABI, provider);
-    const balance = await contract.balanceOf(wallet);
-    const balanceEth = ethers.formatUnits(balance, 18);
-
-    if (parseFloat(balanceEth) >= 500) {
-      document.getElementById("accessStatus").innerText = "Access granted.";
-      document.getElementById("courseContent")?.classList.remove("hidden");
-    } else {
-      document.getElementById("accessStatus").innerText = "You need at least 500 KLY to access this course.";
-      document.getElementById("courseContent")?.classList.add("hidden");
-    }
-  } catch (err) {
-    console.error("Access check failed:", err);
-    document.getElementById("accessStatus").innerText = "Verification failed.";
-  }
-}
-
-// === Mint NFT Certificate using Custom Function ===
-async function mintCertificate() {
-  try {
-    if (!wallet) return alert("Connect your wallet first.");
-    document.getElementById("mintStatus").innerText = "Minting in progress...";
-
-    const contract = await sdk.getContract(CONFIG.NFT_CONTRACT);
-
-    // Call custom mint function: mint(address to, int24 tickLower, int24 tickUpper, uint128 amount, bytes data)
-    await contract.call("mint", [
-      wallet,          // address to
-      -276330,         // int24 tickLower
-      276330,          // int24 tickUpper
-      1,               // uint128 amount
-      "0x"             // bytes data (empty)
-    ]);
-
-    document.getElementById("mintStatus").innerText = "NFT Certificate Minted Successfully!";
-  } catch (err) {
-    console.error("Minting failed:", err);
-    document.getElementById("mintStatus").innerText = "Minting failed.";
-  }
-}
 // === Bind Events ===
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
-  document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
-  document.getElementById("mintCertificate")?.addEventListener("click", mintCertificate);
-});
 </script>
