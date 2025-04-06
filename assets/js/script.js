@@ -91,21 +91,22 @@ async function verifyAccess() {
   }
 }
 
-// === Mint NFT Certificate (ERC721) ===
+// === Mint NFT Certificate using Custom Function ===
 async function mintCertificate() {
   try {
     if (!wallet) return alert("Connect your wallet first.");
     document.getElementById("mintStatus").innerText = "Minting in progress...";
 
-    const nft = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950");
+    const contract = await sdk.getContract(CONFIG.NFT_CONTRACT);
 
-    await nft.erc721.mintTo(wallet, {
-      metadata: {
-        name: "KLY Legacy Certificate",
-        description: "Awarded for completing the KLY Legacy Course.",
-        image: "ipfs://your-certificate-image", // Replace with your image URL or IPFS CID
-      }
-    });
+    // Call custom mint function: mint(address to, int24 tickLower, int24 tickUpper, uint128 amount, bytes data)
+    await contract.call("mint", [
+      wallet,          // address to
+      -276330,         // int24 tickLower
+      276330,          // int24 tickUpper
+      1,               // uint128 amount
+      "0x"             // bytes data (empty)
+    ]);
 
     document.getElementById("mintStatus").innerText = "NFT Certificate Minted Successfully!";
   } catch (err) {
