@@ -75,19 +75,20 @@ async function updateKLYDashboard() {
 // === Verify Course Access (>= 500 KLY) ===
 async function verifyAccess() {
   try {
-    const web3 = new Web3(window.ethereum);
-    const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
-    const balance = await kly.methods.balanceOf(wallet).call();
-    const balanceEth = web3.utils.fromWei(balance, "ether");
+    const contract = new ethers.Contract(CONFIG.KLY_TOKEN, KLY_ABI, provider);
+    const balance = await contract.balanceOf(wallet);
+    const balanceEth = ethers.formatUnits(balance, 18);
 
     if (parseFloat(balanceEth) >= 500) {
       document.getElementById("accessStatus").innerText = "Access granted.";
       document.getElementById("courseContent")?.classList.remove("hidden");
     } else {
       document.getElementById("accessStatus").innerText = "You need at least 500 KLY to access this course.";
+      document.getElementById("courseContent")?.classList.add("hidden");
     }
   } catch (err) {
     console.error("Access check failed:", err);
+    document.getElementById("accessStatus").innerText = "Verification failed.";
   }
 }
 
