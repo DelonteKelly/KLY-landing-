@@ -84,9 +84,7 @@
   </div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-<script>
+<script type="module">
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const KLY_ABI = [
     {
@@ -107,6 +105,12 @@
         return;
       }
 
+      // Request switch to BNB Chain
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x38' }]
+      });
+
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = provider.getSigner();
@@ -114,6 +118,8 @@
 
       document.getElementById("accessStatus").innerText =
         "Wallet connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      console.log("Wallet connected:", wallet);
+
     } catch (err) {
       console.error("Wallet connection failed:", err);
       document.getElementById("accessStatus").innerText = "Connection failed. Please try again.";
@@ -127,6 +133,7 @@
       const contract = new ethers.Contract(KLY_TOKEN, KLY_ABI, provider);
       const balance = await contract.balanceOf(wallet);
       const balanceEth = ethers.utils.formatEther(balance);
+      console.log("KLY Balance:", balanceEth);
 
       if (parseFloat(balanceEth) >= 500) {
         document.getElementById("accessPanel").classList.add("hidden");
@@ -138,6 +145,7 @@
       }
     } catch (err) {
       console.error("Access verification failed:", err);
+      document.getElementById("accessStatus").innerText = "Verification failed. Check console.";
     }
   }
 
@@ -189,5 +197,3 @@
     }
   }
 </script>
-</body>
-</html>
