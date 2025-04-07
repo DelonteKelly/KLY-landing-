@@ -26,108 +26,66 @@
   <button id="createProposalBtn">Submit Proposal</button>
   <div id="createStatus"></div>
 
-  <script type="module">
+ <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  const CONFIG = {
-    DAO_CONTRACT: "0x796Bce7F95662774243177D1F546eBA0B3465579",
-    CHAIN_ID: 56
-  };
+  const DAO_CONTRACT_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
 
   let provider, signer, sdk, wallet;
 
+  // Connect wallet and initialize SDK
   async function connectWallet() {
-    try {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-      sdk = ThirdwebSDK.fromSigner(signer, "binance");
+    if (!window.ethereum) return alert("MetaMask not found.");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+    sdk = ThirdwebSDK.fromSigner(signer, "binance");
 
-      const shortWallet = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-      document.getElementById("walletAddress").innerText = `Connected: ${shortWallet}`;
-    } catch (err) {
-      console.error("Wallet Connect Error:", err);
-      document.getElementById("walletAddress").innerText = "Connection Failed";
-    }
+    document.getElementById("connectWallet").innerText = `Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    loadProposals();
   }
 
+  // Load DAO proposals
   async function loadProposals() {
-    try {
-      if (!sdk) throw new Error("SDK not initialized. Connect wallet first.");
+    const dao = await sdk.getContract(DAO_CONTRACT_ADDRESS);
+    const proposals = await dao.call("getAllProposals");
 
-      const dao = await sdk.getContract(CONFIG.DAO_CONTRACT, "vote");
-      const proposals = await dao.getAll();
+    const container = document.getElementById("proposalsList");
+    container.innerHTML = "";
 
-      const listContainer = document.getElementById("proposalList");
-      listContainer.innerHTML = "";
-
-      if (proposals.length === 0) {
-        listContainer.innerText = "No proposals yet.";
-        return;
-      }
-
-      proposals.forEach((p) => {
-        const div = document.createElement("div");
-        div.className = "proposal";
-        div.innerHTML = `
-          <h3>${p.description}</h3>
-          <p>Status: ${p.state}</p>
-          <p>Votes For: ${p.votes.for}</p>
-          <p>Votes Against: ${p.votes.against}</p>
-        `;
-        listContainer.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Failed to load proposals:", err);
-      document.getElementById("proposalList").innerText = "Error loading proposals.";
-    }
+    proposals.forEach((proposal, index) => {
+      const div = document.createElement("div");
+      div.className = "proposal";
+      div.innerHTML = `
+        <h4>Proposal #${index + 1}: ${proposal.description}</h4>
+        <p>Status: ${proposal.executed ? "Executed" : "Pending"}</p>
+      `;
+      container.appendChild(div);
+    });
   }
 
+  // Submit a new proposal
   async function submitProposal() {
     const title = document.getElementById("proposalTitle").value.trim();
-    const description = document.getElementById("proposalDesc").value.trim();
+    const desc = document.getElementById("proposalDesc").value.trim();
+    if (!title || !desc) return alert("Fill out both fields.");
 
-    if (!title || !description) {
-      alert("Please fill out both title and description.");
-      return;
-    }
+    const dao = await sdk.getContract(DAO_CONTRACT_ADDRESS);
+    await dao.call("createProposal", [
+      `${title}: ${desc}`, // description
+      [] // actions (empty for now)
+    ]);
 
-    try {
-      if (!sdk) throw new Error("SDK not initialized. Connect wallet first.");
-      const dao = await sdk.getContract(CONFIG.DAO_CONTRACT, "vote");
-
-      await dao.propose({
-        description: `${title} - ${description}`,
-        executions: []
-      });
-
-      alert("Proposal submitted successfully!");
-      document.getElementById("createStatus").innerText = "Submitted successfully.";
-      document.getElementById("proposalTitle").value = "";
-      document.getElementById("proposalDesc").value = "";
-      await loadProposals(); // Refresh proposals after submission
-    } catch (err) {
-      console.error("Proposal submission failed:", err);
-      alert("Error submitting proposal. Check console.");
-    }
+    alert("Proposal submitted!");
+    loadProposals();
   }
 
+  // Event listeners
   window.addEventListener("DOMContentLoaded", () => {
-    const connectBtn = document.getElementById("connectWallet");
-    const submitBtn = document.getElementById("submitProposal");
-
-    if (connectBtn) {
-      connectBtn.addEventListener("click", async () => {
-        await connectWallet();
-        await loadProposals(); // Load proposals after wallet connects
-      });
-    }
-
-    if (submitBtn) {
-      submitBtn.addEventListener("click", submitProposal);
-    }
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("submitProposal").addEventListener("click", submitProposal);
   });
 </script>
 </body>
