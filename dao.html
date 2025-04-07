@@ -3,51 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY DAO Governance</title>
+  <title>KLY DAO</title>
   <style>
-    body { background: #0c0c0c; color: white; font-family: Inter, sans-serif; text-align: center; padding: 2rem; }
+    body { background: #0c0c0c; color: white; font-family: sans-serif; text-align: center; padding: 2rem; }
     h1, h2 { color: #00ffe0; }
-    button { background: #00ffe0; color: #000; border: none; padding: 0.7rem 1.5rem; margin: 1rem; font-size: 1rem; cursor: pointer; border-radius: 8px; }
-    input, textarea { padding: 0.6rem; width: 80%; max-width: 400px; margin: 0.5rem auto; border-radius: 6px; display: block; }
-    label { display: block; margin-top: 1rem; font-weight: bold; color: #00ffe0; }
-    .proposal { background: #111; padding: 1rem; margin: 1rem auto; max-width: 600px; border-radius: 10px; box-shadow: 0 0 8px #00ffe088; }
+    input, textarea, button { margin: 0.5rem auto; padding: 0.6rem; border-radius: 6px; display: block; width: 80%; max-width: 400px; }
+    .proposal { background: #111; padding: 1rem; margin: 1rem auto; border-radius: 10px; max-width: 600px; }
+    button { background: #00ffe0; color: black; cursor: pointer; }
   </style>
 </head>
 <body>
-  <header style="background: #111; border: 2px solid #00fff7; border-radius: 12px; box-shadow: 0 0 20px #00fff766; padding: 1.5rem; max-width: 700px; margin: 2rem auto;">
-    <h1 style="color: #00fff7; font-size: 2.2rem; margin-bottom: 1rem;">KLY Token</h1>
-    <nav style="display: flex; justify-content: center; flex-wrap: wrap; gap: 1.2rem;">
-      <a href="index.html" style="color: white; text-decoration: none;">Dashboard</a>
-      <a href="course.html" style="color: white; text-decoration: none;">Course</a>
-      <a href="stake.html" style="color: white; text-decoration: none;">Staking</a>
-      <a href="dao.html" style="color: white; text-decoration: none;">DAO</a>
-      <a href="launchpad.html" style="color: white; text-decoration: none;">Launchpad</a>
-    </nav>
-  </header>
-
   <h1>KLY DAO Governance</h1>
-  <button id="connectBtn">Connect Wallet</button>
-  <div id="walletStatus"></div>
+  <button id="connectWallet">Connect Wallet</button>
+  <div id="walletAddress"></div>
 
   <h2>DAO Proposals</h2>
-  <div id="proposalList">Loading...</div>
+  <div id="proposals">Loading...</div>
 
-  <h2>Create Executable Proposal</h2>
-
-  <label for="proposalTarget">Target Contract Address</label>
-  <input id="proposalTarget" placeholder="0x2e4f...B4E52" value="0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52" />
-
-  <label for="proposalFnSig">Function Signature</label>
-  <input id="proposalFnSig" placeholder="transfer(address,uint256)" />
-
-  <label for="proposalParams">Function Params (JSON array)</label>
-  <input id="proposalParams" placeholder='["0xRecipient", "1000000000000000000"]' />
-
-  <label for="proposalDesc">Proposal Description</label>
-  <textarea id="proposalDesc" rows="3" placeholder="Describe your proposal..."></textarea>
-
-  <button id="createProposalBtn">Submit Proposal</button>
-  <div id="createStatus"></div>
+  <h2>Create Proposal</h2>
+  <input id="target" placeholder="Target contract (e.g. 0x...)" />
+  <input id="signature" placeholder="Function signature (e.g. transfer(address,uint256))" />
+  <input id="params" placeholder='Function parameters (e.g. ["0x123", "1000000000000000000"])' />
+  <textarea id="description" placeholder="Proposal description"></textarea>
+  <button id="submitProposal">Submit</button>
+  <div id="status"></div>
 
 <script type="module">
   import { ethers } from "https://cdn.skypack.dev/ethers";
@@ -60,115 +39,70 @@
   import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
 
   const client = createThirdwebClient({ clientId: "YOUR_CLIENT_ID" });
-
-  const contract = getContract({
-    client,
-    chain: defineChain(56),
-    address: "0x796Bce7F95662774243177D1F546eBA0B3465579"
-  });
+  const contract = getContract({ client, chain: defineChain(56), address: "0x796Bce7F95662774243177D1F546eBA0B3465579" });
 
   let walletAddress = "";
 
-  async function connectWallet() {
-    if (!window.ethereum) return alert("MetaMask not found");
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    walletAddress = accounts[0];
-    document.getElementById("walletStatus").innerText =
-      `Connected: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
+  async function connect() {
+    const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
+    walletAddress = account;
+    document.getElementById("walletAddress").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
     loadProposals();
   }
 
-  document.getElementById("connectBtn").addEventListener("click", connectWallet);
-
   async function loadProposals() {
-    try {
-      const proposals = await contract.read("getAllProposals");
-      const container = document.getElementById("proposalList");
-      container.innerHTML = "";
-
-      proposals.forEach((p) => {
-        const div = document.createElement("div");
-        div.className = "proposal";
-        div.innerHTML = `
-          <h4>Proposal #${p.proposalId}</h4>
-          <p>${p.description}</p>
-          <p>Proposed by: ${p.proposer}</p>
-          <button onclick="castVote(${p.proposalId}, 1)">Vote For</button>
-          <button onclick="castVote(${p.proposalId}, 0)">Vote Against</button>
-          <button onclick="castVote(${p.proposalId}, 2)">Abstain</button>
-        `;
-        container.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Error loading proposals:", err);
-      document.getElementById("proposalList").innerText = "Failed to load proposals.";
-    }
+    const list = await contract.read("getAllProposals");
+    const container = document.getElementById("proposals");
+    container.innerHTML = "";
+    list.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "proposal";
+      el.innerHTML = `
+        <h3>Proposal #${p.proposalId}</h3>
+        <p>${p.description}</p>
+        <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
+        <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
+      `;
+      container.appendChild(el);
+    });
   }
 
-  document.getElementById("createProposalBtn").addEventListener("click", async () => {
-    const target = document.getElementById("proposalTarget").value.trim();
-    const fnSig = document.getElementById("proposalFnSig").value.trim();
-    const paramStr = document.getElementById("proposalParams").value.trim();
-    const description = document.getElementById("proposalDesc").value.trim();
-    const status = document.getElementById("createStatus");
+  window.vote = async (id, support) => {
+    const tx = await prepareContractCall({
+      contract,
+      method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+      params: [id, support]
+    });
+    const result = await sendTransaction({ transaction: tx, account: walletAddress });
+    alert(`Voted! Tx: ${result.transactionHash}`);
+  };
 
-    if (!target || !fnSig || !paramStr || !description) {
-      status.innerText = "Please fill in all fields.";
-      return;
-    }
+  document.getElementById("connectWallet").onclick = connect;
 
-    if (!walletAddress) {
-      status.innerText = "Connect your wallet first.";
-      return;
-    }
+  document.getElementById("submitProposal").onclick = async () => {
+    const target = document.getElementById("target").value.trim();
+    const signature = document.getElementById("signature").value.trim();
+    const paramStr = document.getElementById("params").value.trim();
+    const desc = document.getElementById("description").value.trim();
+    const status = document.getElementById("status");
 
-    status.innerText = "Encoding and submitting proposal...";
+    if (!target || !signature || !paramStr || !desc) return status.innerText = "Fill all fields.";
 
     try {
-      const iface = new ethers.utils.Interface([`function ${fnSig}`]);
-      const params = JSON.parse(paramStr);
-      const calldata = iface.encodeFunctionData(fnSig.split('(')[0], params);
+      const iface = new ethers.utils.Interface([`function ${signature}`]);
+      const calldata = iface.encodeFunctionData(signature.split("(")[0], JSON.parse(paramStr));
 
-      const transaction = await prepareContractCall({
+      const tx = await prepareContractCall({
         contract,
         method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
-        params: [[target], [0], [calldata], description]
+        params: [[target], [0], [calldata], desc]
       });
-
-      const result = await sendTransaction({
-        transaction,
-        account: walletAddress
-      });
-
-      status.innerText = `Proposal submitted! Tx Hash: ${result.transactionHash}`;
-      document.getElementById("proposalTarget").value = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-      document.getElementById("proposalFnSig").value = "";
-      document.getElementById("proposalParams").value = "";
-      document.getElementById("proposalDesc").value = "";
+      const result = await sendTransaction({ transaction: tx, account: walletAddress });
+      status.innerText = `Proposal submitted: ${result.transactionHash}`;
       loadProposals();
-    } catch (err) {
-      console.error("Proposal submission failed:", err);
-      status.innerText = "Failed to submit. Check console for error.";
-    }
-  });
-
-  window.castVote = async function (proposalId, support) {
-    try {
-      const transaction = await prepareContractCall({
-        contract,
-        method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
-        params: [proposalId, support]
-      });
-
-      const result = await sendTransaction({
-        transaction,
-        account: walletAddress
-      });
-
-      alert(`Vote submitted. Tx Hash: ${result.transactionHash}`);
-    } catch (err) {
-      console.error("Vote failed:", err);
-      alert("Vote failed. Check console for details.");
+    } catch (e) {
+      console.error(e);
+      status.innerText = "Failed to submit proposal.";
     }
   };
 </script>
