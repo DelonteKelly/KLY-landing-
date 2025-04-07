@@ -3,30 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY DAO</title>
+  <title>KLY DAO Governance</title>
   <style>
-    body { background: #0c0c0c; color: white; font-family: sans-serif; text-align: center; padding: 2rem; }
+    body {
+      background: #0c0c0c;
+      color: white;
+      font-family: Inter, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
     h1, h2 { color: #00ffe0; }
-    input, textarea, button { margin: 0.5rem auto; padding: 0.6rem; border-radius: 6px; display: block; width: 80%; max-width: 400px; }
-    .proposal { background: #111; padding: 1rem; margin: 1rem auto; border-radius: 10px; max-width: 600px; }
-    button { background: #00ffe0; color: black; cursor: pointer; }
+    button {
+      background: #00ffe0;
+      color: #000;
+      border: none;
+      padding: 0.7rem 1.5rem;
+      margin: 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    input, textarea {
+      padding: 0.6rem;
+      width: 80%;
+      max-width: 400px;
+      margin: 0.5rem auto;
+      border-radius: 6px;
+      display: block;
+    }
+    .proposal {
+      background: #111;
+      padding: 1rem;
+      margin: 1rem auto;
+      max-width: 600px;
+      border-radius: 10px;
+      box-shadow: 0 0 8px #00ffe088;
+    }
   </style>
 </head>
 <body>
   <h1>KLY DAO Governance</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="walletAddress"></div>
+  <button id="connectBtn">Connect Wallet</button>
+  <div id="walletStatus"></div>
 
-  <h2>DAO Proposals</h2>
-  <div id="proposals">Loading...</div>
+  <h2>Proposals</h2>
+  <div id="proposalList">Loading...</div>
 
   <h2>Create Proposal</h2>
-  <input id="target" placeholder="Target contract (e.g. 0x...)" />
-  <input id="signature" placeholder="Function signature (e.g. transfer(address,uint256))" />
-  <input id="params" placeholder='Function parameters (e.g. ["0x123", "1000000000000000000"])' />
-  <textarea id="description" placeholder="Proposal description"></textarea>
-  <button id="submitProposal">Submit</button>
-  <div id="status"></div>
+  <input id="proposalTarget" placeholder="Target contract address (e.g. 0x...)" />
+  <input id="proposalFnSig" placeholder="Function signature (e.g. transfer(address,uint256))" />
+  <input id="proposalParams" placeholder='Function parameters (e.g. ["0x...", "1000000000000000000"])' />
+  <textarea id="proposalDesc" placeholder="Proposal description"></textarea>
+  <button id="createProposalBtn">Submit Proposal</button>
+  <div id="createStatus"></div>
 
 <script type="module">
   import { ethers } from "https://cdn.skypack.dev/ethers";
@@ -38,71 +67,94 @@
   } from "https://cdn.skypack.dev/thirdweb";
   import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
 
-  const client = createThirdwebClient({ clientId: "YOUR_CLIENT_ID" });
-  const contract = getContract({ client, chain: defineChain(56), address: "0x796Bce7F95662774243177D1F546eBA0B3465579" });
+  const client = createThirdwebClient({
+    clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419"  // Your actual client ID
+  });
+
+  const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+  const dao = getContract({
+    client,
+    chain: defineChain(56), // BNB Chain
+    address: DAO_ADDRESS
+  });
 
   let walletAddress = "";
 
-  async function connect() {
+  document.getElementById("connectBtn").onclick = async () => {
+    if (!window.ethereum) return alert("Please install MetaMask");
+
     const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
     walletAddress = account;
-    document.getElementById("walletAddress").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
+    document.getElementById("walletStatus").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
     loadProposals();
-  }
+  };
 
   async function loadProposals() {
-    const list = await contract.read("getAllProposals");
-    const container = document.getElementById("proposals");
-    container.innerHTML = "";
-    list.forEach(p => {
-      const el = document.createElement("div");
-      el.className = "proposal";
-      el.innerHTML = `
-        <h3>Proposal #${p.proposalId}</h3>
-        <p>${p.description}</p>
-        <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
-        <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
-      `;
-      container.appendChild(el);
-    });
+    try {
+      const proposals = await dao.read("getAllProposals");
+      const list = document.getElementById("proposalList");
+      list.innerHTML = "";
+
+      proposals.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "proposal";
+        div.innerHTML = `
+          <h4>Proposal #${p.proposalId}</h4>
+          <p>${p.description}</p>
+          <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
+          <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
+          <button onclick="vote(${p.proposalId}, 2)">Abstain</button>
+        `;
+        list.appendChild(div);
+      });
+    } catch (err) {
+      console.error("Error loading proposals:", err);
+      document.getElementById("proposalList").innerText = "Error loading proposals.";
+    }
   }
 
   window.vote = async (id, support) => {
-    const tx = await prepareContractCall({
-      contract,
-      method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
-      params: [id, support]
-    });
-    const result = await sendTransaction({ transaction: tx, account: walletAddress });
-    alert(`Voted! Tx: ${result.transactionHash}`);
-  };
-
-  document.getElementById("connectWallet").onclick = connect;
-
-  document.getElementById("submitProposal").onclick = async () => {
-    const target = document.getElementById("target").value.trim();
-    const signature = document.getElementById("signature").value.trim();
-    const paramStr = document.getElementById("params").value.trim();
-    const desc = document.getElementById("description").value.trim();
-    const status = document.getElementById("status");
-
-    if (!target || !signature || !paramStr || !desc) return status.innerText = "Fill all fields.";
-
     try {
-      const iface = new ethers.utils.Interface([`function ${signature}`]);
-      const calldata = iface.encodeFunctionData(signature.split("(")[0], JSON.parse(paramStr));
-
       const tx = await prepareContractCall({
-        contract,
-        method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
-        params: [[target], [0], [calldata], desc]
+        contract: dao,
+        method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+        params: [id, support]
       });
       const result = await sendTransaction({ transaction: tx, account: walletAddress });
-      status.innerText = `Proposal submitted: ${result.transactionHash}`;
+      alert(`Vote submitted! Tx: ${result.transactionHash}`);
+    } catch (err) {
+      console.error("Vote failed:", err);
+      alert("Vote failed. Check console.");
+    }
+  };
+
+  document.getElementById("createProposalBtn").onclick = async () => {
+    const target = document.getElementById("proposalTarget").value.trim();
+    const fnSig = document.getElementById("proposalFnSig").value.trim();
+    const paramStr = document.getElementById("proposalParams").value.trim();
+    const description = document.getElementById("proposalDesc").value.trim();
+    const status = document.getElementById("createStatus");
+
+    if (!target || !fnSig || !paramStr || !description) {
+      return status.innerText = "Please fill in all fields.";
+    }
+
+    try {
+      const iface = new ethers.utils.Interface([`function ${fnSig}`]);
+      const calldata = iface.encodeFunctionData(fnSig.split("(")[0], JSON.parse(paramStr));
+
+      const tx = await prepareContractCall({
+        contract: dao,
+        method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
+        params: [[target], [0], [calldata], description]
+      });
+
+      const result = await sendTransaction({ transaction: tx, account: walletAddress });
+      status.innerText = `Proposal submitted! Tx: ${result.transactionHash}`;
       loadProposals();
-    } catch (e) {
-      console.error(e);
-      status.innerText = "Failed to submit proposal.";
+    } catch (err) {
+      console.error("Proposal creation failed:", err);
+      status.innerText = "Proposal creation failed. See console.";
     }
   };
 </script>
