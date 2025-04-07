@@ -41,43 +41,7 @@
   <button id="completeCourseBtn">Complete Course</button>
 </section>
 
-<!-- NFT MINTING -->
-<section id="mintSection" class="panel hidden">
-  <h3>Claim Your NFT Certificate</h3>
-  <button id="mintCertificate">Mint NFT Certificate</button>
-  <p id="mintStatus" class="status"></p>
-</section>
-
 <!-- SCRIPT -->
-<script>
-  async function checkKLYAccess() {
-    if (typeof window.ethereum === 'undefined') {
-      alert("Please connect your wallet to view this course.");
-      window.location.href = "/";
-      return;
-    }
-
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    const address = await signer.getAddress();
-
-    const klyContract = new ethers.Contract("0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", [
-      "function balanceOf(address owner) view returns (uint256)"
-    ], provider);
-
-    const balance = await klyContract.balanceOf(address);
-    const threshold = ethers.utils.parseUnits("500", 18);
-
-    if (balance.lt(threshold)) {
-      alert("You need at least 500 KLY to access this course.");
-      window.location.href = "/";
-    }
-  }
-
-  window.addEventListener("load", checkKLYAccess);
-</script>
-  
 <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
@@ -114,7 +78,35 @@
     }
   }
 
-  // Verify 500 KLY Access
+  // Auto-check KLY token access on page load
+  async function checkKLYAccess() {
+    if (!window.ethereum) {
+      alert("Please connect your wallet to view this course.");
+      window.location.href = "/";
+      return;
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
+
+    const klyContract = new ethers.Contract(CONFIG.KLY_TOKEN, [
+      "function balanceOf(address owner) view returns (uint256)"
+    ], provider);
+
+    const balance = await klyContract.balanceOf(wallet);
+    const threshold = ethers.parseUnits("500", 18);
+
+    if (balance < threshold) {
+      alert("You need at least 500 KLY to access this course.");
+      window.location.href = "/";
+    } else {
+      document.getElementById("courseContent").classList.remove("hidden");
+    }
+  }
+
+  // Manual verification button
   async function verifyAccess() {
     try {
       const web3 = new Web3(window.ethereum);
@@ -135,30 +127,32 @@
     }
   }
 
-  // Mint NFT Certificate (custom function)
+  // Mint NFT Certificate
   async function mintCertificate() {
     try {
       if (!wallet) return alert("Connect your wallet first.");
       document.getElementById("mintStatus").innerText = "Minting in progress...";
+
       const contract = await sdk.getContract(CONFIG.NFT_CONTRACT);
 
       await contract.call("mint", [
-        wallet,      // address to
-        -276330,     // tickLower (custom)
-        276330,      // tickUpper (custom)
+        wallet,      // recipient
+        -276330,     // tickLower
+        276330,      // tickUpper
         1,           // amount
         "0x"         // data
       ]);
 
-      document.getElementById("mintStatus").innerText = "NFT Certificate Minted Successfully!";
+      document.getElementById("mintStatus").innerText = "✅ NFT Certificate Minted Successfully!";
     } catch (err) {
       console.error("Minting failed:", err);
-      document.getElementById("mintStatus").innerText = "Minting failed.";
+      document.getElementById("mintStatus").innerText = "❌ Minting failed.";
     }
   }
 
-  // Event listeners
+  // Init on load
   window.addEventListener("DOMContentLoaded", () => {
+    checkKLYAccess();
     document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
     document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
     document.getElementById("completeCourseBtn")?.addEventListener("click", () => {
