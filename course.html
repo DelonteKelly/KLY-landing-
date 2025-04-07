@@ -49,6 +49,35 @@
 </section>
 
 <!-- SCRIPT -->
+<script>
+  async function checkKLYAccess() {
+    if (typeof window.ethereum === 'undefined') {
+      alert("Please connect your wallet to view this course.");
+      window.location.href = "/";
+      return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const address = await signer.getAddress();
+
+    const klyContract = new ethers.Contract("0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52", [
+      "function balanceOf(address owner) view returns (uint256)"
+    ], provider);
+
+    const balance = await klyContract.balanceOf(address);
+    const threshold = ethers.utils.parseUnits("500", 18);
+
+    if (balance.lt(threshold)) {
+      alert("You need at least 500 KLY to access this course.");
+      window.location.href = "/";
+    }
+  }
+
+  window.addEventListener("load", checkKLYAccess);
+</script>
+  
 <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
