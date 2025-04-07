@@ -26,22 +26,35 @@
   <button id="createProposalBtn">Submit Proposal</button>
   <div id="createStatus"></div>
 
- <script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+<script type="module">
+  import {
+    createThirdwebClient,
+    getContract,
+  } from "https://cdn.skypack.dev/thirdweb";
+  import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  const DAO_CONTRACT_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+  const client = createThirdwebClient({
+    clientId: "YOUR_CLIENT_ID", // Replace with your real Thirdweb client ID
+  });
 
-  let provider, signer, sdk, wallet;
+  const chain = defineChain(56); // BNB Chain
 
-  // Connect wallet and initialize SDK
+  let provider, signer, wallet, dao;
+
+  // Connect wallet and initialize contract
   async function connectWallet() {
     if (!window.ethereum) return alert("MetaMask not found.");
     provider = new ethers.BrowserProvider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = await provider.getSigner();
     wallet = await signer.getAddress();
-    sdk = ThirdwebSDK.fromSigner(signer, "binance");
+
+    dao = await getContract({
+      client,
+      chain,
+      address: "0x796Bce7F95662774243177D1F546eBA0B3465579",
+    });
 
     document.getElementById("connectWallet").innerText = `Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
     loadProposals();
@@ -49,9 +62,7 @@
 
   // Load DAO proposals
   async function loadProposals() {
-    const dao = await sdk.getContract(DAO_CONTRACT_ADDRESS);
-    const proposals = await dao.call("getAllProposals");
-
+    const proposals = await dao.read("getAllProposals");
     const container = document.getElementById("proposalsList");
     container.innerHTML = "";
 
@@ -72,12 +83,7 @@
     const desc = document.getElementById("proposalDesc").value.trim();
     if (!title || !desc) return alert("Fill out both fields.");
 
-    const dao = await sdk.getContract(DAO_CONTRACT_ADDRESS);
-    await dao.call("createProposal", [
-      `${title}: ${desc}`, // description
-      [] // actions (empty for now)
-    ]);
-
+    await dao.write("createProposal", [`${title}: ${desc}`, []]);
     alert("Proposal submitted!");
     loadProposals();
   }
