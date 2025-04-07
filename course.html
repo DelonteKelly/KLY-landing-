@@ -84,92 +84,110 @@
   </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
 <script>
-    const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const KLY_ABI = [{
-      constant: true,
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_ABI = [
+    {
       inputs: [{ name: "account", type: "address" }],
       name: "balanceOf",
       outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
       type: "function"
-    }];
-    let wallet;
-
-    async function connectWallet() {
-      if (!window.ethereum) return alert("Please install MetaMask");
-      const web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      wallet = accounts[0];
-      document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
     }
+  ];
 
-    async function verifyAccess() {
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask");
+        return;
+      }
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+
+      document.getElementById("accessStatus").innerText =
+        "Wallet connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      document.getElementById("accessStatus").innerText = "Connection failed. Please try again.";
+    }
+  }
+
+  async function verifyAccess() {
+    try {
       if (!wallet) return alert("Connect your wallet first.");
-      const web3 = new Web3(window.ethereum);
-      const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
-      const balance = await contract.methods.balanceOf(wallet).call();
-      const balanceEth = web3.utils.fromWei(balance, "ether");
+
+      const contract = new ethers.Contract(KLY_TOKEN, KLY_ABI, provider);
+      const balance = await contract.balanceOf(wallet);
+      const balanceEth = ethers.utils.formatEther(balance);
+
       if (parseFloat(balanceEth) >= 500) {
         document.getElementById("accessPanel").classList.add("hidden");
         document.getElementById("courseContent").classList.remove("hidden");
         document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY";
+        document.getElementById("accessStatus").innerText =
+          "Access Denied: You only hold " + balanceEth + " KLY";
       }
+    } catch (err) {
+      console.error("Access verification failed:", err);
     }
+  }
 
-    function showNextModule(id) {
-      if (typeof id === 'number') {
-        document.getElementById("module" + (id - 1)).classList.add("hidden");
-        document.getElementById("module" + id).classList.remove("hidden");
-      } else if (id === 'mint') {
-        document.getElementById("module5").classList.add("hidden");
-        document.getElementById("mintSection").classList.remove("hidden");
-      }
+  function showNextModule(id) {
+    if (typeof id === 'number') {
+      document.getElementById("module" + (id - 1)).classList.add("hidden");
+      document.getElementById("module" + id).classList.remove("hidden");
+    } else if (id === 'mint') {
+      document.getElementById("module5").classList.add("hidden");
+      document.getElementById("mintSection").classList.remove("hidden");
     }
+  }
 
-    async function mintNFT() {
-      if (!wallet) return alert("Please connect your wallet first.");
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+  async function mintNFT() {
+    if (!wallet) return alert("Please connect your wallet first.");
+    try {
+      const nftContract = new ethers.Contract(
+        "0xDA76d35742190283E340dbeE2038ecc978a56950",
+        [
+          {
+            "inputs": [
+              { "internalType": "address", "name": "to", "type": "address" },
+              { "internalType": "int24", "name": "tickLower", "type": "int24" },
+              { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+              { "internalType": "uint128", "name": "amount", "type": "uint128" },
+              { "internalType": "bytes", "name": "data", "type": "bytes" }
+            ],
+            "name": "mint",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          }
+        ],
+        signer
+      );
 
-        const nftContract = new ethers.Contract(
-          "0xDA76d35742190283E340dbeE2038ecc978a56950",
-          [
-            {
-              "inputs": [
-                { "internalType": "address", "name": "to", "type": "address" },
-                { "internalType": "int24", "name": "tickLower", "type": "int24" },
-                { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-                { "internalType": "uint128", "name": "amount", "type": "uint128" },
-                { "internalType": "bytes", "name": "data", "type": "bytes" }
-              ],
-              "name": "mint",
-              "outputs": [],
-              "stateMutability": "nonpayable",
-              "type": "function"
-            }
-          ],
-          signer
-        );
+      const tickLower = -600;
+      const tickUpper = 600;
+      const amount = 1;
+      const data = "0x";
 
-        const tickLower = -600;
-        const tickUpper = 600;
-        const amount = 1;
-        const data = "0x";
-
-        const tx = await nftContract.mint(wallet, tickLower, tickUpper, amount, data);
-        document.getElementById("mintStatus").innerText = "Minting in progress...";
-        await tx.wait();
-        document.getElementById("mintStatus").innerText = "NFT successfully minted!";
-      } catch (error) {
-        console.error("Minting failed:", error);
-        document.getElementById("mintStatus").innerText = "Minting failed. Please try again.";
-      }
+      const tx = await nftContract.mint(wallet, tickLower, tickUpper, amount, data);
+      document.getElementById("mintStatus").innerText = "Minting in progress...";
+      await tx.wait();
+      document.getElementById("mintStatus").innerText = "NFT successfully minted!";
+    } catch (error) {
+      console.error("Minting failed:", error);
+      document.getElementById("mintStatus").innerText = "Minting failed. Please try again.";
     }
-  </script>
-
+  }
+</script>
 </body>
 </html>
