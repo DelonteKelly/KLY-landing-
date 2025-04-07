@@ -34,90 +34,72 @@
     sendTransaction,
   } from "https://cdn.skypack.dev/thirdweb";
   import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  const client = createThirdwebClient({ clientId: "YOUR_CLIENT_ID" }); // Replace with real clientId
-  const chain = defineChain(56); // BNB Chain
-  const daoAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+  const client = createThirdwebClient({
+    clientId: "YOUR_CLIENT_ID",
+  });
 
-  let provider, signer, wallet, dao;
+  const contract = getContract({
+    client,
+    chain: defineChain(56),
+    address: "0x796Bce7F95662774243177D1F546eBA0B3465579",
+  });
 
-  // Connect wallet
+  let walletAddress = "";
+
+  // Connect Wallet
   async function connectWallet() {
-    if (!window.ethereum) return alert("MetaMask not found.");
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    wallet = await signer.getAddress();
-
-    dao = await getContract({
-      client,
-      chain,
-      address: daoAddress,
-    });
-
-    document.getElementById("connectWallet").innerText = `Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    if (!window.ethereum) return alert("MetaMask not found");
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    walletAddress = accounts[0];
+    document.getElementById("walletStatus").innerText = `Connected: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
     loadProposals();
   }
 
-  // Load proposals with vote buttons
+  // Load DAO Proposals
   async function loadProposals() {
-    const proposals = await dao.read("getAllProposals");
-    const container = document.getElementById("proposalsList");
-    container.innerHTML = "";
+    try {
+      const proposals = await contract.read("getAllProposals");
+      const container = document.getElementById("proposalList");
+      container.innerHTML = "";
 
-    proposals.forEach((proposal, index) => {
-      const div = document.createElement("div");
-      div.className = "proposal";
-      div.innerHTML = `
-        <h4>Proposal #${index + 1}: ${proposal.description}</h4>
-        <p>Status: ${proposal.executed ? "Executed" : "Pending"}</p>
-        <button onclick="castVote(${index}, 1)">Vote For</button>
-        <button onclick="castVote(${index}, 0)">Vote Against</button>
-        <button onclick="castVote(${index}, 2)">Abstain</button>
-        <hr/>
-      `;
-      container.appendChild(div);
-    });
+      proposals.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "proposal";
+        div.innerHTML = `
+          <h4>Proposal #${p.proposalId}: ${p.description}</h4>
+          <p>Proposed by: ${p.proposer}</p>
+          <button onclick="castVote(${p.proposalId}, 1)">Vote For</button>
+          <button onclick="castVote(${p.proposalId}, 0)">Vote Against</button>
+          <button onclick="castVote(${p.proposalId}, 2)">Abstain</button>
+        `;
+        container.appendChild(div);
+      });
+    } catch (err) {
+      console.error("Error loading proposals:", err);
+      document.getElementById("proposalList").innerText = "Failed to load proposals.";
+    }
   }
 
-  // Cast a vote (support = 0 = Against, 1 = For, 2 = Abstain)
+  // Cast Vote
   window.castVote = async function (proposalId, support) {
     try {
-      const tx = await prepareContractCall({
-        contract: dao,
+      const transaction = await prepareContractCall({
+        contract,
         method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
         params: [proposalId, support],
       });
 
-      const { transactionHash } = await sendTransaction({
-        transaction: tx,
-        account: wallet,
-      });
-
-      alert(`Vote cast successfully! Tx Hash: ${transactionHash}`);
+      const result = await sendTransaction({ transaction, account: walletAddress });
+      alert(`Vote submitted. Tx Hash: ${result.transactionHash}`);
     } catch (err) {
       console.error("Vote failed:", err);
-      alert("Voting failed. See console for details.");
+      alert("Vote failed. Check console for details.");
     }
   };
 
-  // Submit proposal
-  async function submitProposal() {
-    const title = document.getElementById("proposalTitle").value.trim();
-    const desc = document.getElementById("proposalDesc").value.trim();
-    if (!title || !desc) return alert("Fill out both fields.");
-
-    await dao.write("createProposal", [`${title}: ${desc}`, []]);
-    alert("Proposal submitted!");
-    loadProposals();
-  }
-
-  // Setup listeners
-  window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("connectWallet").addEventListener("click", connectWallet);
-    document.getElementById("submitProposal").addEventListener("click", submitProposal);
-  });
+  // Handle Connect Button
+  document.getElementById("connectWallet").addEventListener("click", connectWallet);
 </script>
 </body>
 </html>
