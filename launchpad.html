@@ -1,153 +1,111 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY Token Launchpad</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js";
 
-  <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      padding: 2rem;
-      text-align: center;
+  // Configuration
+  const BSC_CHAIN_ID = 56; // Mainnet
+  // const BSC_CHAIN_ID = 97; // Testnet
+  const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+  const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const klyTokenAddress = treasury;
+  const klyAbi = [
+    {
+      constant: true,
+      inputs: [{ name: "account", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "", type: "uint256" }],
+      type: "function"
     }
+  ];
 
-    h1, h2 {
-      color: #00ffe0;
-    }
+  let provider, signer, sdk, wallet;
 
-    header {
-      background: #111;
-      border: 2px solid #00fff7;
-      border-radius: 12px;
-      box-shadow: 0 0 20px #00fff766;
-      padding: 1.5rem;
-      max-width: 700px;
-      margin: 2rem auto;
-      text-align: center;
-    }
-
-    nav {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 1.2rem;
-    }
-
-    nav a {
-      color: white;
-      text-decoration: none;
-    }
-
-    nav a:hover {
-      text-decoration: underline;
-    }
-
-    input {
-      margin: 0.4rem;
-      padding: 0.5rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      margin-top: 1rem;
-      padding: 0.6rem 1.2rem;
-      background: #00ffe0;
-      color: #000;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #00ccbb;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    li {
-      margin-bottom: 1rem;
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <h1>KLY Token</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="course.html">Course</a>
-      <a href="stake.html">Staking</a>
-      <a href="dao.html">DAO</a>
-      <a href="launchpad.html">Launchpad</a>
-    </nav>
-  </header>
-
-  <h1>KLY Launchpad</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="walletStatus" style="margin-top: 1rem;"></div>
-
-  <h2>Launch Your Own Token</h2>
-  <p>You must hold at least 10,000 KLY to launch.</p>
-  <input id="tokenName" placeholder="Token Name" />
-  <input id="tokenSymbol" placeholder="Token Symbol" />
-  <input id="initialSupply" placeholder="Initial Supply (e.g. 1000000)" />
-  <br/>
-  <button id="launchTokenBtn">Launch Token</button>
-  <p id="launchStatus"></p>
-
-  <h2>Recently Launched Tokens</h2>
-  <ul id="launchedTokensList"></ul>
-
-  <!-- Scripts at the bottom -->
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js";
-
-    const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const klyTokenAddress = treasury;
-    const klyAbi = [
-      {
-        constant: true,
-        inputs: [{ name: "account", type: "address" }],
-        name: "balanceOf",
-        outputs: [{ name: "", type: "uint256" }],
-        type: "function"
-      }
-    ];
-
-    let provider, signer, sdk, wallet;
-
-    async function connectWallet() {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-      sdk = new ThirdwebSDK("binance", { signer });
-
-      document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-    }
-
-    async function deployToken() {
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim();
-      const supply = parseInt(document.getElementById("initialSupply").value.trim());
-      const status = document.getElementById("launchStatus");
-
-      if (!name || !symbol || !supply) {
-        alert("All fields required");
+  async function connectWallet() {
+    try {
+      // Check if MetaMask/Web3 wallet is installed
+      if (!window.ethereum) {
+        alert("Please install MetaMask or another Web3 wallet!");
         return;
       }
+      
+      // Check if already connected
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        wallet = accounts[0];
+        document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+        return;
+      }
+      
+      // Request account access
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      wallet = accounts[0];
+      
+      // Check if on BSC network
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== `0x${BSC_CHAIN_ID.toString(16)}`) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
+          });
+        } catch (switchError) {
+          // If network not added, add it
+          if (switchError.code === 4902) {
+            await addBSCNetwork();
+          } else {
+            throw switchError;
+          }
+        }
+      }
+      
+      // Initialize providers
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      sdk = await ThirdwebSDK.fromSigner(signer, "binance");
 
+      document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      alert("Failed to connect wallet: " + (err.message || err));
+    }
+  }
+
+  async function addBSCNetwork() {
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
+        chainName: 'BNB Smart Chain',
+        nativeCurrency: {
+          name: 'BNB',
+          symbol: 'BNB',
+          decimals: 18
+        },
+        rpcUrls: [BSC_RPC_URL],
+        blockExplorerUrls: ['https://bscscan.com/']
+      }]
+    });
+  }
+
+  async function deployToken() {
+    if (!wallet) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim();
+    const supply = parseInt(document.getElementById("initialSupply").value.trim());
+    const status = document.getElementById("launchStatus");
+
+    if (!name || !symbol || !supply) {
+      alert("All fields required");
+      return;
+    }
+
+    try {
       const web3 = new Web3(window.ethereum);
       const kly = new web3.eth.Contract(klyAbi, klyTokenAddress);
       const balance = await kly.methods.balanceOf(wallet).call();
@@ -159,47 +117,64 @@
       }
 
       status.innerText = "Launching token...";
-      try {
-        const token = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          primary_sale_recipient: wallet,
-          total_supply: supply.toString(),
-        });
+      
+      const token = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: wallet,
+        total_supply: supply.toString(),
+      });
 
-        const tokenContract = await sdk.getContract(token);
-        const fivePercent = Math.floor(supply * 0.05);
-        await tokenContract.call("transfer", [treasury, fivePercent.toString()]);
+      const tokenContract = await sdk.getContract(token);
+      const fivePercent = Math.floor(supply * 0.05);
+      await tokenContract.call("transfer", [treasury, fivePercent.toString()]);
 
-        const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-        tokens.unshift({ name, symbol, supply, address: token });
-        localStorage.setItem("launchedTokens", JSON.stringify(tokens));
-
-        status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
-        displayLaunchedTokens();
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Token launch failed.";
-      }
-    }
-
-    function displayLaunchedTokens() {
       const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-      const list = document.getElementById("launchedTokensList");
-      list.innerHTML = tokens.map(t => `
-        <li>
-          <strong>${t.name} (${t.symbol})</strong><br/>
-          Supply: ${t.supply.toLocaleString()}<br/>
-          <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
-        </li>
-      `).join("");
-    }
+      tokens.unshift({ name, symbol, supply, address: token });
+      localStorage.setItem("launchedTokens", JSON.stringify(tokens));
 
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectWallet").onclick = connectWallet;
-      document.getElementById("launchTokenBtn").onclick = deployToken;
+      status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
       displayLaunchedTokens();
+    } catch (err) {
+      console.error(err);
+      status.innerText = "Token launch failed: " + (err.message || err);
+    }
+  }
+
+  function displayLaunchedTokens() {
+    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+    const list = document.getElementById("launchedTokensList");
+    list.innerHTML = tokens.map(t => `
+      <li>
+        <strong>${t.name} (${t.symbol})</strong><br/>
+        Supply: ${t.supply.toLocaleString()}<br/>
+        <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
+      </li>
+    `).join("");
+  }
+
+  // Event listeners
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("connectWallet").onclick = connectWallet;
+    document.getElementById("launchTokenBtn").onclick = deployToken;
+    displayLaunchedTokens();
+    
+    // Listen for account changes
+    window.ethereum?.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        wallet = null;
+        document.getElementById("walletStatus").innerText = "Disconnected";
+      } else {
+        wallet = accounts[0];
+        document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      }
     });
-  </script>
-</body>
-</html>
+    
+    // Listen for chain changes
+    window.ethereum?.on('chainChanged', (chainId) => {
+      if (chainId !== `0x${BSC_CHAIN_ID.toString(16)}`) {
+        alert("Please switch to BNB Smart Chain");
+      }
+    });
+  });
+</script>
