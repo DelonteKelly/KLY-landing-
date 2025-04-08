@@ -1,180 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KLY Token Launchpad</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/thirdweb.umd.min.js"></script>
+</head>
+<body>
+  <h1>KLY Launchpad</h1>
+  <button id="connectWallet">Connect Wallet</button>
+  <p id="walletStatus">Disconnected</p>
 
-<script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.min.js";
+  <div>
+    <input id="tokenName" placeholder="Token Name" />
+    <input id="tokenSymbol" placeholder="Symbol" />
+    <input id="initialSupply" placeholder="Initial Supply" type="number" />
+    <button id="launchTokenBtn">Launch Token</button>
+    <p id="launchStatus"></p>
+  </div>
 
-  // Configuration
-  const BSC_CHAIN_ID = 56; // Mainnet
-  // const BSC_CHAIN_ID = 97; // Testnet
-  const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
-  const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const klyTokenAddress = treasury;
-  const klyAbi = [
-    {
-      constant: true,
-      inputs: [{ name: "account", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ name: "", type: "uint256" }],
-      type: "function"
-    }
-  ];
+  <h2>Launched Tokens</h2>
+  <ul id="launchedTokensList"></ul>
 
-  let provider, signer, sdk, wallet;
+  <script>
+    const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const klyTokenAddress = treasury;
+    const klyAbi = [
+      {
+        constant: true,
+        inputs: [{ name: "account", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        type: "function"
+      }
+    ];
 
-  async function connectWallet() {
-    try {
-      // Check if MetaMask/Web3 wallet is installed
+    let sdk, signer, wallet;
+
+    async function connectWallet() {
       if (!window.ethereum) {
-        alert("Please install MetaMask or another Web3 wallet!");
-        return;
-      }
-      
-      // Check if already connected
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (accounts.length > 0) {
-        wallet = accounts[0];
-        document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-        return;
-      }
-      
-      // Request account access
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      wallet = accounts[0];
-      
-      // Check if on BSC network
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== `0x${BSC_CHAIN_ID.toString(16)}`) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
-          });
-        } catch (switchError) {
-          // If network not added, add it
-          if (switchError.code === 4902) {
-            await addBSCNetwork();
-          } else {
-            throw switchError;
-          }
-        }
-      }
-      
-      // Initialize providers
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      sdk = await ThirdwebSDK.fromSigner(signer, "binance");
-
-      document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      alert("Failed to connect wallet: " + (err.message || err));
-    }
-  }
-
-  async function addBSCNetwork() {
-    await window.ethereum.request({
-      method: 'wallet_addEthereumChain',
-      params: [{
-        chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
-        chainName: 'BNB Smart Chain',
-        nativeCurrency: {
-          name: 'BNB',
-          symbol: 'BNB',
-          decimals: 18
-        },
-        rpcUrls: [BSC_RPC_URL],
-        blockExplorerUrls: ['https://bscscan.com/']
-      }]
-    });
-  }
-
-  async function deployToken() {
-    if (!wallet) {
-      alert("Please connect your wallet first");
-      return;
-    }
-    
-    const name = document.getElementById("tokenName").value.trim();
-    const symbol = document.getElementById("tokenSymbol").value.trim();
-    const supply = parseInt(document.getElementById("initialSupply").value.trim());
-    const status = document.getElementById("launchStatus");
-
-    if (!name || !symbol || !supply) {
-      alert("All fields required");
-      return;
-    }
-
-    try {
-      const web3 = new Web3(window.ethereum);
-      const kly = new web3.eth.Contract(klyAbi, klyTokenAddress);
-      const balance = await kly.methods.balanceOf(wallet).call();
-      const balanceEth = web3.utils.fromWei(balance, "ether");
-
-      if (parseFloat(balanceEth) < 10000) {
-        status.innerText = "You need 10,000 KLY to launch.";
+        alert("Please install MetaMask.");
         return;
       }
 
-      status.innerText = "Launching token...";
-      
-      const token = await sdk.deployer.deployToken({
-        name,
-        symbol,
-        primary_sale_recipient: wallet,
-        total_supply: supply.toString(),
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+
+      sdk = new thirdweb.ThirdwebSDK(signer, {
+        chainId: 56, // BNB Mainnet
       });
 
-      const tokenContract = await sdk.getContract(token);
-      const fivePercent = Math.floor(supply * 0.05);
-      await tokenContract.call("transfer", [treasury, fivePercent.toString()]);
-
-      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-      tokens.unshift({ name, symbol, supply, address: token });
-      localStorage.setItem("launchedTokens", JSON.stringify(tokens));
-
-      status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
-      displayLaunchedTokens();
-    } catch (err) {
-      console.error(err);
-      status.innerText = "Token launch failed: " + (err.message || err);
+      document.getElementById("walletStatus").innerText =
+        "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
     }
-  }
 
-  function displayLaunchedTokens() {
-    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-    const list = document.getElementById("launchedTokensList");
-    list.innerHTML = tokens.map(t => `
-      <li>
-        <strong>${t.name} (${t.symbol})</strong><br/>
-        Supply: ${t.supply.toLocaleString()}<br/>
-        <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
-      </li>
-    `).join("");
-  }
+    async function deployToken() {
+      const name = document.getElementById("tokenName").value.trim();
+      const symbol = document.getElementById("tokenSymbol").value.trim();
+      const supply = parseInt(document.getElementById("initialSupply").value.trim());
+      const status = document.getElementById("launchStatus");
 
-  // Event listeners
-  window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("connectWallet").onclick = connectWallet;
-    document.getElementById("launchTokenBtn").onclick = deployToken;
-    displayLaunchedTokens();
-    
-    // Listen for account changes
-    window.ethereum?.on('accountsChanged', (accounts) => {
-      if (accounts.length === 0) {
-        wallet = null;
-        document.getElementById("walletStatus").innerText = "Disconnected";
-      } else {
-        wallet = accounts[0];
-        document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      if (!wallet || !sdk || !signer) {
+        alert("Please connect your wallet first.");
+        return;
       }
-    });
-    
-    // Listen for chain changes
-    window.ethereum?.on('chainChanged', (chainId) => {
-      if (chainId !== `0x${BSC_CHAIN_ID.toString(16)}`) {
-        alert("Please switch to BNB Smart Chain");
+
+      if (!name || !symbol || !supply) {
+        alert("All fields required");
+        return;
       }
+
+      try {
+        const kly = new ethers.Contract(klyTokenAddress, klyAbi, signer);
+        const balance = await kly.balanceOf(wallet);
+        const balanceEth = ethers.utils.formatEther(balance);
+
+        if (parseFloat(balanceEth) < 10000) {
+          status.innerText = "You need at least 10,000 KLY to launch.";
+          return;
+        }
+
+        status.innerText = "Deploying token...";
+
+        const tokenAddress = await sdk.deployer.deployToken({
+          name,
+          symbol,
+          primary_sale_recipient: wallet,
+          total_supply: supply.toString(),
+        });
+
+        const token = await sdk.getContract(tokenAddress);
+        const treasuryAmount = Math.floor(supply * 0.05).toString();
+
+        await token.call("transfer", [treasury, treasuryAmount]);
+
+        const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+        tokens.unshift({ name, symbol, supply, address: tokenAddress });
+        localStorage.setItem("launchedTokens", JSON.stringify(tokens));
+
+        status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
+        displayLaunchedTokens();
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Launch failed: " + (err.message || err);
+      }
+    }
+
+    function displayLaunchedTokens() {
+      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+      const list = document.getElementById("launchedTokensList");
+      list.innerHTML = tokens.map(t => `
+        <li>
+          <strong>${t.name} (${t.symbol})</strong><br/>
+          Supply: ${t.supply.toLocaleString()}<br/>
+          <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
+        </li>
+      `).join("");
+    }
+
+    // Event Bindings
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("connectWallet").onclick = connectWallet;
+      document.getElementById("launchTokenBtn").onclick = deployToken;
+      displayLaunchedTokens();
     });
-  });
-</script>
+  </script>
+</body>
+</html>
