@@ -52,15 +52,15 @@
   <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
   <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" />
   
-<button id="connectBtn">Connect Wallet</button>
-<button id="mintBtn" disabled>Mint NFT</button>
-<p id="status"></p>
+  <button id="connectBtn">Connect Wallet</button>
+  <button id="mintBtn" disabled>Mint NFT</button>
+  <p id="status"></p>
 
 <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
 
   let sdk, address;
-  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 
   document.getElementById("connectBtn").onclick = async () => {
     if (!window.ethereum) {
@@ -72,6 +72,7 @@
       sdk = new ThirdwebSDK(window.ethereum);
       const signer = await sdk.getSigner();
       address = await signer.getAddress();
+
       document.getElementById("status").innerText = "Connected: " + address;
       document.getElementById("mintBtn").disabled = false;
     } catch (err) {
@@ -80,6 +81,8 @@
   };
 
   document.getElementById("mintBtn").onclick = async () => {
+    const status = document.getElementById("status");
+
     if (!sdk || !address) {
       alert("Please connect your wallet first.");
       return;
@@ -87,16 +90,27 @@
 
     try {
       const contract = await sdk.getContract(contractAddress);
-      const tx = await contract.call("mint", [
-        address,
-        -887220,
-        887220,
-        1,
-        "0x"
-      ]);
-      document.getElementById("status").innerText = "Minted successfully!";
+
+      // Check if user already owns any NFTs
+      const owned = await contract.erc721.getOwned(address);
+      if (owned.length > 0) {
+        status.innerText = "You’ve already claimed this badge!";
+        return;
+      }
+
+      // Mint badge
+      await contract.erc721.mintTo(address, {
+        name: "KLY Genesis Badge",
+        description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
+        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+      });
+
+      status.innerHTML = "Badge minted successfully!";
     } catch (err) {
-      document.getElementById("status").innerText = "Mint failed: " + err.message;
+      console.error(err);
+      status.innerText = "Mint failed: " + (err.message || err);
     }
   };
 </script>
+</body>
+</html>
