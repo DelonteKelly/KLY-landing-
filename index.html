@@ -155,3 +155,87 @@
 </script>
 </body>
 </html>
+
+<script type="module">
+  import {
+    BrowserProvider,
+    Contract,
+    formatUnits
+  } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_ABI = [
+    {
+      "constant": true,
+      "inputs": [{ "name": "account", "type": "address" }],
+      "name": "balanceOf",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{ "name": "", "type": "uint8" }],
+      "type": "function"
+    }
+  ];
+
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        alert("MetaMask not detected.");
+        return;
+      }
+
+      provider = new BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+
+      document.getElementById("connectWallet").innerText = "Wallet Connected";
+      document.getElementById("walletAddress").innerText =
+        `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+
+      loadKLYStats();
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      alert("Could not connect wallet.");
+    }
+  }
+
+  async function loadKLYStats() {
+    try {
+      const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+      const [decimals, userBal, totalSup] = await Promise.all([
+        contract.decimals(),
+        contract.balanceOf(wallet),
+        contract.totalSupply()
+      ]);
+
+      const balanceFormatted = formatUnits(userBal, decimals);
+      const totalSupplyFormatted = formatUnits(totalSup, decimals);
+
+      document.getElementById("klyWalletBalance").innerText =
+        `${parseFloat(balanceFormatted).toFixed(2)} KLY`;
+      document.getElementById("klyTotalSupply").innerText =
+        `${parseFloat(totalSupplyFormatted).toLocaleString()} KLY`;
+    } catch (err) {
+      console.error("Token stats error:", err);
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("connectWallet");
+    if (btn) btn.addEventListener("click", connectWallet);
+  });
+</script>
