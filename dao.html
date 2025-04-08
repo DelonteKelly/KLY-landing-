@@ -1,210 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KLY Launchpad</title>
+<script type="module">
+  import { ethers } from "https://cdn.skypack.dev/ethers@6.6.4";
+  import {
+    createThirdwebClient,
+    getContract,
+    prepareContractCall,
+    sendTransaction
+  } from "https://cdn.skypack.dev/thirdweb";
+  import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
 
-  <!-- Ethers & Thirdweb -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
+  const client = createThirdwebClient({
+    clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419"
+  });
 
-  <style>
-    body {
-      background: #0d0d0d;
-      color: #ffffff;
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
-      padding: 30px 16px;
-      margin: 0;
+  const chain = defineChain(56); // BNB Chain
+  const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+
+  const dao = getContract({
+    client,
+    chain,
+    address: DAO_ADDRESS
+  });
+
+  let walletAddress = "";
+
+  document.getElementById("connectBtn").onclick = async () => {
+    if (!window.ethereum) return alert("Please install MetaMask");
+
+    const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
+    walletAddress = account;
+    document.getElementById("walletStatus").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
+    loadProposals();
+  };
+
+  async function loadProposals() {
+    try {
+      const proposals = await dao.read("getAllProposals");
+      const list = document.getElementById("proposalList");
+      list.innerHTML = "";
+
+      proposals.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "proposal";
+        div.innerHTML = `
+          <h4>Proposal #${p.proposalId}</h4>
+          <p>${p.description}</p>
+          <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
+          <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
+          <button onclick="vote(${p.proposalId}, 2)">Abstain</button>
+        `;
+        list.appendChild(div);
+      });
+    } catch (err) {
+      console.error("Error loading proposals:", err);
+      document.getElementById("proposalList").innerText = "Error loading proposals.";
     }
+  }
 
-    h1 {
-      color: #00ffc3;
-      font-size: 2rem;
-    }
-
-    button {
-      background: #00ffc3;
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 10px;
-    }
-
-    input {
-      padding: 10px;
-      margin: 5px;
-      border: 1px solid #333;
-      border-radius: 4px;
-      width: 130px;
-    }
-
-    #walletStatus, #createStatus {
-      margin-top: 15px;
-      color: #00ffc3;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    li {
-      margin: 15px 0;
-      background: #1a1a1a;
-      padding: 10px;
-      border-radius: 8px;
-      text-align: left;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    a {
-      color: #00ffc3;
-    }
-  </style>
-</head>
-
-<body>
-  <h1>KLY Launchpad</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <p id="walletStatus">Disconnected</p>
-
-  <div>
-    <input id="tokenName" placeholder="Token Name" />
-    <input id="tokenSymbol" placeholder="Symbol" />
-    <input id="initialSupply" placeholder="Initial Supply" type="number" />
-    <button id="launchTokenBtn">Launch Token</button>
-    <p id="createStatus"></p>
-  </div>
-
-  <h2>Launched Tokens</h2>
-  <ul id="launchedTokensList"></ul>
-
-  <script>
-    const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const klyTokenAddress = treasury;
-    const klyAbi = [
-      {
-        constant: true,
-        inputs: [{ name: "account", type: "address" }],
-        name: "balanceOf",
-        outputs: [{ name: "", type: "uint256" }],
-        type: "function"
-      }
-    ];
-
-    let sdk, signer, wallet;
-
-    async function connectWallet() {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
-      }
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      wallet = await signer.getAddress();
-
-      sdk = new thirdweb.ThirdwebSDK(signer, { chainId: 56 });
-
-      document.getElementById("walletStatus").innerText =
-        "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-    }
-
-    async function deployToken() {
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim();
-      const supply = parseInt(document.getElementById("initialSupply").value.trim());
-      const status = document.getElementById("createStatus");
-
-      if (!wallet || !sdk || !signer) {
-        alert("Please connect your wallet first.");
-        return;
-      }
-
-      if (!name || !symbol || !supply) {
-        alert("All fields required");
-        return;
-      }
-
-      try {
-        const kly = new ethers.Contract(klyTokenAddress, klyAbi, signer);
-        const balance = await kly.balanceOf(wallet);
-        const balanceEth = ethers.utils.formatEther(balance);
-
-        if (parseFloat(balanceEth) < 10000) {
-          status.innerText = "You need at least 10,000 KLY to launch.";
-          return;
-        }
-
-        status.innerText = "Deploying token...";
-
-        const tokenAddress = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          primary_sale_recipient: wallet,
-          total_supply: supply.toString(),
-        });
-
-        const token = await sdk.getContract(tokenAddress);
-        const treasuryAmount = Math.floor(supply * 0.05).toString();
-
-        await token.call("transfer", [treasury, treasuryAmount]);
-
-        const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-        tokens.unshift({ name, symbol, supply, address: tokenAddress });
-        localStorage.setItem("launchedTokens", JSON.stringify(tokens));
-
-        status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
-        displayLaunchedTokens();
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Token launch failed: " + (err.message || err);
-      }
-    }
-
-    function displayLaunchedTokens() {
-      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-      const list = document.getElementById("launchedTokensList");
-      list.innerHTML = tokens.map(t => `
-        <li>
-          <strong>${t.name} (${t.symbol})</strong><br/>
-          Supply: ${t.supply.toLocaleString()}<br/>
-          <a href="https://bscscan.com/address/${t.address}" target="_blank">${t.address}</a>
-        </li>
-      `).join("");
-    }
-
-    // Events
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectWallet").onclick = connectWallet;
-      document.getElementById("launchTokenBtn").onclick = deployToken;
-      displayLaunchedTokens();
-
-      // Live updates
-      window.ethereum?.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          wallet = null;
-          document.getElementById("walletStatus").innerText = "Disconnected";
-        } else {
-          wallet = accounts[0];
-          document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-        }
+  window.vote = async (id, support) => {
+    try {
+      const tx = await prepareContractCall({
+        contract: dao,
+        method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+        params: [id, support]
       });
 
-      window.ethereum?.on('chainChanged', (chainId) => {
-        if (chainId !== '0x38') {
-          alert("Please switch to BNB Smart Chain");
-        }
+      const result = await sendTransaction({
+        transaction: tx,
+        account: walletAddress,
+        chain
       });
-    });
-  </script>
-</body>
-</html>
+
+      alert(`Vote submitted! Tx: ${result.transactionHash}`);
+    } catch (err) {
+      console.error("Vote failed:", err);
+      alert("Vote failed. Check console.");
+    }
+  };
+
+  document.getElementById("createProposalBtn").onclick = async () => {
+    const target = document.getElementById("proposalTarget").value.trim();
+    const fnSig = document.getElementById("proposalFnSig").value.trim();
+    const paramStr = document.getElementById("proposalParams").value.trim();
+    const description = document.getElementById("proposalDesc").value.trim();
+    const status = document.getElementById("createStatus");
+
+    if (!target || !fnSig || !paramStr || !description) {
+      return status.innerText = "Please fill in all fields.";
+    }
+
+    try {
+      // Fix: Use ethers.Interface in v6
+      const iface = new ethers.Interface([`function ${fnSig}`]);
+
+      // Fix: safely extract function name (everything before the parens)
+      const fnName = fnSig.split("(")[0];
+      const params = JSON.parse(paramStr);
+
+      const calldata = iface.encodeFunctionData(fnName, params);
+
+      const tx = await prepareContractCall({
+        contract: dao,
+        method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
+        params: [[target], [0], [calldata], description]
+      });
+
+      const result = await sendTransaction({
+        transaction: tx,
+        account: walletAddress,
+        chain
+      });
+
+      status.innerText = `Proposal submitted! Tx: ${result.transactionHash}`;
+      loadProposals();
+    } catch (err) {
+      console.error("Proposal creation failed:", err);
+      status.innerText = "Proposal creation failed. See console.";
+    }
+  };
+</script>
