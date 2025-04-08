@@ -2,34 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Legacy Builder Genesis NFT Drop</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLY Genesis Badge</title>
+
+  <!-- Thirdweb SDK + Ethers (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser/index.min.js"></script>
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
+
   <style>
     body {
-      background: #0d0d0d;
+      background-color: #0d0d0d;
       color: #ffffff;
       font-family: 'Segoe UI', sans-serif;
       text-align: center;
-      margin: 0;
       padding: 30px 16px;
+      margin: 0;
     }
+
     h1 {
       color: #00ffc3;
-      font-size: 2rem;
     }
+
     p {
       font-size: 18px;
       margin: 1rem auto;
       max-width: 600px;
     }
+
     img {
       width: 300px;
       border-radius: 10px;
       margin: 20px 0;
       box-shadow: 0 0 30px rgba(0,255,195,0.25);
     }
+
     button {
       background: #00ffc3;
       color: #000;
@@ -41,6 +47,7 @@
       cursor: pointer;
       margin: 10px;
     }
+
     #status {
       margin-top: 20px;
       color: #00ffc3;
@@ -50,72 +57,68 @@
 <body>
   <h1>Legacy Builder Genesis NFT</h1>
   <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
-  <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" />
-  
+  <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis Badge" />
+
+  <br />
   <button id="connectBtn">Connect Wallet</button>
   <button id="mintBtn" disabled>Mint NFT</button>
-  <p id="status"></p>
+  <p id="status">Not connected</p>
 
-<!-- Load Thirdweb UMD SDK and Ethers -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
+  <script>
+    let sdk, signer, address;
+    const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 
-<script>
-  let sdk, address;
-  const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-
-  document.getElementById("connectBtn").onclick = async () => {
-    if (!window.ethereum) {
-      alert("Please install MetaMask.");
-      return;
-    }
-
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      address = await signer.getAddress();
-
-      sdk = new thirdweb.ThirdwebSDK(signer); // use global UMD object
-
-      document.getElementById("status").innerText = "Connected: " + address;
-      document.getElementById("mintBtn").disabled = false;
-    } catch (err) {
-      console.error(err);
-      document.getElementById("status").innerText = "Connection failed: " + err.message;
-    }
-  };
-
-  document.getElementById("mintBtn").onclick = async () => {
-    const status = document.getElementById("status");
-
-    if (!sdk || !address) {
-      alert("Please connect your wallet first.");
-      return;
-    }
-
-    try {
-      const contract = await sdk.getContract(contractAddress);
-
-      // Check if user already owns any NFTs
-      const owned = await contract.erc721.getOwned(address);
-      if (owned.length > 0) {
-        status.innerText = "You’ve already claimed this badge!";
+    document.getElementById("connectBtn").onclick = async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
         return;
       }
 
-      // Mint badge
-      await contract.erc721.mintTo(address, {
-        name: "KLY Genesis Badge",
-        description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
-        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-      });
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        address = await signer.getAddress();
 
-      status.innerHTML = "Badge minted successfully!";
-    } catch (err) {
-      console.error(err);
-      status.innerText = "Mint failed: " + (err.message || err);
-    }
-  };
-</script>
+        sdk = new thirdweb.ThirdwebSDK(signer); // use global UMD `thirdweb`
+
+        document.getElementById("status").innerText = "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
+        document.getElementById("mintBtn").disabled = false;
+      } catch (err) {
+        document.getElementById("status").innerText = "Connection failed: " + err.message;
+      }
+    };
+
+    document.getElementById("mintBtn").onclick = async () => {
+      const status = document.getElementById("status");
+
+      if (!sdk || !address) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      try {
+        const contract = await sdk.getContract(contractAddress);
+
+        // Check if wallet already owns NFT
+        const owned = await contract.erc721.getOwned(address);
+        if (owned.length > 0) {
+          status.innerText = "You’ve already claimed this badge!";
+          return;
+        }
+
+        // Mint the Genesis Badge
+        await contract.erc721.mintTo(address, {
+          name: "KLY Genesis Badge",
+          description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
+          image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+        });
+
+        status.innerHTML = "Badge minted successfully!";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Mint failed: " + (err.message || err);
+      }
+    };
+  </script>
 </body>
 </html>
