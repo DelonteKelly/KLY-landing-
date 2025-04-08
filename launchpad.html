@@ -2,148 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KLY Launchpad</title>
-
-  <!-- Ethers & Thirdweb -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
-
   <style>
     body {
-      background: #0d0d0d;
-      color: #ffffff;
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
-      padding: 30px 16px;
       margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
     }
-
-    <img src="https://ipfs.io/ipfs/bafybeih7qz42xurqioquctapmzmr7vm7dz3ysrz7yhl6lg5erj37syy6ru" 
-     alt="KLY Token Crest" 
-     style="width: 180px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 0 25px rgba(0,255,195,0.3);" />
-
-    h1 {
-      color: #00ffc3;
-      font-size: 2rem;
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5rem 2rem;
+      background: linear-gradient(to right, #1e293b, #0f172a);
+      text-align: center;
     }
-
-    button {
-      background: #00ffc3;
-      color: #000;
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #38bdf8;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .button {
+      background-color: #38bdf8;
+      color: #0f172a;
+      padding: 0.75rem 1.5rem;
       border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      font-weight: bold;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
-      margin: 10px;
+      margin-bottom: 2rem;
     }
-
-    input {
-      padding: 10px;
-      margin: 5px;
-      border: 1px solid #333;
-      border-radius: 4px;
-      width: 130px;
+    .form {
+      background-color: #1e293b;
+      padding: 2rem;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      margin-top: 2rem;
     }
-
-    #walletStatus, #createStatus {
-      margin-top: 15px;
-      color: #00ffc3;
+    .form input {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 1rem;
     }
-
-    ul {
+    #launchedTokensList {
+      margin-top: 2rem;
       list-style: none;
       padding: 0;
     }
-
-    li {
-      margin: 15px 0;
-      background: #1a1a1a;
-      padding: 10px;
+    #launchedTokensList li {
+      margin: 1rem 0;
+      background: #334155;
+      padding: 1rem;
       border-radius: 8px;
-      text-align: left;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
     }
-
     a {
-      color: #00ffc3;
+      color: #7dd3fc;
     }
   </style>
 </head>
-
 <body>
-  <h1>KLY Launchpad</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <p id="walletStatus">Disconnected</p>
 
-  <div>
-    <input id="tokenName" placeholder="Token Name" />
-    <input id="tokenSymbol" placeholder="Symbol" />
-    <input id="initialSupply" placeholder="Initial Supply" type="number" />
-    <button id="launchTokenBtn">Launch Token</button>
-    <p id="createStatus"></p>
-  </div>
+  <section class="hero">
+    <h1>KLY Launchpad</h1>
+    <p>Deploy your own token on the KLY blockchain</p>
+    <button class="button" id="connectWallet">Connect Wallet</button>
+    <p id="walletStatus"></p>
 
-  <h2>Launched Tokens</h2>
-  <ul id="launchedTokensList"></ul>
+    <div class="form">
+      <input id="tokenName" placeholder="Token Name" />
+      <input id="tokenSymbol" placeholder="Symbol" />
+      <input id="initialSupply" placeholder="Initial Supply" type="number" />
+      <button class="button" id="launchTokenBtn">Launch Token</button>
+      <p id="createStatus"></p>
+    </div>
 
-  <script>
+    <ul id="launchedTokensList"></ul>
+  </section>
+
+  <!-- Script Logic -->
+  <script type="module">
+    import { connectWallet, getKLYBalance } from './assets/wallet.js';
+    import { ThirdwebSDK } from 'https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm';
+
     const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const klyTokenAddress = treasury;
-    const klyAbi = [
-      {
-        constant: true,
-        inputs: [{ name: "account", type: "address" }],
-        name: "balanceOf",
-        outputs: [{ name: "", type: "uint256" }],
-        type: "function"
+    let wallet, sdk;
+
+    document.getElementById("connectWallet").onclick = async () => {
+      try {
+        wallet = await connectWallet();
+        sdk = new ThirdwebSDK(window.ethereum);
+        document.getElementById("walletStatus").innerText =
+          "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      } catch (err) {
+        alert("Wallet connection failed");
+        console.error(err);
       }
-    ];
+    };
 
-    let sdk, signer, wallet;
-
-    async function connectWallet() {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
-      }
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      wallet = await signer.getAddress();
-
-      sdk = new thirdweb.ThirdwebSDK(signer, { chainId: 56 });
-
-      document.getElementById("walletStatus").innerText =
-        "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-    }
-
-    async function deployToken() {
+    document.getElementById("launchTokenBtn").onclick = async () => {
       const name = document.getElementById("tokenName").value.trim();
       const symbol = document.getElementById("tokenSymbol").value.trim();
       const supply = parseInt(document.getElementById("initialSupply").value.trim());
       const status = document.getElementById("createStatus");
 
-      if (!wallet || !sdk || !signer) {
-        alert("Please connect your wallet first.");
+      if (!wallet || !sdk) {
+        alert("Please connect wallet first.");
         return;
       }
 
       if (!name || !symbol || !supply) {
-        alert("All fields required");
+        alert("All fields are required.");
         return;
       }
 
       try {
-        const kly = new ethers.Contract(klyTokenAddress, klyAbi, signer);
-        const balance = await kly.balanceOf(wallet);
-        const balanceEth = ethers.utils.formatEther(balance);
-
-        if (parseFloat(balanceEth) < 10000) {
+        const balance = await getKLYBalance();
+        if (balance < 10000) {
           status.innerText = "You need at least 10,000 KLY to launch.";
           return;
         }
@@ -154,12 +137,11 @@
           name,
           symbol,
           primary_sale_recipient: wallet,
-          total_supply: supply.toString(),
+          total_supply: supply.toString()
         });
 
         const token = await sdk.getContract(tokenAddress);
         const treasuryAmount = Math.floor(supply * 0.05).toString();
-
         await token.call("transfer", [treasury, treasuryAmount]);
 
         const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
@@ -170,9 +152,9 @@
         displayLaunchedTokens();
       } catch (err) {
         console.error(err);
-        status.innerText = "Token launch failed: " + (err.message || err);
+        status.innerText = "Launch failed: " + (err.message || err);
       }
-    }
+    };
 
     function displayLaunchedTokens() {
       const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
@@ -186,29 +168,7 @@
       `).join("");
     }
 
-    // Events
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectWallet").onclick = connectWallet;
-      document.getElementById("launchTokenBtn").onclick = deployToken;
-      displayLaunchedTokens();
-
-      // Live updates
-      window.ethereum?.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          wallet = null;
-          document.getElementById("walletStatus").innerText = "Disconnected";
-        } else {
-          wallet = accounts[0];
-          document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-        }
-      });
-
-      window.ethereum?.on('chainChanged', (chainId) => {
-        if (chainId !== '0x38') {
-          alert("Please switch to BNB Smart Chain");
-        }
-      });
-    });
+    window.addEventListener("DOMContentLoaded", displayLaunchedTokens);
   </script>
 </body>
 </html>
