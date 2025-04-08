@@ -152,82 +152,60 @@
   <a href="course.html"><button>Access Course</button></a>
 </section>
 
-<!-- Final Web3 Logic --><script type="module">
-  import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+// wallet.js
+import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const KLY_ABI = [
-    {
-      "constant": true,
-      "inputs": [{ "name": "account", "type": "address" }],
-      "name": "balanceOf",
-      "outputs": [{ "name": "", "type": "uint256" }],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "totalSupply",
-      "outputs": [{ "name": "", "type": "uint256" }],
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [{ "name": "", "type": "uint8" }],
-      "type": "function"
-    }
-  ];
-
-  let provider, signer, wallet;
-
-  async function connectWallet() {
-    try {
-      if (!window.ethereum) {
-        alert("MetaMask is not installed.");
-        return;
-      }
-
-      provider = new BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-
-      document.getElementById("connectWallet").innerText = "Wallet Connected";
-      document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-
-      loadKLYTokenStats();
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      alert("Failed to connect wallet.");
-    }
+const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const KLY_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    type: "function"
   }
+];
 
-  async function loadKLYTokenStats() {
-    try {
-      const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
-      const [decimals, userBal, totalSup] = await Promise.all([
-        contract.decimals(),
-        contract.balanceOf(wallet),
-        contract.totalSupply()
-      ]);
+let provider, signer, wallet;
 
-      const userBalance = formatUnits(userBal, decimals);
-      const totalSupply = formatUnits(totalSup, decimals);
+export async function connectWallet() {
+  if (!window.ethereum) throw new Error("MetaMask not installed");
 
-      document.getElementById("klyWalletBalance").innerText = `${parseFloat(userBalance).toFixed(2)} KLY`;
-      document.getElementById("klyTotalSupply").innerText = `${parseFloat(totalSupply).toLocaleString()} KLY`;
-    } catch (err) {
-      console.error("Failed to load token stats:", err);
-    }
-  }
+  provider = new BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+  wallet = await signer.getAddress();
 
-  window.addEventListener("DOMContentLoaded", () => {
-    const connectBtn = document.getElementById("connectWallet");
-    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
-  });
-</script>
+  return wallet;
+}
+
+export async function getKLYBalance() {
+  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+  const decimals = await contract.decimals();
+  const balance = await contract.balanceOf(wallet);
+  return parseFloat(formatUnits(balance, decimals));
+}
+
+export async function getKLYTotalSupply() {
+  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+  const decimals = await contract.decimals();
+  const supply = await contract.totalSupply();
+  return parseFloat(formatUnits(supply, decimals));
+}
 
 </body>
 </html>
