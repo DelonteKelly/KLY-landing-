@@ -123,9 +123,8 @@
   <a href="course.html"><button>Access Course</button></a>
 </section>
 
-<!-- Final Web3 Logic -->
-<script type="module">
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+<!-- Final Web3 Logic --><script type="module">
+  import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
   const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const KLY_ABI = [
@@ -156,7 +155,12 @@
 
   async function connectWallet() {
     try {
-      provider = new ethers.BrowserProvider(window.ethereum);
+      if (!window.ethereum) {
+        alert("MetaMask is not installed.");
+        return;
+      }
+
+      provider = new BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = await provider.getSigner();
       wallet = await signer.getAddress();
@@ -173,15 +177,15 @@
 
   async function loadKLYTokenStats() {
     try {
-      const contract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+      const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
       const [decimals, userBal, totalSup] = await Promise.all([
         contract.decimals(),
         contract.balanceOf(wallet),
         contract.totalSupply()
       ]);
 
-      const userBalance = ethers.formatUnits(userBal, decimals);
-      const totalSupply = ethers.formatUnits(totalSup, decimals);
+      const userBalance = formatUnits(userBal, decimals);
+      const totalSupply = formatUnits(totalSup, decimals);
 
       document.getElementById("klyWalletBalance").innerText = `${parseFloat(userBalance).toFixed(2)} KLY`;
       document.getElementById("klyTotalSupply").innerText = `${parseFloat(totalSupply).toLocaleString()} KLY`;
@@ -191,7 +195,8 @@
   }
 
   window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    const connectBtn = document.getElementById("connectWallet");
+    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
   });
 </script>
 
