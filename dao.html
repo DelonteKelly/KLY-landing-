@@ -1,120 +1,183 @@
-<script type="module">
-  import { ethers } from "https://cdn.skypack.dev/ethers@6.6.4";
-  import {
-    createThirdwebClient,
-    getContract,
-    prepareContractCall,
-    sendTransaction
-  } from "https://cdn.skypack.dev/thirdweb";
-  import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLY DAO</title>
 
-  const client = createThirdwebClient({
-    clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419"
-  });
+  <!-- Thirdweb SDK + Ethers -->
+  <script type="module" src="https://cdn.skypack.dev/ethers@6.6.4"></script>
+  <script type="module" src="https://cdn.skypack.dev/thirdweb"></script>
 
-  const chain = defineChain(56); // BNB Chain
-  const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-
-  const dao = getContract({
-    client,
-    chain,
-    address: DAO_ADDRESS
-  });
-
-  let walletAddress = "";
-
-  document.getElementById("connectBtn").onclick = async () => {
-    if (!window.ethereum) return alert("Please install MetaMask");
-
-    const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
-    walletAddress = account;
-    document.getElementById("walletStatus").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
-    loadProposals();
-  };
-
-  async function loadProposals() {
-    try {
-      const proposals = await dao.read("getAllProposals");
-      const list = document.getElementById("proposalList");
-      list.innerHTML = "";
-
-      proposals.forEach((p) => {
-        const div = document.createElement("div");
-        div.className = "proposal";
-        div.innerHTML = `
-          <h4>Proposal #${p.proposalId}</h4>
-          <p>${p.description}</p>
-          <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
-          <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
-          <button onclick="vote(${p.proposalId}, 2)">Abstain</button>
-        `;
-        list.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Error loading proposals:", err);
-      document.getElementById("proposalList").innerText = "Error loading proposals.";
-    }
-  }
-
-  window.vote = async (id, support) => {
-    try {
-      const tx = await prepareContractCall({
-        contract: dao,
-        method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
-        params: [id, support]
-      });
-
-      const result = await sendTransaction({
-        transaction: tx,
-        account: walletAddress,
-        chain
-      });
-
-      alert(`Vote submitted! Tx: ${result.transactionHash}`);
-    } catch (err) {
-      console.error("Vote failed:", err);
-      alert("Vote failed. Check console.");
-    }
-  };
-
-  document.getElementById("createProposalBtn").onclick = async () => {
-    const target = document.getElementById("proposalTarget").value.trim();
-    const fnSig = document.getElementById("proposalFnSig").value.trim();
-    const paramStr = document.getElementById("proposalParams").value.trim();
-    const description = document.getElementById("proposalDesc").value.trim();
-    const status = document.getElementById("createStatus");
-
-    if (!target || !fnSig || !paramStr || !description) {
-      return status.innerText = "Please fill in all fields.";
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      text-align: center;
     }
 
-    try {
-      // Fix: Use ethers.Interface in v6
-      const iface = new ethers.Interface([`function ${fnSig}`]);
+    h1 {
+      color: #00ffc3;
+    }
 
-      // Fix: safely extract function name (everything before the parens)
-      const fnName = fnSig.split("(")[0];
-      const params = JSON.parse(paramStr);
+    input, textarea {
+      width: 250px;
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+    }
 
-      const calldata = iface.encodeFunctionData(fnName, params);
+    button {
+      background: #00ffc3;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-      const tx = await prepareContractCall({
-        contract: dao,
-        method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
-        params: [[target], [0], [calldata], description]
-      });
+    .proposal {
+      background: #1a1a1a;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px auto;
+      max-width: 500px;
+      text-align: left;
+    }
 
-      const result = await sendTransaction({
-        transaction: tx,
-        account: walletAddress,
-        chain
-      });
+    .status {
+      margin: 10px 0;
+      color: #00ffc3;
+    }
 
-      status.innerText = `Proposal submitted! Tx: ${result.transactionHash}`;
+    input::placeholder, textarea::placeholder {
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>KLY DAO</h1>
+  <button id="connectBtn">Connect Wallet</button>
+  <p id="walletStatus">Disconnected</p>
+
+  <h2>Create Proposal</h2>
+  <input id="proposalTarget" placeholder="Target Address" /><br />
+  <input id="proposalFnSig" placeholder="Function Signature (e.g. mint(address,uint256))" /><br />
+  <input id="proposalParams" placeholder='Parameters (e.g. ["0xabc",1000])' /><br />
+  <textarea id="proposalDesc" placeholder="Proposal Description"></textarea><br />
+  <button id="createProposalBtn">Submit Proposal</button>
+  <p class="status" id="createStatus"></p>
+
+  <h2>Active Proposals</h2>
+  <div id="proposalList"></div>
+
+  <script type="module">
+    import { ethers } from "https://cdn.skypack.dev/ethers@6.6.4";
+    import {
+      createThirdwebClient,
+      getContract,
+      prepareContractCall,
+      sendTransaction
+    } from "https://cdn.skypack.dev/thirdweb";
+    import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
+
+    const client = createThirdwebClient({
+      clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419"
+    });
+
+    const chain = defineChain(56); // BNB
+    const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+    const dao = getContract({ client, chain, address: DAO_ADDRESS });
+
+    let walletAddress = "";
+
+    document.getElementById("connectBtn").onclick = async () => {
+      if (!window.ethereum) return alert("Please install MetaMask");
+      const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      walletAddress = account;
+      document.getElementById("walletStatus").innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
       loadProposals();
-    } catch (err) {
-      console.error("Proposal creation failed:", err);
-      status.innerText = "Proposal creation failed. See console.";
+    };
+
+    async function loadProposals() {
+      try {
+        const proposals = await dao.read("getAllProposals");
+        const list = document.getElementById("proposalList");
+        list.innerHTML = "";
+
+        proposals.forEach((p) => {
+          const div = document.createElement("div");
+          div.className = "proposal";
+          div.innerHTML = `
+            <h4>Proposal #${p.proposalId}</h4>
+            <p>${p.description}</p>
+            <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
+            <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
+            <button onclick="vote(${p.proposalId}, 2)">Abstain</button>
+          `;
+          list.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Error loading proposals:", err);
+        document.getElementById("proposalList").innerText = "Error loading proposals.";
+      }
     }
-  };
-</script>
+
+    window.vote = async (id, support) => {
+      try {
+        const tx = await prepareContractCall({
+          contract: dao,
+          method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+          params: [id, support]
+        });
+
+        const result = await sendTransaction({ transaction: tx, account: walletAddress, chain });
+        alert(`Vote submitted! Tx: ${result.transactionHash}`);
+      } catch (err) {
+        console.error("Vote failed:", err);
+        alert("Vote failed. Check console.");
+      }
+    };
+
+    document.getElementById("createProposalBtn").onclick = async () => {
+      const target = document.getElementById("proposalTarget").value.trim();
+      const fnSig = document.getElementById("proposalFnSig").value.trim();
+      const paramStr = document.getElementById("proposalParams").value.trim();
+      const description = document.getElementById("proposalDesc").value.trim();
+      const status = document.getElementById("createStatus");
+
+      if (!target || !fnSig || !paramStr || !description) {
+        return status.innerText = "Please fill in all fields.";
+      }
+
+      try {
+        const iface = new ethers.Interface([`function ${fnSig}`]);
+        const fnName = fnSig.split("(")[0];
+        const calldata = iface.encodeFunctionData(fnName, JSON.parse(paramStr));
+
+        const tx = await prepareContractCall({
+          contract: dao,
+          method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
+          params: [[target], [0], [calldata], description]
+        });
+
+        const result = await sendTransaction({
+          transaction: tx,
+          account: walletAddress,
+          chain
+        });
+
+        status.innerText = `Proposal submitted! Tx: ${result.transactionHash}`;
+        loadProposals();
+      } catch (err) {
+        console.error("Proposal creation failed:", err);
+        status.innerText = "Proposal creation failed. See console.";
+      }
+    };
+  </script>
+</body>
+</html>
