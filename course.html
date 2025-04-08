@@ -84,8 +84,14 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-<script>
+<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser/index.min.js" type="module"></script>
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.skypack.dev/ethers";
+
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const CERT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
   const KLY_ABI = [{
     constant: true,
     inputs: [{ name: "account", type: "address" }],
@@ -93,7 +99,8 @@
     outputs: [{ name: "", type: "uint256" }],
     type: "function"
   }];
-  let wallet;
+
+  let wallet, sdk, address;
 
   async function connectWallet() {
     if (!window.ethereum) return alert("Please install MetaMask");
@@ -101,7 +108,13 @@
     await window.ethereum.request({ method: "eth_requestAccounts" });
     const accounts = await web3.eth.getAccounts();
     wallet = accounts[0];
-    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
+    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+
+    // Set up Thirdweb signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    address = await signer.getAddress();
+    sdk = new ThirdwebSDK(signer);
   }
 
   async function verifyAccess() {
@@ -129,10 +142,32 @@
     }
   }
 
-  function mintNFT() {
-    document.getElementById("mintStatus").innerText = "Minting feature coming soon...";
-  }
-</script>
+  async function mintNFT() {
+    if (!sdk || !address) {
+      alert("Please connect your wallet first.");
+      return;
+    }
 
+    try {
+      const contract = await sdk.getContract(CERT_CONTRACT);
+      await contract.call("mint", [
+        address,
+        -887220,
+        887220,
+        1,
+        "0x"
+      ]);
+      document.getElementById("mintStatus").innerText = "Certificate NFT minted successfully!";
+    } catch (err) {
+      document.getElementById("mintStatus").innerText = "Mint failed: " + err.message;
+    }
+  }
+
+  // Expose to global scope for button onclick
+  window.connectWallet = connectWallet;
+  window.verifyAccess = verifyAccess;
+  window.showNextModule = showNextModule;
+  window.mintNFT = mintNFT;
+</script>
 </body>
 </html>
