@@ -84,8 +84,6 @@
   </div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser/index.min.js" type="module"></script>
 <script type="module">
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
   import { ethers } from "https://cdn.skypack.dev/ethers";
@@ -101,24 +99,26 @@
     type: "function"
   }];
 
-  let wallet, sdk, address;
+  let wallet = null;
+  let sdk = null;
+  let address = null;
 
-  async function connectWallet() {
+  window.connectWallet = async function () {
     if (!window.ethereum) return alert("Please install MetaMask");
+
     const web3 = new Web3(window.ethereum);
     await window.ethereum.request({ method: "eth_requestAccounts" });
     const accounts = await web3.eth.getAccounts();
     wallet = accounts[0];
     document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
 
-    // Set up Thirdweb signer
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
     address = await signer.getAddress();
     sdk = new ThirdwebSDK(signer);
-  }
+  };
 
-  async function verifyAccess() {
+  window.verifyAccess = async function () {
     if (!wallet) return alert("Connect your wallet first.");
     const web3 = new Web3(window.ethereum);
     const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
@@ -131,9 +131,9 @@
     } else {
       document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY";
     }
-  }
+  };
 
-  function showNextModule(id) {
+  window.showNextModule = function (id) {
     if (typeof id === 'number') {
       document.getElementById("module" + (id - 1)).classList.add("hidden");
       document.getElementById("module" + id).classList.remove("hidden");
@@ -141,9 +141,9 @@
       document.getElementById("module5").classList.add("hidden");
       document.getElementById("mintSection").classList.remove("hidden");
     }
-  }
+  };
 
-  async function mintNFT() {
+  window.mintNFT = async function () {
     if (!sdk || !address) {
       alert("Please connect your wallet first.");
       return;
@@ -162,8 +162,8 @@
     } catch (err) {
       document.getElementById("mintStatus").innerText = "Mint failed: " + err.message;
     }
-  }
-
+  };
+  
   // Expose to global scope for button onclick
   window.connectWallet = connectWallet;
   window.verifyAccess = verifyAccess;
