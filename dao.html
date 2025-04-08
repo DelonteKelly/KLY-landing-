@@ -87,55 +87,60 @@
     <button class="next-button" onclick="createProposal()">Submit Proposal</button>
   </div>
 
-  <script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.js"></script>
-  <script>
-    async function connectWallet() {
-      try {
-        const wallet = new thirdweb.MetaMaskWallet();
-        await wallet.connect();
-        const address = await wallet.getAddress();
+  // wallet.js
+import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-        document.querySelectorAll("[data-connect]").forEach(btn => {
-          btn.innerText = "Wallet Connected";
-        });
+const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const KLY_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    type: "function"
+  }
+];
 
-        document.getElementById("walletStatus").innerText = `Connected: ${address}`;
-        window.userWallet = wallet;
-      } catch (err) {
-        document.getElementById("walletStatus").innerText = "Connection failed";
-        console.error(err);
-      }
-    }
+let provider, signer, wallet;
 
-    async function createProposal() {
-      const target = document.querySelector('#target').value;
-      const signature = document.querySelector('#signature').value;
-      const params = eval(document.querySelector('#params').value);
+export async function connectWallet() {
+  if (!window.ethereum) throw new Error("MetaMask not installed");
 
-      if (!window.userWallet) {
-        alert("Please connect your wallet first.");
-        return;
-      }
+  provider = new BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+  wallet = await signer.getAddress();
 
-      const daoAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-      const sdk = new thirdweb.ThirdwebSDK(window.userWallet);
-      const contract = await sdk.getContract(daoAddress);
+  return wallet;
+}
 
-      try {
-        const tx = await contract.call("propose", [target, signature, params]);
-        alert(`Proposal submitted. TX: ${tx.receipt.transactionHash}`);
-      } catch (err) {
-        console.error(err);
-        alert("Proposal creation failed.");
-      }
-    }
+export async function getKLYBalance() {
+  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+  const decimals = await contract.decimals();
+  const balance = await contract.balanceOf(wallet);
+  return parseFloat(formatUnits(balance, decimals));
+}
 
-    window.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll("[data-connect]").forEach(btn => {
-        btn.addEventListener("click", connectWallet);
-      });
-    });
-  </script>
+export async function getKLYTotalSupply() {
+  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+  const decimals = await contract.decimals();
+  const supply = await contract.totalSupply();
+  return parseFloat(formatUnits(supply, decimals));
+}
 
 </body>
 </html>
