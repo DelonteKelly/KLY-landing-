@@ -1,43 +1,36 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Legacy Builder Genesis NFT Drop</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/@thirdweb-dev/wallets@latest/umd/thirdweb-dev-wallets.umd.min.js"></script>
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
       background: #0d0d0d;
       color: #ffffff;
       font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 800px;
-      margin: 60px auto;
-      padding: 30px;
       text-align: center;
-      background: #111;
-      border-radius: 12px;
-      box-shadow: 0 0 30px rgba(0,255,195,0.2);
-      opacity: 0;
-      animation: fadeSlideIn 1s ease-out forwards;
+      margin: 0;
+      padding: 30px 16px;
     }
     h1 {
       color: #00ffc3;
-      margin-bottom: 10px;
+      font-size: 2rem;
     }
     p {
       font-size: 18px;
-      line-height: 1.6;
+      margin: 1rem auto;
+      max-width: 600px;
     }
     img {
       width: 300px;
       border-radius: 10px;
       margin: 20px 0;
-      opacity: 0;
-      animation: fadeInImage 1.2s ease-in forwards;
-      animation-delay: 0.5s;
+      box-shadow: 0 0 30px rgba(0,255,195,0.25);
     }
     button {
       background: #00ffc3;
@@ -48,54 +41,49 @@
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #00e6b0;
+      margin: 10px;
     }
     #status {
       margin-top: 20px;
       color: #00ffc3;
     }
-
-    @keyframes fadeSlideIn {
-      0% {
-        opacity: 0;
-        transform: translateY(40px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes fadeInImage {
-      to {
-        opacity: 1;
-      }
-    }
   </style>
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.skypack.dev/ethers";
+</head>
+<body>
+  <h1>Legacy Builder Genesis NFT</h1>
+  <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
+  <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" />
+  
+  <div id="connect"></div>
+  <button id="mintBtn">Mint NFT</button>
+  <p id="status"></p>
 
-    let address = null;
-    let sdk = null;
+  <script>
+    const { ThirdwebSDK } = window.thirdweb;
     const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-    async function connectWallet() {
+    let sdk, signer, address;
+
+    async function init() {
       if (!window.ethereum) {
-        alert("Please install MetaMask.");
+        alert("Please install MetaMask or use Web3-supported browser.");
         return;
       }
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
       address = await signer.getAddress();
+
       sdk = new ThirdwebSDK(signer);
       document.getElementById("status").innerText = "Wallet connected: " + address;
     }
 
-    async function mintGenesisNFT() {
+    document.getElementById("connect").innerHTML = `
+      <button onclick="init()">Connect Wallet</button>
+    `;
+
+    document.getElementById("mintBtn").onclick = async function () {
       if (!sdk || !address) {
         alert("Please connect your wallet first.");
         return;
@@ -119,24 +107,7 @@
       } catch (err) {
         alert("Mint failed: " + err.message);
       }
-    }
-
-    window.onload = function() {
-      document.getElementById("connectBtn").onclick = connectWallet;
-      document.getElementById("mintBtn").onclick = mintGenesisNFT;
     };
   </script>
-</head>
-<body>
-  <div class="container">
-    <h1>Legacy Builder Genesis NFT</h1>
-    <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
-    <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Legacy Builder NFT" />
-    <div>
-      <button id="connectBtn">Connect Wallet</button>
-      <button id="mintBtn">Mint NFT</button>
-    </div>
-    <p id="status"></p>
-  </div>
 </body>
 </html>
