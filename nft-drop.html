@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Legacy Builder Genesis NFT Drop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #0d0d0d;
+      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 60px auto;
+      padding: 30px;
+      text-align: center;
+      background: #111;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0,255,195,0.2);
+    }
+    h1 {
+      color: #00ffc3;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 18px;
+      line-height: 1.6;
+    }
+    img {
+      width: 300px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    button {
+      background: #00ffc3;
+      color: #000;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #00e6b0;
+    }
+    #status {
+      margin-top: 20px;
+      color: #00ffc3;
+    }
+  </style>
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    import { ethers } from "https://cdn.skypack.dev/ethers";
+
+    let address = null;
+    let sdk = null;
+    const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
+        return;
+      }
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      address = await signer.getAddress();
+      sdk = new ThirdwebSDK(signer);
+      document.getElementById("status").innerText = "Wallet connected: " + address;
+    }
+
+    async function mintGenesisNFT() {
+      if (!sdk || !address) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      const contract = await sdk.getContract(contractAddress);
+      const balance = await contract.erc721.balanceOf(address);
+
+      if (balance.toNumber() > 0) {
+        alert("You already claimed this NFT.");
+        return;
+      }
+
+      try {
+        await contract.erc721.mintTo(address, {
+          name: "Legacy Builder Genesis NFT",
+          description: "This NFT marks you as a Founding Legacy Builder in the KLY ecosystem.",
+          image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+        });
+        alert("NFT minted successfully!");
+      } catch (err) {
+        alert("Mint failed: " + err.message);
+      }
+    }
+
+    window.onload = function() {
+      document.getElementById("connectBtn").onclick = connectWallet;
+      document.getElementById("mintBtn").onclick = mintGenesisNFT;
+    };
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Legacy Builder Genesis NFT</h1>
+    <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
+    <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Legacy Builder NFT" />
+    <div>
+      <button id="connectBtn">Connect Wallet</button>
+      <button id="mintBtn">Mint NFT</button>
+    </div>
+    <p id="status"></p>
+  </div>
+</body>
+</html>
