@@ -56,9 +56,11 @@
   <button id="mintBtn" disabled>Mint NFT</button>
   <p id="status"></p>
 
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+<!-- Load Thirdweb UMD SDK and Ethers -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
 
+<script>
   let sdk, address;
   const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 
@@ -69,13 +71,16 @@
     }
 
     try {
-      sdk = new ThirdwebSDK(window.ethereum);
-      const signer = await sdk.getSigner();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
       address = await signer.getAddress();
+
+      sdk = new thirdweb.ThirdwebSDK(signer); // use global UMD object
 
       document.getElementById("status").innerText = "Connected: " + address;
       document.getElementById("mintBtn").disabled = false;
     } catch (err) {
+      console.error(err);
       document.getElementById("status").innerText = "Connection failed: " + err.message;
     }
   };
