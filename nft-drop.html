@@ -64,61 +64,70 @@
   <button id="mintBtn" disabled>Mint NFT</button>
   <p id="status">Not connected</p>
 
-  <script>
-    let sdk, signer, address;
-    const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+ <!-- Include these in your HTML if not already present -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.js"></script>
 
-    document.getElementById("connectBtn").onclick = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
+<script>
+  let sdk, signer, address;
+  const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+
+  document.getElementById("connectBtn").onclick = async () => {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      address = await signer.getAddress();
+
+      // Use thirdweb global SDK
+      sdk = new thirdweb.ThirdwebSDK(signer);
+
+      document.getElementById("status").innerText = 
+        "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
+      document.getElementById("mintBtn").disabled = false;
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      document.getElementById("status").innerText = 
+        "Connection failed: " + (err.message || err);
+    }
+  };
+
+  document.getElementById("mintBtn").onclick = async () => {
+    const status = document.getElementById("status");
+
+    if (!sdk || !address) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    try {
+      const contract = await sdk.getContract(contractAddress);
+
+      // Check ownership
+      const owned = await contract.erc721.getOwned(address);
+      if (owned && owned.length > 0) {
+        status.innerText = "You’ve already claimed this badge!";
         return;
       }
 
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        address = await signer.getAddress();
+      // Mint Genesis Badge
+      await contract.erc721.mintTo(address, {
+        name: "KLY Genesis Badge",
+        description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
+        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+      });
 
-        sdk = new thirdweb.ThirdwebSDK(signer); // use global UMD `thirdweb`
-
-        document.getElementById("status").innerText = "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
-        document.getElementById("mintBtn").disabled = false;
-      } catch (err) {
-        document.getElementById("status").innerText = "Connection failed: " + err.message;
-      }
-    };
-
-    document.getElementById("mintBtn").onclick = async () => {
-      const status = document.getElementById("status");
-
-      if (!sdk || !address) {
-        alert("Please connect your wallet first.");
-        return;
-      }
-
-      try {
-        const contract = await sdk.getContract(contractAddress);
-
-        // Check if wallet already owns NFT
-        const owned = await contract.erc721.getOwned(address);
-        if (owned.length > 0) {
-          status.innerText = "You’ve already claimed this badge!";
-          return;
-        }
-
-        // Mint the Genesis Badge
-        await contract.erc721.mintTo(address, {
-          name: "KLY Genesis Badge",
-          description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
-          image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-        });
-
-        status.innerHTML = "Badge minted successfully!";
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Mint failed: " + (err.message || err);
-      }
-    };
-  </script>
+      status.innerText = "Badge minted successfully!";
+    } catch (err) {
+      console.error("Minting failed:", err);
+      status.innerText = "Mint failed: " + (err.message || err);
+    }
+  };
+</script>
 </body>
 </html>
