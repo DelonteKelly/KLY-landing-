@@ -59,12 +59,12 @@
   <p>Claim your limited edition Genesis NFT. Only 500 ever. One per wallet. Free to mint.</p>
   <img src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis Badge" />
 
-  <br />
-  <button id="connectBtn">Connect Wallet</button>
-  <button id="mintBtn" disabled>Mint NFT</button>
-  <p id="status">Not connected</p>
+ <br />
+<button id="connectBtn">Connect Wallet</button>
+<button id="mintBtn" disabled>Mint NFT</button>
+<p id="status">Not connected</p>
 
- <!-- Include these in your HTML if not already present -->
+<!-- Load Ethers v6 + Thirdweb SDK (UMD Browser Build) -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.4/dist/ethers.umd.min.js"></script>
 <script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.js"></script>
 
@@ -84,15 +84,15 @@
       signer = await provider.getSigner();
       address = await signer.getAddress();
 
-      // Use thirdweb global SDK
+      // Initialize thirdweb SDK
       sdk = new thirdweb.ThirdwebSDK(signer);
 
-      document.getElementById("status").innerText = 
+      document.getElementById("status").innerText =
         "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
       document.getElementById("mintBtn").disabled = false;
     } catch (err) {
       console.error("Wallet connection failed:", err);
-      document.getElementById("status").innerText = 
+      document.getElementById("status").innerText =
         "Connection failed: " + (err.message || err);
     }
   };
@@ -108,14 +108,14 @@
     try {
       const contract = await sdk.getContract(contractAddress);
 
-      // Check ownership
+      // Check if already owns the Genesis Badge
       const owned = await contract.erc721.getOwned(address);
       if (owned && owned.length > 0) {
         status.innerText = "You’ve already claimed this badge!";
         return;
       }
 
-      // Mint Genesis Badge
+      // Mint NFT to user
       await contract.erc721.mintTo(address, {
         name: "KLY Genesis Badge",
         description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
