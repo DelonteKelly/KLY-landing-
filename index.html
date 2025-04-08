@@ -152,60 +152,89 @@
   <a href="course.html"><button>Access Course</button></a>
 </section>
 
-// wallet.js
-import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+<script type="module">
+  import {
+    BrowserProvider,
+    Contract,
+    formatUnits
+  } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const KLY_ABI = [
-  {
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", type: "uint8" }],
-    type: "function"
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_ABI = [
+    {
+      "constant": true,
+      "inputs": [{ "name": "account", "type": "address" }],
+      "name": "balanceOf",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{ "name": "", "type": "uint8" }],
+      "type": "function"
+    }
+  ];
+
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask to continue.");
+        return;
+      }
+
+      provider = new BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+
+      document.getElementById("connectWallet").innerText = "Wallet Connected";
+      document.getElementById("walletAddress").innerText =
+        `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+
+      loadKLYStats();
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      alert("Could not connect wallet.");
+    }
   }
-];
 
-let provider, signer, wallet;
+  async function loadKLYStats() {
+    try {
+      const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
+      const [decimals, userBal, totalSup] = await Promise.all([
+        contract.decimals(),
+        contract.balanceOf(wallet),
+        contract.totalSupply()
+      ]);
 
-export async function connectWallet() {
-  if (!window.ethereum) throw new Error("MetaMask not installed");
+      const balanceFormatted = formatUnits(userBal, decimals);
+      const totalSupplyFormatted = formatUnits(totalSup, decimals);
 
-  provider = new BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = await provider.getSigner();
-  wallet = await signer.getAddress();
+      document.getElementById("klyWalletBalance").innerText =
+        `${parseFloat(balanceFormatted).toFixed(2)} KLY`;
+      document.getElementById("klyTotalSupply").innerText =
+        `${parseFloat(totalSupplyFormatted).toLocaleString()} KLY`;
+    } catch (err) {
+      console.error("Token stats load error:", err);
+      alert("Failed to load token data.");
+    }
+  }
 
-  return wallet;
-}
-
-export async function getKLYBalance() {
-  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
-  const decimals = await contract.decimals();
-  const balance = await contract.balanceOf(wallet);
-  return parseFloat(formatUnits(balance, decimals));
-}
-
-export async function getKLYTotalSupply() {
-  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
-  const decimals = await contract.decimals();
-  const supply = await contract.totalSupply();
-  return parseFloat(formatUnits(supply, decimals));
-}
-
+  window.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("connectWallet");
+    if (btn) btn.addEventListener("click", connectWallet);
+  });
+</script>
 </body>
 </html>
