@@ -1,10 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>KLY Token Launchpad</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLY Launchpad</title>
+
+  <!-- Ethers & Thirdweb -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/thirdweb.umd.min.js"></script>
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/thirdweb.umd.min.js"></script>
+
+  <style>
+    body {
+      background: #0d0d0d;
+      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 30px 16px;
+      margin: 0;
+    }
+
+    h1 {
+      color: #00ffc3;
+      font-size: 2rem;
+    }
+
+    button {
+      background: #00ffc3;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px;
+    }
+
+    input {
+      padding: 10px;
+      margin: 5px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      width: 130px;
+    }
+
+    #walletStatus, #createStatus {
+      margin-top: 15px;
+      color: #00ffc3;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 15px 0;
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: left;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    a {
+      color: #00ffc3;
+    }
+  </style>
 </head>
+
 <body>
   <h1>KLY Launchpad</h1>
   <button id="connectWallet">Connect Wallet</button>
@@ -15,7 +80,7 @@
     <input id="tokenSymbol" placeholder="Symbol" />
     <input id="initialSupply" placeholder="Initial Supply" type="number" />
     <button id="launchTokenBtn">Launch Token</button>
-    <p id="launchStatus"></p>
+    <p id="createStatus"></p>
   </div>
 
   <h2>Launched Tokens</h2>
@@ -47,9 +112,7 @@
       signer = provider.getSigner();
       wallet = await signer.getAddress();
 
-      sdk = new thirdweb.ThirdwebSDK(signer, {
-        chainId: 56, // BNB Mainnet
-      });
+      sdk = new thirdweb.ThirdwebSDK(signer, { chainId: 56 });
 
       document.getElementById("walletStatus").innerText =
         "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
@@ -59,7 +122,7 @@
       const name = document.getElementById("tokenName").value.trim();
       const symbol = document.getElementById("tokenSymbol").value.trim();
       const supply = parseInt(document.getElementById("initialSupply").value.trim());
-      const status = document.getElementById("launchStatus");
+      const status = document.getElementById("createStatus");
 
       if (!wallet || !sdk || !signer) {
         alert("Please connect your wallet first.");
@@ -103,7 +166,7 @@
         displayLaunchedTokens();
       } catch (err) {
         console.error(err);
-        status.innerText = "Launch failed: " + (err.message || err);
+        status.innerText = "Token launch failed: " + (err.message || err);
       }
     }
 
@@ -119,11 +182,28 @@
       `).join("");
     }
 
-    // Event Bindings
+    // Events
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("connectWallet").onclick = connectWallet;
       document.getElementById("launchTokenBtn").onclick = deployToken;
       displayLaunchedTokens();
+
+      // Live updates
+      window.ethereum?.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          wallet = null;
+          document.getElementById("walletStatus").innerText = "Disconnected";
+        } else {
+          wallet = accounts[0];
+          document.getElementById("walletStatus").innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+        }
+      });
+
+      window.ethereum?.on('chainChanged', (chainId) => {
+        if (chainId !== '0x38') {
+          alert("Please switch to BNB Smart Chain");
+        }
+      });
     });
   </script>
 </body>
