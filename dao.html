@@ -5,122 +5,233 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KLY DAO</title>
 
-  <!-- Thirdweb SDK + Ethers -->
+  <!-- Thirdweb ESM Libraries -->
   <script type="module" src="https://cdn.skypack.dev/ethers@6.6.4"></script>
   <script type="module" src="https://cdn.skypack.dev/thirdweb"></script>
+  <script type="module" src="https://cdn.skypack.dev/thirdweb/chains"></script>
 
   <style>
     body {
-      background-color: #0d0d0d;
+      margin: 0;
+      padding: 0;
+      background: #0d0d0d;
       color: #fff;
       font-family: 'Segoe UI', sans-serif;
-      padding: 20px;
       text-align: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: -30%;
+      left: -30%;
+      width: 160%;
+      height: 160%;
+      background: radial-gradient(circle, rgba(0,255,195,0.15), transparent 70%);
+      animation: pulseGlow 6s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.7;
+      }
+    }
+
+    .hero {
+      padding: 40px 16px 20px;
+    }
+
+    .hero img {
+      width: 130px;
+      margin-bottom: 10px;
+      border-radius: 50%;
+      box-shadow: 0 0 25px rgba(0,255,195,0.4);
     }
 
     h1 {
+      font-size: 2.2rem;
       color: #00ffc3;
-    }
-
-    input, textarea {
-      width: 250px;
-      padding: 10px;
-      margin: 5px;
-      border: none;
-      border-radius: 4px;
+      margin-bottom: 10px;
     }
 
     button {
       background: #00ffc3;
       border: none;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 4px;
+      padding: 12px 25px;
+      border-radius: 6px;
       font-weight: bold;
+      font-size: 15px;
+      margin: 10px auto;
       cursor: pointer;
+    }
+
+    input, textarea {
+      padding: 10px;
+      width: 280px;
+      margin: 8px auto;
+      border: none;
+      border-radius: 6px;
+      background: #1c1c1c;
+      color: #00ffc3;
+      font-size: 14px;
+      display: block;
+    }
+
+    textarea {
+      height: 80px;
+    }
+
+    .status {
+      color: #00ffc3;
+      margin: 10px auto;
     }
 
     .proposal {
       background: #1a1a1a;
+      margin: 20px auto;
       padding: 15px;
       border-radius: 10px;
-      margin: 20px auto;
       max-width: 500px;
-      text-align: left;
+      box-shadow: 0 0 15px rgba(0,255,195,0.05);
     }
 
-    .status {
-      margin: 10px 0;
-      color: #00ffc3;
-    }
-
-    input::placeholder, textarea::placeholder {
-      color: #aaa;
+    .proposal button {
+      padding: 8px 14px;
+      margin: 4px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>KLY DAO</h1>
-  <button id="connectBtn">Connect Wallet</button>
-  <p id="walletStatus">Disconnected</p>
+  <div class="hero">
+    <img src="https://ipfs.io/ipfs/bafybeih7qz42xurqioquctapmzmr7vm7dz3ysrz7yhl6lg5erj37syy6ru" alt="KLY DAO Crest" />
+    <h1>KLY DAO</h1>
+    <button id="connectBtn">Connect Wallet</button>
+    <p id="walletStatus">Disconnected</p>
+  </div>
 
   <h2>Create Proposal</h2>
-  <input id="proposalTarget" placeholder="Target Address" /><br />
-  <input id="proposalFnSig" placeholder="Function Signature (e.g. mint(address,uint256))" /><br />
-  <input id="proposalParams" placeholder='Parameters (e.g. ["0xabc",1000])' /><br />
-  <textarea id="proposalDesc" placeholder="Proposal Description"></textarea><br />
+  <input id="proposalTarget" placeholder="Target Address" />
+  <input id="proposalFnSig" placeholder="Function Signature (e.g. mint(address,uint256))" />
+  <input id="proposalParams" placeholder='Parameters (e.g. ["0xabc",1000])' />
+  <textarea id="proposalDesc" placeholder="Proposal Description"></textarea>
   <button id="createProposalBtn">Submit Proposal</button>
   <p class="status" id="createStatus"></p>
 
   <h2>Active Proposals</h2>
   <div id="proposalList"></div>
 
- <script type="module">
-  import { ethers } from "https://cdn.skypack.dev/ethers@6.6.4";
-  import {
-    createThirdwebClient,
-    getContract,
-    prepareContractCall,
-    sendTransaction
-  } from "https://cdn.skypack.dev/thirdweb";
-  import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
+  <script type="module">
+    import { ethers } from "https://cdn.skypack.dev/ethers@6.6.4";
+    import {
+      createThirdwebClient,
+      getContract,
+      prepareContractCall,
+      sendTransaction
+    } from "https://cdn.skypack.dev/thirdweb";
+    import { defineChain } from "https://cdn.skypack.dev/thirdweb/chains";
 
-  // Thirdweb client config
-  const client = createThirdwebClient({
-    clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419"
-  });
+    const client = createThirdwebClient({
+      clientId: "c8e0b21e80e5c1e68b91f4a8f7f34419" // Replace with your actual Client ID
+    });
 
-  const chain = defineChain(56); // BNB Smart Chain
-  const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+    const chain = defineChain(56); // BNB Smart Chain
+    const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
 
-  let signer, daoContract, walletAddress;
+    let signer, daoContract, walletAddress;
 
-  document.getElementById("connectBtn").onclick = async () => {
-    if (!window.ethereum) {
-      alert("MetaMask not found!");
-      return;
-    }
+    document.getElementById("connectBtn").onclick = async () => {
+      if (!window.ethereum) return alert("Install MetaMask");
 
-    try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       signer = await provider.getSigner();
       walletAddress = await signer.getAddress();
 
-      // Now initialize DAO contract
-      daoContract = getContract({
-        client,
-        chain,
-        address: DAO_ADDRESS
-      });
+      daoContract = getContract({ client, chain, address: DAO_ADDRESS });
 
       document.getElementById("walletStatus").innerText = `Connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+      loadProposals();
+    };
 
-      loadProposals(); // optional
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      document.getElementById("walletStatus").innerText = "Connection failed.";
+    async function loadProposals() {
+      try {
+        const proposals = await daoContract.read("getAllProposals");
+        const list = document.getElementById("proposalList");
+        list.innerHTML = "";
+
+        proposals.forEach((p) => {
+          const div = document.createElement("div");
+          div.className = "proposal";
+          div.innerHTML = `
+            <h4>Proposal #${p.proposalId}</h4>
+            <p>${p.description}</p>
+            <button onclick="vote(${p.proposalId}, 1)">Vote For</button>
+            <button onclick="vote(${p.proposalId}, 0)">Vote Against</button>
+            <button onclick="vote(${p.proposalId}, 2)">Abstain</button>
+          `;
+          list.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Error loading proposals:", err);
+        document.getElementById("proposalList").innerText = "Error loading proposals.";
+      }
     }
-  };
-</script>
+
+    window.vote = async (id, support) => {
+      try {
+        const tx = await prepareContractCall({
+          contract: daoContract,
+          method: "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+          params: [id, support]
+        });
+
+        const result = await sendTransaction({ transaction: tx, account: walletAddress, chain });
+        alert(`Vote submitted! Tx: ${result.transactionHash}`);
+      } catch (err) {
+        console.error("Vote failed:", err);
+        alert("Vote failed. See console.");
+      }
+    };
+
+    document.getElementById("createProposalBtn").onclick = async () => {
+      const target = document.getElementById("proposalTarget").value.trim();
+      const fnSig = document.getElementById("proposalFnSig").value.trim();
+      const paramStr = document.getElementById("proposalParams").value.trim();
+      const description = document.getElementById("proposalDesc").value.trim();
+      const status = document.getElementById("createStatus");
+
+      if (!target || !fnSig || !paramStr || !description) {
+        status.innerText = "Fill in all fields.";
+        return;
+      }
+
+      try {
+        const iface = new ethers.Interface([`function ${fnSig}`]);
+        const fnName = fnSig.split("(")[0];
+        const calldata = iface.encodeFunctionData(fnName, JSON.parse(paramStr));
+
+        const tx = await prepareContractCall({
+          contract: daoContract,
+          method: "function propose(address[], uint256[], bytes[], string) returns (uint256)",
+          params: [[target], [0], [calldata], description]
+        });
+
+        const result = await sendTransaction({ transaction: tx, account: walletAddress, chain });
+        status.innerText = `Proposal submitted! Tx: ${result.transactionHash}`;
+        loadProposals();
+      } catch (err) {
+        console.error("Proposal creation failed:", err);
+        status.innerText = "Proposal creation failed.";
+      }
+    };
+  </script>
 </body>
 </html>
