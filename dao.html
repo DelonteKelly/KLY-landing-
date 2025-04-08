@@ -3,128 +3,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY DAO Interface</title>
+  <title>KLY DAO Hero Interface</title>
   <style>
-    body {{
+    body {
       margin: 0;
-      background-color: #0c0c0c;
+      background: linear-gradient(145deg, #0c0c0c, #1a1a1a);
       color: white;
       font-family: 'Segoe UI', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
-    }}
-    .module-card {{
-      background-color: #111;
+      padding: 40px 20px;
+    }
+
+    .module-card {
+      background: #111;
       border-radius: 20px;
-      padding: 30px 20px;
-      max-width: 400px;
-      margin: 30px 0;
+      padding: 40px 30px;
+      max-width: 480px;
+      width: 100%;
       text-align: center;
-      box-shadow: 0 0 15px #00ffc3;
-    }}
-    .module-title {{
+      box-shadow: 0 0 25px rgba(0, 255, 195, 0.4);
+      border: 1px solid rgba(0, 255, 195, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .module-card:hover {
+      transform: scale(1.02);
+    }
+
+    .module-title {
       color: #00ffc3;
-      font-size: 1.5em;
-      margin-bottom: 10px;
-    }}
-    .module-text {{
-      color: #ccc;
-      font-size: 1em;
+      font-size: 2em;
       margin-bottom: 20px;
-    }}
-    .next-button {{
+    }
+
+    .next-button {
       background-color: #00ffc3;
       color: #000;
       border: none;
-      padding: 10px 30px;
+      padding: 12px 30px;
       font-size: 1em;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
-    }}
-    .next-button:hover {{
+      margin-top: 20px;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .next-button:hover {
       background-color: #00cc9a;
-    }}
-    input {{
-      width: 90%;
-      padding: 10px;
-      margin-top: 10px;
+      transform: scale(1.03);
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
       border-radius: 10px;
       border: none;
       background-color: #222;
       color: white;
-    }}
+      font-size: 1em;
+    }
+
+    #walletStatus {
+      margin-top: 10px;
+      font-size: 0.95em;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
 
   <div class="module-card">
     <h2 class="module-title">KLY DAO</h2>
-    <button class="next-button" onclick="connectWallet()">Connect Wallet</button>
+    <button class="next-button" data-connect>Connect Wallet</button>
     <p id="walletStatus">Disconnected</p>
 
-    <h3 style="margin-top: 20px;">Create Proposal</h3>
-    <input id="target" type="text" placeholder="Target Address"><br>
-    <input id="signature" type="text" placeholder="Function Signature (e.g. mint(address,uint256))"><br>
-    <input id="params" type="text" placeholder='Parameters (e.g. ["0xabc",1000])'><br>
-    <button class="next-button" onclick="createProposal()" style="margin-top: 15px;">Submit Proposal</button>
+    <h3 style="margin-top: 30px;">Create Proposal</h3>
+    <input id="target" type="text" placeholder="Target Address" />
+    <input id="signature" type="text" placeholder="Function Signature (e.g. mint(address,uint256))" />
+    <input id="params" type="text" placeholder='Parameters (e.g. ["0xabc",1000])' />
+    <button class="next-button" onclick="createProposal()">Submit Proposal</button>
   </div>
 
+  <script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.js"></script>
+  <script>
+    async function connectWallet() {
+      try {
+        const wallet = new thirdweb.MetaMaskWallet();
+        await wallet.connect();
+        const address = await wallet.getAddress();
 
+        document.querySelectorAll("[data-connect]").forEach(btn => {
+          btn.innerText = "Wallet Connected";
+        });
 
-<script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.js"></script>
+        document.getElementById("walletStatus").innerText = `Connected: ${address}`;
+        window.userWallet = wallet;
+      } catch (err) {
+        document.getElementById("walletStatus").innerText = "Connection failed";
+        console.error(err);
+      }
+    }
 
-<script>
-  async function connectWallet() {
-    try {
-      const wallet = new thirdweb.MetaMaskWallet();
-      await wallet.connect();
-      const address = await wallet.getAddress();
+    async function createProposal() {
+      const target = document.querySelector('#target').value;
+      const signature = document.querySelector('#signature').value;
+      const params = eval(document.querySelector('#params').value);
 
+      if (!window.userWallet) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      const daoAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+      const sdk = new thirdweb.ThirdwebSDK(window.userWallet);
+      const contract = await sdk.getContract(daoAddress);
+
+      try {
+        const tx = await contract.call("propose", [target, signature, params]);
+        alert(`Proposal submitted. TX: ${tx.receipt.transactionHash}`);
+      } catch (err) {
+        console.error(err);
+        alert("Proposal creation failed.");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-connect]").forEach(btn => {
-        btn.innerText = "Wallet Connected";
+        btn.addEventListener("click", connectWallet);
       });
-
-      document.querySelectorAll(".walletAddress").forEach(el => {
-        el.innerText = address.slice(0, 6) + "..." + address.slice(-4);
-      });
-
-      document.getElementById("walletStatus").innerText = `Connected: ${address}`;
-      window.userWallet = wallet;
-    } catch (err) {
-      document.getElementById("walletStatus").innerText = "Connection failed";
-      console.error(err);
-    }
-  }
-
-  async function createProposal() {
-    const target = document.querySelector('#target').value;
-    const signature = document.querySelector('#signature').value;
-    const params = eval(document.querySelector('#params').value);
-
-    if (!window.userWallet) {
-      alert("Please connect your wallet first.");
-      return;
-    }
-
-    const daoAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-    const sdk = new thirdweb.ThirdwebSDK(window.userWallet);
-    const contract = await sdk.getContract(daoAddress);
-
-    try {
-      const tx = await contract.call("propose", [target, signature, params]);
-      alert(`Proposal submitted. TX: ${tx.receipt.transactionHash}`);
-    } catch (err) {
-      console.error(err);
-      alert("Proposal creation failed.");
-    }
-  }
-
-  window.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-connect]").forEach(btn => {
-      btn.addEventListener("click", connectWallet);
     });
-  });
-</script>
+  </script>
+
+</body>
+</html>
