@@ -6,8 +6,7 @@
   <title>KLY Token | Kelly Legacy Estates</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  <style>
-
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <style>
     :root {
       --neon-green: #00ffe7;
@@ -35,13 +34,13 @@
       line-height: 1.6;
     }
     
- #particles-js {
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  background: radial-gradient(ellipse at bottom, #020202 0%, #000 100%);
-}
+    #particles-js {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: radial-gradient(ellipse at bottom, var(--darker-bg) 0%, #000 100%);
+    }
     
     /* Cyberpunk Scrollbar */
     ::-webkit-scrollbar {
@@ -575,13 +574,11 @@
       }
     }
   </style>
-
-  </style>
 </head>
 <body>
   <!-- Particle Background -->
   <div id="particles-js"></div>
-
+  
   <!-- Cyberpunk Header -->
   <header class="cyber-header">
     <div class="logo">KLY<span>TOKEN</span></div>
@@ -806,13 +803,10 @@
     <div class="copyright">
       &copy; 2025 Kelly Legacy Estates. All rights reserved.
     </div>
-  </>
+  </footer>
 
-  <!-- Load particles.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-
-  <!-- Initialize particles.js -->
   <script>
+    // Initialize particles.js
     particlesJS("particles-js", {
       "particles": {
         "number": {
@@ -830,15 +824,30 @@
           "stroke": {
             "width": 0,
             "color": "#000000"
+          },
+          "polygon": {
+            "nb_sides": 5
           }
         },
         "opacity": {
-          "value": 0.3,
-          "random": true
+          "value": 0.5,
+          "random": false,
+          "anim": {
+            "enable": false,
+            "speed": 1,
+            "opacity_min": 0.1,
+            "sync": false
+          }
         },
         "size": {
           "value": 3,
-          "random": true
+          "random": true,
+          "anim": {
+            "enable": false,
+            "speed": 40,
+            "size_min": 0.1,
+            "sync": false
+          }
         },
         "line_linked": {
           "enable": true,
@@ -849,7 +858,17 @@
         },
         "move": {
           "enable": true,
-          "speed": 2
+          "speed": 2,
+          "direction": "none",
+          "random": false,
+          "straight": false,
+          "out_mode": "out",
+          "bounce": false,
+          "attract": {
+            "enable": false,
+            "rotateX": 600,
+            "rotateY": 1200
+          }
         }
       },
       "interactivity": {
@@ -862,141 +881,71 @@
           "onclick": {
             "enable": true,
             "mode": "push"
-          }
+          },
+          "resize": true
         },
         "modes": {
           "grab": {
             "distance": 140,
             "line_linked": {
-              "opacity": 0.3
+              "opacity": 1
             }
+          },
+          "bubble": {
+            "distance": 400,
+            "size": 40,
+            "duration": 2,
+            "opacity": 8,
+            "speed": 3
+          },
+          "repulse": {
+            "distance": 200,
+            "duration": 0.4
           },
           "push": {
             "particles_nb": 4
+          },
+          "remove": {
+            "particles_nb": 2
           }
         }
       },
       "retina_detect": true
     });
+
+    // Wallet connection logic
+    document.getElementById('connectWallet').addEventListener('click', async () => {
+      try {
+        if (window.ethereum) {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const address = accounts[0];
+          const truncatedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+          
+          document.getElementById('connectWallet').style.display = 'none';
+          document.getElementById('walletAddress').textContent = truncatedAddress;
+          document.getElementById('walletAddress').style.display = 'block';
+          document.getElementById('dashboardStats').style.display = 'block';
+          document.getElementById('refreshData').style.display = 'inline-block';
+          
+          // In a real app, you would fetch user data here
+          document.getElementById('userBalance').textContent = '1,250';
+          document.getElementById('userStaked').textContent = '750';
+          document.getElementById('userRewards').textContent = '42.5';
+          document.getElementById('votingPower').textContent = '1.25%';
+        } else {
+          alert('Please install MetaMask or another Ethereum wallet to connect.');
+        }
+      } catch (error) {
+        console.error('Wallet connection error:', error);
+        alert('Error connecting wallet. See console for details.');
+      }
+    });
+
+    // Mock data for demo purposes
+    document.getElementById('totalSupply').textContent = '10M';
+    document.getElementById('stakedAmount').textContent = '4.2M';
+    document.getElementById('holders').textContent = '8,542';
+    document.getElementById('apy').textContent = '12.5%';
   </script>
-
-
-<!-- Load Web3.js -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-
 </body>
 </html>
-
-<script>
-  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-
-  const ABI = [
-    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
-  ];
-
-  const TOKEN_ABI = [
-    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" },
-    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
-  ];
-
-  let web3, wallet, contract, token;
-
-  async function connect() {
-    if (!window.ethereum) return alert("Please install MetaMask.");
-    try {
-      web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      wallet = accounts[0];
-
-      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-      document.getElementById("walletAddress").style.display = "inline-block";
-      document.getElementById("dashboardStats").style.display = "block";
-      document.getElementById("refreshData").style.display = "inline-block";
-
-      contract = new web3.eth.Contract(ABI, STAKE_CONTRACT);
-      token = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
-
-      loadDashboardData();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect wallet.");
-    }
-  }
-
-  async function loadDashboardData() {
-    try {
-      const balanceRaw = await token.methods.balanceOf(wallet).call();
-      const decimals = await token.methods.decimals().call();
-      const balance = parseFloat(balanceRaw / (10 ** decimals)).toFixed(2);
-      document.getElementById("userBalance").textContent = balance;
-
-      // Placeholder: add logic to fetch staked and rewards if available
-      document.getElementById("userStaked").textContent = "--";
-      document.getElementById("userRewards").textContent = "--";
-      document.getElementById("votingPower").textContent = "--";
-    } catch (err) {
-      console.error("Error loading dashboard data", err);
-    }
-  }
-
-  async function stakeKLY() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
-    const amount = document.getElementById("stakeAmount").value;
-    if (!amount || parseFloat(amount) <= 0) {
-      return alert("Enter a valid amount to stake.");
-    }
-
-    try {
-      const amountWei = web3.utils.toWei(amount, "ether");
-      status.textContent = "Approving KLY...";
-      await token.methods.approve(STAKE_CONTRACT, amountWei).send({ from: wallet });
-
-      status.textContent = "Staking KLY...";
-      await contract.methods.stake(amountWei).send({ from: wallet });
-
-      status.textContent = "✅ Staked successfully!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Transaction failed.";
-    }
-  }
-
-  async function claimRewards() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
-    try {
-      status.textContent = "Claiming rewards...";
-      await contract.methods.claim().send({ from: wallet });
-      status.textContent = "✅ Rewards claimed!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to claim rewards.";
-    }
-  }
-
-  async function withdrawStake() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
-    try {
-      status.textContent = "Withdrawing stake...";
-      await contract.methods.withdraw().send({ from: wallet });
-      status.textContent = "✅ Stake withdrawn!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to withdraw stake.";
-    }
-  }
-
-  document.getElementById("connectWallet").addEventListener("click", connect);
-  document.getElementById("refreshData").addEventListener("click", loadDashboardData);
-</script>
-
