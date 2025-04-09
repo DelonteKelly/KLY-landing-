@@ -921,8 +921,7 @@
       "retina_detect": true
     });
 
-    // Wallet connection logicdocument.getElementById('connectWallet').addEventListener('click', async () => {
- <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    // Wallet connection logicdocument.getElementById('connectWallet').addEventListener('click', async () => {<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
@@ -939,58 +938,66 @@
 
   let web3, wallet, kly, staking;
 
-  document.getElementById('connectWallet').addEventListener('click', async () => {
-  try {
-    if (window.ethereum) {
-      web3 = new Web3(window.ethereum);  // Initialize Web3
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      wallet = accounts[0];
+  document.addEventListener("DOMContentLoaded", () => {
+    const connectBtn = document.getElementById('connectWallet');
+    const refreshBtn = document.getElementById('refreshData');
 
-      // Update UI
-      document.getElementById('connectWallet').style.display = 'none';
-      document.getElementById('walletAddress').textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-      document.getElementById('walletAddress').style.display = 'block';
-      document.getElementById('dashboardStats').style.display = 'block';
-      document.getElementById('refreshData').style.display = 'inline-block';
+    if (connectBtn) {
+      connectBtn.addEventListener('click', async () => {
+        try {
+          if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            wallet = accounts[0];
 
-      // Initialize contracts
-      kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
-      staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
-    } else {
-      alert('MetaMask is not installed');
+            document.getElementById('connectWallet').style.display = 'none';
+            document.getElementById('walletAddress').textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+            document.getElementById('walletAddress').style.display = 'block';
+
+            if (document.getElementById('dashboardStats')) {
+              document.getElementById('dashboardStats').style.display = 'block';
+            }
+            if (refreshBtn) refreshBtn.style.display = 'inline-block';
+
+            kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
+            staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
+          } else {
+            alert('MetaMask not found. Install MetaMask or use a Web3-compatible browser.');
+          }
+        } catch (error) {
+          console.error('Wallet connection error:', error);
+          alert('Error connecting wallet. Check browser console for details.');
+        }
+      });
     }
-  } catch (error) {
-    console.error('Wallet connection error:', error);
-    alert('Error connecting wallet. See console for details.');
-  }
-});
-  document.getElementById('refreshData').addEventListener('click', updateStats);
 
-  async function updateStats() {
-    try {
-      const [balance, totalSupply, userStaked, userRewards] = await Promise.all([
-        kly.methods.balanceOf(wallet).call(),
-        kly.methods.totalSupply().call(),
-        staking.methods.stakes(wallet).call(),
-        staking.methods.rewards(wallet).call()
-      ]);
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        try {
+          const [balance, totalSupply, userStaked, userRewards] = await Promise.all([
+            kly.methods.balanceOf(wallet).call(),
+            kly.methods.totalSupply().call(),
+            staking.methods.stakes(wallet).call(),
+            staking.methods.rewards(wallet).call()
+          ]);
 
-      const formatter = (val) => parseFloat(web3.utils.fromWei(val)).toLocaleString();
+          const formatter = (val) => parseFloat(web3.utils.fromWei(val)).toLocaleString();
 
-      document.getElementById('userBalance').textContent = formatter(balance);
-      document.getElementById('userStaked').textContent = formatter(userStaked);
-      document.getElementById('userRewards').textContent = formatter(userRewards);
-      document.getElementById('votingPower').textContent = (parseFloat(web3.utils.fromWei(balance)) / parseFloat(web3.utils.fromWei(totalSupply)) * 100).toFixed(2) + '%';
+          document.getElementById('userBalance').textContent = formatter(balance);
+          document.getElementById('userStaked').textContent = formatter(userStaked);
+          document.getElementById('userRewards').textContent = formatter(userRewards);
+          document.getElementById('votingPower').textContent = (parseFloat(web3.utils.fromWei(balance)) / parseFloat(web3.utils.fromWei(totalSupply)) * 100).toFixed(2) + '%';
 
-      document.getElementById('totalSupply').textContent = formatter(totalSupply);
-      document.getElementById('stakedAmount').textContent = formatter(await kly.methods.balanceOf(STAKE_CONTRACT).call());
-      document.getElementById('holders').textContent = '8,542'; // Placeholder unless tracking externally
-      document.getElementById('apy').textContent = '12.5%'; // Static unless dynamic logic provided
-    } catch (err) {
-      console.error("Failed to fetch stats:", err);
+          document.getElementById('totalSupply').textContent = formatter(totalSupply);
+          document.getElementById('stakedAmount').textContent = formatter(await kly.methods.balanceOf(STAKE_CONTRACT).call());
+          document.getElementById('holders').textContent = '8,542'; // Static placeholder
+          document.getElementById('apy').textContent = '12.5%'; // Static placeholder
+        } catch (err) {
+          console.error("Failed to fetch stats:", err);
+        }
+      });
     }
-  }
+  });
 </script>
-
 </body>
 </html>
