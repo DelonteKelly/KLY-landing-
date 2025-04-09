@@ -2,145 +2,116 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY DAO Hero Interface</title>
+  <title>KLY DAO Governance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
-      background: linear-gradient(145deg, #0c0c0c, #1a1a1a);
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 20px;
+      background: #050505;
+      color: #e0e0e0;
+      font-family: 'Rajdhani', sans-serif;
+      padding: 2rem;
     }
-
-    .module-card {
-      background: #111;
-      border-radius: 20px;
-      padding: 40px 30px;
-      max-width: 480px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 0 25px rgba(0, 255, 195, 0.4);
-      border: 1px solid rgba(0, 255, 195, 0.2);
-      transition: transform 0.3s ease;
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5rem;
+      color: #00ffe7;
     }
-
-    .module-card:hover {
-      transform: scale(1.02);
+    .proposal {
+      background: rgba(0, 255, 231, 0.05);
+      border: 1px solid rgba(0, 255, 231, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
     }
-
-    .module-title {
-      color: #00ffc3;
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-
-    .next-button {
-      background-color: #00ffc3;
+    button {
+      margin: 0.5rem 0.5rem 0 0;
+      padding: 0.6rem 1rem;
+      background: linear-gradient(135deg, #00ffe7, #ff00aa);
       color: #000;
+      font-weight: bold;
       border: none;
-      padding: 12px 30px;
-      font-size: 1em;
-      border-radius: 12px;
+      border-radius: 5px;
+      font-family: 'Orbitron', sans-serif;
       cursor: pointer;
-      margin-top: 20px;
-      transition: background-color 0.3s ease, transform 0.2s ease;
     }
-
-    .next-button:hover {
-      background-color: #00cc9a;
-      transform: scale(1.03);
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-top: 12px;
-      border-radius: 10px;
-      border: none;
-      background-color: #222;
-      color: white;
-      font-size: 1em;
-    }
-
-    #walletStatus {
-      margin-top: 10px;
-      font-size: 0.95em;
-      color: #aaa;
+    #status {
+      margin: 1rem 0;
+      color: #00ffe7;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-  <div class="module-card">
-    <h2 class="module-title">KLY DAO</h2>
-    <button class="next-button" data-connect>Connect Wallet</button>
-    <p id="walletStatus">Disconnected</p>
+  <h1>KLY DAO Governance</h1>
+  <button id="connectWallet">Connect Wallet</button>
+  <p id="status">Not connected</p>
 
-    <h3 style="margin-top: 30px;">Create Proposal</h3>
-    <input id="target" type="text" placeholder="Target Address" />
-    <input id="signature" type="text" placeholder="Function Signature (e.g. mint(address,uint256))" />
-    <input id="params" type="text" placeholder='Parameters (e.g. ["0xabc",1000])' />
-    <button class="next-button" onclick="createProposal()">Submit Proposal</button>
-  </div>
+  <div id="proposalList"></div>
 
-  // wallet.js
-import { BrowserProvider, Contract, formatUnits } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const KLY_ABI = [
-  {
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", type: "uint8" }],
-    type: "function"
-  }
-];
+    const daoAddress = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+    let sdk, signer, wallet, dao;
 
-let provider, signer, wallet;
+    const status = document.getElementById("status");
+    const list = document.getElementById("proposalList");
 
-export async function connectWallet() {
-  if (!window.ethereum) throw new Error("MetaMask not installed");
+    document.getElementById("connectWallet").onclick = async () => {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        wallet = await signer.getAddress();
+        sdk = new ThirdwebSDK(signer);
+        dao = await sdk.getContract(daoAddress);
 
-  provider = new BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = await provider.getSigner();
-  wallet = await signer.getAddress();
+        status.innerText = `Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+        loadProposals();
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Connection failed.";
+      }
+    };
 
-  return wallet;
-}
+    async function loadProposals() {
+      try {
+        const proposals = await dao.call("getAllProposals");
+        if (proposals.length === 0) {
+          list.innerHTML = "<p>No proposals found.</p>";
+          return;
+        }
 
-export async function getKLYBalance() {
-  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
-  const decimals = await contract.decimals();
-  const balance = await contract.balanceOf(wallet);
-  return parseFloat(formatUnits(balance, decimals));
-}
+        list.innerHTML = proposals.map((p, index) => `
+          <div class="proposal">
+            <h3>Proposal #${p.proposalId}: ${p.description}</h3>
+            <p>Status: ${p.executed ? "Executed" : "Active"}</p>
+            <button onclick="vote(${p.proposalId}, 0)">Vote For</button>
+            <button onclick="vote(${p.proposalId}, 1)">Vote Against</button>
+          </div>
+        `).join("");
+      } catch (err) {
+        console.error(err);
+        list.innerHTML = "<p>Error loading proposals.</p>";
+      }
+    }
 
-export async function getKLYTotalSupply() {
-  const contract = new Contract(KLY_ADDRESS, KLY_ABI, provider);
-  const decimals = await contract.decimals();
-  const supply = await contract.totalSupply();
-  return parseFloat(formatUnits(supply, decimals));
-}
+    window.vote = async (proposalId, voteType) => {
+      try {
+        status.innerText = "Submitting vote...";
+        await dao.call("castVote", [proposalId, voteType]);
+        status.innerText = "Vote submitted!";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Vote failed.";
+      }
+    };
+  </script>
 
 </body>
 </html>
