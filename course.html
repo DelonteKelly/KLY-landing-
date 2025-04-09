@@ -68,6 +68,7 @@
   <p id="accessStatus" class="status"></p>
 </section>
 
+
 <div id="module1" class="hidden">
   <h2 class="module-title">Module 1: Web3 Foundations</h2>
 
@@ -475,16 +476,24 @@
 
 <script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const KLY_ABI = [{ constant: true, inputs: [{ name: "account", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" }];
+  const KLY_ABI = [{
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }];
+
   let wallet;
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("Please install MetaMask");
+    if (!window.ethereum) return alert("Please install MetaMask.");
     const web3 = new Web3(window.ethereum);
     await window.ethereum.request({ method: "eth_requestAccounts" });
     const accounts = await web3.eth.getAccounts();
     wallet = accounts[0];
-    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
+    console.log("Connected wallet:", wallet);
   }
 
   async function verifyAccess() {
@@ -493,57 +502,13 @@
     const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
     const balance = await contract.methods.balanceOf(wallet).call();
     const balanceEth = web3.utils.fromWei(balance, "ether");
+    console.log("KLY Balance:", balanceEth);
+
     if (parseFloat(balanceEth) >= 500) {
       document.getElementById("accessPanel").classList.add("hidden");
       document.getElementById("courseContent").classList.remove("hidden");
-      document.getElementById("module1").classList.remove("hidden");
     } else {
       document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY";
-    }
-  }
-
-  function showNextModule(id) {
-    if (typeof id === 'number') {
-      document.getElementById("module" + (id - 1)).classList.add("hidden");
-      document.getElementById("module" + id).classList.remove("hidden");
-    } else if (id === 'mint') {
-      document.getElementById("module5").classList.add("hidden");
-      document.getElementById("mintSection").classList.remove("hidden");
-    }
-  }
-
-  document.getElementById("accessPanel").classList.add("hidden");
-document.getElementById("courseContent").classList.remove("hidden");
-document.getElementById("module1").classList.remove("hidden");
-
-  async function mintNFT() {
-    if (!wallet) return alert("Please connect your wallet first.");
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const nftContract = new ethers.Contract(
-        "0xDA76d35742190283E340dbeE2038ecc978a56950",
-        [{ "inputs": [
-          { "internalType": "address", "name": "to", "type": "address" },
-          { "internalType": "int24", "name": "tickLower", "type": "int24" },
-          { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-          { "internalType": "uint128", "name": "amount", "type": "uint128" },
-          { "internalType": "bytes", "name": "data", "type": "bytes" }],
-          "name": "mint",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function" }
-        ],
-        signer
-      );
-
-      const tx = await nftContract.mint(wallet, -600, 600, 1, "0x");
-      document.getElementById("mintStatus").innerText = "Minting in progress...";
-      await tx.wait();
-      document.getElementById("mintStatus").innerText = "✅ NFT successfully minted!";
-    } catch (error) {
-      console.error("Minting failed:", error);
-      document.getElementById("mintStatus").innerText = "❌ Minting failed. Please try again.";
     }
   }
 </script>
