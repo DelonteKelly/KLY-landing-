@@ -3,48 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <title>KLY Launchpad</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Thirdweb SDK -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
+      background: #0d0d0d;
+      color: #f1f1f1;
     }
-    .hero {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 5rem 2rem;
-      background: linear-gradient(to right, #1e293b, #0f172a);
+
+    header {
+      padding: 1rem;
+      background: #000;
       text-align: center;
+      border-bottom: 1px solid #111;
     }
+
+    nav a {
+      margin: 0 1rem;
+      color: #00ffc3;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+
     .hero h1 {
+      color: #00ffc3;
       font-size: 2.5rem;
       margin-bottom: 1rem;
-      color: #38bdf8;
     }
+
     .hero p {
       font-size: 1.2rem;
-      margin-bottom: 2rem;
+      color: #ccc;
+      max-width: 600px;
+      margin: 0 auto 2rem;
     }
+
     .button {
-      background-color: #38bdf8;
-      color: #0f172a;
-      padding: 0.75rem 1.5rem;
+      background: #00ffc3;
+      color: #000;
       border: none;
-      border-radius: 8px;
+      padding: 12px 24px;
       font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
       cursor: pointer;
-      margin-bottom: 2rem;
+      margin: 1rem 0;
+      transition: background 0.2s ease;
     }
+
+    .button:hover {
+      background: #00cfa6;
+    }
+
     .form {
-      background-color: #1e293b;
+      background: #111;
+      max-width: 420px;
+      margin: 2rem auto;
       padding: 2rem;
       border-radius: 12px;
-      width: 100%;
-      max-width: 500px;
-      margin-top: 2rem;
+      box-shadow: 0 0 30px rgba(0, 255, 195, 0.1);
     }
+
     .form input {
       width: 100%;
       padding: 0.75rem;
@@ -52,59 +82,89 @@
       border-radius: 6px;
       border: none;
       font-size: 1rem;
+      background: #222;
+      color: #fff;
     }
+
+    #createStatus {
+      margin-top: 1rem;
+      color: #00ffc3;
+      font-weight: bold;
+    }
+
     #launchedTokensList {
-      margin-top: 2rem;
-      list-style: none;
+      max-width: 500px;
+      margin: 2rem auto;
       padding: 0;
+      list-style: none;
     }
+
     #launchedTokensList li {
-      margin: 1rem 0;
-      background: #334155;
+      background: #1a1a1a;
       padding: 1rem;
       border-radius: 8px;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 10px rgba(0, 255, 195, 0.1);
     }
+
     a {
-      color: #7dd3fc;
+      color: #00ffc3;
+      word-break: break-all;
     }
   </style>
 </head>
 <body>
 
+  <header>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="course.html">Course</a>
+      <a href="stake.html">Staking</a>
+      <a href="dao.html">DAO</a>
+      <a href="launchpad.html">Launchpad</a>
+    </nav>
+  </header>
+
   <section class="hero">
     <h1>KLY Launchpad</h1>
-    <p>Deploy your own token on the KLY blockchain</p>
+    <p>Launch your own token directly from the KLY platform. You must hold at least 10,000 KLY to launch.</p>
     <button class="button" id="connectWallet">Connect Wallet</button>
-    <p id="walletStatus"></p>
-
-    <div class="form">
-      <input id="tokenName" placeholder="Token Name" />
-      <input id="tokenSymbol" placeholder="Symbol" />
-      <input id="initialSupply" placeholder="Initial Supply" type="number" />
-      <button class="button" id="launchTokenBtn">Launch Token</button>
-      <p id="createStatus"></p>
-    </div>
-
-    <ul id="launchedTokensList"></ul>
+    <p id="walletStatus">Not connected</p>
   </section>
 
-  <!-- Script Logic -->
+  <div class="form">
+    <input id="tokenName" placeholder="Token Name" />
+    <input id="tokenSymbol" placeholder="Token Symbol" />
+    <input id="initialSupply" type="number" placeholder="Initial Supply (e.g. 1000000)" />
+    <button class="button" id="launchTokenBtn">Launch Token</button>
+    <p id="createStatus"></p>
+  </div>
+
+  <ul id="launchedTokensList"></ul>
+
   <script type="module">
-    import { connectWallet, getKLYBalance } from './assets/wallet.js';
-    import { ThirdwebSDK } from 'https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm';
+    import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
     const treasury = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const klyToken = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const walletStatus = document.getElementById("walletStatus");
+    const createStatus = document.getElementById("createStatus");
+
     let wallet, sdk;
 
     document.getElementById("connectWallet").onclick = async () => {
       try {
-        wallet = await connectWallet();
-        sdk = new ThirdwebSDK(window.ethereum);
-        document.getElementById("walletStatus").innerText =
-          "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        wallet = await signer.getAddress();
+        sdk = new ThirdwebSDK(signer);
+
+        walletStatus.innerText = "Connected: " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
       } catch (err) {
-        alert("Wallet connection failed");
         console.error(err);
+        walletStatus.innerText = "Connection failed.";
       }
     };
 
@@ -112,7 +172,6 @@
       const name = document.getElementById("tokenName").value.trim();
       const symbol = document.getElementById("tokenSymbol").value.trim();
       const supply = parseInt(document.getElementById("initialSupply").value.trim());
-      const status = document.getElementById("createStatus");
 
       if (!wallet || !sdk) {
         alert("Please connect wallet first.");
@@ -120,18 +179,22 @@
       }
 
       if (!name || !symbol || !supply) {
-        alert("All fields are required.");
+        alert("Please fill in all fields.");
         return;
       }
 
       try {
-        const balance = await getKLYBalance();
-        if (balance < 10000) {
-          status.innerText = "You need at least 10,000 KLY to launch.";
+        createStatus.innerText = "Checking KLY balance...";
+        const kly = new ethers.Contract(klyToken, ["function balanceOf(address) view returns (uint256)"], sdk.getProvider());
+        const balance = await kly.balanceOf(wallet);
+        const formatted = parseFloat(ethers.utils.formatUnits(balance, 18));
+
+        if (formatted < 10000) {
+          createStatus.innerText = "You must hold at least 10,000 KLY.";
           return;
         }
 
-        status.innerText = "Deploying token...";
+        createStatus.innerText = "Deploying token...";
 
         const tokenAddress = await sdk.deployer.deployToken({
           name,
@@ -148,11 +211,11 @@
         tokens.unshift({ name, symbol, supply, address: tokenAddress });
         localStorage.setItem("launchedTokens", JSON.stringify(tokens));
 
-        status.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
+        createStatus.innerText = `${name} (${symbol}) launched with ${supply} tokens!`;
         displayLaunchedTokens();
       } catch (err) {
         console.error(err);
-        status.innerText = "Launch failed: " + (err.message || err);
+        createStatus.innerText = "Launch failed: " + (err.message || err);
       }
     };
 
