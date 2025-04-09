@@ -940,31 +940,30 @@
   let web3, wallet, kly, staking;
 
   document.getElementById('connectWallet').addEventListener('click', async () => {
-    try {
-      if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        wallet = accounts[0];
+  try {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);  // Initialize Web3
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      wallet = accounts[0];
 
-        document.getElementById('connectWallet').style.display = 'none';
-        document.getElementById('walletAddress').textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-        document.getElementById('walletAddress').style.display = 'block';
-        document.getElementById('dashboardStats').style.display = 'block';
-        document.getElementById('refreshData').style.display = 'inline-block';
+      // Update UI
+      document.getElementById('connectWallet').style.display = 'none';
+      document.getElementById('walletAddress').textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      document.getElementById('walletAddress').style.display = 'block';
+      document.getElementById('dashboardStats').style.display = 'block';
+      document.getElementById('refreshData').style.display = 'inline-block';
 
-        kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
-        staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
-
-        await updateStats();
-      } else {
-        alert('Please install MetaMask to connect.');
-      }
-    } catch (error) {
-      console.error('Wallet connection error:', error);
-      alert('Error connecting wallet. See console for details.');
+      // Initialize contracts
+      kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
+      staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
+    } else {
+      alert('MetaMask is not installed');
     }
-  });
-
+  } catch (error) {
+    console.error('Wallet connection error:', error);
+    alert('Error connecting wallet. See console for details.');
+  }
+});
   document.getElementById('refreshData').addEventListener('click', updateStats);
 
   async function updateStats() {
