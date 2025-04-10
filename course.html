@@ -432,11 +432,11 @@
   <p id="mintStatus" class="status"></p>
 </div>
 
-<!-- Required Scripts -->
+<!-- Include Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
+<script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
 
+<script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const KLY_ABI = [{
     constant: true,
@@ -451,37 +451,26 @@
   let web3;
   let sdk;
 
-  // On page load
-  window.addEventListener("DOMContentLoaded", async () => {
-    if (window.ethereum) {
-      web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      if (accounts.length > 0) {
-        wallet = accounts[0];
-        await initializeUI();
-      }
-    }
-  });
-
   async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return false;
+    }
+
     try {
-      if (!window.ethereum) throw new Error("Please install MetaMask.");
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       wallet = accounts[0];
       web3 = new Web3(window.ethereum);
-      await initializeUI();
+
+      document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      document.getElementById("walletAddress").style.display = "block";
+      document.getElementById("connectWallet").style.display = "none";
+      document.getElementById("accessStatus").innerText = "Wallet connected";
       return true;
     } catch (err) {
-      console.error("Wallet connection error:", err);
+      console.error("Wallet connect error:", err);
       return false;
     }
-  }
-
-  async function initializeUI() {
-    document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-    document.getElementById("walletAddress").style.display = "block";
-    document.getElementById("connectWallet").style.display = "none";
-    document.getElementById("accessStatus").innerText = "Wallet connected";
   }
 
   async function verifyAccess() {
@@ -508,52 +497,27 @@
     }
   }
 
-  window.showNextModule = (moduleNumber) => {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
+  async function mintNFT() {
+    if (!wallet) {
+      const connected = await connectWallet();
+      if (!connected) return;
     }
-    document.getElementById("mintSection").classList.add("hidden");
 
-    if (moduleNumber === 'mint') {
-      document.getElementById("mintSection").classList.remove("hidden");
-    } else {
-      document.getElementById(`module${moduleNumber}`)?.classList.remove("hidden");
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  window.showPreviousModule = (moduleNumber) => {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
-    }
-    document.getElementById("mintSection").classList.add("hidden");
-    document.getElementById(`module${moduleNumber}`)?.classList.remove("hidden");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  window.mintNFT = async () => {
     try {
-      if (!wallet) {
-        const connected = await connectWallet();
-        if (!connected) return;
-      }
+      document.getElementById("mintStatus").innerText = "Checking eligibility...";
+      sdk = new thirdweb.ThirdwebSDK("binance");
+      const contract = await sdk.getContract(NFT_CONTRACT, "nft-collection");
+      const balance = await contract.erc721.balanceOf(wallet);
 
-      const mintStatus = document.getElementById("mintStatus");
-      mintStatus.innerText = "Checking mint eligibility...";
-
-      sdk = new ThirdwebSDK("binance");
-      const nftContract = await sdk.getContract(NFT_CONTRACT, "nft-collection");
-
-      const balance = await nftContract.erc721.balanceOf(wallet);
       if (balance.toNumber() > 0) {
-        mintStatus.innerText = "You have already minted your certificate.";
+        document.getElementById("mintStatus").innerText = "You already minted this NFT.";
         return;
       }
 
-      mintStatus.innerText = "Minting in progress...";
-      const tx = await nftContract.erc721.mintTo(wallet, {
+      document.getElementById("mintStatus").innerText = "Minting in progress...";
+      const tx = await contract.erc721.mintTo(wallet, {
         name: "KLY Legacy Graduate",
-        description: "Official Certificate of Completion for the KLY Legacy Course",
+        description: "Certificate of Completion for the KLY Legacy Course",
         image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
         properties: {
           course: "KLY Legacy",
@@ -561,14 +525,45 @@
         }
       });
 
-      mintStatus.innerHTML = `
-        <span style="color:#00ff99;">🎉 NFT minted successfully!</span><br>
+      document.getElementById("mintStatus").innerHTML = `
+        <span style="color:#00ff99;">✅ NFT minted successfully!</span><br>
         <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a>
       `;
     } catch (err) {
-      console.error("Minting error:", err);
-      document.getElementById("mintStatus").innerText = "Minting failed: " + (err.message || err);
+      console.error("Minting failed:", err);
+      document.getElementById("mintStatus").innerText = "Mint failed: " + (err.message || err);
     }
-  };
-</script>
+  }
 
+  function showNextModule(mod) {
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`module${i}`)?.classList.add("hidden");
+    }
+    document.getElementById("mintSection").classList.add("hidden");
+
+    if (mod === 'mint') {
+      document.getElementById("mintSection").classList.remove("hidden");
+    } else {
+      document.getElementById(`module${mod}`)?.classList.remove("hidden");
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showPreviousModule(mod) {
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`module${i}`)?.classList.add("hidden");
+    }
+    document.getElementById("mintSection").classList.add("hidden");
+    document.getElementById(`module${mod}`)?.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Expose functions to global scope
+  window.connectWallet = connectWallet;
+  window.verifyAccess = verifyAccess;
+  window.mintNFT = mintNFT;
+  window.showNextModule = showNextModule;
+  window.showPreviousModule = showPreviousModule;
+</script>
+</body>
+</html>
