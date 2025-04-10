@@ -942,8 +942,10 @@
       "retina_detect": true
     });
 <!-- Wallet connection logic -->
+<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.min.js"></script>
 <script>
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKING_CONTRACT = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
   const KLY_ABI = [{
     constant: true,
     inputs: [{ name: "account", type: "address" }],
@@ -951,136 +953,80 @@
     outputs: [{ name: "", type: "uint256" }],
     type: "function"
   }];
-
-  let wallet;
+  
+  let wallet = null;
   let web3;
 
-  async function connectWallet() {
-    try {
-      if (!window.ethereum) {
-        alert("Please install MetaMask or another Web3 wallet.");
-        return false;
-      }
-      
+  document.addEventListener("DOMContentLoaded", async () => {
+    if (window.ethereum) {
       web3 = new Web3(window.ethereum);
-      
-      // Request account access
-      const accounts = await window.ethereum.request({ 
-        method: "eth_requestAccounts" 
-      });
-      
+      const accounts = await web3.eth.getAccounts();
+      if (accounts.length > 0) {
+        wallet = accounts[0];
+        updateWalletDisplay();
+        fetchDashboardStats();
+      }
+    }
+  });
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask");
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       wallet = accounts[0];
-      document.getElementById("accessStatus").innerText = 
-        "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
-      console.log("Connected wallet:", wallet);
-      
-      // Set up account change listener
-      window.ethereum.on('accountsChanged', (newAccounts) => {
-        if (newAccounts.length === 0) {
-          // Wallet disconnected
-          wallet = null;
-          document.getElementById("accessStatus").innerText = "Wallet disconnected";
-        } else {
-          // Account changed
-          wallet = newAccounts[0];
-          document.getElementById("accessStatus").innerText = 
-            "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
-        }
-      });
-      
-      return true;
+      updateWalletDisplay();
+      fetchDashboardStats();
     } catch (error) {
       console.error("Wallet connection error:", error);
-      document.getElementById("accessStatus").innerText = 
-        "Connection failed: " + (error.message || error);
-      return false;
     }
   }
 
-  async function verifyAccess() {
-    try {
-      if (!wallet) {
-        const connected = await connectWallet();
-        if (!connected) return;
-      }
-      
-      const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
-      const balance = await contract.methods.balanceOf(wallet).call();
-      const balanceEth = web3.utils.fromWei(balance, "ether");
-      const requiredKLY = 500;
+  function updateWalletDisplay() {
+    const addressDisplay = document.getElementById("walletAddress");
+    const connectBtn = document.getElementById("connectWallet");
+    const accessStatus = document.getElementById("accessStatus");
 
-      if (parseFloat(balanceEth) >= requiredKLY) {
-        document.getElementById("accessPanel").classList.add("hidden");
-        showNextModule(1); // Load module 1
-      } else {
-        document.getElementById("accessStatus").innerText = 
-          `Access Denied: You need ${requiredKLY} KLY (you have ${parseFloat(balanceEth).toFixed(2)})`;
-      }
-    } catch (error) {
-      console.error("Access verification failed:", error);
-      document.getElementById("accessStatus").innerText = 
-        "Error checking balance: " + (error.message || error);
+    if (wallet) {
+      connectBtn.style.display = "none";
+      addressDisplay.textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      addressDisplay.style.display = "block";
+      accessStatus.textContent = "Wallet connected";
+      document.getElementById("dashboardStats").style.display = "block";
+      document.getElementById("refreshData").style.display = "inline-block";
     }
   }
 
-  function showNextModule(moduleNumber) {
-    // Hide all modules
-    for (let i = 1; i <= 5; i++) {
-      const mod = document.getElementById(`module${i}`);
-      if (mod) mod.classList.add("hidden");
-    }
+  async function fetchDashboardStats() {
+    if (!wallet || !web3) return;
 
-    document.getElementById("mintSection").classList.add("hidden");
+    const tokenContract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN_ADDRESS);
+    const balance = await tokenContract.methods.balanceOf(wallet).call();
+    const balanceEth = web3.utils.fromWei(balance, "ether");
 
-    // Show selected module or mint section
-    if (moduleNumber === 'mint') {
-      document.getElementById("module5").classList.add("hidden");
-      document.getElementById("mintSection").classList.remove("hidden");
-    } else {
-      const nextMod = document.getElementById(`module${moduleNumber}`);
-      if (nextMod) nextMod.classList.remove("hidden");
-    }
+    const sdk = new thirdweb.ThirdwebSDK("binance");
+    const token = await sdk.getContract(KLY_TOKEN_ADDRESS, "token");
+    const staking = await sdk.getContract(STAKING_CONTRACT);
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const [totalSupply, userStaked, rewards, stakedAmount] = await Promise.all([
+      token.totalSupply(),
+      staking.call("getStakeInfo", wallet),
+      staking.call("getRewardInfo", wallet),
+      staking.call("getTotalStakedSupply")
+    ]);
+
+    document.getElementById("userBalance").innerText = parseFloat(balanceEth).toFixed(2);
+    document.getElementById("userStaked").innerText = web3.utils.fromWei(userStaked[0].toString(), "ether");
+    document.getElementById("userRewards").innerText = web3.utils.fromWei(rewards.toString(), "ether");
+    document.getElementById("votingPower").innerText = parseFloat(balanceEth).toFixed(2); // same as wallet balance
+    document.getElementById("totalSupply").innerText = parseFloat(web3.utils.fromWei(totalSupply.value, "ether")).toFixed(2);
+    document.getElementById("stakedAmount").innerText = web3.utils.fromWei(stakedAmount.toString(), "ether");
   }
 
-  function showPreviousModule(moduleNumber) {
-    // Hide all modules
-    for (let i = 1; i <= 5; i++) {
-      const mod = document.getElementById(`module${i}`);
-      if (mod) mod.classList.add("hidden");
-    }
-
-    document.getElementById("mintSection").classList.add("hidden");
-
-    const prevMod = document.getElementById(`module${moduleNumber}`);
-    if (prevMod) prevMod.classList.remove("hidden");
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  async function mintNFT() {
-    try {
-      if (!wallet) {
-        const connected = await connectWallet();
-        if (!connected) return;
-      }
-      
-      document.getElementById("mintStatus").innerText = "Preparing to mint...";
-      
-      // Here you would add your actual NFT minting contract interaction
-      // For now, we'll simulate a successful mint after 2 seconds
-      setTimeout(() => {
-        document.getElementById("mintStatus").innerHTML = 
-          "🎉 NFT minted successfully!<br>Check your wallet to view your certificate.";
-      }, 2000);
-      
-    } catch (error) {
-      console.error("NFT minting failed:", error);
-      document.getElementById("mintStatus").innerText = 
-        "Minting failed: " + (error.message || error);
-    }
-  }
+  document.getElementById("refreshData").addEventListener("click", fetchDashboardStats);
 </script>
 </body>
 </html>
