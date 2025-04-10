@@ -537,23 +537,40 @@
   }
 
   async function mintNFT() {
-    if (!wallet) {
-      const connected = await connectWallet();
-      if (!connected) return;
-    }
-    
     try {
-      document.getElementById("mintStatus").innerText = "Minting in progress...";
-      
-      // Here you would add your actual NFT minting logic
-      // For now, we'll simulate a successful mint
-      setTimeout(() => {
-        document.getElementById("mintStatus").innerText = "NFT minted successfully!";
-      }, 2000);
-      
+      if (!wallet) {
+        const connected = await connectWallet();
+        if (!connected) return;
+      }
+
+      document.getElementById("mintStatus").innerText = "Checking mint status...";
+
+      const sdk = new thirdweb.ThirdwebSDK("binance");
+      const nftContract = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950", "nft-collection");
+
+      // Check how many NFTs the user owns
+      const balance = await nftContract.erc721.balanceOf(wallet);
+
+      if (balance.toNumber() > 0) {
+        document.getElementById("mintStatus").innerText = "You have already minted your certificate.";
+        return;
+      }
+
+      // Proceed with mint
+      document.getElementById("mintStatus").innerText = "Minting your NFT...";
+
+      const tx = await nftContract.erc721.mintTo(wallet, {
+        name: "KLY Legacy Graduate",
+        description: "Official Certificate of Completion for the KLY Legacy Course",
+        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
+      });
+
+      document.getElementById("mintStatus").innerHTML =
+        `🎉 NFT minted successfully!<br><a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank">View on BscScan</a>`;
     } catch (error) {
       console.error("NFT minting failed:", error);
-      document.getElementById("mintStatus").innerText = "Minting failed: " + error.message;
+      document.getElementById("mintStatus").innerText =
+        "Minting failed: " + (error.message || error);
     }
   }
 </script>
