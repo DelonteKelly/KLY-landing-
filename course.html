@@ -443,39 +443,35 @@
   }];
 
   let wallet;
+  let web3;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
+      if (accounts.length > 0) {
+        wallet = accounts[0];
+        document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+        document.getElementById("walletAddress").style.display = "block";
+        document.getElementById("connectWallet").style.display = "none";
+      }
+    }
+  });
 
   async function connectWallet() {
-    try {
-      if (!window.ethereum) {
-          return alert("Please install MetaMask or another Web3 wallet.");
-      }
-      
-      const web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      wallet = accounts[0];
-      
-      document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
-      console.log("Connected wallet:", wallet);
-      
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) {
-              console.log('Wallet disconnected');
-              wallet = null;
-              document.getElementById("accessStatus").innerText = "Wallet disconnected";
-          } else {
-              wallet = accounts[0];
-              document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
-          }
-      });
-      
-      return true;
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      document.getElementById("accessStatus").innerText = "Connection failed: " + error.message;
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
       return false;
     }
+
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    wallet = accounts[0];
+    web3 = new Web3(window.ethereum);
+
+    document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    document.getElementById("walletAddress").style.display = "block";
+    document.getElementById("connectWallet").style.display = "none";
+    return true;
   }
 
   async function verifyAccess() {
@@ -483,9 +479,8 @@
       const connected = await connectWallet();
       if (!connected) return;
     }
-    
+
     try {
-      const web3 = new Web3(window.ethereum);
       const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
       const balance = await contract.methods.balanceOf(wallet).call();
       const balanceEth = web3.utils.fromWei(balance, "ether");
@@ -494,16 +489,17 @@
         document.getElementById("accessPanel").classList.add("hidden");
         document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY (500 required)";
+        document.getElementById("accessStatus").innerText = 
+          `Access Denied: You only hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
       }
     } catch (error) {
       console.error("Access verification failed:", error);
-      document.getElementById("accessStatus").innerText = "Error checking balance: " + error.message;
+      document.getElementById("accessStatus").innerText = 
+        "Error checking balance: " + (error.message || error);
     }
   }
 
   function showNextModule(moduleNumber) {
-    // Hide all modules
     for (let i = 1; i <= 5; i++) {
       const mod = document.getElementById(`module${i}`);
       if (mod) mod.classList.add("hidden");
@@ -511,9 +507,7 @@
 
     document.getElementById("mintSection").classList.add("hidden");
 
-    // Show selected module or mint section
     if (moduleNumber === 'mint') {
-      document.getElementById("module5").classList.add("hidden");
       document.getElementById("mintSection").classList.remove("hidden");
     } else {
       const nextMod = document.getElementById(`module${moduleNumber}`);
@@ -524,11 +518,12 @@
   }
 
   function showPreviousModule(moduleNumber) {
-    // Hide all modules
     for (let i = 1; i <= 5; i++) {
       const mod = document.getElementById(`module${i}`);
       if (mod) mod.classList.add("hidden");
     }
+
+    document.getElementById("mintSection").classList.add("hidden");
 
     const prevMod = document.getElementById(`module${moduleNumber}`);
     if (prevMod) prevMod.classList.remove("hidden");
@@ -548,32 +543,29 @@
       const sdk = new thirdweb.ThirdwebSDK("binance");
       const nftContract = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950", "nft-collection");
 
-      // Check how many NFTs the user owns
       const balance = await nftContract.erc721.balanceOf(wallet);
 
       if (balance.toNumber() > 0) {
-        document.getElementById("mintStatus").innerText = "You have already minted your certificate.";
+        document.getElementById("mintStatus").innerText = 
+          "You have already minted your certificate.";
         return;
       }
 
-      // Proceed with mint
       document.getElementById("mintStatus").innerText = "Minting your NFT...";
 
       const tx = await nftContract.erc721.mintTo(wallet, {
         name: "KLY Legacy Graduate",
         description: "Official Certificate of Completion for the KLY Legacy Course",
-        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
+        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
       });
 
-      document.getElementById("mintStatus").innerHTML =
+      document.getElementById("mintStatus").innerHTML = 
         `🎉 NFT minted successfully!<br><a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank">View on BscScan</a>`;
     } catch (error) {
       console.error("NFT minting failed:", error);
-      document.getElementById("mintStatus").innerText =
+      document.getElementById("mintStatus").innerText = 
         "Minting failed: " + (error.message || error);
     }
   }
 </script>
 
-</body>
-</html>
