@@ -605,33 +605,6 @@
     </button>
     <div class="wallet-address" id="walletAddress" style="display:none;"></div>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-  <script>
-      const connectBtn = document.getElementById('connectWallet');
-      const addressBox = document.getElementById('walletAddress');
-
-      connectBtn.addEventListener('click', async () => {
-        if (typeof window.ethereum !== 'undefined') {
-          const web3 = new Web3(window.ethereum);
-          try {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            const wallet = accounts[0];
-
-            connectBtn.style.display = 'none';
-            addressBox.textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-            addressBox.style.display = 'block';
-          } catch (err) {
-            console.error('User rejected wallet connection', err);
-            alert('Wallet connection failed.');
-          }
-        } else {
-          alert('MetaMask is not installed.');
-        }
-      });
-    });
-  </script>
-
 </body>
 </html>
   </header>
@@ -992,39 +965,56 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     const connectBtn = document.getElementById('connectWallet');
+    const addressBox = document.getElementById('walletAddress');
     const refreshBtn = document.getElementById('refreshData');
 
-    if (connectBtn) {
-      connectBtn.addEventListener('click', async () => {
-        try {
-          if (window.ethereum) {
-            web3 = new Web3(window.ethereum);
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            wallet = accounts[0];
+    async function connectWallet() {
+      try {
+        if (window.ethereum) {
+          // Request account access
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          web3 = new Web3(window.ethereum);
+          const accounts = await web3.eth.getAccounts();
+          wallet = accounts[0];
 
-            document.getElementById('connectWallet').style.display = 'none';
-            document.getElementById('walletAddress').textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-            document.getElementById('walletAddress').style.display = 'block';
+          // Update UI
+          connectBtn.style.display = 'none';
+          addressBox.textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+          addressBox.style.display = 'block';
 
-            if (document.getElementById('dashboardStats')) {
-              document.getElementById('dashboardStats').style.display = 'block';
-            }
-            if (refreshBtn) refreshBtn.style.display = 'inline-block';
-
-            kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
-            staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
-          } else {
-            alert('MetaMask not found. Install MetaMask or use a Web3-compatible browser.');
+          if (document.getElementById('dashboardStats')) {
+            document.getElementById('dashboardStats').style.display = 'block';
           }
-        } catch (error) {
-          console.error('Wallet connection error:', error);
-          alert('Error connecting wallet. Check browser console for details.');
+          if (refreshBtn) refreshBtn.style.display = 'inline-block';
+
+          // Initialize contracts
+          kly = new web3.eth.Contract(ERC20_ABI, KLY_TOKEN);
+          staking = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
+
+          return true;
+        } else {
+          alert('Please install MetaMask or another Web3 provider to connect your wallet.');
+          return false;
         }
-      });
+      } catch (error) {
+        console.error('Wallet connection error:', error);
+        alert(`Error connecting wallet: ${error.message}`);
+        return false;
+      }
+    }
+
+    if (connectBtn) {
+      connectBtn.addEventListener('click', connectWallet);
     }
 
     if (refreshBtn) {
       refreshBtn.addEventListener('click', async () => {
+        if (!wallet) {
+          const connected = await connectWallet();
+          if (!connected) return;
+        }
+        
         try {
           const [balance, totalSupply, userStaked, userRewards] = await Promise.all([
             kly.methods.balanceOf(wallet).call(),
@@ -1046,6 +1036,7 @@
           document.getElementById('apy').textContent = '12.5%';
         } catch (err) {
           console.error("Failed to fetch stats:", err);
+          alert("Failed to refresh data. Please check console for details.");
         }
       });
     }
