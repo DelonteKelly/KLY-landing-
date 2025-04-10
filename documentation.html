@@ -4,80 +4,582 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Legacy - Documentation</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #00ffe7;
+      --secondary: #ff00aa;
+      --dark: #050505;
+      --light: #e0e0e0;
+      --highlight: rgba(0, 255, 231, 0.1);
+      --code-bg: rgba(0, 255, 231, 0.05);
+    }
+    
+    body {
+      background-color: var(--dark);
+      color: var(--light);
+      font-family: 'Rajdhani', sans-serif;
+      margin: 0;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05) 0%, transparent 50%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 5%;
+      background: rgba(5, 5, 5, 0.9);
+      border-bottom: 1px solid rgba(0, 255, 231, 0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--light);
+    }
+    
+    .logo .highlight {
+      color: var(--primary);
+    }
+    
+    .nav {
+      display: flex;
+      gap: 2rem;
+    }
+    
+    .nav a {
+      color: var(--light);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .nav a:hover {
+      color: var(--primary);
+    }
+    
+    .nav a::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--primary);
+      transition: width 0.3s ease;
+    }
+    
+    .nav a:hover::after {
+      width: 100%;
+    }
+    
+    .wallet-button {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--dark);
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+    }
+    
+    .wallet-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(0, 255, 231, 0.5);
+    }
+    
+    .wallet-button.connected {
+      background: var(--dark);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    
+    .content {
+      flex: 1;
+      padding: 3rem 5%;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: var(--highlight);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 231, 0.2);
+    }
+    
+    .page-header h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    
+    .page-header p {
+      font-size: 1.2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .doc-section {
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: rgba(5, 5, 5, 0.7);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 231, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .doc-section:hover {
+      border-color: rgba(0, 255, 231, 0.3);
+      box-shadow: 0 0 30px rgba(0, 255, 231, 0.1);
+    }
+    
+    .doc-section h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .doc-section h2::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+    
+    .doc-section p {
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .doc-section ul {
+      padding-left: 1.5rem;
+    }
+    
+    .doc-section li {
+      margin-bottom: 0.8rem;
+      position: relative;
+      padding-left: 1.5rem;
+    }
+    
+    .doc-section li::before {
+      content: '➤';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+    }
+    
+    code, .contract-address {
+      font-family: 'Courier New', Courier, monospace;
+      background: var(--code-bg);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 255, 231, 0.2);
+    }
+    
+    .contract-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .contract-item {
+      padding: 1rem;
+      background: rgba(0, 255, 231, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 231, 0.1);
+    }
+    
+    .contract-item:hover {
+      background: rgba(0, 255, 231, 0.1);
+    }
+    
+    .contract-name {
+      color: var(--primary);
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    
+    .copy-btn {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 0.5rem;
+      font-size: 0.8rem;
+      transition: all 0.3s ease;
+    }
+    
+    .copy-btn:hover {
+      background: rgba(0, 255, 231, 0.2);
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      background: rgba(5, 5, 5, 0.9);
+      border-top: 1px solid rgba(0, 255, 231, 0.2);
+      margin-top: 3rem;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid rgba(0, 255, 231, 0.2);
+    }
+    
+    .tab {
+      padding: 0.8rem 1.5rem;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+    
+    .tab.active {
+      border-bottom-color: var(--primary);
+      color: var(--primary);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1.5rem;
+      }
+      
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+      }
+      
+      .page-header h1 {
+        font-size: 2.2rem;
+      }
+      
+      .doc-section {
+        padding: 1.5rem;
+      }
+      
+      .contract-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body class="neon-bg">
+<body>
   <header class="header">
     <div class="logo">KLY<span class="highlight">Legacy</span></div>
     <nav class="nav">
-      <a href="index.html">Dashboard</a>
-      <a href="stake.html">Staking</a>
-      <a href="dao.html">DAO</a>
-      <a href="course.html">Course</a>
-      <a href="launchpad.html">Launchpad</a>
-      <a href="nft-drop.html">NFT Drop</a>
+      <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
+      <a href="stake.html"><i class="fas fa-coins"></i> Staking</a>
+      <a href="dao.html"><i class="fas fa-vote-yea"></i> DAO</a>
+      <a href="course.html"><i class="fas fa-graduation-cap"></i> Course</a>
+      <a href="launchpad.html"><i class="fas fa-rocket"></i> Launchpad</a>
+      <a href="nft-drop.html"><i class="fas fa-image"></i> NFT Drop</a>
     </nav>
-    <div id="wallet-address" class="wallet-button">Connect Wallet</div>
+    <button id="wallet-address" class="wallet-button">
+      <i class="fas fa-wallet"></i> Connect Wallet
+    </button>
   </header>
 
   <main class="content">
     <section class="page-header">
-      <h1>Documentation</h1>
-      <p>Explore how the KLY ecosystem works, from smart contracts to staking flows.</p>
+      <h1>KLY Ecosystem Documentation</h1>
+      <p>Comprehensive technical documentation for developers and users of the KLY ecosystem</p>
     </section>
 
-    <section class="doc-section">
-      <h2>Overview</h2>
-      <p>This documentation provides technical and strategic insights into the Kelly Legacy Token ecosystem. It includes details about smart contract architecture, integration steps, token flows, governance, and more.</p>
-    </section>
+    <div class="tabs">
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="contracts">Smart Contracts</div>
+      <div class="tab" data-tab="guides">Guides</div>
+      <div class="tab" data-tab="api">API Reference</div>
+    </div>
 
-    <section class="doc-section">
-      <h2>Getting Started</h2>
-      <ul>
-        <li><strong>Install MetaMask:</strong> Connect your wallet to BNB Smart Chain.</li>
-        <li><strong>Get KLY:</strong> Purchase KLY from PancakeSwap.</li>
-        <li><strong>Access Staking:</strong> Visit <code>stake.html</code> to start earning rewards.</li>
-        <li><strong>Launch a Token:</strong> Use the <code>launchpad.html</code> interface.</li>
-      </ul>
-    </section>
+    <div class="tab-content active" id="overview-tab">
+      <section class="doc-section">
+        <h2><i class="fas fa-info-circle"></i> Ecosystem Overview</h2>
+        <p>The KLY ecosystem is a comprehensive suite of decentralized applications built on Binance Smart Chain, designed to democratize access to Web3 education, governance, and financial tools.</p>
+        <p>This documentation provides technical and strategic insights into the Kelly Legacy Token ecosystem, including details about smart contract architecture, integration steps, token flows, governance, and more.</p>
+        
+        <h3>Core Components</h3>
+        <ul>
+          <li><strong>KLY Token:</strong> The native utility and governance token</li>
+          <li><strong>Staking Platform:</strong> Earn rewards while securing the network</li>
+          <li><strong>DAO Governance:</strong> Community-led decision making</li>
+          <li><strong>Educational Platform:</strong> Web3 courses with NFT certification</li>
+          <li><strong>Launchpad:</strong> Token launch platform for vetted projects</li>
+        </ul>
+      </section>
+    </div>
 
-    <section class="doc-section">
-      <h2>Smart Contract Interfaces</h2>
-      <p>Contracts are deployed on Binance Smart Chain. You can interact using ethers.js or the Thirdweb SDK.</p>
-      <ul>
-        <li><code>KLY Token:</code> <span>0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52</span></li>
-        <li><code>Staking Contract:</code> <span>0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1</span></li>
-        <li><code>NFT Cert:</code> <span>0xDA76d35742190283E340dbeE2038ecc978a56950</span></li>
-        <li><code>DAO:</code> <span>0x796Bce7F95662774243177D1F546eBA0B3465579</span></li>
-      </ul>
-    </section>
+    <div class="tab-content" id="contracts-tab">
+      <section class="doc-section">
+        <h2><i class="fas fa-file-contract"></i> Smart Contract Interfaces</h2>
+        <p>All contracts are deployed on Binance Smart Chain. You can interact using ethers.js, web3.js, or the Thirdweb SDK.</p>
+        
+        <div class="contract-list">
+          <div class="contract-item">
+            <div class="contract-name">KLY Token (ERC-20)</div>
+            <div>
+              <span class="contract-address">0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52</span>
+              <button class="copy-btn" data-address="0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <p class="contract-desc">Main utility token with staking and governance functionality</p>
+          </div>
+          
+          <div class="contract-item">
+            <div class="contract-name">Staking Contract</div>
+            <div>
+              <span class="contract-address">0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1</span>
+              <button class="copy-btn" data-address="0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <p class="contract-desc">Stake KLY to earn rewards and governance power</p>
+          </div>
+          
+          <div class="contract-item">
+            <div class="contract-name">NFT Certification</div>
+            <div>
+              <span class="contract-address">0xDA76d35742190283E340dbeE2038ecc978a56950</span>
+              <button class="copy-btn" data-address="0xDA76d35742190283E340dbeE2038ecc978a56950">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <p class="contract-desc">ERC-721 contract for course completion certificates</p>
+          </div>
+          
+          <div class="contract-item">
+            <div class="contract-name">DAO Governance</div>
+            <div>
+              <span class="contract-address">0x796Bce7F95662774243177D1F546eBA0B3465579</span>
+              <button class="copy-btn" data-address="0x796Bce7F95662774243177D1F546eBA0B3465579">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <p class="contract-desc">Governance contract for community proposals</p>
+          </div>
+        </div>
+      </section>
+    </div>
 
-    <section class="doc-section">
-      <h2>Advanced Usage</h2>
-      <p>Use Web3.js or Thirdweb's SDK to interact directly with contracts. Check the GitHub repo for contract ABIs and deployment guides.</p>
-    </section>
+    <div class="tab-content" id="guides-tab">
+      <section class="doc-section">
+        <h2><i class="fas fa-book-open"></i> Getting Started</h2>
+        
+        <div class="guide-step">
+          <h3><i class="fas fa-wallet"></i> 1. Set Up Your Wallet</h3>
+          <p>Install MetaMask and connect to Binance Smart Chain:</p>
+          <ul>
+            <li>Download <a href="https://metamask.io/" target="_blank">MetaMask</a></li>
+            <li>Add BSC Network (ChainID: 56)</li>
+            <li>Fund your wallet with BNB for gas fees</li>
+          </ul>
+        </div>
+        
+        <div class="guide-step">
+          <h3><i class="fas fa-coins"></i> 2. Acquire KLY Tokens</h3>
+          <p>Obtain KLY through our official channels:</p>
+          <ul>
+            <li>Purchase on <a href="https://pancakeswap.finance/" target="_blank">PancakeSwap</a></li>
+            <li>Participate in staking rewards</li>
+            <li>Complete courses to earn KLY</li>
+          </ul>
+        </div>
+        
+        <div class="guide-step">
+          <h3><i class="fas fa-lock"></i> 3. Start Staking</h3>
+          <p>Earn passive income with KLY staking:</p>
+          <ol>
+            <li>Visit the <a href="stake.html">Staking Platform</a></li>
+            <li>Connect your wallet</li>
+            <li>Select a staking pool</li>
+            <li>Approve and stake your KLY</li>
+          </ol>
+        </div>
+        
+        <div class="guide-step">
+          <h3><i class="fas fa-rocket"></i> 4. Launch Projects</h3>
+          <p>Use our launchpad to create new tokens:</p>
+          <ol>
+            <li>Navigate to <a href="launchpad.html">Launchpad</a></li>
+            <li>Submit your project details</li>
+            <li>Configure tokenomics</li>
+            <li>Deploy through our audited contracts</li>
+          </ol>
+        </div>
+      </section>
+    </div>
+
+    <div class="tab-content" id="api-tab">
+      <section class="doc-section">
+        <h2><i class="fas fa-code"></i> Developer Resources</h2>
+        
+        <h3>Thirdweb SDK Integration</h3>
+        <pre><code>import { ThirdwebSDK } from "@thirdweb-dev/sdk";
+
+// Initialize SDK
+const sdk = new ThirdwebSDK("binance");
+
+// Get KLY Token contract
+const klyContract = await sdk.getContract(
+  "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+  "token"
+);
+
+// Get balance
+const balance = await klyContract.balanceOf(walletAddress);</code></pre>
+        
+        <h3>Web3.js Example</h3>
+        <pre><code>const Web3 = require('web3');
+const web3 = new Web3('https://bsc-dataseed.binance.org/');
+
+const klyABI = [...]; // ABI from our GitHub
+const klyAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+const klyContract = new web3.eth.Contract(klyABI, klyAddress);
+
+// Call contract methods
+const totalSupply = await klyContract.methods.totalSupply().call();</code></pre>
+        
+        <h3>GitHub Resources</h3>
+        <ul>
+          <li><a href="#" target="_blank">Contract ABIs</a></li>
+          <li><a href="#" target="_blank">Example DApps</a></li>
+          <li><a href="#" target="_blank">Deployment Scripts</a></li>
+        </ul>
+      </section>
+    </div>
   </main>
 
   <footer class="footer">
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem;">
+      <a href="#" style="color: var(--light);"><i class="fab fa-twitter"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-discord"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-telegram"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-medium"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-github"></i></a>
+    </div>
     <p>&copy; 2025 Kelly Legacy Estates. All rights reserved.</p>
   </footer>
 
   <script>
-    // MetaMask wallet connection logic
+    // Enhanced Wallet Connection
     async function connectWallet() {
-      if (window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const address = accounts[0];
-          document.getElementById("wallet-address").innerText = address.slice(0, 6) + "..." + address.slice(-4);
-        } catch (err) {
-          console.error("Wallet connection error:", err);
+      const walletButton = document.getElementById("wallet-address");
+      
+      try {
+        if (!window.ethereum) {
+          throw new Error("Please install MetaMask or another Web3 wallet");
         }
+        
+        walletButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const account = accounts[0];
+        
+        walletButton.innerHTML = `<i class="fas fa-check-circle"></i> ${account.slice(0, 6)}...${account.slice(-4)}`;
+        walletButton.classList.add("connected");
+        
+        // Set up event listeners for account changes
+        window.ethereum.on('accountsChanged', (newAccounts) => {
+          if (newAccounts.length === 0) {
+            // Wallet disconnected
+            walletButton.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+            walletButton.classList.remove("connected");
+          } else {
+            // Account changed
+            walletButton.innerHTML = `<i class="fas fa-check-circle"></i> ${newAccounts[0].slice(0, 6)}...${newAccounts[0].slice(-4)}`;
+          }
+        });
+        
+      } catch (err) {
+        console.error(err);
+        walletButton.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+        alert(err.message || "Failed to connect wallet");
       }
     }
-
+    
+    // Initialize wallet connection on page load if already connected
+    window.addEventListener('load', async () => {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        await connectWallet();
+      }
+    });
+    
     document.getElementById("wallet-address").addEventListener("click", connectWallet);
-    window.addEventListener("load", connectWallet);
+    
+    // Tab functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+      });
+    });
+    
+    // Copy contract addresses
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const address = btn.getAttribute('data-address');
+        navigator.clipboard.writeText(address);
+        
+        // Show feedback
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 2000);
+      });
+    });
   </script>
 </body>
 </html>
