@@ -1,26 +1,597 @@
-<title>KLY Legacy - Tokenomics</title>
-<section class="page-header">
-  <h1>KLY Tokenomics</h1>
-  <p>Understand the supply, allocation, and long-term value of KLY.</p>
-</section>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KLY Legacy - Tokenomics</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #00ffe7;
+      --secondary: #ff00aa;
+      --dark: #050505;
+      --light: #e0e0e0;
+      --highlight: rgba(0, 255, 231, 0.1);
+    }
+    
+    body {
+      background-color: var(--dark);
+      color: var(--light);
+      font-family: 'Rajdhani', sans-serif;
+      margin: 0;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05) 0%, transparent 50%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header styles same as previous examples */
+    
+    .content {
+      flex: 1;
+      padding: 3rem 5%;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: var(--highlight);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 231, 0.2);
+    }
+    
+    .page-header h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    
+    .page-header p {
+      font-size: 1.2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .doc-section {
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: rgba(5, 5, 5, 0.7);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 231, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .doc-section:hover {
+      border-color: rgba(0, 255, 231, 0.3);
+      box-shadow: 0 0 30px rgba(0, 255, 231, 0.1);
+    }
+    
+    .doc-section h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .doc-section h2::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+    
+    .tokenomics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    
+    .tokenomics-card {
+      background: rgba(0, 255, 231, 0.05);
+      border: 1px solid rgba(0, 255, 231, 0.1);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    .tokenomics-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 255, 231, 0.15);
+      border-color: rgba(0, 255, 231, 0.5);
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 2rem 0;
+    }
+    
+    .allocation-list {
+      margin-top: 1.5rem;
+    }
+    
+    .allocation-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid rgba(0, 255, 231, 0.1);
+    }
+    
+    .allocation-category {
+      display: flex;
+      align-items: center;
+    }
+    
+    .allocation-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.8rem;
+    }
+    
+    .allocation-value {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+    }
+    
+    .vesting-schedule {
+      margin-top: 2rem;
+    }
+    
+    .vesting-phase {
+      margin-bottom: 1.5rem;
+    }
+    
+    .vesting-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    
+    .vesting-progress {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .vesting-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+    
+    .supply-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    
+    .metric-card {
+      background: rgba(0, 255, 231, 0.05);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    
+    .metric-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: var(--primary);
+      margin: 0.5rem 0;
+    }
+    
+    .metric-label {
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+    
+    /* Footer styles same as previous examples */
+    
+    @media (max-width: 768px) {
+      .tokenomics-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .supply-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Same header as previous examples -->
+  <header class="header">
+    <div class="logo">KLY<span class="highlight">Legacy</span></div>
+    <nav class="nav">
+      <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
+      <a href="stake.html"><i class="fas fa-coins"></i> Staking</a>
+      <a href="dao.html"><i class="fas fa-vote-yea"></i> DAO</a>
+      <a href="course.html"><i class="fas fa-graduation-cap"></i> Course</a>
+      <a href="launchpad.html"><i class="fas fa-rocket"></i> Launchpad</a>
+      <a href="nft-drop.html"><i class="fas fa-image"></i> NFT Drop</a>
+    </nav>
+    <button id="wallet-address" class="wallet-button">
+      <i class="fas fa-wallet"></i> Connect Wallet
+    </button>
+  </header>
 
-<section class="doc-section">
-  <h2>Total Supply</h2>
-  <p>1,000,000,000 KLY (fixed)</p>
-</section>
+  <main class="content">
+    <section class="page-header">
+      <h1>KLY Tokenomics</h1>
+      <p>Understand the economic model, supply mechanics, and long-term value proposition of KLY</p>
+    </section>
 
-<section class="doc-section">
-  <h2>Allocation</h2>
-  <ul>
-    <li>Community: 50%</li>
-    <li>Founders & Team: 20%</li>
-    <li>Staking Rewards: 15%</li>
-    <li>Treasury: 10%</li>
-    <li>Liquidity: 5%</li>
-  </ul>
-</section>
+    <div class="tokenomics-grid">
+      <section class="doc-section">
+        <h2><i class="fas fa-chart-pie"></i> Token Allocation</h2>
+        
+        <div class="chart-container">
+          <canvas id="allocationChart"></canvas>
+        </div>
+        
+        <div class="allocation-list">
+          <div class="allocation-item">
+            <div class="allocation-category">
+              <div class="allocation-color" style="background: #00ffe7;"></div>
+              <span>Community Distribution</span>
+            </div>
+            <span class="allocation-value">500,000,000 KLY (50%)</span>
+          </div>
+          <div class="allocation-item">
+            <div class="allocation-category">
+              <div class="allocation-color" style="background: #ff00aa;"></div>
+              <span>Founders & Team</span>
+            </div>
+            <span class="allocation-value">200,000,000 KLY (20%)</span>
+          </div>
+          <div class="allocation-item">
+            <div class="allocation-category">
+              <div class="allocation-color" style="background: #ffaa00;"></div>
+              <span>Staking Rewards</span>
+            </div>
+            <span class="allocation-value">150,000,000 KLY (15%)</span>
+          </div>
+          <div class="allocation-item">
+            <div class="allocation-category">
+              <div class="allocation-color" style="background: #00ff99;"></div>
+              <span>Ecosystem Treasury</span>
+            </div>
+            <span class="allocation-value">100,000,000 KLY (10%)</span>
+          </div>
+          <div class="allocation-item">
+            <div class="allocation-category">
+              <div class="allocation-color" style="background: #9900ff;"></div>
+              <span>Initial Liquidity</span>
+            </div>
+            <span class="allocation-value">50,000,000 KLY (5%)</span>
+          </div>
+        </div>
+      </section>
 
-<section class="doc-section">
-  <h2>Treasury Model</h2>
-  <p>5% of every newly launched token via Launchpad is routed to the KLY Treasury wallet.</p>
-</section>
+      <section class="doc-section">
+        <h2><i class="fas fa-chart-line"></i> Supply Metrics</h2>
+        
+        <div class="supply-metrics">
+          <div class="metric-card">
+            <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
+            <div class="metric-value">1,000,000,000</div>
+            <div class="metric-label">Total Supply</div>
+          </div>
+          <div class="metric-card">
+            <i class="fas fa-fire" style="color: var(--primary); font-size: 1.5rem;"></i>
+            <div class="metric-value">350,000,000</div>
+            <div class="metric-label">Circulating Supply</div>
+          </div>
+          <div class="metric-card">
+            <i class="fas fa-lock" style="color: var(--primary); font-size: 1.5rem;"></i>
+            <div class="metric-value">650,000,000</div>
+            <div class="metric-label">Locked/Vesting</div>
+          </div>
+          <div class="metric-card">
+            <i class="fas fa-burn" style="color: var(--primary); font-size: 1.5rem;"></i>
+            <div class="metric-value">0</div>
+            <div class="metric-label">Burned</div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="supplyChart"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <section class="doc-section">
+      <h2><i class="fas fa-calendar-alt"></i> Vesting Schedule</h2>
+      
+      <div class="vesting-schedule">
+        <div class="vesting-phase">
+          <div class="vesting-header">
+            <span><strong>Founders & Team</strong> (20% of supply)</span>
+            <span>25% released, 75% vesting</span>
+          </div>
+          <div class="vesting-progress">
+            <div class="vesting-progress-bar" style="width: 25%"></div>
+          </div>
+          <p>6-month cliff, then linear vesting over 3 years</p>
+        </div>
+        
+        <div class="vesting-phase">
+          <div class="vesting-header">
+            <span><strong>Ecosystem Treasury</strong> (10% of supply)</span>
+            <span>10% released, 90% vesting</span>
+          </div>
+          <div class="vesting-progress">
+            <div class="vesting-progress-bar" style="width: 10%"></div>
+          </div>
+          <p>No cliff, linear vesting over 5 years</p>
+        </div>
+        
+        <div class="vesting-phase">
+          <div class="vesting-header">
+            <span><strong>Staking Rewards</strong> (15% of supply)</span>
+            <span>5% released, 95% vesting</span>
+          </div>
+          <div class="vesting-progress">
+            <div class="vesting-progress-bar" style="width: 5%"></div>
+          </div>
+          <p>Released gradually based on staking activity</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2><i class="fas fa-sitemap"></i> Treasury Model</h2>
+      
+      <p>The KLY Treasury is funded through multiple mechanisms to ensure long-term sustainability:</p>
+      
+      <div class="tokenomics-grid">
+        <div class="tokenomics-card">
+          <h3><i class="fas fa-rocket" style="color: var(--primary);"></i> Launchpad Revenue</h3>
+          <p>5% of every newly launched token via the KLY Launchpad is routed to the Treasury.</p>
+          <div class="metric-value" style="font-size: 1.5rem;">5% fee</div>
+        </div>
+        
+        <div class="tokenomics-card">
+          <h3><i class="fas fa-percentage" style="color: var(--primary);"></i> Protocol Fees</h3>
+          <p>2% of all staking rewards are collected by the Treasury to fund ecosystem development.</p>
+          <div class="metric-value" style="font-size: 1.5rem;">2% fee</div>
+        </div>
+        
+        <div class="tokenomics-card">
+          <h3><i class="fas fa-gem" style="color: var(--primary);"></i> Asset Appreciation</h3>
+          <p>Treasury assets are strategically deployed to generate additional yield and value.</p>
+          <div class="metric-value" style="font-size: 1.5rem;">15% APY</div>
+        </div>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="treasuryChart"></canvas>
+      </div>
+    </section>
+
+    <section class="doc-section">
+      <h2><i class="fas fa-project-diagram"></i> Value Flow</h2>
+      
+      <div style="text-align: center; margin: 2rem 0;">
+        <img src="https://via.placeholder.com/800x400/050505/00ffe7?text=KLY+Value+Flow+Diagram" alt="KLY Value Flow Diagram" style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(0, 255, 231, 0.2);">
+        <p style="margin-top: 1rem;"><small>Diagram showing how value flows through the KLY ecosystem</small></p>
+      </div>
+      
+      <p>The KLY tokenomics model creates a circular economy where:</p>
+      <ul>
+        <li>Stakers earn rewards while securing the network</li>
+        <li>DAO governance directs Treasury allocations</li>
+        <li>Launchpad projects contribute to Treasury growth</li>
+        <li>Educational content increases token utility</li>
+        <li>All activities reinforce the value of the KLY token</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Same footer as previous examples -->
+  <footer class="footer">
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem;">
+      <a href="#" style="color: var(--light);"><i class="fab fa-twitter"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-discord"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-telegram"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-medium"></i></a>
+      <a href="#" style="color: var(--light);"><i class="fab fa-github"></i></a>
+    </div>
+    <p>&copy; 2025 Kelly Legacy Estates. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+      // Allocation Pie Chart
+      const allocationCtx = document.getElementById('allocationChart').getContext('2d');
+      new Chart(allocationCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Community', 'Founders & Team', 'Staking Rewards', 'Treasury', 'Liquidity'],
+          datasets: [{
+            data: [50, 20, 15, 10, 5],
+            backgroundColor: [
+              '#00ffe7',
+              '#ff00aa',
+              '#ffaa00',
+              '#00ff99',
+              '#9900ff'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                color: '#e0e0e0',
+                font: {
+                  family: 'Rajdhani'
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${context.raw}% (${(context.raw * 10000000).toLocaleString()} KLY)`;
+                }
+              }
+            }
+          },
+          cutout: '60%'
+        }
+      });
+
+      // Supply Bar Chart
+      const supplyCtx = document.getElementById('supplyChart').getContext('2d');
+      new Chart(supplyCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Total Supply', 'Circulating', 'Locked/Vesting', 'Burned'],
+          datasets: [{
+            label: 'KLY Tokens',
+            data: [1000000000, 350000000, 650000000, 0],
+            backgroundColor: [
+              'rgba(0, 255, 231, 0.7)',
+              'rgba(0, 255, 231, 0.5)',
+              'rgba(255, 0, 170, 0.5)',
+              'rgba(255, 170, 0, 0.5)'
+            ],
+            borderColor: [
+              'rgba(0, 255, 231, 1)',
+              'rgba(0, 255, 231, 1)',
+              'rgba(255, 0, 170, 1)',
+              'rgba(255, 170, 0, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#e0e0e0',
+                callback: function(value) {
+                  return (value / 1000000) + 'M';
+                }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            },
+            x: {
+              ticks: {
+                color: '#e0e0e0'
+              },
+              grid: {
+                display: false
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.raw.toLocaleString() + ' KLY';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Treasury Growth Chart
+      const treasuryCtx = document.getElementById('treasuryChart').getContext('2d');
+      new Chart(treasuryCtx, {
+        type: 'line',
+        data: {
+          labels: ['2023 Q1', '2023 Q2', '2023 Q3', '2023 Q4', '2024 Q1', '2024 Q2'],
+          datasets: [{
+            label: 'Treasury Value (USD)',
+            data: [500000, 1200000, 2500000, 4200000, 6500000, 9000000],
+            borderColor: '#00ffe7',
+            backgroundColor: 'rgba(0, 255, 231, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: {
+                color: '#e0e0e0',
+                callback: function(value) {
+                  return '$' + (value / 1000000).toFixed(1) + 'M';
+                }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            },
+            x: {
+              ticks: {
+                color: '#e0e0e0'
+              },
+              grid: {
+                display: false
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e0e0e0',
+                font: {
+                  family: 'Rajdhani'
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return '$' + context.raw.toLocaleString();
+                }
+              }
+            }
+          }
+        }
+      });
+    });
+
+    // Same wallet connection logic as previous examples
+  </script>
+</body>
+</html>
