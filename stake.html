@@ -436,45 +436,80 @@
     &copy; 2025 Kelly Legacy Estates. All rights reserved.
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <script>
-  const BNB_CHAIN_ID = "0x38"; // Binance Smart Chain Mainnet
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKE_CONTRACT = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
 
-  async function connect() {
-    const walletBtn = document.getElementById('walletBtn');
-    const walletDisplay = document.getElementById('walletAddress');
-    const status = document.getElementById('status');
+  const TOKEN_ABI = [
+    { "constant": true, "inputs": [{ "name": "owner", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+  ];
 
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        // Request account access
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        wallet = accounts[0];
-        walletDisplay.textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-        walletBtn.innerHTML = `<i class="fas fa-check"></i> Connected`;
-        walletBtn.classList.add("connected");
+  const STAKE_ABI = [
+    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getStakedBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+  ];
 
-        // Get chain ID and verify it's BNB
-        const chainId = await window.ethereum.request({ method: "eth_chainId" });
-        if (chainId === BNB_CHAIN_ID) {
-          status.textContent = "Connected to BNB Smart Chain";
-          status.style.color = "#00ffaa";
-        } else {
-          status.textContent = "Wrong Network! Please switch to BNB Chain.";
-          status.style.color = "#ff5555";
-        }
+  let web3, accounts, tokenContract, stakeContract;
 
-        // Listen for network changes
-        window.ethereum.on("chainChanged", () => window.location.reload());
-        window.ethereum.on("accountsChanged", () => window.location.reload());
-
-      } catch (error) {
-        console.error("Connection failed:", error);
-        alert("Wallet connection failed.");
-      }
+  window.addEventListener("load", async () => {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
+      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      tokenContract = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
+      stakeContract = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
     } else {
-      alert("MetaMask not detected. Please install it.");
+      alert("Please install MetaMask");
+    }
+  });
+
+  async function setMaxAmount() {
+    const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
+    document.getElementById("stakeAmount").value = web3.utils.fromWei(balance, "ether");
+  }
+
+  async function stakeKLY() {
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || isNaN(amount)) return showStatus("Enter valid amount");
+
+    const weiAmount = web3.utils.toWei(amount, "ether");
+    try {
+      showStatus("Approving KLY...");
+      await tokenContract.methods.approve(STAKE_CONTRACT, weiAmount).send({ from: accounts[0] });
+
+      showStatus("Staking KLY...");
+      await stakeContract.methods.stake(weiAmount).send({ from: accounts[0] });
+
+      showStatus("Staked successfully!");
+    } catch (err) {
+      showStatus("Error: " + err.message);
     }
   }
 
-  document.getElementById("walletBtn").addEventListener("click", connect);
+  async function withdrawStake() {
+    try {
+      showStatus("Withdrawing...");
+      await stakeContract.methods.withdraw().send({ from: accounts[0] });
+      showStatus("Withdrawn successfully!");
+    } catch (err) {
+      showStatus("Error: " + err.message);
+    }
+  }
+
+  async function claimRewards() {
+    try {
+      showStatus("Claiming rewards...");
+      await stakeContract.methods.claim().send({ from: accounts[0] });
+      showStatus("Rewards claimed!");
+    } catch (err) {
+      showStatus("Error: " + err.message);
+    }
+  }
+
+  function showStatus(message) {
+    document.getElementById("status").innerText = message;
+  }
 </script>
