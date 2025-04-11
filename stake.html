@@ -363,9 +363,11 @@
       <a href="nft.html"><i class="fas fa-image"></i> NFT</a>
     </nav>
     <button id="walletBtn" class="wallet-button">
-      <i class="fas fa-wallet"></i> Connect Wallet
-    </button>
-    <div id="walletAddress"></div>
+  <i class="fas fa-wallet"></i> Connect Wallet
+</button>
+
+<div id="walletAddress"></div>
+<div id="status" style="margin-top: 1rem; font-weight: bold;"></div>
   </header>
 
   <div class="container">
@@ -434,28 +436,45 @@
     &copy; 2025 Kelly Legacy Estates. All rights reserved.
   </div>
 
-  <script>
-    // Contract addresses
-    const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
-    const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+<script>
+  const BNB_CHAIN_ID = "0x38"; // Binance Smart Chain Mainnet
 
-    // Contract ABIs
-    const ABI = [
-      { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getStakedBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
-      { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getPendingRewards", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
-    ];
+  async function connect() {
+    const walletBtn = document.getElementById('walletBtn');
+    const walletDisplay = document.getElementById('walletAddress');
+    const status = document.getElementById('status');
 
-    const TOKEN_ABI = [
-      { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" },
-      { "constant": true, "inputs": [{ "name": "owner", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" }
-    ];
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        // Request account access
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        wallet = accounts[0];
+        walletDisplay.textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+        walletBtn.innerHTML = `<i class="fas fa-check"></i> Connected`;
+        walletBtn.classList.add("connected");
 
-    let web3, wallet, contract, token;
+        // Get chain ID and verify it's BNB
+        const chainId = await window.ethereum.request({ method: "eth_chainId" });
+        if (chainId === BNB_CHAIN_ID) {
+          status.textContent = "Connected to BNB Smart Chain";
+          status.style.color = "#00ffaa";
+        } else {
+          status.textContent = "Wrong Network! Please switch to BNB Chain.";
+          status.style.color = "#ff5555";
+        }
 
-    // Connect wallet function
-    async function connect() {
-      const walletBtn = document.getElementById('walletBtn');
-      const status = document.getElementById('status');
+        // Listen for network changes
+        window.ethereum.on("chainChanged", () => window.location.reload());
+        window.ethereum.on("accountsChanged", () => window.location.reload());
+
+      } catch (error) {
+        console.error("Connection failed:", error);
+        alert("Wallet connection failed.");
+      }
+    } else {
+      alert("MetaMask not detected. Please install it.");
+    }
+  }
+
+  document.getElementById("walletBtn").addEventListener("click", connect);
+</script>
