@@ -669,15 +669,20 @@
 
   <div id="dashboardStats" style="display:none; margin-top: 2rem; background: rgba(0, 255, 231, 0.05); padding: 2rem; border-radius: 12px; max-width: 600px; margin-inline: auto; box-shadow: 0 0 20px rgba(0,255,231,0.2);">
     <h2 style="color:#00ffe7; font-family: 'Orbitron'; margin-bottom: 1rem;">Your KLY Token Dashboard</h2>
-    <p>Balance: <span id="userBalance"></span></p>
-    <p>Staked: <span id="userStaked"></span></p>
-    <p>Rewards: <span id="userRewards"></span></p>
-    <p>Voting Power: <span id="votingPower"></span></p>
-    <p>Total Supply: <span id="totalSupply"></span></p>
-    <p>Staked Pool: <span id="stakedAmount"></span></p>
-    <p>Holders: <span id="holders">—</span></p>
-    <p>APY: <span id="apy">—</span></p>
-    <button id="refreshData" style="display:none; margin-top: 1rem; background: linear-gradient(135deg, #00ffe7, #ff00aa); padding: 0.6rem 1.2rem; font-family: 'Orbitron'; border: none; border-radius: 6px; cursor: pointer;">Refresh Data</button>
+ <button id="connectWallet">Connect Wallet</button>
+<div id="walletAddress" style="display:none;"></div>
+<div id="accessStatus">Wallet not connected</div>
+
+<div id="dashboardStats" style="display:none;">
+  <p><strong>Your KLY Balance:</strong> <span id="userBalance">-</span></p>
+  <p><strong>Staked:</strong> <span id="userStaked">-</span></p>
+  <p><strong>Rewards:</strong> <span id="userRewards">-</span></p>
+  <p><strong>Voting Power:</strong> <span id="votingPower">-</span></p>
+  <p><strong>Total Supply:</strong> <span id="totalSupply">-</span></p>
+  <p><strong>Total Staked:</strong> <span id="stakedAmount">-</span></p>
+  <p><strong>Total Holders:</strong> <span id="holders">-</span></p>
+  <button id="refreshData" style="display:none;">Refresh</button>
+</div>
   </div>
 </section>
     
@@ -959,23 +964,25 @@
       },
       "retina_detect": true
     });
-<!-- Wallet connection logic -->
-<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.min.js"></script>
+<!-- Required Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.umd.min.js"></script>
+
 <script>
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const STAKING_CONTRACT = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
   const BSC_API_KEY = "3GA78IZXNIRMUYZ7KF2HRF9N9YZJJY95K2";
-  const KLY_ABI = [{
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  }];
+
+  const KLY_ABI = [
+    { constant: true, inputs: [{ name: "owner", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
+    { constant: true, inputs: [], name: "totalSupply", outputs: [{ name: "", type: "uint256" }], type: "function" }
+  ];
 
   let wallet = null;
   let web3;
 
+  // Auto-connect if already connected
   document.addEventListener("DOMContentLoaded", async () => {
     if (window.ethereum) {
       web3 = new Web3(window.ethereum);
@@ -1046,24 +1053,25 @@
     const token = await sdk.getContract(KLY_TOKEN_ADDRESS, "token");
     const staking = await sdk.getContract(STAKING_CONTRACT);
 
-    const [totalSupply, userStaked, rewards, stakedAmount] = await Promise.all([
+    const [totalSupply, stakeInfo, rewards, stakedAmount] = await Promise.all([
       token.totalSupply(),
       staking.call("getStakeInfo", wallet),
       staking.call("getRewardInfo", wallet),
       staking.call("getTotalStakedSupply")
     ]);
 
+    // Update DOM
     document.getElementById("userBalance").innerText = parseFloat(balanceEth).toFixed(2);
-    document.getElementById("userStaked").innerText = web3.utils.fromWei(userStaked[0].toString(), "ether");
+    document.getElementById("userStaked").innerText = web3.utils.fromWei(stakeInfo[0].toString(), "ether");
     document.getElementById("userRewards").innerText = web3.utils.fromWei(rewards.toString(), "ether");
     document.getElementById("votingPower").innerText = parseFloat(balanceEth).toFixed(2);
     document.getElementById("totalSupply").innerText = parseFloat(web3.utils.fromWei(totalSupply.value, "ether")).toFixed(2);
     document.getElementById("stakedAmount").innerText = web3.utils.fromWei(stakedAmount.toString(), "ether");
 
-    // Pull live holders from BscScan
     fetchTokenHolders();
   }
 
+  // Button event
   document.getElementById("refreshData").addEventListener("click", fetchDashboardStats);
 </script>
 </body>
