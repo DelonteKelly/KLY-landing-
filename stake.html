@@ -400,33 +400,13 @@
           <div id="status"></div>
         </div>
       </div>
-      
-      <div class="staking-card stats-card">
+
+        <div class="staking-card stats-card">
         <h2 class="section-title"><i class="fas fa-chart-line"></i> Staking Stats</h2>
-        
-        <div class="stat-item">
-          <span class="stat-label">Your Staked Balance:</span>
-          <span class="stat-value" id="stakedBalance">0 KLY</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Available Rewards:</span>
-          <span class="stat-value" id="rewardsBalance">0 KLY</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Current APY:</span>
-          <span class="stat-value" id="currentAPY">12.5%</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Total Value Locked:</span>
-          <span class="stat-value" id="totalValueLocked">1,245,000 KLY</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Your Share:</span>
-          <span class="stat-value" id="yourShare">0%</span>
+  <p><strong>Wallet Balance:</strong> <span id="userKLY">-</span></p>
+  <p><strong>Currently Staked:</strong> <span id="userStaked">-</span></p>
+  <p><strong>Pending Rewards:</strong> <span id="userRewards">-</span></p>
+</div>
         </div>
       </div>
     </div>
@@ -442,15 +422,16 @@
   const STAKE_CONTRACT = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
 
   const TOKEN_ABI = [
-    { "constant": true, "inputs": [{ "name": "owner", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+    { constant: true, inputs: [{ name: "owner", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
+    { constant: false, inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], name: "approve", outputs: [{ name: "", type: "bool" }], type: "function" }
   ];
 
   const STAKE_ABI = [
     { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
     { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
     { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getStakedBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+    { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getStakedBalance", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getPendingRewards", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
   ];
 
   let web3, accounts, tokenContract, stakeContract;
@@ -459,12 +440,31 @@
     if (window.ethereum) {
       web3 = new Web3(window.ethereum);
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+
       tokenContract = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
       stakeContract = new web3.eth.Contract(STAKE_ABI, STAKE_CONTRACT);
+
+      updateUI();
     } else {
       alert("Please install MetaMask");
     }
   });
+
+  async function updateUI() {
+    await loadBalances();
+    setInterval(loadBalances, 15000); // Auto-refresh every 15 seconds
+  }
+
+  async function loadBalances() {
+    const address = accounts[0];
+    const rawBalance = await tokenContract.methods.balanceOf(address).call();
+    const staked = await stakeContract.methods.getStakedBalance(address).call();
+    const rewards = await stakeContract.methods.getPendingRewards(address).call();
+
+    document.getElementById("userKLY").innerText = web3.utils.fromWei(rawBalance, "ether") + " KLY";
+    document.getElementById("userStaked").innerText = web3.utils.fromWei(staked, "ether") + " KLY";
+    document.getElementById("userRewards").innerText = web3.utils.fromWei(rewards, "ether") + " KLY";
+  }
 
   async function setMaxAmount() {
     const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
@@ -477,13 +477,14 @@
 
     const weiAmount = web3.utils.toWei(amount, "ether");
     try {
-      showStatus("Approving KLY...");
+      showStatus("Approving...");
       await tokenContract.methods.approve(STAKE_CONTRACT, weiAmount).send({ from: accounts[0] });
 
-      showStatus("Staking KLY...");
+      showStatus("Staking...");
       await stakeContract.methods.stake(weiAmount).send({ from: accounts[0] });
 
       showStatus("Staked successfully!");
+      await loadBalances();
     } catch (err) {
       showStatus("Error: " + err.message);
     }
@@ -493,7 +494,8 @@
     try {
       showStatus("Withdrawing...");
       await stakeContract.methods.withdraw().send({ from: accounts[0] });
-      showStatus("Withdrawn successfully!");
+      showStatus("Withdrawn!");
+      await loadBalances();
     } catch (err) {
       showStatus("Error: " + err.message);
     }
@@ -501,15 +503,18 @@
 
   async function claimRewards() {
     try {
-      showStatus("Claiming rewards...");
+      showStatus("Claiming...");
       await stakeContract.methods.claim().send({ from: accounts[0] });
       showStatus("Rewards claimed!");
+      await loadBalances();
     } catch (err) {
       showStatus("Error: " + err.message);
     }
   }
 
-  function showStatus(message) {
-    document.getElementById("status").innerText = message;
+  function showStatus(msg) {
+    const statusDiv = document.getElementById("status");
+    statusDiv.innerText = msg;
+    statusDiv.style.color = "#00ffe7";
   }
 </script>
