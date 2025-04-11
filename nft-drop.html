@@ -290,182 +290,56 @@
     </div>
 
   <script>
-    // Contract address
+    let provider, signer, sdk, address;
     const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-    let sdk, signer, address, contract;
+    const ipfsUri = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
 
-    // DOM elements
-    const connectBtn = document.getElementById("connectBtn");
-    const mintBtn = document.getElementById("mintBtn");
-    const statusEl = document.getElementById("status");
-    const statusText = document.getElementById("statusText");
-    const walletInfo = document.getElementById("walletInfo");
-    const totalSupplyEl = document.getElementById("totalSupply");
-    const mintedCountEl = document.getElementById("mintedCount");
-    const remainingCountEl = document.getElementById("remainingCount");
-
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Check if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        await connectWallet();
+    document.getElementById("connectBtn").onclick = async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
+        return;
       }
-      
-      // Load contract stats
-      await loadContractStats();
-    });
 
-    // Connect wallet handler
-    connectBtn.onclick = connectWallet;
-
-    async function connectWallet() {
       try {
-        updateStatus("Connecting to wallet...", "processing");
-        connectBtn.disabled = true;
-        
-        if (!window.ethereum) {
-          throw new Error("Please install MetaMask or another Web3 wallet");
-        }
-
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         address = await signer.getAddress();
-
         sdk = new thirdweb.ThirdwebSDK(signer);
-        contract = await sdk.getContract(contractAddress);
 
-        // Update UI
-        walletInfo.textContent = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
-        updateStatus("Wallet connected successfully", "success");
-        mintBtn.disabled = false;
-        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-        connectBtn.classList.add("btn-secondary");
-        
-        // Check if already claimed
-        await checkIfClaimed();
-        
-        // Set up event listeners
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
-        
+        document.getElementById("status").innerText =
+          "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
+        document.getElementById("mintBtn").disabled = false;
       } catch (err) {
-        console.error("Wallet connection failed:", err);
-        updateStatus(`Connection failed: ${err.message || "See console for details"}`, "error");
-        connectBtn.disabled = false;
+        console.error("Wallet connect error:", err);
+        document.getElementById("status").innerText = "Connection failed.";
       }
-    }
+    };
 
-    // Mint NFT handler
-    mintBtn.onclick = mintNFT;
+    document.getElementById("mintBtn").onclick = async () => {
+      const status = document.getElementById("status");
+      if (!sdk || !address) return alert("Please connect your wallet first.");
 
-    async function mintNFT() {
       try {
-        updateStatus("Checking eligibility...", "processing");
-        mintBtn.disabled = true;
-        
-        // Check if already owns the NFT
+        const contract = await sdk.getContract(contractAddress);
         const owned = await contract.erc721.getOwned(address);
-        if (owned && owned.length > 0) {
-          updateStatus("You've already claimed your Genesis NFT!", "success");
-          mintBtn.disabled = true;
+        if (owned.length > 0) {
+          status.innerText = "You already own this NFT!";
           return;
         }
 
-        updateStatus("Minting your Genesis NFT...", "processing");
-        
-        // Mint the NFT
         await contract.erc721.mintTo(address, {
-          name: "KLY Genesis Badge",
-          description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
-          image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+          name: "KLY Genesis NFT",
+          description: "Awarded to early builders in the KLY ecosystem. Genesis 2025.",
+          image: ipfsUri
         });
 
-        updateStatus("✅ Genesis NFT minted successfully!", "success");
-        mintBtn.disabled = true;
-        
-        // Update stats
-        await loadContractStats();
-        await checkIfClaimed();
-        
+        status.innerText = "Minted successfully!";
       } catch (err) {
-        console.error("Minting failed:", err);
-        updateStatus(`❌ Mint failed: ${err.message || "See console for details"}`, "error");
-        mintBtn.disabled = false;
+        console.error("Mint error:", err);
+        status.innerText = "Mint failed: " + (err.message || err);
       }
-    }
-
-    // Check if wallet already claimed
-    async function checkIfClaimed() {
-      if (!contract || !address) return;
-      
-      try {
-        const owned = await contract.erc721.getOwned(address);
-        if (owned && owned.length > 0) {
-          updateStatus("You've already claimed your Genesis NFT!", "success");
-          mintBtn.disabled = true;
-        }
-      } catch (err) {
-        console.error("Error checking ownership:", err);
-      }
-    }
-
-    // Load contract stats
-    async function loadContractStats() {
-      if (!contract) return;
-      
-      try {
-        const totalSupply = 500; // Hardcoded for this example
-        const minted = await contract.erc721.totalSupply();
-        const remaining = totalSupply - minted;
-        
-        mintedCountEl.textContent = minted;
-        remainingCountEl.textContent = remaining;
-      } catch (err) {
-        console.error("Error loading contract stats:", err);
-      }
-    }
-
-    // Handle account changes
-    function handleAccountsChanged(accounts) {
-      if (accounts.length === 0) {
-        // Wallet disconnected
-        walletInfo.textContent = "";
-        updateStatus("Wallet disconnected", "error");
-        connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-        connectBtn.classList.remove("btn-secondary");
-        connectBtn.disabled = false;
-        mintBtn.disabled = true;
-      } else {
-        // Account changed
-        address = accounts[0];
-        walletInfo.textContent = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
-        checkIfClaimed();
-      }
-    }
-
-    // Handle chain changes
-    function handleChainChanged(chainId) {
-      window.location.reload();
-    }
-
-    // Update status message
-    function updateStatus(message, type) {
-      statusText.textContent = message;
-      statusEl.className = `status-${type}`;
-      
-      // Set icon based on status type
-      const icon = statusEl.querySelector("i");
-      if (type === "success") {
-        icon.className = "fas fa-check-circle";
-      } else if (type === "error") {
-        icon.className = "fas fa-exclamation-circle";
-      } else if (type === "processing") {
-        icon.className = "fas fa-spinner fa-spin";
-      } else {
-        icon.className = "fas fa-info-circle";
-      }
-    }
+    };
   </script>
 </body>
 </html>
