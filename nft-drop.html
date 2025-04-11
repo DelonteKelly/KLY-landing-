@@ -7,125 +7,467 @@
 
   <!-- Fonts & Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
 
   <!-- Thirdweb SDK (Browser CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3.10.5/dist/thirdweb.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <style>
+    :root {
+      --primary: #00ffe7;
+      --secondary: #ff00aa;
+      --dark: #050505;
+      --light: #e0e0e0;
+      --card-bg: rgba(15, 15, 15, 0.8);
+      --success: #00ffaa;
+      --error: #ff5555;
+    }
+    
     body {
-      font-family: 'Orbitron', sans-serif;
-      background: #000;
-      color: #00ffe7;
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--dark);
+      color: var(--light);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05) 0%, transparent 50%);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
       text-align: center;
-      padding: 3rem 1rem;
     }
 
     h1 {
-      font-size: 2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5rem;
+      color: var(--primary);
       margin-bottom: 1rem;
+      text-shadow: 0 0 10px rgba(0, 255, 231, 0.3);
     }
 
-    img {
-      max-width: 300px;
+    .subtitle {
+      font-size: 1.2rem;
+      color: #ccc;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+    }
+
+    .nft-container {
+      position: relative;
+      max-width: 400px;
       margin: 2rem auto;
-      display: block;
-      box-shadow: 0 0 40px rgba(0,255,231,0.4);
+    }
+
+    .nft-image {
+      width: 100%;
+      border-radius: 16px;
+      border: 2px solid var(--primary);
+      box-shadow: 0 0 40px rgba(0,255,231,0.3);
+      transition: all 0.3s ease;
+    }
+
+    .nft-image:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 60px rgba(0,255,231,0.5);
+    }
+
+    .badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: var(--secondary);
+      color: var(--dark);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: bold;
+      font-size: 0.9rem;
+      box-shadow: 0 0 15px rgba(255, 0, 170, 0.5);
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 2rem 0;
+      flex-wrap: wrap;
     }
 
     .btn {
       font-family: 'Orbitron', sans-serif;
-      padding: 0.8rem 1.5rem;
-      margin: 0.5rem;
+      padding: 1rem 2rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      background: linear-gradient(to right, #00ffe7, #ff00aa);
-      color: #000;
       font-weight: bold;
-      transition: 0.3s ease;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 200px;
+      justify-content: center;
     }
 
-    .btn:hover {
-      transform: scale(1.05);
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--dark);
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 25px rgba(0, 255, 231, 0.5);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-secondary {
+      background: var(--dark);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(0, 255, 231, 0.1);
     }
 
     #status {
+      padding: 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      margin: 1rem auto;
+      max-width: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+
+    .status-default {
+      background: rgba(0, 255, 231, 0.1);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .status-success {
+      background: rgba(0, 255, 170, 0.1);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .status-error {
+      background: rgba(255, 85, 85, 0.1);
+      color: var(--error);
+      border: 1px solid var(--error);
+    }
+
+    .status-processing {
+      background: rgba(255, 170, 0, 0.1);
+      color: #ffaa00;
+      border: 1px solid #ffaa00;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 255, 231, 0.2);
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      min-width: 150px;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin: 0.5rem 0;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .wallet-info {
       margin-top: 1rem;
-      font-size: 1rem;
-      color: #00ffe7;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+      }
+      
+      .nft-container {
+        max-width: 300px;
+      }
+      
+      .buttons {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>KLY Genesis NFT Drop</h1>
+    <p class="subtitle">Claim your limited edition Genesis NFT. Only 500 will ever exist. One per wallet. Free to mint for eligible holders.</p>
 
-  <h1>Claim your limited edition Genesis NFT</h1>
-  <p>Only 500 ever. One per wallet. Free to mint.</p>
+    <div class="nft-container">
+      <div class="badge">LIMITED EDITION</div>
+      <img src="https://gateway.pinata.cloud/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" 
+           alt="Genesis NFT" 
+           class="nft-image" />
+    </div>
 
-  <img src="https://gateway.pinata.cloud/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" />
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalSupply">500</div>
+        <div class="stat-label">Total Supply</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="mintedCount">0</div>
+        <div class="stat-label">Minted</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="remainingCount">500</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+    </div>
 
-  <button class="btn" id="connectBtn">Connect Wallet</button>
-  <button class="btn" id="mintBtn" disabled>Mint NFT</button>
+    <div class="buttons">
+      <button class="btn btn-primary" id="connectBtn">
+        <i class="fas fa-wallet"></i> Connect Wallet
+      </button>
+      <button class="btn btn-primary" id="mintBtn" disabled>
+        <i class="fas fa-gem"></i> Mint NFT
+      </button>
+    </div>
 
-  <p id="status">Wallet not connected</p>
+    <div id="status" class="status-default">
+      <i class="fas fa-info-circle"></i>
+      <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
+    </div>
+
+    <div id="walletInfo" class="wallet-info"></div>
+  </div>
 
   <script>
-    let sdk, signer, address;
+    // Contract address
     const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+    let sdk, signer, address, contract;
 
-    document.getElementById("connectBtn").onclick = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
+    // DOM elements
+    const connectBtn = document.getElementById("connectBtn");
+    const mintBtn = document.getElementById("mintBtn");
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const walletInfo = document.getElementById("walletInfo");
+    const totalSupplyEl = document.getElementById("totalSupply");
+    const mintedCountEl = document.getElementById("mintedCount");
+    const remainingCountEl = document.getElementById("remainingCount");
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check if wallet is already connected
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        await connectWallet();
       }
+      
+      // Load contract stats
+      await loadContractStats();
+    });
 
+    // Connect wallet handler
+    connectBtn.onclick = connectWallet;
+
+    async function connectWallet() {
       try {
+        updateStatus("Connecting to wallet...", "processing");
+        connectBtn.disabled = true;
+        
+        if (!window.ethereum) {
+          throw new Error("Please install MetaMask or another Web3 wallet");
+        }
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         address = await signer.getAddress();
 
         sdk = new thirdweb.ThirdwebSDK(signer);
+        contract = await sdk.getContract(contractAddress);
 
-        document.getElementById("status").innerText =
-          "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
-        document.getElementById("mintBtn").disabled = false;
+        // Update UI
+        walletInfo.textContent = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
+        updateStatus("Wallet connected successfully", "success");
+        mintBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+        connectBtn.classList.add("btn-secondary");
+        
+        // Check if already claimed
+        await checkIfClaimed();
+        
+        // Set up event listeners
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+        window.ethereum.on('chainChanged', handleChainChanged);
+        
       } catch (err) {
         console.error("Wallet connection failed:", err);
-        document.getElementById("status").innerText =
-          "Connection failed: " + (err.message || err);
+        updateStatus(`Connection failed: ${err.message || "See console for details"}`, "error");
+        connectBtn.disabled = false;
       }
-    };
+    }
 
-    document.getElementById("mintBtn").onclick = async () => {
-      const status = document.getElementById("status");
+    // Mint NFT handler
+    mintBtn.onclick = mintNFT;
 
-      if (!sdk || !address) {
-        alert("Please connect your wallet first.");
-        return;
-      }
-
+    async function mintNFT() {
       try {
-        const contract = await sdk.getContract(contractAddress);
+        updateStatus("Checking eligibility...", "processing");
+        mintBtn.disabled = true;
+        
+        // Check if already owns the NFT
         const owned = await contract.erc721.getOwned(address);
         if (owned && owned.length > 0) {
-          status.innerText = "You've already claimed this badge!";
+          updateStatus("You've already claimed your Genesis NFT!", "success");
+          mintBtn.disabled = true;
           return;
         }
 
+        updateStatus("Minting your Genesis NFT...", "processing");
+        
+        // Mint the NFT
         await contract.erc721.mintTo(address, {
           name: "KLY Genesis Badge",
           description: "Awarded to early builders and supporters in the KLY ecosystem. Genesis 2025.",
           image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
         });
 
-        status.innerText = "✅ Badge minted successfully!";
+        updateStatus("✅ Genesis NFT minted successfully!", "success");
+        mintBtn.disabled = true;
+        
+        // Update stats
+        await loadContractStats();
+        await checkIfClaimed();
+        
       } catch (err) {
         console.error("Minting failed:", err);
-        status.innerText = "❌ Mint failed: " + (err.message || err);
+        updateStatus(`❌ Mint failed: ${err.message || "See console for details"}`, "error");
+        mintBtn.disabled = false;
       }
-    };
+    }
+
+    // Check if wallet already claimed
+    async function checkIfClaimed() {
+      if (!contract || !address) return;
+      
+      try {
+        const owned = await contract.erc721.getOwned(address);
+        if (owned && owned.length > 0) {
+          updateStatus("You've already claimed your Genesis NFT!", "success");
+          mintBtn.disabled = true;
+        }
+      } catch (err) {
+        console.error("Error checking ownership:", err);
+      }
+    }
+
+    // Load contract stats
+    async function loadContractStats() {
+      if (!contract) return;
+      
+      try {
+        const totalSupply = 500; // Hardcoded for this example
+        const minted = await contract.erc721.totalSupply();
+        const remaining = totalSupply - minted;
+        
+        mintedCountEl.textContent = minted;
+        remainingCountEl.textContent = remaining;
+      } catch (err) {
+        console.error("Error loading contract stats:", err);
+      }
+    }
+
+    // Handle account changes
+    function handleAccountsChanged(accounts) {
+      if (accounts.length === 0) {
+        // Wallet disconnected
+        walletInfo.textContent = "";
+        updateStatus("Wallet disconnected", "error");
+        connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+        connectBtn.classList.remove("btn-secondary");
+        connectBtn.disabled = false;
+        mintBtn.disabled = true;
+      } else {
+        // Account changed
+        address = accounts[0];
+        walletInfo.textContent = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
+        checkIfClaimed();
+      }
+    }
+
+    // Handle chain changes
+    function handleChainChanged(chainId) {
+      window.location.reload();
+    }
+
+    // Update status message
+    function updateStatus(message, type) {
+      statusText.textContent = message;
+      statusEl.className = `status-${type}`;
+      
+      // Set icon based on status type
+      const icon = statusEl.querySelector("i");
+      if (type === "success") {
+        icon.className = "fas fa-check-circle";
+      } else if (type === "error") {
+        icon.className = "fas fa-exclamation-circle";
+      } else if (type === "processing") {
+        icon.className = "fas fa-spinner fa-spin";
+      } else {
+        icon.className = "fas fa-info-circle";
+      }
+    }
   </script>
 </body>
 </html>
