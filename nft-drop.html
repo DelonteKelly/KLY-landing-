@@ -289,57 +289,5 @@
       <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
     </div>
 
-  <script>
-    let provider, signer, sdk, address;
-    const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-    const ipfsUri = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
-
-    document.getElementById("connectBtn").onclick = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
-      }
-
-      try {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        address = await signer.getAddress();
-        sdk = new thirdweb.ThirdwebSDK(signer);
-
-        document.getElementById("status").innerText =
-          "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
-        document.getElementById("mintBtn").disabled = false;
-      } catch (err) {
-        console.error("Wallet connect error:", err);
-        document.getElementById("status").innerText = "Connection failed.";
-      }
-    };
-
-    document.getElementById("mintBtn").onclick = async () => {
-      const status = document.getElementById("status");
-      if (!sdk || !address) return alert("Please connect your wallet first.");
-
-      try {
-        const contract = await sdk.getContract(contractAddress);
-        const owned = await contract.erc721.getOwned(address);
-        if (owned.length > 0) {
-          status.innerText = "You already own this NFT!";
-          return;
-        }
-
-        await contract.erc721.mintTo(address, {
-          name: "KLY Genesis NFT",
-          description: "Awarded to early builders in the KLY ecosystem. Genesis 2025.",
-          image: ipfsUri
-        });
-
-        status.innerText = "Minted successfully!";
-      } catch (err) {
-        console.error("Mint error:", err);
-        status.innerText = "Mint failed: " + (err.message || err);
-      }
-    };
-  </script>
 </body>
 </html>
