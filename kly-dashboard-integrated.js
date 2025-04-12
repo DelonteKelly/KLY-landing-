@@ -152,24 +152,14 @@ async function executeProposal(id) {
   return "Proposal executed";
 }
 
-// DASHBOARD
 async function updateDashboardStats() {
-  const [balance, supply, staking] = await Promise.all([
+  const [balance, supply] = await Promise.all([
     getKLYBalance(),
-    getKLYTotalSupply(),
-    getStakingStats()
+    getKLYTotalSupply()
   ]);
 
   document.getElementById("userBalance").textContent = balance.toFixed(2) + " KLY";
   document.getElementById("totalSupply").textContent = supply.toFixed(2);
-  document.getElementById("userStaked").textContent = staking.staked;
-  document.getElementById("userRewards").textContent = staking.rewards;
-  document.getElementById("stakedAmount").textContent = staking.totalStaked;
-  document.getElementById("holders").textContent = "Coming Soon";
-  document.getElementById("totalSupplyStat").textContent = supply.toFixed(2);
-  document.getElementById("stakedAmountStat").textContent = staking.totalStaked;
-  document.getElementById("holdersStat").textContent = "Coming Soon";
-  document.getElementById("apy").textContent = "20%";
 }
 
 // AUTO CONNECT
