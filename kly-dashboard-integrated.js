@@ -78,14 +78,69 @@ async function getKLYTotalSupply() {
 }
 
 // NFT
-async function mintGenesisNFT() {
-  const contract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
-  const owned = await contract.balanceOf(wallet);
-  if (owned.toString() !== "0") return "Already minted";
-  const tx = await contract.mintTo(wallet, NFT_URI);
-  await tx.wait();
-  return "Mint successful";
+// Update Mint Supply Stats
+async function updateMintStats() {
+  if (!contract) return;
+
+  try {
+    const claimed = await contract.totalClaimedSupply();
+    const minted = claimed.toNumber();
+    const remaining = MAX_SUPPLY - minted;
+
+    document.getElementById("mintedCount").textContent = minted;
+    document.getElementById("remainingCount").textContent = remaining;
+  } catch (err) {
+    console.error("Failed to fetch mint stats:", err);
+    setStatus("Unable to fetch mint data.", "status-error");
+  }
 }
+
+// Mint Genesis NFT
+async function mintGenesisNFT() {
+  if (!contract || !wallet) return setStatus("Connect your wallet first.", "status-error");
+
+  try {
+    setStatus("Minting your Genesis NFT...", "status-processing");
+
+    const balance = await contract.balanceOf(wallet);
+    if (balance.gt(0)) {
+      return setStatus("You already minted this NFT.", "status-error");
+    }
+
+    const tx = await contract.claim(1);
+    await tx.wait();
+
+    setStatus("Mint successful! Check your wallet.", "status-success");
+    await updateMintStats();
+  } catch (err) {
+    console.error("Mint failed:", err);
+    setStatus("Mint failed. Try again.", "status-error");
+  }
+}
+
+// Status UI Helper
+function setStatus(message, cssClass = "status-default") {
+  const box = document.getElementById("status");
+  const text = document.getElementById("statusText");
+  if (box && text) {
+    box.className = cssClass;
+    text.textContent = message;
+  }
+}
+
+// Auto-connect
+window.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("connectBtn")?.addEventListener("click", connectWallet);
+  document.getElementById("mintBtn")?.addEventListener("click", mintGenesisNFT);
+
+  if (window.ethereum) {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts.length > 0) {
+      await connectWallet();
+    }
+  }
+});
+
 
 // STAKING
 async function getStakingStats() {
