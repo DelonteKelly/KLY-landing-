@@ -153,13 +153,26 @@ async function executeProposal(id) {
 }
 
 async function updateDashboardStats() {
-  const [balance, supply] = await Promise.all([
-    getKLYBalance(),
-    getKLYTotalSupply()
-  ]);
+  try {
+    if (!wallet) {
+      console.warn("Wallet address is undefined.");
+      return;
+    }
 
-  document.getElementById("userBalance").textContent = balance.toFixed(2) + " KLY";
-  document.getElementById("totalSupply").textContent = supply.toFixed(2);
+    const [balance, supply] = await Promise.all([
+      getKLYBalance(),
+      getKLYTotalSupply()
+    ]);
+
+    console.log("Wallet Address:", wallet);
+    console.log("KLY Balance:", balance);
+    console.log("Total Supply:", supply);
+
+    document.getElementById("userBalance").textContent = balance.toFixed(2) + " KLY";
+    document.getElementById("totalSupply").textContent = supply.toFixed(2);
+  } catch (err) {
+    console.error("Failed to update dashboard stats:", err);
+  }
 }
 
 // AUTO CONNECT
