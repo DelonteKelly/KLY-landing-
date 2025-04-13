@@ -350,24 +350,30 @@
       document.getElementById("mintBtn").disabled = false;
     }
 
-    document.getElementById("mintBtn").addEventListener("click", async () => {
-      try {
-        const alreadyMinted = await contract.balanceOf(wallet);
-        if (alreadyMinted.gt(0)) {
-          alert("You’ve already minted your Genesis NFT.");
-          return;
-        }
+document.getElementById("mintBtn").addEventListener("click", async () => {
+  try {
+    const alreadyMinted = await contract.balanceOf(wallet);
+    if (alreadyMinted.gt(0)) {
+      alert("You’ve already minted your Genesis NFT.");
+      return;
+    }
 
-        const tx = await contract.mintTo(wallet, METADATA_URI);
-        await tx.wait();
-        alert("NFT minted successfully!");
-        location.reload();
-      } catch (err) {
-        console.error("Mint failed", err);
-        alert(`Minting failed: ${err.message || err.data?.message || "Unknown error"}`);
-      }
-    });
+    const tx = await contract.mintTo(wallet, METADATA_URI);
+    await tx.wait();
+
+    // Show success animation
+    document.getElementById("mintSuccess").style.display = "flex";
+
+    // Auto-dismiss or reload
+    setTimeout(() => {
+      document.getElementById("mintSuccess").style.display = "none";
+      location.reload(); // Optional
+    }, 4000);
+  } catch (err) {
+    console.error("Mint failed", err);
+    alert(`Minting failed: ${err.message || err.data?.message || "Unknown error"}`);
   }
+});
 
   document.getElementById("connectBtn").addEventListener("click", async () => {
     await window.ethereum.request({ method: "eth_requestAccounts" });
