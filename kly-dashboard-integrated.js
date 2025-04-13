@@ -166,6 +166,80 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("withdrawBtn")?.addEventListener("click", () => withdrawKLY(document.getElementById("withdrawAmount").value));
   document.getElementById("claimBtn")?.addEventListener("click", claimRewards);
 
+  // ========== DAO Voting Buttons ==========
+  document.querySelectorAll(".vote-yes").forEach((btn, index) => {
+    btn.addEventListener("click", async () => {
+      if (!signer) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+      try {
+        await voteOnProposal(index + 1, 1); // 1 = Yes
+        alert("✅ Your YES vote has been submitted.");
+      } catch (err) {
+        console.error("Vote YES error:", err);
+        alert("Error submitting YES vote.");
+      }
+    });
+  });
+
+  document.querySelectorAll(".vote-no").forEach((btn, index) => {
+    btn.addEventListener("click", async () => {
+      if (!signer) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+      try {
+        await voteOnProposal(index + 1, 0); // 0 = No
+        alert("❌ Your NO vote has been submitted.");
+      } catch (err) {
+        console.error("Vote NO error:", err);
+        alert("Error submitting NO vote.");
+      }
+    });
+  });
+
+  // ========== DAO Execute Proposal Buttons ==========
+  document.querySelectorAll(".execute-proposal").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!signer) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+      const proposalId = parseInt(btn.dataset.id);
+      try {
+        await executeProposal(proposalId);
+        alert("⚡ Proposal executed successfully.");
+      } catch (err) {
+        console.error("Execution error:", err);
+        alert("Error executing proposal.");
+      }
+    });
+  });
+
+  // ========== DAO Proposal Submission ==========
+  document.getElementById("submitProposal")?.addEventListener("click", async () => {
+    if (!signer) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    const desc = document.getElementById("proposalDesc")?.value.trim();
+    if (!desc) {
+      alert("Please enter a proposal description.");
+      return;
+    }
+
+    try {
+      await createProposal(desc);
+      alert("✅ Proposal submitted to the DAO!");
+      document.getElementById("proposalDesc").value = "";
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert("Failed to submit proposal.");
+    }
+  });
+
   if (window.ethereum?.selectedAddress) {
     await connectWallet();
   }
