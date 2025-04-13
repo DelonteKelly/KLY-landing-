@@ -245,6 +245,13 @@
         width: 100%;
       }
     }
+    @keyframes fadeZoom {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+#mintSuccess {
+  animation: fadeZoom 0.6s ease-out;
+}
   </style>
 </head>
 <body>
@@ -288,68 +295,88 @@
       <i class="fas fa-info-circle"></i>
       <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
     </div>
+    
+    <div id="mintSuccess" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; color:#00ffe7; display:flex; align-items:center; justify-content:center; flex-direction:column; font-family:'Orbitron', sans-serif;">
+  <i class="fas fa-check-circle" style="font-size:5rem; color:#00ffaa; margin-bottom:1rem;"></i>
+  <h2>NFT Minted Successfully!</h2>
+  <p style="margin-top:0.5rem;">Welcome to the Legacy Circle.</p>
+</div>
 
      <script type="module">
-    const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-    const GENESIS_ABI = [
-      { name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-      { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ name: "owner", type: "address" }], outputs: [{ type: "uint256" }] },
-      { name: "mint", type: "function", stateMutability: "nonpayable", inputs: [
-        { name: "to", type: "address" },
-        { name: "tickLower", type: "int24" },
-        { name: "tickUpper", type: "int24" },
-        { name: "amount", type: "uint128" },
-        { name: "data", type: "bytes" }
-      ], outputs: [] }
-    ];
+    <script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
 
-    let provider, signer, wallet, contract;
+  const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  const METADATA_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
 
-    async function initNFTDrop() {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      signer = provider.getSigner();
-      wallet = await signer.getAddress();
-      contract = new ethers.Contract(GENESIS_NFT_CONTRACT, GENESIS_ABI, signer);
+  const GENESIS_ABI = [
+    { name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ name: "owner", type: "address" }], outputs: [{ type: "uint256" }] },
+    {
+      name: "mintTo",
+      type: "function",
+      stateMutability: "nonpayable",
+      inputs: [
+        { name: "_to", type: "address" },
+        { name: "_uri", type: "string" }
+      ],
+      outputs: [{ type: "uint256" }]
+    }
+  ];
 
-      document.getElementById("walletDisplay").textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-      document.getElementById("connectBtn").style.display = "none";
+  let provider, signer, wallet, contract;
 
-      const minted = await contract.totalSupply();
-      const alreadyMinted = await contract.balanceOf(wallet);
+  async function initNFTDrop() {
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    wallet = await signer.getAddress();
+    contract = new ethers.Contract(GENESIS_NFT_CONTRACT, GENESIS_ABI, signer);
 
-      const remaining = 500 - minted.toNumber();
-      document.getElementById("mintedCount").textContent = minted.toString();
-      document.getElementById("remainingCount").textContent = remaining.toString();
+    document.getElementById("walletDisplay").textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    document.getElementById("connectBtn").style.display = "none";
 
-      if (alreadyMinted.gt(0)) {
-        document.getElementById("status").textContent = "You've already minted your Genesis NFT.";
-        document.getElementById("mintBtn").disabled = true;
-      } else {
-        document.getElementById("status").textContent = "You're eligible to mint your Genesis NFT!";
-        document.getElementById("mintBtn").disabled = false;
-      }
+    const minted = await contract.totalSupply();
+    const alreadyMinted = await contract.balanceOf(wallet);
+    const remaining = 500 - minted.toNumber();
 
-      document.getElementById("mintBtn").addEventListener("click", async () => {
-        try {
-          const tx = await contract.mint(wallet, -887220, 887220, 1, "0x");
-          await tx.wait();
-          alert("NFT minted successfully!");
-          location.reload();
-        } catch (err) {
-          console.error("Mint failed", err);
-          alert("Minting failed.");
+    document.getElementById("mintedCount").textContent = minted.toString();
+    document.getElementById("remainingCount").textContent = remaining.toString();
+
+    if (alreadyMinted.gt(0)) {
+      document.getElementById("status").textContent = "You've already minted your Genesis NFT.";
+      document.getElementById("mintBtn").disabled = true;
+    } else {
+      document.getElementById("status").textContent = "You're eligible to mint your Genesis NFT!";
+      document.getElementById("mintBtn").disabled = false;
+    }
+
+    document.getElementById("mintBtn").addEventListener("click", async () => {
+      try {
+        const alreadyMinted = await contract.balanceOf(wallet);
+        if (alreadyMinted.gt(0)) {
+          alert("You’ve already minted your Genesis NFT.");
+          return;
         }
-      });
-    }
 
-    document.getElementById("connectBtn").addEventListener("click", async () => {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      initNFTDrop();
+        const tx = await contract.mintTo(wallet, METADATA_URI);
+        await tx.wait();
+        alert("NFT minted successfully!");
+        location.reload();
+      } catch (err) {
+        console.error("Mint failed", err);
+        alert(`Minting failed: ${err.message || err.data?.message || "Unknown error"}`);
+      }
     });
+  }
 
-    if (window.ethereum && window.ethereum.selectedAddress) {
-      initNFTDrop();
-    }
-  </script>
+  document.getElementById("connectBtn").addEventListener("click", async () => {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    initNFTDrop();
+  });
+
+  if (window.ethereum && window.ethereum.selectedAddress) {
+    initNFTDrop();
+  }
+</script>
 </body>
 </html>
