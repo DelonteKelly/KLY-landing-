@@ -289,6 +289,67 @@
       <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
     </div>
 
-    <script type="module" src="kly-dashboard-integrated.js"></script>
+     <script type="module">
+    const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+    const GENESIS_ABI = [
+      { name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+      { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ name: "owner", type: "address" }], outputs: [{ type: "uint256" }] },
+      { name: "mint", type: "function", stateMutability: "nonpayable", inputs: [
+        { name: "to", type: "address" },
+        { name: "tickLower", type: "int24" },
+        { name: "tickUpper", type: "int24" },
+        { name: "amount", type: "uint128" },
+        { name: "data", type: "bytes" }
+      ], outputs: [] }
+    ];
+
+    let provider, signer, wallet, contract;
+
+    async function initNFTDrop() {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+      contract = new ethers.Contract(GENESIS_NFT_CONTRACT, GENESIS_ABI, signer);
+
+      document.getElementById("walletDisplay").textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      document.getElementById("connectBtn").style.display = "none";
+
+      const minted = await contract.totalSupply();
+      const alreadyMinted = await contract.balanceOf(wallet);
+
+      const remaining = 500 - minted.toNumber();
+      document.getElementById("mintedCount").textContent = minted.toString();
+      document.getElementById("remainingCount").textContent = remaining.toString();
+
+      if (alreadyMinted.gt(0)) {
+        document.getElementById("status").textContent = "You've already minted your Genesis NFT.";
+        document.getElementById("mintBtn").disabled = true;
+      } else {
+        document.getElementById("status").textContent = "You're eligible to mint your Genesis NFT!";
+        document.getElementById("mintBtn").disabled = false;
+      }
+
+      document.getElementById("mintBtn").addEventListener("click", async () => {
+        try {
+          const tx = await contract.mint(wallet, -887220, 887220, 1, "0x");
+          await tx.wait();
+          alert("NFT minted successfully!");
+          location.reload();
+        } catch (err) {
+          console.error("Mint failed", err);
+          alert("Minting failed.");
+        }
+      });
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", async () => {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      initNFTDrop();
+    });
+
+    if (window.ethereum && window.ethereum.selectedAddress) {
+      initNFTDrop();
+    }
+  </script>
 </body>
 </html>
