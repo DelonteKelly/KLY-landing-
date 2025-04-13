@@ -9,11 +9,44 @@ const NFT_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x26
 let provider, signer, wallet;
 
 const KLY_ABI = [
-  { name: "balanceOf", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], type: "function", constant: true },
-  { name: "totalSupply", inputs: [], outputs: [{ type: "uint256" }], type: "function", constant: true },
-  { name: "decimals", inputs: [], outputs: [{ type: "uint8" }], type: "function", constant: true },
-  { name: "symbol", inputs: [], outputs: [{ type: "string" }], type: "function", constant: true },
-  { name: "approve", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }], type: "function" }
+  {
+    name: "balanceOf",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    name: "totalSupply",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    name: "decimals",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    name: "symbol",
+    inputs: [],
+    outputs: [{ type: "string" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    name: "approve",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  }
 ];
 
 const NFT_ABI = [
@@ -218,6 +251,17 @@ async function updateDashboardStats() {
       getKLYBalance(),
       getKLYTotalSupply()
     ]);
+
+    // Update the DOM
+    document.getElementById("userBalance").textContent = balance.toFixed(2) + " KLY";
+    document.getElementById("totalSupply").textContent = supply.toLocaleString();
+
+  } catch (err) {
+    console.error("Failed to update dashboard stats:", err);
+    document.getElementById("userBalance").textContent = "Error";
+    document.getElementById("totalSupply").textContent = "Error";
+  }
+}
 
     console.log("Wallet Address:", wallet);
     console.log("KLY Balance:", balance);
