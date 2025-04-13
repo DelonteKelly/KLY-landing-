@@ -80,11 +80,22 @@ const DAO_ABI = [
 // WALLET
 async function connectWallet() {
   if (!window.ethereum) return alert("MetaMask required.");
+
   provider = new ethers.providers.Web3Provider(window.ethereum);
   await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
   wallet = await signer.getAddress();
 
+  // Handle account and network changes
+  window.ethereum.on('accountsChanged', () => {
+    window.location.reload(); // Reconnect wallet on account change
+  });
+
+  window.ethereum.on('chainChanged', () => {
+    window.location.reload(); // Reconnect on network change
+  });
+
+  // Update UI
   document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
   document.getElementById("walletAddress").style.display = "inline-block";
   document.getElementById("accessStatus").textContent = "Wallet: Connected";
@@ -92,6 +103,7 @@ async function connectWallet() {
   document.getElementById("refreshData").style.display = "inline-block";
 
   updateDashboardStats();
+
   return wallet;
 }
 
