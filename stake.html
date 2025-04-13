@@ -409,5 +409,119 @@
   <div class="footer">
     &copy; 2025 Kelly Legacy Estates. All rights reserved.
   </div>
+  
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
 
-<script type="module" src="kly-dashboard-integrated.js"></script>
+  const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKING_CONTRACT = "0x25548Ba29a0071F30E4bDCd98Ea72F79341b07a1";
+
+  const KLY_ABI = [
+    { name: "balanceOf", type: "function", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
+    { name: "decimals", type: "function", inputs: [], outputs: [{ type: "uint8" }], stateMutability: "view" },
+    { name: "approve", type: "function", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }], stateMutability: "nonpayable" },
+  ];
+
+  const STAKING_ABI = [
+    { name: "stake", type: "function", inputs: [{ name: "amount", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
+    { name: "withdraw", type: "function", inputs: [{ name: "amount", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
+    { name: "claim", type: "function", inputs: [], outputs: [], stateMutability: "nonpayable" },
+    { name: "getStakeInfo", type: "function", inputs: [{ name: "", type: "address" }], outputs: [{ name: "staked", type: "uint256" }, { name: "timestamp", type: "uint256" }], stateMutability: "view" },
+    { name: "getRewardInfo", type: "function", inputs: [{ name: "", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  ];
+
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    if (window.ethereum) {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+
+      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      fetchStakingStats();
+    }
+  }
+
+  async function setMaxAmount() {
+    const token = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+    const decimals = await token.decimals();
+    const balance = await token.balanceOf(wallet);
+    document.getElementById("stakeAmount").value = ethers.utils.formatUnits(balance, decimals);
+  }
+
+  async function stakeKLY() {
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || isNaN(amount)) return alert("Enter valid amount");
+
+    const kly = new ethers.Contract(KLY_ADDRESS, KLY_ABI, signer);
+    const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+    const parsed = ethers.utils.parseEther(amount);
+
+    document.getElementById("status").textContent = "Approving...";
+    document.getElementById("status").className = "status-processing";
+
+    await kly.approve(STAKING_CONTRACT, parsed);
+    const tx = await stake.stake(parsed);
+    await tx.wait();
+
+    document.getElementById("status").textContent = "Staked successfully!";
+    document.getElementById("status").className = "status-success";
+    fetchStakingStats();
+  }
+
+  async function withdrawStake() {
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || isNaN(amount)) return alert("Enter valid amount");
+
+    const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+    const parsed = ethers.utils.parseEther(amount);
+    document.getElementById("status").textContent = "Withdrawing...";
+    document.getElementById("status").className = "status-processing";
+
+    const tx = await stake.withdraw(parsed);
+    await tx.wait();
+
+    document.getElementById("status").textContent = "Withdrawn successfully!";
+    document.getElementById("status").className = "status-success";
+    fetchStakingStats();
+  }
+
+  async function claimRewards() {
+    const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+    document.getElementById("status").textContent = "Claiming rewards...";
+    document.getElementById("status").className = "status-processing";
+
+    const tx = await stake.claim();
+    await tx.wait();
+
+    document.getElementById("status").textContent = "Rewards claimed!";
+    document.getElementById("status").className = "status-success";
+    fetchStakingStats();
+  }
+
+  async function fetchStakingStats() {
+    const token = new ethers.Contract(KLY_ADDRESS, KLY_ABI, provider);
+    const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, provider);
+    const decimals = await token.decimals();
+
+    const balance = await token.balanceOf(wallet);
+    const stakeInfo = await stake.getStakeInfo(wallet);
+    const reward = await stake.getRewardInfo(wallet);
+
+    document.getElementById("userKLY").textContent = ethers.utils.formatUnits(balance, decimals);
+    document.getElementById("userStaked").textContent = ethers.utils.formatUnits(stakeInfo.staked, decimals);
+    document.getElementById("userRewards").textContent = ethers.utils.formatUnits(reward, decimals);
+  }
+
+  window.connectWallet = connectWallet;
+  window.setMaxAmount = setMaxAmount;
+  window.stakeKLY = stakeKLY;
+  window.withdrawStake = withdrawStake;
+  window.claimRewards = claimRewards;
+
+  if (window.ethereum) {
+    connectWallet();
+  }
+</script>
