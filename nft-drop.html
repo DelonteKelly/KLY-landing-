@@ -302,7 +302,7 @@
   <p style="margin-top:0.5rem;">Welcome to the Legacy Circle.</p>
 </div>
 
- <script type="module">
+<script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
 
   const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
@@ -349,30 +349,34 @@
       document.getElementById("mintBtn").disabled = false;
     }
 
-  document.getElementById("mintBtn").addEventListener("click", async () => {
-  try {
-    const alreadyMinted = await contract.balanceOf(wallet);
-    if (alreadyMinted.gt(0)) {
-      alert("You’ve already minted your Genesis NFT.");
-      return;
-    }
+    // MINT button click handler
+    document.getElementById("mintBtn").addEventListener("click", async () => {
+      try {
+        const alreadyMinted = await contract.balanceOf(wallet);
+        if (alreadyMinted.gt(0)) {
+          alert("You’ve already minted your Genesis NFT.");
+          return;
+        }
 
-    const tx = await contract.mintTo(wallet, METADATA_URI);
-    await tx.wait();
+        const tx = await contract.mintTo(wallet, METADATA_URI);
+        await tx.wait();
 
-    alert("NFT Minted Successfully!");
-    location.reload();
+        alert("NFT Minted Successfully!");
+        location.reload();
+      } catch (err) {
+        console.error("Mint failed", err);
+        alert(`Minting failed: ${err.message || err.data?.message || "Unknown error"}`);
+      }
+    });
+  } // <-- THIS closing brace was missing
 
-  } catch (err) {
-    console.error("Mint failed", err);
-    alert(`Minting failed: ${err.message || err.data?.message || "Unknown error"}`);
-  }
-});
+  // CONNECT button
   document.getElementById("connectBtn").addEventListener("click", async () => {
     await window.ethereum.request({ method: "eth_requestAccounts" });
     initNFTDrop();
   });
 
+  // Auto-connect
   if (window.ethereum && window.ethereum.selectedAddress) {
     initNFTDrop();
   }
