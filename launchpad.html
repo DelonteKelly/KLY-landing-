@@ -418,7 +418,7 @@
     </div>
   </div>
 
- <script type="module">
+<script type="module">
   import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
@@ -426,6 +426,9 @@
   const klyToken = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const minKLY = 10000;
 
+  let wallet, sdk, signer;
+
+  // DOM references
   const statusEl = document.getElementById("statusMessage");
   const statusText = document.getElementById("statusText");
   const walletAddressEl = document.getElementById("walletAddress");
@@ -433,9 +436,8 @@
   const launchBtn = document.getElementById("launchTokenBtn");
   const tokensListEl = document.getElementById("launchedTokensList");
 
-  let wallet, sdk, signer;
-
-  document.addEventListener('DOMContentLoaded', async () => {
+  // On load
+  document.addEventListener("DOMContentLoaded", async () => {
     if (window.ethereum) {
       const accounts = await window.ethereum.request({ method: "eth_accounts" });
       if (accounts.length > 0) await connectWalletHandler();
@@ -443,6 +445,7 @@
     displayLaunchedTokens();
   });
 
+  // Wallet Connect Button
   connectBtn.onclick = connectWalletHandler;
 
   async function connectWalletHandler() {
@@ -464,8 +467,8 @@
       connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
       connectBtn.classList.add("connected");
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => location.reload());
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", () => location.reload());
 
     } catch (err) {
       console.error(err);
@@ -494,6 +497,7 @@
     statusEl.style.display = "flex";
   }
 
+  // Launch Token
   launchBtn.onclick = async () => {
     const name = document.getElementById("tokenName").value.trim();
     const symbol = document.getElementById("tokenSymbol").value.trim().toUpperCase();
@@ -534,8 +538,15 @@
       const treasuryAmount = Math.floor(parseInt(supply) * 0.05).toString();
       await token.call("transfer", [treasury, treasuryAmount]);
 
+      // Save token info locally
       const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
-      tokens.unshift({ name, symbol, supply: parseInt(supply), address: tokenAddress, timestamp: new Date().toISOString() });
+      tokens.unshift({
+        name,
+        symbol,
+        supply: parseInt(supply),
+        address: tokenAddress,
+        timestamp: new Date().toISOString()
+      });
       localStorage.setItem("launchedTokens", JSON.stringify(tokens));
 
       showStatus(`${name} (${symbol}) launched successfully!`, "success");
@@ -553,6 +564,7 @@
 
   function displayLaunchedTokens() {
     const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+
     if (tokens.length === 0) {
       tokensListEl.innerHTML = `
         <div class="empty-state">
@@ -570,14 +582,8 @@
           <span class="token-symbol">${token.symbol}</span>
         </div>
         <div class="token-meta">
-          <div class="meta-item">
-            <i class="fas fa-boxes"></i>
-            <span>Supply: ${token.supply.toLocaleString()}</span>
-          </div>
-          <div class="meta-item">
-            <i class="fas fa-calendar-alt"></i>
-            <span>${new Date(token.timestamp).toLocaleDateString()}</span>
-          </div>
+          <div class="meta-item"><i class="fas fa-boxes"></i> Supply: ${token.supply.toLocaleString()}</div>
+          <div class="meta-item"><i class="fas fa-calendar-alt"></i> ${new Date(token.timestamp).toLocaleDateString()}</div>
         </div>
         <div class="token-address">${token.address}</div>
         <a href="https://bscscan.com/address/${token.address}" target="_blank" class="view-link">
