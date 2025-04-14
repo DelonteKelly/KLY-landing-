@@ -382,300 +382,233 @@
     <div id="launchedTokensList" class="token-grid"></div>
   </div>
 
-  <script type="module">
-    import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
-    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@3/+esm";
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-    // Configuration
-    const config = {
-      treasury: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-      klyToken: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-      minKLY: ethers.utils.parseUnits("10000", 18), // 10,000 KLY
-      treasuryFee: 0.05, // 5%
-      explorerUrl: "https://bscscan.com/address/"
-    };
+  const config = {
+    treasury: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+    klyToken: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+    minKLY: ethers.utils.parseUnits("10000", 18),
+    treasuryFee: 0.05,
+    explorerUrl: "https://bscscan.com/address/"
+  };
 
-    // State
-    let wallet, signer, sdk, klyContract;
+  let wallet, signer, sdk, klyContract;
 
-    // DOM Elements
-    const connectBtn = document.getElementById("connectWallet");
-    const launchBtn = document.getElementById("launchTokenBtn");
-    const walletAddressEl = document.getElementById("walletAddress");
-    const walletInfoEl = document.getElementById("walletInfo");
-    const klyBalanceEl = document.getElementById("klyBalance");
-    const statusEl = document.getElementById("statusMessage");
-    const statusText = document.getElementById("statusText");
-    const tokensListEl = document.getElementById("launchedTokensList");
-    const totalTokensEl = document.getElementById("totalTokensLaunched");
+  const connectBtn = document.getElementById("connectWallet");
+  const launchBtn = document.getElementById("launchTokenBtn");
+  const walletAddressEl = document.getElementById("walletAddress");
+  const walletInfoEl = document.getElementById("walletInfo");
+  const klyBalanceEl = document.getElementById("klyBalance");
+  const statusEl = document.getElementById("statusMessage");
+  const statusText = document.getElementById("statusText");
+  const tokensListEl = document.getElementById("launchedTokensList");
+  const totalTokensEl = document.getElementById("totalTokensLaunched");
 
-    // Initialize
-    async function init() {
-      connectBtn.onclick = connectWallet;
-      launchBtn.onclick = launchToken;
-      
-      // Check if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
+  async function init() {
+    connectBtn.onclick = connectWallet;
+    launchBtn.onclick = launchToken;
+
+    if (window.ethereum) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await provider.listAccounts();
+      if (accounts.length > 0) {
         await connectWallet();
       }
-      
-      displayTokens();
     }
 
-    // Connect Wallet
-    async function connectWallet() {
-      try {
-        showStatus("Connecting wallet...", "processing");
-        
-        // Request account access
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        
-        // Get signer and wallet address
-        signer = provider.getSigner();
-        wallet = await signer.getAddress();
-        sdk = new ThirdwebSDK(signer);
-        
-        // Initialize KLY token contract
-        klyContract = new ethers.Contract(
-          config.klyToken, 
-          ["function balanceOf(address) view returns (uint256)"], 
-          signer
-        );
-        
-        // Update UI
-        walletAddressEl.textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-        connectBtn.classList.add("connected");
-        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-        walletInfoEl.style.display = "block";
-        
-        // Check KLY balance
-        await updateKLYBalance();
-        
-        showStatus("Wallet connected successfully", "success");
-        
-        // Set up event listeners
-        setupEventListeners();
-      } catch (err) {
-        console.error("Wallet connection error:", err);
-        showStatus("Failed to connect wallet", "error");
-      }
-    }
+    displayTokens();
+  }
 
-    // Update KLY Balance
-    async function updateKLYBalance() {
-      try {
-        const balance = await klyContract.balanceOf(wallet);
-        const formatted = ethers.utils.formatUnits(balance, 18);
-        klyBalanceEl.textContent = `Balance: ${parseFloat(formatted).toLocaleString()} KLY`;
-        
-        // Disable launch button if balance is insufficient
-        if (balance.lt(config.minKLY)) {
-          launchBtn.disabled = true;
-          showStatus(`You need at least ${ethers.utils.formatUnits(config.minKLY, 18)} KLY to launch a token`, "error");
-        } else {
-          launchBtn.disabled = false;
-        }
-      } catch (err) {
-        console.error("Balance check error:", err);
-        klyBalanceEl.textContent = "Balance: Error loading";
-      }
-    }
+  async function connectWallet() {
+    try {
+      showStatus("Connecting wallet...", "processing");
 
-    // Launch Token
-    async function launchToken() {
-      // Get form values
-      const name = document.getElementById("tokenName").value.trim();
-      const symbol = document.getElementById("tokenSymbol").value.trim().toUpperCase();
-      const supply = document.getElementById("initialSupply").value.trim();
-      const tokenType = document.getElementById("tokenType").value;
-      
-      // Validate inputs
-      if (!name || name.length < 3) {
-        return showStatus("Token name must be at least 3 characters", "error");
-      }
-      
-      if (!symbol || symbol.length < 2 || symbol.length > 10) {
-        return showStatus("Symbol must be 2-10 characters", "error");
-      }
-      
-      if (!supply || isNaN(supply) || parseInt(supply) < 1000) {
-        return showStatus("Initial supply must be at least 1,000", "error");
-      }
-      
-      try {
-        // Disable button during process
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+      sdk = new ThirdwebSDK(signer);
+
+      klyContract = new ethers.Contract(
+        config.klyToken,
+        ["function balanceOf(address) view returns (uint256)"],
+        signer
+      );
+
+      walletAddressEl.textContent = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      connectBtn.classList.add("connected");
+      connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+      walletInfoEl.style.display = "block";
+
+      await updateKLYBalance();
+      showStatus("Wallet connected successfully", "success");
+
+      setupEventListeners();
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      showStatus("Failed to connect wallet", "error");
+    }
+  }
+
+  async function updateKLYBalance() {
+    try {
+      const balance = await klyContract.balanceOf(wallet);
+      const formatted = ethers.utils.formatUnits(balance, 18);
+      klyBalanceEl.textContent = `Balance: ${parseFloat(formatted).toLocaleString()} KLY`;
+
+      if (balance.lt(config.minKLY)) {
         launchBtn.disabled = true;
-        launchBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Processing...';
-        
-        // Check KLY balance again
-        showStatus("Verifying KLY balance...", "processing");
-        const balance = await klyContract.balanceOf(wallet);
-        if (balance.lt(config.minKLY)) {
-          launchBtn.disabled = false;
-          launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
-          return showStatus(`You need at least ${ethers.utils.formatUnits(config.minKLY, 18)} KLY`, "error");
-        }
-        
-        // Deploy token
-        showStatus("Deploying token contract...", "processing");
-        const tokenAddress = await sdk.deployer.deployToken({
-          name,
-          symbol,
-          primary_sale_recipient: wallet,
-          total_supply: ethers.utils.parseUnits(supply, 18).toString()
-        });
-        
-        // Send treasury fee
-        showStatus("Processing treasury fee...", "processing");
-        const token = await sdk.getContract(tokenAddress);
-        const treasuryAmount = Math.floor(parseInt(supply) * config.treasuryFee;
-        await token.call("transfer", [
-          config.treasury, 
-          ethers.utils.parseUnits(treasuryAmount.toString(), 18).toString()
-        ]);
-        
-        // Save to local storage
-        const tokens = JSON.parse(localStorage.getItem("launchedTokens") || []);
-        tokens.unshift({ 
-          name, 
-          symbol, 
-          supply, 
-          address: tokenAddress, 
-          type: tokenType,
-          timestamp: new Date().toISOString() 
-        });
-        localStorage.setItem("launchedTokens", JSON.stringify(tokens));
-        
-        // Update UI
-        showStatus(`${name} (${symbol}) launched successfully!`, "success");
-        document.getElementById("tokenName").value = "";
-        document.getElementById("tokenSymbol").value = "";
-        document.getElementById("initialSupply").value = "";
-        
-        // Reset button
+        showStatus(`You need at least ${ethers.utils.formatUnits(config.minKLY, 18)} KLY to launch a token`, "error");
+      } else {
         launchBtn.disabled = false;
-        launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
-        
-        // Refresh token list
-        displayTokens();
-      } catch (err) {
-        console.error("Token launch error:", err);
-        
-        // Parse error message
-        let errorMsg = "Token launch failed";
-        if (err.message.includes("user rejected transaction")) {
-          errorMsg = "Transaction rejected by user";
-        } else if (err.message.includes("insufficient funds")) {
-          errorMsg = "Insufficient funds for gas";
-        } else if (err.message) {
-          errorMsg = err.message.split("(")[0].trim();
-        }
-        
-        showStatus(errorMsg, "error");
-        
-        // Reset button
-        launchBtn.disabled = false;
-        launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
       }
+    } catch (err) {
+      console.error("Balance check error:", err);
+      klyBalanceEl.textContent = "Balance: Error loading";
+    }
+  }
+
+  async function launchToken() {
+    const name = document.getElementById("tokenName").value.trim();
+    const symbol = document.getElementById("tokenSymbol").value.trim().toUpperCase();
+    const supply = document.getElementById("initialSupply").value.trim();
+    const tokenType = document.getElementById("tokenType").value;
+
+    if (!name || name.length < 3) return showStatus("Token name must be at least 3 characters", "error");
+    if (!symbol || symbol.length < 2 || symbol.length > 10) return showStatus("Symbol must be 2-10 characters", "error");
+    if (!supply || isNaN(supply) || parseInt(supply) < 1000) return showStatus("Initial supply must be at least 1,000", "error");
+
+    try {
+      launchBtn.disabled = true;
+      launchBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Processing...';
+
+      showStatus("Verifying KLY balance...", "processing");
+      const balance = await klyContract.balanceOf(wallet);
+      if (balance.lt(config.minKLY)) {
+        launchBtn.disabled = false;
+        launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
+        return showStatus(`You need at least ${ethers.utils.formatUnits(config.minKLY, 18)} KLY`, "error");
+      }
+
+      showStatus("Deploying token contract...", "processing");
+      const tokenAddress = await sdk.deployer.deployToken({
+        name,
+        symbol,
+        primary_sale_recipient: wallet,
+        total_supply: ethers.utils.parseUnits(supply, 18).toString()
+      });
+
+      showStatus("Processing treasury fee...", "processing");
+      const token = await sdk.getContract(tokenAddress);
+      const treasuryAmount = Math.floor(parseInt(supply) * config.treasuryFee);
+      await token.call("transfer", [
+        config.treasury,
+        ethers.utils.parseUnits(treasuryAmount.toString(), 18).toString()
+      ]);
+
+      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
+      tokens.unshift({ name, symbol, supply, address: tokenAddress, type: tokenType, timestamp: new Date().toISOString() });
+      localStorage.setItem("launchedTokens", JSON.stringify(tokens));
+
+      showStatus(`${name} (${symbol}) launched successfully!`, "success");
+      document.getElementById("tokenName").value = "";
+      document.getElementById("tokenSymbol").value = "";
+      document.getElementById("initialSupply").value = "";
+
+      launchBtn.disabled = false;
+      launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
+      displayTokens();
+
+    } catch (err) {
+      console.error("Token launch error:", err);
+      let errorMsg = "Token launch failed";
+      if (err.message.includes("user rejected transaction")) {
+        errorMsg = "Transaction rejected by user";
+      } else if (err.message.includes("insufficient funds")) {
+        errorMsg = "Insufficient funds for gas";
+      } else if (err.message) {
+        errorMsg = err.message.split("(")[0].trim();
+      }
+      showStatus(errorMsg, "error");
+
+      launchBtn.disabled = false;
+      launchBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch Token';
+    }
+  }
+
+  function displayTokens() {
+    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || []);
+    totalTokensEl.textContent = tokens.length;
+
+    if (!tokens.length) {
+      tokensListEl.innerHTML = '<div class="token-card"><p>No tokens launched yet.</p></div>';
+      return;
     }
 
-    // Display Tokens
-    function displayTokens() {
-      const tokens = JSON.parse(localStorage.getItem("launchedTokens") || []);
-      totalTokensEl.textContent = tokens.length;
-      
-      if (!tokens.length) {
-        tokensListEl.innerHTML = '<div class="token-card"><p>No tokens launched yet.</p></div>';
-        return;
-      }
-      
-      tokensListEl.innerHTML = tokens.map(token => `
-        <div class="token-card">
-          <h3>${token.name} (${token.symbol})</h3>
-          
-          <div class="token-meta">
-            <span>Type:</span>
-            <span>${token.type.charAt(0).toUpperCase() + token.type.slice(1)}</span>
-          </div>
-          
-          <div class="token-meta">
-            <span>Supply:</span>
-            <span>${parseInt(token.supply).toLocaleString()}</span>
-          </div>
-          
-          <div class="token-meta">
-            <span>Launched:</span>
-            <span>${new Date(token.timestamp).toLocaleDateString()}</span>
-          </div>
-          
-          <div style="margin: 0.5rem 0; font-size: 0.9rem;">
-            <span style="color: var(--primary);">Address:</span><br>
-            <span style="word-break: break-all;">${token.address}</span>
-          </div>
-          
-          <div class="token-actions">
-            <a href="${config.explorerUrl}${token.address}" target="_blank" class="action-button view-button">
-              <i class="fas fa-external-link-alt"></i> View
-            </a>
-            <button onclick="copyToClipboard('${token.address}')" class="action-button copy-button">
-              <i class="fas fa-copy"></i> Copy
-            </button>
-          </div>
+    tokensListEl.innerHTML = tokens.map(token => `
+      <div class="token-card">
+        <h3>${token.name} (${token.symbol})</h3>
+        <div class="token-meta"><span>Type:</span><span>${token.type.charAt(0).toUpperCase() + token.type.slice(1)}</span></div>
+        <div class="token-meta"><span>Supply:</span><span>${parseInt(token.supply).toLocaleString()}</span></div>
+        <div class="token-meta"><span>Launched:</span><span>${new Date(token.timestamp).toLocaleDateString()}</span></div>
+        <div style="margin: 0.5rem 0; font-size: 0.9rem;">
+          <span style="color: var(--primary);">Address:</span><br>
+          <span style="word-break: break-all;">${token.address}</span>
         </div>
-      `).join("");
-    }
+        <div class="token-actions">
+          <a href="${config.explorerUrl}${token.address}" target="_blank" class="action-button view-button">
+            <i class="fas fa-external-link-alt"></i> View
+          </a>
+          <button onclick="copyToClipboard('${token.address}')" class="action-button copy-button">
+            <i class="fas fa-copy"></i> Copy
+          </button>
+        </div>
+      </div>
+    `).join("");
+  }
 
-    // Copy to Clipboard
-    window.copyToClipboard = function(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        showStatus("Address copied to clipboard", "success");
-      }).catch(err => {
-        console.error("Copy failed:", err);
-        showStatus("Failed to copy address", "error");
-      });
-    };
+  window.copyToClipboard = function(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      showStatus("Address copied to clipboard", "success");
+    }).catch(err => {
+      console.error("Copy failed:", err);
+      showStatus("Failed to copy address", "error");
+    });
+  };
 
-    // Show Status Message
-    function showStatus(msg, type) {
-      statusText.textContent = msg;
-      statusEl.className = `status-message status-${type}`;
-      statusEl.style.display = "flex";
-      
-      // Auto-hide success messages after 5 seconds
-      if (type === "success") {
-        setTimeout(() => {
-          if (statusEl.className.includes("status-success")) {
-            statusEl.style.display = "none";
-          }
-        }, 5000);
-      }
-    }
-
-    // Set Up Event Listeners
-    function setupEventListeners() {
-      // Handle account changes
-      window.ethereum.on("accountsChanged", (accounts) => {
-        if (accounts.length === 0) {
-          // Wallet disconnected
-          walletInfoEl.style.display = "none";
-          connectBtn.classList.remove("connected");
-          connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-          showStatus("Wallet disconnected", "error");
-        } else {
-          // Account changed
-          connectWallet();
+  function showStatus(msg, type) {
+    statusText.textContent = msg;
+    statusEl.className = `status-message status-${type}`;
+    statusEl.style.display = "flex";
+    if (type === "success") {
+      setTimeout(() => {
+        if (statusEl.className.includes("status-success")) {
+          statusEl.style.display = "none";
         }
-      });
-      
-      // Handle chain changes
-      window.ethereum.on("chainChanged", () => {
-        window.location.reload();
-      });
+      }, 5000);
     }
+  }
 
-    // Initialize the app
-    window.addEventListener("DOMContentLoaded", init);
-  </script>
+  function setupEventListeners() {
+    window.ethereum.on("accountsChanged", (accounts) => {
+      if (accounts.length === 0) {
+        walletInfoEl.style.display = "none";
+        connectBtn.classList.remove("connected");
+        connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+        showStatus("Wallet disconnected", "error");
+      } else {
+        connectWallet();
+      }
+    });
+
+    window.ethereum.on("chainChanged", () => {
+      window.location.reload();
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
 </body>
 </html>
