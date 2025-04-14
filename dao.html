@@ -105,6 +105,14 @@
   <h1>KLY DAO</h1>
   <button id="connectWallet" class="wallet-button">Connect Wallet</button>
   <div id="walletAddress"></div>
+
+<section style="margin-top: 3rem;">
+  <h2>Delegate KLY Votes</h2>
+  <p style="color: var(--text-secondary); max-width: 600px; margin: auto;">
+    Delegating your voting power is required before submitting proposals or voting. Click below to delegate your KLY votes to your own wallet.
+  </p>
+  <button id="delegateVotesBtn" class="wallet-button" style="margin-top: 1.5rem;">Delegate My KLY Votes</button>
+</section>
   
   <h2 style="margin-top: 3rem;">Create Proposal</h2>
   <div style="margin-bottom: 2rem;">
@@ -253,7 +261,36 @@
             </div>
             ` : ''}
           `;
-          
+          // KLY Token delegation (voting power)
+const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY token contract
+const KLY_ABI = [
+  "function delegate(address delegatee) external",
+  "function delegates(address account) view returns (address)"
+];
+
+const delegateVotesBtn = document.getElementById("delegateVotesBtn");
+
+delegateVotesBtn.addEventListener("click", async () => {
+  try {
+    if (!signer) return alert("Please connect your wallet first.");
+
+    const walletAddress = await signer.getAddress();
+    const klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
+
+    const currentDelegate = await klyToken.delegates(walletAddress);
+    if (currentDelegate.toLowerCase() === walletAddress.toLowerCase()) {
+      alert("You’ve already delegated your KLY votes to yourself.");
+      return;
+    }
+
+    const tx = await klyToken.delegate(walletAddress);
+    await tx.wait();
+    alert("Delegation successful! You can now create and vote on proposals.");
+  } catch (err) {
+    console.error(err);
+    alert("Delegation failed: " + (err?.message || "unknown error"));
+  }
+});
           if (status === "Active") {
             card.querySelector(".vote-yes").onclick = () => castVote(p.proposalId, 1);
             card.querySelector(".vote-no").onclick = () => castVote(p.proposalId, 0);
