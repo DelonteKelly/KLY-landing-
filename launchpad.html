@@ -407,15 +407,17 @@
   const totalTokensEl = document.getElementById("totalTokensLaunched");
 
   async function init() {
+    if (!window.ethereum) {
+      return showStatus("MetaMask not detected", "error");
+    }
+
     connectBtn.onclick = connectWallet;
     launchBtn.onclick = launchToken;
 
-    if (window.ethereum) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.listAccounts();
-      if (accounts.length > 0) {
-        await connectWallet();
-      }
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const accounts = await provider.listAccounts();
+    if (accounts.length > 0) {
+      await connectWallet();
     }
 
     displayTokens();
@@ -482,7 +484,7 @@
 
     try {
       launchBtn.disabled = true;
-      launchBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Processing...';
+      launchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
       showStatus("Verifying KLY balance...", "processing");
       const balance = await klyContract.balanceOf(wallet);
@@ -539,7 +541,7 @@
   }
 
   function displayTokens() {
-    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || []);
+    const tokens = JSON.parse(localStorage.getItem("launchedTokens") || "[]");
     totalTokensEl.textContent = tokens.length;
 
     if (!tokens.length) {
@@ -569,7 +571,7 @@
     `).join("");
   }
 
-  window.copyToClipboard = function(text) {
+  window.copyToClipboard = function (text) {
     navigator.clipboard.writeText(text).then(() => {
       showStatus("Address copied to clipboard", "success");
     }).catch(err => {
