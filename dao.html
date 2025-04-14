@@ -86,151 +86,241 @@
       background: #00ff88;
       height: 100%;
     }
+    #proposalList {
+      margin-top: 2rem;
+    }
+    input, textarea {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #00ffe7;
+      color: #e0e0e0;
+      font-family: 'Rajdhani', sans-serif;
+      border-radius: 6px;
+    }
+    input::placeholder, textarea::placeholder {
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
   <h1>KLY DAO</h1>
   <button id="connectWallet" class="wallet-button">Connect Wallet</button>
   <div id="walletAddress"></div>
+  
   <h2 style="margin-top: 3rem;">Create Proposal</h2>
-<div style="margin-bottom: 2rem;">
-  <input id="proposalTitle" type="text" placeholder="Proposal Title" style="width:100%;padding:12px;margin-bottom:10px;" />
-  <textarea id="proposalDescription" rows="4" placeholder="Describe your proposal..." style="width:100%;padding:12px;"></textarea>
-  <button id="submitProposal" style="margin-top:10px;" class="wallet-button">Submit Proposal</button>
-</div>
+  <div style="margin-bottom: 2rem;">
+    <input id="proposalTitle" type="text" placeholder="Proposal Title" style="width:100%;padding:12px;margin-bottom:10px;" />
+    <textarea id="proposalDescription" rows="4" placeholder="Describe your proposal..." style="width:100%;padding:12px;"></textarea>
+    <button id="submitProposal" style="margin-top:10px;" class="wallet-button">Submit Proposal</button>
+  </div>
+  
+  <h2>Proposals</h2>
+  <div id="proposalList"></div>
 
   <script type="module">
- import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-// KLY DAO setup
-const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
-const DAO_ABI = [
-  {
-    "inputs": [],
-    "name": "getAllProposals",
-    "outputs": [{
-      "components": [
-        { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
-        { "internalType": "address", "name": "proposer", "type": "address" },
-        { "internalType": "address[]", "name": "targets", "type": "address[]" },
-        { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
-        { "internalType": "string[]", "name": "signatures", "type": "string[]" },
-        { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
-        { "internalType": "uint256", "name": "startBlock", "type": "uint256" },
-        { "internalType": "uint256", "name": "endBlock", "type": "uint256" },
-        { "internalType": "string", "name": "description", "type": "string" }
-      ],
-      "internalType": "struct VoteERC20.Proposal[]",
-      "name": "allProposals",
-      "type": "tuple[]"
-    }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
-      { "internalType": "uint8", "name": "support", "type": "uint8" }
-    ],
-    "name": "castVote",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address[]", "name": "targets", "type": "address[]" },
-      { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
-      { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
-      { "internalType": "string", "name": "description", "type": "string" }
-    ],
-    "name": "propose",
-    "outputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
+    // KLY DAO setup
+    const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+    const DAO_ABI = [
+      {
+        "inputs": [],
+        "name": "getAllProposals",
+        "outputs": [{
+          "components": [
+            { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
+            { "internalType": "address", "name": "proposer", "type": "address" },
+            { "internalType": "address[]", "name": "targets", "type": "address[]" },
+            { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
+            { "internalType": "string[]", "name": "signatures", "type": "string[]" },
+            { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
+            { "internalType": "uint256", "name": "startBlock", "type": "uint256" },
+            { "internalType": "uint256", "name": "endBlock", "type": "uint256" },
+            { "internalType": "string", "name": "description", "type": "string" }
+          ],
+          "internalType": "struct VoteERC20.Proposal[]",
+          "name": "allProposals",
+          "type": "tuple[]"
+        }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
+          { "internalType": "uint8", "name": "support", "type": "uint8" }
+        ],
+        "name": "castVote",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address[]", "name": "targets", "type": "address[]" },
+          { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
+          { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
+          { "internalType": "string", "name": "description", "type": "string" }
+        ],
+        "name": "propose",
+        "outputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "proposalId", "type": "uint256" }
+        ],
+        "name": "getProposalVotes",
+        "outputs": [
+          { "internalType": "uint256", "name": "forVotes", "type": "uint256" },
+          { "internalType": "uint256", "name": "againstVotes", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
 
-let provider, signer, wallet;
+    let provider, signer, wallet;
 
-// Connect wallet
-async function connectWallet() {
-  if (!window.ethereum) return alert("MetaMask is required");
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  wallet = await signer.getAddress();
-  document.getElementById("connectWallet").classList.add("connected");
-  document.getElementById("connectWallet").textContent = "Connected";
-  document.getElementById("walletAddress").textContent = `Wallet: ${wallet}`;
-  loadProposals();
-}
+    // Connect wallet
+    async function connectWallet() {
+      if (!window.ethereum) return alert("MetaMask is required");
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        wallet = await signer.getAddress();
+        document.getElementById("connectWallet").classList.add("connected");
+        document.getElementById("connectWallet").textContent = "Connected";
+        document.getElementById("walletAddress").textContent = `Wallet: ${wallet.substring(0, 6)}...${wallet.substring(wallet.length - 4)}`;
+        loadProposals();
+      } catch (err) {
+        console.error("Wallet connection error:", err);
+        alert("Error connecting wallet: " + err.message);
+      }
+    }
 
-// Load proposals
-async function loadProposals() {
-  const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
-  const proposals = await dao.getAllProposals();
-  const list = document.getElementById("proposalList");
-  list.innerHTML = "";
-  proposals.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "proposal-card";
-    card.innerHTML = `
-      <h3>Proposal #${p.proposalId}: ${p.description}</h3>
-      <div class="vote-buttons">
-        <button class="vote-yes">Vote Yes</button>
-        <button class="vote-no">Vote No</button>
-      </div>
-    `;
-    card.querySelector(".vote-yes").onclick = () => castVote(p.proposalId, 1);
-    card.querySelector(".vote-no").onclick = () => castVote(p.proposalId, 0);
-    list.appendChild(card);
-  });
-}
+    // Load proposals
+    async function loadProposals() {
+      try {
+        const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
+        const proposals = await dao.getAllProposals();
+        const list = document.getElementById("proposalList");
+        list.innerHTML = "";
+        
+        if (proposals.length === 0) {
+          list.innerHTML = "<p>No proposals found</p>";
+          return;
+        }
 
-// Cast vote
-async function castVote(proposalId, support) {
-  try {
-    const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-    const tx = await dao.castVote(proposalId, support);
-    await tx.wait();
-    alert("Vote submitted successfully!");
-  } catch (err) {
-    alert("Voting failed: " + err.message);
-  }
-}
+        for (const p of proposals) {
+          // Get votes for this proposal
+          const [forVotes, againstVotes] = await dao.getProposalVotes(p.proposalId);
+          const totalVotes = forVotes.add(againstVotes);
+          const yesPercentage = totalVotes.gt(0) ? forVotes.mul(100).div(totalVotes) : ethers.BigNumber.from(0);
+          
+          // Determine status
+          const currentBlock = await provider.getBlockNumber();
+          let status = "Pending";
+          let statusClass = "status-active";
+          
+          if (currentBlock < p.startBlock) {
+            status = "Pending";
+          } else if (currentBlock <= p.endBlock) {
+            status = "Active";
+          } else {
+            status = forVotes.gt(againstVotes) ? "Passed" : "Failed";
+            statusClass = forVotes.gt(againstVotes) ? "status-passed" : "status-failed";
+          }
 
-// Submit new proposal
-async function submitProposal() {
-  try {
-    const title = document.getElementById("proposalTitle").value;
-    const desc = document.getElementById("proposalDescription").value;
-    const fullDesc = `${title} - ${desc}`;
+          // Create proposal card
+          const card = document.createElement("div");
+          card.className = "proposal-card";
+          card.innerHTML = `
+            <h3>${p.description}</h3>
+            <div class="proposal-status ${statusClass}">${status}</div>
+            <p>Proposal ID: ${p.proposalId.toString()}</p>
+            <p>Proposer: ${p.proposer.substring(0, 6)}...${p.proposer.substring(p.proposer.length - 4)}</p>
+            <p>Voting period: Block ${p.startBlock.toString()} to ${p.endBlock.toString()}</p>
+            <div class="vote-progress">
+              <div class="progress-yes" style="width: ${yesPercentage.toString()}%"></div>
+            </div>
+            <p>Votes: ${forVotes.toString()} For / ${againstVotes.toString()} Against</p>
+            ${status === "Active" ? `
+            <div class="vote-buttons">
+              <button class="vote-yes">Vote Yes</button>
+              <button class="vote-no">Vote No</button>
+            </div>
+            ` : ''}
+          `;
+          
+          if (status === "Active") {
+            card.querySelector(".vote-yes").onclick = () => castVote(p.proposalId, 1);
+            card.querySelector(".vote-no").onclick = () => castVote(p.proposalId, 0);
+          }
+          
+          list.appendChild(card);
+        }
+      } catch (err) {
+        console.error("Error loading proposals:", err);
+        document.getElementById("proposalList").innerHTML = "<p>Error loading proposals</p>";
+      }
+    }
 
-    const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-    const targets = ["0x0000000000000000000000000000000000000000"]; // placeholder
-    const values = [0];
-    const calldatas = [ethers.utils.hexlify([])];
-    
-    const tx = await dao.propose(targets, values, calldatas, fullDesc);
-    await tx.wait();
-    alert("Proposal submitted!");
-    loadProposals();
-  } catch (err) {
-    alert("Error submitting proposal: " + err.message);
-  }
-}
+    // Cast vote
+    async function castVote(proposalId, support) {
+      if (!wallet) return alert("Please connect your wallet first");
+      try {
+        const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+        const tx = await dao.castVote(proposalId, support);
+        await tx.wait();
+        alert("Vote submitted successfully!");
+        loadProposals();
+      } catch (err) {
+        console.error("Voting error:", err);
+        alert("Voting failed: " + (err.message || err));
+      }
+    }
 
-// Event listeners
-document.getElementById("connectWallet").addEventListener("click", connectWallet);
-document.getElementById("submitProposal").addEventListener("click", submitProposal);
+    // Submit new proposal
+    async function submitProposal() {
+      if (!wallet) return alert("Please connect your wallet first");
+      const title = document.getElementById("proposalTitle").value.trim();
+      const desc = document.getElementById("proposalDescription").value.trim();
+      
+      if (!title || !desc) {
+        return alert("Please fill in both title and description");
+      }
+      
+      try {
+        const fullDesc = `${title} - ${desc}`;
+        const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+        const targets = ["0x0000000000000000000000000000000000000000"]; // placeholder
+        const values = [0];
+        const calldatas = ["0x"];
+        
+        const tx = await dao.propose(targets, values, calldatas, fullDesc);
+        await tx.wait();
+        alert("Proposal submitted!");
+        document.getElementById("proposalTitle").value = "";
+        document.getElementById("proposalDescription").value = "";
+        loadProposals();
+      } catch (err) {
+        console.error("Proposal submission error:", err);
+        alert("Error submitting proposal: " + (err.message || err));
+      }
+    }
 
-// Auto connect if wallet authorized
-window.addEventListener("load", async () => {
-  if (window.ethereum && window.ethereum.selectedAddress) {
-    await connectWallet();
-  }
-});
+    // Event listeners
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("submitProposal").addEventListener("click", submitProposal);
+
+    // Auto connect if wallet authorized
+    window.addEventListener("load", async () => {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        await connectWallet();
+      }
+    });
   </script>
 </body>
 </html>
