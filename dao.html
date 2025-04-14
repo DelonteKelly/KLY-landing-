@@ -92,8 +92,12 @@
   <h1>KLY DAO</h1>
   <button id="connectWallet" class="wallet-button">Connect Wallet</button>
   <div id="walletAddress"></div>
-  <h2 style="margin-top: 2rem;">Active Proposals</h2>
-  <div id="proposalList"></div>
+  <h2 style="margin-top: 3rem;">Create Proposal</h2>
+<div style="margin-bottom: 2rem;">
+  <input id="proposalTitle" type="text" placeholder="Proposal Title" style="width:100%;padding:12px;margin-bottom:10px;" />
+  <textarea id="proposalDescription" rows="4" placeholder="Describe your proposal..." style="width:100%;padding:12px;"></textarea>
+  <button id="submitProposal" style="margin-top:10px;" class="wallet-button">Submit Proposal</button>
+</div>
 
   <script type="module">
     import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
@@ -219,6 +223,37 @@
         proposalList.appendChild(card);
       }
     }
+    document.getElementById("submitProposal").addEventListener("click", async () => {
+  const title = document.getElementById("proposalTitle").value.trim();
+  const description = document.getElementById("proposalDescription").value.trim();
+
+  if (!title || !description) {
+    alert("Please enter both a title and description.");
+    return;
+  }
+
+  try {
+    const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+
+    // Fill in dummy proposal call params if required
+    const targets = [wallet]; // dummy target, just for demonstration
+    const values = [0];
+    const signatures = [""];
+    const calldatas = ["0x"];
+    const fullDescription = `${title}: ${description}`;
+
+    const tx = await dao.propose(targets, values, signatures, calldatas, fullDescription);
+    await tx.wait();
+
+    alert("Proposal submitted!");
+    document.getElementById("proposalTitle").value = "";
+    document.getElementById("proposalDescription").value = "";
+    await loadProposals();
+  } catch (err) {
+    alert("Error submitting proposal: " + err.message);
+    console.error(err);
+  }
+});
 
     window.addEventListener("load", async () => {
       if (window.ethereum && window.ethereum.selectedAddress) {
