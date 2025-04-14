@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Legacy Course</title>
- <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.min.js"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -439,12 +438,12 @@
 <script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const KLY_ABI = [{
-  constant: true,
-  inputs: [{ name: "owner", type: "address" }],
-  name: "balanceOf",
-  outputs: [{ name: "", type: "uint256" }],
-  type: "function"
-}];
+    constant: true,
+    inputs: [{ name: "owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }];
   const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
   let wallet = null;
@@ -479,12 +478,11 @@
       if (!connected) return;
     }
 
-    // Ensure we're on BNB Smart Chain (chainId 0x38)
-const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-if (chainId !== "0x38") {
-  document.getElementById("accessStatus").innerText = "Please switch to BNB Smart Chain to continue.";
-  return;
-}
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== "0x38") {
+      document.getElementById("accessStatus").innerText = "Please switch to BNB Smart Chain to continue.";
+      return;
+    }
 
     try {
       const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
@@ -510,9 +508,15 @@ if (chainId !== "0x38") {
       if (!connected) return;
     }
 
+    if (!window.thirdweb) {
+      document.getElementById("mintStatus").innerText = "Mint failed: ThirdwebSDK not loaded.";
+      return;
+    }
+
     try {
       document.getElementById("mintStatus").innerText = "Checking eligibility...";
-      sdk = new ThirdwebSDK("binance");
+      sdk = new window.thirdweb.ThirdwebSDK("binance");
+
       const contract = await sdk.getContract(NFT_CONTRACT, "nft-collection");
       const balance = await contract.erc721.balanceOf(wallet);
 
@@ -565,7 +569,7 @@ if (chainId !== "0x38") {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Expose functions to global scope
+  // Expose to global scope
   window.connectWallet = connectWallet;
   window.verifyAccess = verifyAccess;
   window.mintNFT = mintNFT;
