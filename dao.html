@@ -218,11 +218,28 @@
 <script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
+  // DAO Configuration
+  const DAO_CONTRACT_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
+  const DAO_ABI = [
+    {
+      "inputs": [
+        { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
+        { "internalType": "bool", "name": "support", "type": "bool" }
+      ],
+      "name": "castVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ];
+
+  // DOM Elements
   const connectBtn = document.getElementById("connectWallet");
   const walletAddressEl = document.getElementById("walletAddress");
 
   let provider, signer, wallet;
 
+  // Connect Wallet
   async function connectWallet() {
     try {
       if (!window.ethereum) {
@@ -245,16 +262,41 @@
     }
   }
 
-  connectBtn.addEventListener("click", connectWallet);
+  // Vote on Proposal
+  async function castVote(proposalId, support) {
+    try {
+      const dao = new ethers.Contract(DAO_CONTRACT_ADDRESS, DAO_ABI, signer);
+      const tx = await dao.castVote(proposalId, support);
+      await tx.wait();
 
-  // Auto-connect if already connected
+      alert(`Vote submitted for Proposal #${proposalId}: ${support ? "Yes" : "No"}`);
+    } catch (err) {
+      console.error("Voting error:", err);
+      alert("Failed to submit vote.");
+    }
+  }
+
+  // Event Listeners
   window.addEventListener("DOMContentLoaded", async () => {
+    // Auto-connect if wallet was already authorized
     if (window.ethereum && window.ethereum.selectedAddress) {
       await connectWallet();
     }
+
+    // Wallet connect button
+    connectBtn.addEventListener("click", connectWallet);
+
+    // Vote buttons
+    const yesBtn = document.querySelector(".vote-yes");
+    const noBtn = document.querySelector(".vote-no");
+
+    if (yesBtn && noBtn) {
+      yesBtn.addEventListener("click", () => castVote(1, true));
+      noBtn.addEventListener("click", () => castVote(1, false));
+    }
   });
 
-  // Handle account changes
+  // Chain/account listeners
   if (window.ethereum) {
     window.ethereum.on("accountsChanged", () => window.location.reload());
     window.ethereum.on("chainChanged", () => window.location.reload());
