@@ -224,7 +224,7 @@
     {
       "inputs": [
         { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
-        { "internalType": "bool", "name": "support", "type": "bool" }
+        { "internalType": "uint8", "name": "support", "type": "uint8" }
       ],
       "name": "castVote",
       "outputs": [],
@@ -252,7 +252,6 @@
       signer = provider.getSigner();
       wallet = await signer.getAddress();
 
-      // Update UI
       connectBtn.classList.add("connected");
       connectBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Connected';
       walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
@@ -262,41 +261,37 @@
     }
   }
 
-  // Vote on Proposal
-  async function castVote(proposalId, support) {
+  // Cast Vote (support = 1 for yes, 0 for no)
+  async function castVote(proposalId, supportValue) {
     try {
       const dao = new ethers.Contract(DAO_CONTRACT_ADDRESS, DAO_ABI, signer);
-      const tx = await dao.castVote(proposalId, support);
+      const tx = await dao.castVote(proposalId, supportValue);
       await tx.wait();
 
-      alert(`Vote submitted for Proposal #${proposalId}: ${support ? "Yes" : "No"}`);
+      alert(`Vote submitted: ${supportValue === 1 ? "Yes" : "No"}`);
     } catch (err) {
       console.error("Voting error:", err);
-      alert("Failed to submit vote.");
+      alert(`Failed to submit vote: ${err.message}`);
     }
   }
 
   // Event Listeners
   window.addEventListener("DOMContentLoaded", async () => {
-    // Auto-connect if wallet was already authorized
     if (window.ethereum && window.ethereum.selectedAddress) {
       await connectWallet();
     }
 
-    // Wallet connect button
     connectBtn.addEventListener("click", connectWallet);
 
-    // Vote buttons
     const yesBtn = document.querySelector(".vote-yes");
     const noBtn = document.querySelector(".vote-no");
 
     if (yesBtn && noBtn) {
-      yesBtn.addEventListener("click", () => castVote(1, true));
-      noBtn.addEventListener("click", () => castVote(1, false));
+      yesBtn.addEventListener("click", () => castVote(1, 1)); // 1 = yes
+      noBtn.addEventListener("click", () => castVote(1, 0));  // 0 = no
     }
   });
 
-  // Chain/account listeners
   if (window.ethereum) {
     window.ethereum.on("accountsChanged", () => window.location.reload());
     window.ethereum.on("chainChanged", () => window.location.reload());
