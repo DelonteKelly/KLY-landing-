@@ -259,43 +259,75 @@
     }
   }
 
-  async function loadProposals() {
-    try {
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
-      const proposals = await dao.getAllProposals();
-      const list = document.getElementById("proposalList");
-      list.innerHTML = "";
+async function loadProposals() {
+  try {
+    const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
+    const proposals = await dao.getAllProposals();
+    const list = document.getElementById("proposalList");
+    list.innerHTML = "";
 
-      const currentBlock = await provider.getBlockNumber();
+    console.log("Proposals fetched:", proposals);
 
-      for (const p of proposals) {
+    if (!proposals || proposals.length === 0) {
+      list.innerHTML = "<p>No proposals found</p>";
+      return;
+    }
+
+    const currentBlock = await provider.getBlockNumber();
+
+    for (const p of proposals) {
+      try {
         const [forVotes, againstVotes] = await dao.getProposalVotes(p.proposalId);
-        const total = forVotes.add(againstVotes);
-        const yesPct = total.gt(0) ? forVotes.mul(100).div(total) : 0;
+        const totalVotes = forVotes.add(againstVotes);
+        const yesPercentage = totalVotes.gt(0) ? forVotes.mul(100).div(totalVotes) : ethers.BigNumber.from(0);
 
         let status = "Pending";
-        if (currentBlock < p.startBlock) status = "Pending";
-        else if (currentBlock <= p.endBlock) status = "Active";
-        else status = forVotes.gt(againstVotes) ? "Passed" : "Failed";
+        let statusClass = "status-active";
+
+        if (currentBlock < p.startBlock) {
+          status = "Pending";
+        } else if (currentBlock <= p.endBlock) {
+          status = "Active";
+        } else {
+          status = forVotes.gt(againstVotes) ? "Passed" : "Failed";
+          statusClass = forVotes.gt(againstVotes) ? "status-passed" : "status-failed";
+        }
 
         const card = document.createElement("div");
         card.className = "proposal-card";
         card.innerHTML = `
           <h3>${p.description}</h3>
-          <p>Status: ${status}</p>
+          <div class="proposal-status ${statusClass}">${status}</div>
+          <p>Proposal ID: ${p.proposalId.toString()}</p>
+          <p>Proposer: ${p.proposer.substring(0, 6)}...${p.proposer.slice(-4)}</p>
+          <p>Voting period: Block ${p.startBlock} to ${p.endBlock}</p>
+          <div class="vote-progress">
+            <div class="progress-yes" style="width: ${yesPercentage.toString()}%"></div>
+          </div>
           <p>Votes: ${forVotes.toString()} For / ${againstVotes.toString()} Against</p>
           ${status === "Active" ? `
-            <button onclick="castVote(${p.proposalId}, 1)">Vote Yes</button>
-            <button onclick="castVote(${p.proposalId}, 0)">Vote No</button>
+            <div class="vote-buttons">
+              <button class="vote-yes">Vote Yes</button>
+              <button class="vote-no">Vote No</button>
+            </div>
           ` : ""}
         `;
-        list.appendChild(card);
-      }
-    } catch (err) {
-      console.error("Proposal load error:", err);
-    }
-  }
 
+        if (status === "Active") {
+          card.querySelector(".vote-yes").onclick = () => castVote(p.proposalId, 1);
+          card.querySelector(".vote-no").onclick = () => castVote(p.proposalId, 0);
+        }
+
+        list.appendChild(card);
+      } catch (innerErr) {
+        console.warn("Error rendering proposal:", innerErr);
+      }
+    }
+  } catch (err) {
+    console.error("Error loading proposals:", err);
+    document.getElementById("proposalList").innerHTML = "<p>Error loading proposals</p>";
+  }
+}
   document.getElementById("connectWallet").addEventListener("click", connectWallet);
   document.getElementById("submitProposal").addEventListener("click", submitProposal);
   document.getElementById("delegateVotesBtn").addEventListener("click", delegateVotes);
