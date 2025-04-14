@@ -91,6 +91,29 @@
       border-radius: 8px;
       box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
     }
+    .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #00ffe7;
+    color: #000;
+    padding: 14px 22px;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0 0 15px #00ffe7;
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.4s ease;
+    z-index: 9999;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast.hidden {
+    display: no
   </style>
 </head>
 <body>
@@ -431,6 +454,8 @@
   <p id="mintStatus" class="status"></p>
 </div>
 
+
+  <div id="toast" class="toast hidden"></div>
 <!-- Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 
@@ -526,8 +551,6 @@
       const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
       const data = "0x";
 
-      document.getElementById("mintStatus").innerText = "Minting NFT...";
-
 const tx = await contract.methods
   .mint(wallet, 1, baseURI, data)
   .send({
@@ -535,17 +558,19 @@ const tx = await contract.methods
     value: web3.utils.toWei("0", "ether") // Required even if it's 0
   });
 
-      document.getElementById("mintStatus").innerHTML = `
-        ✅ NFT minted successfully!<br>
-        <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
-          View on BscScan
-        </a>
-      `;
-    } catch (err) {
-      console.error("Mint failed:", err);
-      document.getElementById("mintStatus").innerText = `Mint failed: ${err.message}`;
-    }
-  }
+    document.getElementById("mintStatus").innerHTML = `
+  ✅ NFT minted successfully!<br>
+  <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
+    View on BscScan
+  </a>
+`;
+showToast("✅ NFT minted successfully!");
+      
+    catch (err) {
+  const message = err?.message || "Unknown mint error.";
+  console.error("Mint failed:", message);
+  document.getElementById("mintStatus").innerText = `Mint failed: ${message}`;
+}
 
   function showNextModule(mod) {
     for (let i = 1; i <= 5; i++) {
@@ -569,6 +594,19 @@ const tx = await contract.methods
     document.getElementById(`module${mod}`)?.classList.remove("hidden");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+    function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.classList.remove("hidden");
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+    }, 400);
+  }, 3000); // Visible for 3 seconds
+}
 
   // Expose to HTML
   window.connectWallet = connectWallet;
