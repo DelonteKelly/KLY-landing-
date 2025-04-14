@@ -431,12 +431,14 @@
   <p id="mintStatus" class="status"></p>
 </div>
 
-<!-- Include Dependencies -->
+<!-- Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
 
 <script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
   const KLY_ABI = [{
     constant: true,
     inputs: [{ name: "owner", type: "address" }],
@@ -444,7 +446,6 @@
     outputs: [{ name: "", type: "uint256" }],
     type: "function"
   }];
-  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
   let wallet = null;
   let web3;
@@ -465,6 +466,7 @@
       document.getElementById("walletAddress").style.display = "block";
       document.getElementById("connectWallet").style.display = "none";
       document.getElementById("accessStatus").innerText = "Wallet connected";
+
       return true;
     } catch (err) {
       console.error("Wallet connect error:", err);
@@ -480,7 +482,7 @@
 
     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
     if (chainId !== "0x38") {
-      document.getElementById("accessStatus").innerText = "Please switch to BNB Smart Chain to continue.";
+      document.getElementById("accessStatus").innerText = "Please switch to BNB Smart Chain.";
       return;
     }
 
@@ -493,11 +495,11 @@
         document.getElementById("accessPanel").classList.add("hidden");
         document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText =
-          `Access Denied: You only hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
+        document.getElementById("accessStatus").innerText = 
+          `Access Denied: You hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
       }
     } catch (err) {
-      console.error("Access verification error:", err);
+      console.error("Access check error:", err);
       document.getElementById("accessStatus").innerText = `Error: ${err.message}`;
     }
   }
@@ -508,41 +510,33 @@
       if (!connected) return;
     }
 
-    if (!window.thirdweb) {
-      document.getElementById("mintStatus").innerText = "Mint failed: ThirdwebSDK not loaded.";
-      return;
-    }
-
     try {
-      document.getElementById("mintStatus").innerText = "Checking eligibility...";
-      sdk = new window.thirdweb.ThirdwebSDK("binance");
+      document.getElementById("mintStatus").innerText = "Initializing mint...";
 
+      sdk = new window.ThirdwebSDK("binance");
       const contract = await sdk.getContract(NFT_CONTRACT, "nft-collection");
-      const balance = await contract.erc721.balanceOf(wallet);
 
+      const balance = await contract.erc721.balanceOf(wallet);
       if (balance.toNumber() > 0) {
         document.getElementById("mintStatus").innerText = "You already minted this NFT.";
         return;
       }
 
-      document.getElementById("mintStatus").innerText = "Minting in progress...";
       const tx = await contract.erc721.mintTo(wallet, {
         name: "KLY Legacy Graduate",
         description: "Certificate of Completion for the KLY Legacy Course",
-        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
-        properties: {
-          course: "KLY Legacy",
-          date: new Date().toISOString()
-        }
+        image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
       });
 
       document.getElementById("mintStatus").innerHTML = `
-        <span style="color:#00ff99;">✅ NFT minted successfully!</span><br>
-        <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a>
+        ✅ NFT minted successfully!<br>
+        <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">
+          View on BscScan
+        </a>
       `;
     } catch (err) {
-      console.error("Minting failed:", err);
-      document.getElementById("mintStatus").innerText = "Mint failed: " + (err.message || err);
+      console.error("Mint failed:", err);
+      document.getElementById("mintStatus").innerText = `Mint failed: ${err.message}`;
     }
   }
 
@@ -569,7 +563,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Expose to global scope
+  // Expose to HTML
   window.connectWallet = connectWallet;
   window.verifyAccess = verifyAccess;
   window.mintNFT = mintNFT;
