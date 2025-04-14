@@ -7,43 +7,88 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    :root {
+ :root {
   --primary: #00ffe7;
   --secondary: #ff00aa;
   --dark: #050505;
   --light: #e0e0e0;
   --card-bg: rgba(15, 15, 15, 0.9);
+  --glow: 0 0 15px;
+  --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap');
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--dark);
   color: var(--light);
+  min-height: 100vh;
   background-image:
     radial-gradient(circle at 30% 20%, rgba(0, 255, 231, 0.05), transparent 60%),
     radial-gradient(circle at 80% 80%, rgba(255, 0, 170, 0.05), transparent 60%);
+  background-attachment: fixed;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
 }
 
 h1 {
   font-family: 'Orbitron', sans-serif;
-  font-size: 2.5rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
   color: var(--primary);
-  text-shadow: 0 0 8px var(--primary);
+  text-shadow: var(--glow) var(--primary);
+  letter-spacing: 1px;
+  margin-bottom: 1.5rem;
+  position: relative;
+  display: inline-block;
+}
+
+h1::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: var(--transition);
+}
+
+h1:hover::after {
+  transform: scaleX(1);
 }
 
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .wallet-button {
@@ -55,13 +100,38 @@ h1 {
   border: none;
   border-radius: 10px;
   box-shadow: 0 0 15px var(--primary);
-  transition: 0.3s ease;
+  transition: var(--transition);
   font-size: 1rem;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.wallet-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  z-index: -1;
+  opacity: 0;
+  transition: var(--transition);
 }
 
 .wallet-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 25px var(--primary);
+  transform: translateY(-3px);
+  box-shadow: 0 0 25px var(--primary), 0 5px 15px rgba(0, 255, 231, 0.3);
+}
+
+.wallet-button:hover::before {
+  opacity: 1;
+}
+
+.wallet-button:active {
+  transform: translateY(0);
 }
 
 .wallet-button.connected {
@@ -71,26 +141,36 @@ h1 {
   box-shadow: 0 0 12px var(--primary);
 }
 
+.wallet-button.connected:hover {
+  background: rgba(0, 255, 231, 0.1);
+}
+
 #walletAddress {
   color: var(--primary);
   font-family: 'Orbitron', sans-serif;
   margin-top: 0.5rem;
   font-size: 1rem;
+  word-break: break-all;
 }
 
 #klyBalance {
   color: #aaa;
   font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .stats {
   display: flex;
   justify-content: space-between;
   margin: 2rem 0;
-  padding: 1rem;
-  background: #111;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.8);
   border-radius: 12px;
   box-shadow: 0 0 10px rgba(0, 255, 231, 0.2);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 255, 231, 0.1);
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .stats div {
@@ -98,6 +178,17 @@ h1 {
   color: var(--primary);
   font-family: 'Orbitron', sans-serif;
   font-size: 1rem;
+  flex: 1;
+  min-width: 120px;
+  padding: 0.5rem;
+}
+
+.stats div span {
+  display: block;
+  font-size: 1.5rem;
+  margin-top: 0.5rem;
+  color: var(--light);
+  font-weight: bold;
 }
 
 label {
@@ -106,18 +197,86 @@ label {
   display: block;
   font-weight: bold;
   font-size: 1rem;
+  letter-spacing: 0.5px;
 }
 
 input {
   width: 100%;
-  padding: 0.7rem 1rem;
-  border-radius: 6px;
-  background: #000;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
   border: 1px solid var(--primary);
   color: #fff;
   margin-bottom: 1.5rem;
   font-family: 'Rajdhani', sans-serif;
   font-size: 1rem;
+  transition: var(--transition);
+  backdrop-filter: blur(5px);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 10px rgba(255, 0, 170, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding: 1.5rem;
+  }
+  
+  .header-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .stats div {
+    min-width: calc(50% - 1rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats div {
+    min-width: 100%;
+  }
+  
+  .wallet-button {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Animation for futuristic feel */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
 }
 </style>
 </head>
