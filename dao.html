@@ -215,6 +215,50 @@
       </div>
     </section>
   </div>
-<script type="module" src="kly-dashboard-integrated.js"></script>
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+
+  const connectBtn = document.getElementById("connectWallet");
+  const walletAddressEl = document.getElementById("walletAddress");
+
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        walletAddressEl.textContent = "MetaMask not installed";
+        return;
+      }
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+
+      // Update UI
+      connectBtn.classList.add("connected");
+      connectBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Connected';
+      walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    } catch (err) {
+      console.error("Wallet connect error:", err);
+      walletAddressEl.textContent = "Failed to connect";
+    }
+  }
+
+  connectBtn.addEventListener("click", connectWallet);
+
+  // Auto-connect if already connected
+  window.addEventListener("DOMContentLoaded", async () => {
+    if (window.ethereum && window.ethereum.selectedAddress) {
+      await connectWallet();
+    }
+  });
+
+  // Handle account changes
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => window.location.reload());
+    window.ethereum.on("chainChanged", () => window.location.reload());
+  }
+</script>
 </body>
 </html>
