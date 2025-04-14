@@ -312,49 +312,102 @@ input:focus {
   </div>
 
   <!-- Wallet Connect Script -->
-  <script type="module">
-    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+ <script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-    const connectBtn = document.getElementById("connectWallet");
-    const walletInfoEl = document.getElementById("walletInfo");
-    const walletAddressEl = document.getElementById("walletAddress");
-
-    let provider, signer, wallet;
-
-    async function connectWallet() {
-      try {
-        if (!window.ethereum) {
-          alert("Please install MetaMask.");
-          return;
+  // KLY Registry Contract Config
+  const REGISTRY_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const REGISTRY_ABI = [
+    {
+      "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
+      "name": "getTokensByOwner",
+      "outputs": [
+        {
+          "components": [
+            { "internalType": "string", "name": "name", "type": "string" },
+            { "internalType": "address", "name": "tokenAddress", "type": "address" }
+          ],
+          "internalType": "struct KLYTokenRegistry.TokenInfo[]",
+          "name": "",
+          "type": "tuple[]"
         }
-
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        wallet = await signer.getAddress();
-
-        connectBtn.classList.add("connected");
-        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-        walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-        walletInfoEl.style.display = "block";
-      } catch (err) {
-        console.error("Wallet connection error:", err);
-        walletAddressEl.textContent = "Failed to connect";
-      }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     }
+  ];
 
-    connectBtn.addEventListener("click", connectWallet);
+  const connectBtn = document.getElementById("connectWallet");
+  const walletInfoEl = document.getElementById("walletInfo");
+  const walletAddressEl = document.getElementById("walletAddress");
 
-    window.addEventListener("DOMContentLoaded", () => {
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        connectWallet();
+  const statsDivs = document.querySelectorAll(".stats div");
+  let provider, signer, wallet;
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
+        return;
       }
-    });
 
-    if (window.ethereum) {
-      window.ethereum.on("accountsChanged", () => window.location.reload());
-      window.ethereum.on("chainChanged", () => window.location.reload());
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
+
+      connectBtn.classList.add("connected");
+      connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+      walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      walletInfoEl.style.display = "block";
+
+      await loadTokensByOwner(wallet);
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      walletAddressEl.textContent = "Failed to connect";
     }
-  </script>
+  }
+
+  async function loadTokensByOwner(wallet) {
+    try {
+      const contract = new ethers.Contract(REGISTRY_ADDRESS, REGISTRY_ABI, provider);
+      const tokens = await contract.getTokensByOwner(wallet);
+
+      // Update token count
+      statsDivs[0].querySelector("strong").innerText = tokens.length;
+
+      // Inject token list if any
+      if (tokens.length > 0) {
+        let listContainer = document.createElement("div");
+        listContainer.style.marginTop = "2rem";
+        listContainer.innerHTML = `<h2 style="color:#00ffe7; font-family:Orbitron;">Your Deployed Tokens</h2>`;
+        
+        tokens.forEach((t, i) => {
+          const item = document.createElement("div");
+          item.style.padding = "0.5rem 0";
+          item.innerHTML = `<strong>${t.name}</strong><br/><code>${t.tokenAddress}</code>`;
+          listContainer.appendChild(item);
+        });
+
+        document.querySelector(".container").appendChild(listContainer);
+      }
+    } catch (err) {
+      console.error("Failed to load tokens:", err);
+    }
+  }
+
+  connectBtn.addEventListener("click", connectWallet);
+
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.ethereum && window.ethereum.selectedAddress) {
+      connectWallet();
+    }
+  });
+
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => window.location.reload());
+    window.ethereum.on("chainChanged", () => window.location.reload());
+  }
+</script>
 </body>
 </html>
