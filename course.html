@@ -433,11 +433,10 @@
 
 <!-- Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-<script src="https://unpkg.com/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
 
 <script>
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  const NFT_CONTRACT = "0xc75f0ea874c8f7a9493ca9d5a7d354359bf0e79b";
 
   const KLY_ABI = [{
     constant: true,
@@ -447,9 +446,21 @@
     type: "function"
   }];
 
+  const NFT_ABI = [{
+    "inputs": [
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "string", "name": "baseURI", "type": "string" },
+      { "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }];
+
   let wallet = null;
   let web3;
-  let sdk;
 
   async function connectWallet() {
     if (!window.ethereum) {
@@ -505,45 +516,34 @@
   }
 
   async function mintNFT() {
-  if (!wallet) {
-    const connected = await connectWallet();
-    if (!connected) return;
-  }
-
-  if (typeof window.ThirdwebSDK === "undefined") {
-    document.getElementById("mintStatus").innerText = "Mint failed: ThirdwebSDK not loaded.";
-    return;
-  }
-
-  try {
-    document.getElementById("mintStatus").innerText = "Initializing mint...";
-
-    sdk = new window.ThirdwebSDK("binance");
-    const contract = await sdk.getContract(NFT_CONTRACT, "nft-collection");
-
-    const balance = await contract.erc721.balanceOf(wallet);
-    if (balance.toNumber() > 0) {
-      document.getElementById("mintStatus").innerText = "You already minted this NFT.";
-      return;
+    if (!wallet) {
+      const connected = await connectWallet();
+      if (!connected) return;
     }
 
-    const tx = await contract.erc721.mintTo(wallet, {
-      name: "KLY Legacy Graduate",
-      description: "Certificate of Completion for the KLY Legacy Course",
-      image: "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-    });
+    try {
+      const contract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT);
+      const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
+      const data = "0x";
 
-    document.getElementById("mintStatus").innerHTML = `
-      ✅ NFT minted successfully!<br>
-      <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">
-        View on BscScan
-      </a>
-    `;
-  } catch (err) {
-    console.error("Mint failed:", err);
-    document.getElementById("mintStatus").innerText = `Mint failed: ${err.message}`;
+      document.getElementById("mintStatus").innerText = "Minting NFT...";
+
+      const tx = await contract.methods
+        .mint(wallet, 1, baseURI, data)
+        .send({ from: wallet });
+
+      document.getElementById("mintStatus").innerHTML = `
+        ✅ NFT minted successfully!<br>
+        <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
+          View on BscScan
+        </a>
+      `;
+    } catch (err) {
+      console.error("Mint failed:", err);
+      document.getElementById("mintStatus").innerText = `Mint failed: ${err.message}`;
+    }
   }
-}
+
   function showNextModule(mod) {
     for (let i = 1; i <= 5; i++) {
       document.getElementById(`module${i}`)?.classList.add("hidden");
@@ -574,5 +574,3 @@
   window.showNextModule = showNextModule;
   window.showPreviousModule = showPreviousModule;
 </script>
-</body>
-</html>
