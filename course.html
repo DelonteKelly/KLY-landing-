@@ -526,8 +526,7 @@
     }
 
     try {
-      const readWeb3 = new Web3(new Web3.providers.HttpProvider("https://bsc.publicnode.com"));
-      const contract = new readWeb3.eth.Contract(KLY_ABI, KLY_TOKEN);
+      const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
       const balance = await contract.methods.balanceOf(wallet).call();
       const balanceEth = web3.utils.fromWei(balance, "ether");
 
@@ -535,13 +534,12 @@
         document.getElementById("accessPanel").classList.add("hidden");
         document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText =
+        document.getElementById("accessStatus").innerText = 
           `Access Denied: You hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
       }
     } catch (err) {
       console.error("Access check error:", err);
-      document.getElementById("accessStatus").innerText =
-        `Network error: Could not verify balance. Try again later.`;
+      document.getElementById("accessStatus").innerText = `Error: ${err.message}`;
     }
   }
 
@@ -556,72 +554,62 @@
       const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
       const data = "0x";
 
-      const gasEstimate = await contract.methods
-        .mint(wallet, 1, baseURI, data)
-        .estimateGas({ from: wallet });
+const tx = await contract.methods
+  .mint(wallet, 1, baseURI, data)
+  .send({
+    from: wallet,
+    value: web3.utils.toWei("0", "ether") // Required even if it's 0
+  });
 
-      const tx = await contract.methods
-        .mint(wallet, 1, baseURI, data)
-        .send({
-          from: wallet,
-          value: web3.utils.toWei("0", "ether"),
-          gas: Math.floor(gasEstimate * 1.2)
-        });
+    document.getElementById("mintStatus").innerHTML = `
+  ✅ NFT minted successfully!<br>
+  <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
+    View on BscScan
+  </a>
+`;
+showToast("✅ NFT minted successfully!");
+      
+    catch (err) {
+  const message = err?.message || "Unknown mint error.";
+  console.error("Mint failed:", message);
+  document.getElementById("mintStatus").innerText = `Mint failed: ${message}`;
+}
 
-      document.getElementById("mintStatus").innerHTML = `
-        ✅ NFT minted successfully!<br>
-        <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
-          View on BscScan
-        </a>
-      `;
-      showToast("✅ NFT minted successfully!");
-
-    } catch (err) {
-      console.error("Mint failed:", err);
-      let errorMessage = err.message;
-
-      if (err.message.includes("revert")) {
-        errorMessage = err.message.match(/reason string: '(.+?)'/)?.[1] || err.message;
-      }
-
-      document.getElementById("mintStatus").innerText = `Mint failed: ${errorMessage}`;
-      showToast(`❌ Mint failed: ${errorMessage}`);
+  function showNextModule(mod) {
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`module${i}`)?.classList.add("hidden");
     }
-  }
+    document.getElementById("mintSection").classList.add("hidden");
 
-  function showNextModule(currentModule) {
-    document.querySelectorAll('[id^="module"]').forEach(el => {
-      el.classList.add('hidden');
-    });
-
-    const nextModuleNum = parseInt(currentModule) + 1;
-    const nextModule = document.getElementById(`module${nextModuleNum}`);
-
-    if (nextModule) {
-      nextModule.classList.remove('hidden');
+    if (mod === 'mint') {
+      document.getElementById("mintSection").classList.remove("hidden");
     } else {
-      alert("Congratulations! You've completed all modules.");
+      document.getElementById(`module${mod}`)?.classList.remove("hidden");
     }
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function showPreviousModule(currentModule) {
-    document.querySelectorAll('[id^="module"]').forEach(el => {
-      el.classList.add('hidden');
-    });
-
-    const prevModuleNum = parseInt(currentModule) - 1;
-    const prevModule = document.getElementById(`module${prevModuleNum}`);
-
-    if (prevModule) {
-      prevModule.classList.remove('hidden');
-    } else {
-      document.getElementById(`module${currentModule}`).classList.remove('hidden');
+  function showPreviousModule(mod) {
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`module${i}`)?.classList.add("hidden");
     }
-
+    document.getElementById("mintSection").classList.add("hidden");
+    document.getElementById(`module${mod}`)?.classList.remove("hidden");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+    function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.classList.remove("hidden");
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+    }, 400);
+  }, 3000); // Visible for 3 seconds
+}
 
   // Expose to HTML
   window.connectWallet = connectWallet;
