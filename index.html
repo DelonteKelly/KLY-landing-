@@ -13,16 +13,22 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --neon-green: #00ffe7;
       --neon-pink: #ff00aa;
       --neon-purple: #aa00ff;
+      --neon-blue: #00aaff;
       --dark-bg: #050505;
       --darker-bg: #020202;
       --panel-bg: rgba(5, 5, 5, 0.8);
       --text-primary: #e0e0e0;
       --text-secondary: #b0b0b0;
+      --glow-green: 0 0 10px rgba(0, 255, 231, 0.5);
+      --glow-pink: 0 0 10px rgba(255, 0, 170, 0.5);
+      --glow-purple: 0 0 10px rgba(170, 0, 255, 0.5);
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     
     * {
@@ -33,11 +39,12 @@
     
     body {
       margin: 0;
-      font-family: 'Rajdhani', 'Orbitron', sans-serif;
+      font-family: 'Rajdhani', sans-serif;
       background: var(--dark-bg);
       color: var(--text-primary);
       overflow-x: hidden;
       line-height: 1.6;
+      min-height: 100vh;
     }
     
     #particles-js {
@@ -71,7 +78,13 @@
       backdrop-filter: blur(10px);
       z-index: 1000;
       border-bottom: 1px solid var(--neon-green);
-      box-shadow: 0 0 20px rgba(0, 255, 231, 0.2);
+      box-shadow: var(--glow-green);
+      transition: var(--transition);
+    }
+    
+    .cyber-header.scrolled {
+      padding: 0.5rem 2rem;
+      box-shadow: 0 5px 20px rgba(0, 255, 231, 0.3);
     }
     
     .logo {
@@ -79,12 +92,14 @@
       font-weight: 900;
       font-size: 1.8rem;
       color: var(--neon-green);
-      text-shadow: 0 0 10px rgba(0, 255, 231, 0.5);
+      text-shadow: var(--glow-green);
       letter-spacing: 2px;
+      transition: var(--transition);
     }
     
     .logo span {
       color: var(--neon-pink);
+      text-shadow: var(--glow-pink);
     }
     
     .nav-links {
@@ -100,7 +115,7 @@
       letter-spacing: 1px;
       position: relative;
       padding: 0.5rem 0;
-      transition: all 0.3s ease;
+      transition: var(--transition);
     }
     
     .nav-links a:hover {
@@ -115,7 +130,7 @@
       width: 0;
       height: 2px;
       background: var(--neon-green);
-      transition: width 0.3s ease;
+      transition: var(--transition);
     }
     
     .nav-links a:hover::after {
@@ -137,10 +152,13 @@
       font-weight: 700;
       font-family: 'Orbitron', sans-serif;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+      transition: var(--transition);
+      box-shadow: var(--glow-green);
       position: relative;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     
     .wallet-button:hover {
@@ -161,7 +179,7 @@
         rgba(255, 255, 255, 0) 60%
       );
       transform: rotate(30deg);
-      transition: all 0.3s ease;
+      transition: var(--transition);
     }
     
     .wallet-button:hover::before {
@@ -176,6 +194,12 @@
       padding: 0.5rem 1rem;
       border-radius: 20px;
       border: 1px solid var(--neon-green);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .wallet-address:hover {
+      background: rgba(0, 255, 231, 0.1);
     }
     
     /* Main Content */
@@ -186,7 +210,7 @@
     
     /* Hero Section */
     .hero-section {
-      min-height: 80vh;
+      min-height: 90vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -230,7 +254,7 @@
     
     .hero-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 1.5rem;
       width: 100%;
       max-width: 1000px;
@@ -242,10 +266,11 @@
       border: 1px solid rgba(0, 255, 231, 0.3);
       border-radius: 8px;
       padding: 1.5rem;
-      transition: all 0.3s ease;
+      transition: var(--transition);
       backdrop-filter: blur(5px);
       position: relative;
       overflow: hidden;
+      text-align: center;
     }
     
     .hero-card:hover {
@@ -352,6 +377,12 @@
       overflow: hidden;
       border: 1px solid var(--neon-green);
       box-shadow: 0 0 30px rgba(0, 255, 231, 0.2);
+      transition: var(--transition);
+    }
+    
+    .section-image:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 40px rgba(0, 255, 231, 0.3);
     }
     
     .section-image img {
@@ -377,7 +408,7 @@
     /* Stats Grid */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, 1fr));
       gap: 1.5rem;
       margin-top: 3rem;
     }
@@ -388,13 +419,30 @@
       border-radius: 8px;
       padding: 1.5rem;
       text-align: center;
-      transition: all 0.3s ease;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
     }
     
     .stat-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 5px 20px rgba(0, 255, 231, 0.2);
       border-color: var(--neon-green);
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        135deg,
+        rgba(0, 255, 231, 0.05) 0%,
+        rgba(0, 255, 231, 0) 50%
+      );
+      z-index: -1;
     }
     
     .stat-value {
@@ -421,10 +469,12 @@
       text-decoration: none;
       border-radius: 4px;
       margin-top: 1.5rem;
-      transition: all 0.3s ease;
+      transition: var(--transition);
       box-shadow: 0 0 20px rgba(0, 255, 231, 0.3);
       position: relative;
       overflow: hidden;
+      border: none;
+      cursor: pointer;
     }
     
     .cta-button:hover {
@@ -445,11 +495,136 @@
         rgba(255, 255, 255, 0) 60%
       );
       transform: rotate(30deg);
-      transition: all 0.3s ease;
+      transition: var(--transition);
     }
     
     .cta-button:hover::before {
       left: 100%;
+    }
+    
+    /* Dashboard Card */
+    .dashboard-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--neon-green);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem auto;
+      max-width: 800px;
+      box-shadow: 0 0 20px rgba(0, 255, 231, 0.2);
+      backdrop-filter: blur(5px);
+      transition: var(--transition);
+    }
+    
+    .dashboard-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 40px rgba(0, 255, 231, 0.3);
+    }
+    
+    .token-data {
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem;
+      color: var(--neon-green);
+      margin-bottom: 1rem;
+    }
+    
+    /* LP Card */
+    .lp-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--neon-green);
+      border-radius: 10px;
+      padding: 2rem;
+      margin: 2rem auto;
+      max-width: 800px;
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.2);
+      transition: var(--transition);
+    }
+    
+    .lp-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 255, 231, 0.3);
+    }
+    
+    .lp-card h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: var(--neon-green);
+      font-family: 'Orbitron', sans-serif;
+    }
+    
+    .lp-holders-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+    }
+    
+    .lp-holders-table th, .lp-holders-table td {
+      border: 1px solid var(--neon-green);
+      padding: 12px;
+      text-align: left;
+    }
+    
+    .lp-holders-table th {
+      background-color: rgba(0, 31, 29, 0.5);
+      color: var(--neon-green);
+      font-family: 'Orbitron', sans-serif;
+    }
+    
+    .lp-holders-table tr:nth-child(even) {
+      background-color: rgba(0, 255, 231, 0.05);
+    }
+    
+    .lp-holders-table tr:hover {
+      background-color: rgba(0, 255, 231, 0.1);
+    }
+    
+    .lp-links {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .neon-button {
+      background: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-purple) 100%);
+      color: #000;
+      padding: 0.8rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+    }
+    
+    .neon-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 25px rgba(0, 255, 231, 0.5);
+    }
+    
+    .neon-button.outline {
+      background: transparent;
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      box-shadow: none;
+    }
+    
+    .neon-button.outline:hover {
+      background: rgba(0, 255, 231, 0.1);
+    }
+    
+    /* Chart Container */
+    .chart-container {
+      width: 100%;
+      height: 400px;
+      margin: 2rem 0;
+      background: var(--panel-bg);
+      border: 1px solid var(--neon-green);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 0 20px rgba(0, 255, 231, 0.2);
     }
     
     /* Footer */
@@ -458,6 +633,17 @@
       padding: 3rem 2rem;
       border-top: 1px solid rgba(0, 255, 231, 0.2);
       margin-top: 4rem;
+      position: relative;
+    }
+    
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--neon-green), transparent);
     }
     
     .footer-content {
@@ -489,11 +675,19 @@
     .social-links a {
       color: var(--text-secondary);
       font-size: 1.5rem;
-      transition: color 0.3s ease;
+      transition: var(--transition);
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
     }
     
     .social-links a:hover {
       color: var(--neon-green);
+      transform: translateY(-3px);
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
     }
     
     .footer-links h3 {
@@ -514,11 +708,13 @@
     .footer-links a {
       color: var(--text-secondary);
       text-decoration: none;
-      transition: color 0.3s ease;
+      transition: var(--transition);
+      display: inline-block;
     }
     
     .footer-links a:hover {
       color: var(--neon-green);
+      transform: translateX(5px);
     }
     
     .copyright {
@@ -530,6 +726,92 @@
       font-size: 0.9rem;
     }
     
+    /* Status Messages */
+    .status {
+      color: var(--neon-green);
+      font-family: 'Orbitron', sans-serif;
+      margin: 1rem 0;
+      padding: 0.5rem;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .status.error {
+      color: #ff5555;
+    }
+    
+    .status.success {
+      color: var(--neon-green);
+    }
+    
+    /* Loading Animation */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 255, 231, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--neon-green);
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: var(--panel-bg);
+      border: 1px solid var(--neon-green);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 0 30px rgba(0, 255, 231, 0.3);
+      position: relative;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .close-modal {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .close-modal:hover {
+      color: var(--neon-green);
+      transform: rotate(90deg);
+    }
+    
     /* Responsive */
     @media (max-width: 1024px) {
       .section-content {
@@ -538,6 +820,10 @@
       
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .hero-title {
+        font-size: 3rem;
       }
     }
     
@@ -568,6 +854,11 @@
       .section-title {
         font-size: 2rem;
       }
+      
+      .wallet-info {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
     }
     
     @media (max-width: 480px) {
@@ -578,175 +869,70 @@
       .hero-grid {
         grid-template-columns: 1fr;
       }
+      
+      .hero-title {
+        font-size: 2rem;
+      }
+      
+      .section {
+        margin: 2rem auto;
+      }
     }
     
-    .resources {
-      padding: 2rem;
-      color: #00fff7;
-    }
-
-    .resources-list {
-      list-style: none;
-      padding: 0;
-    }
-
-    .resources-list li {
-      margin: 0.5rem 0;
-    }
-
-    .resources-list a {
-      color: #aaa;
-      font-size: 1.1rem;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
-    .resources-list a:hover {
-      color: #00fff7;
+    /* Animation Classes */
+    .fade-in {
+      animation: fadeIn 1s ease-in;
     }
     
-    #dashboardStats {
-      display: none; 
-      margin-top: 2rem; 
-      background: rgba(0, 255, 231, 0.05); 
-      padding: 2rem; 
-      border-radius: 12px; 
-      max-width: 600px; 
-      margin-inline: auto; 
-      box-shadow: 0 0 20px rgba(0,255,231,0.2);
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     
-    #dashboardStats h2 {
-      color: #00ffe7; 
-      font-family: 'Orbitron'; 
-      margin-bottom: 1rem;
+    .slide-up {
+      animation: slideUp 0.8s ease-out;
     }
     
-    .status {
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Token Price Ticker */
+    .price-ticker {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel-bg);
+      border: 1px solid var(--neon-green);
+      border-radius: 8px;
+      padding: 0.8rem 1.2rem;
+      font-family: 'Orbitron', sans-serif;
       color: var(--neon-green);
-      font-family: 'Orbitron';
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    /* Cyberpunk Card Styling */
-.neon-card {
-  background: rgba(20, 20, 30, 0.8);
-  border: 1px solid #00ffe7;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 30px auto;
-  max-width: 500px;
-  box-shadow: 0 0 15px #00ffe7;
-  color: #ffffff;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #fffb00;
-  margin-bottom: 15px;
-}
-
-.token-data {
-  font-family: 'Courier New', monospace;
-  font-size: 18px;
-  color: #00ffe7;
-}
-
-.neon-button {
-  background-color: transparent;
-  border: 2px solid #ff00ff;
-  color: #ff00ff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: 0.3s ease;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.neon-button:hover {
-  background-color: #ff00ff;
-  color: #000;
-  box-shadow: 0 0 12px #ff00ff;
-}
-    /* === Responsive Fix for Dashboard Token Stats === */
-@media (max-width: 768px) {
-  .dashboard-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    align-items: center;
-    padding: 1rem;
-  }
-
-  .stat-box {
-    width: 100%;
-    max-width: 320px;
-    background: rgba(0, 255, 231, 0.05);
-    padding: 1rem;
-    border: 1px solid rgba(0, 255, 231, 0.2);
-    border-radius: 10px;
-    text-align: center;
-  }
-
-  .stat-value {
-    font-size: 2rem;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    line-height: 1.3;
-    margin-top: 0.5rem;
-  }
-
-  .stat-label {
-    color: var(--text-secondary);
-    font-size: 1rem;
-    margin-top: 0.3rem;
-  }
-}
-    .lp-card {
-  background: #0a0a0a;
-  border: 1px solid #00ffe7;
-  border-radius: 10px;
-  padding: 20px;
-  margin-top: 30px;
-  box-shadow: 0 0 10px #00ffe7;
-  color: #fff;
-}
-
-.lp-card h3 {
-  font-size: 20px;
-  margin-bottom: 15px;
-  color: #00ffe7;
-}
-
-.lp-holders-table {
-  width: 100%;
-  border-collapse: collapse;
-  color: #fff;
-}
-
-.lp-holders-table th, .lp-holders-table td {
-  border: 1px solid #00ffe7;
-  padding: 10px;
-  text-align: left;
-}
-
-.lp-holders-table th {
-  background-color: #111;
-  color: #00ffe7;
-}
-    .lp-links {
-  margin-top: 15px;
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-}
-
-.neon-button.outline {
-  background: transparent;
-  border: 2px solid #0ff;
-  color: #0ff;
-}
+    
+    .price-change {
+      font-size: 0.8rem;
+    }
+    
+    .price-up {
+      color: #00ff00;
+    }
+    
+    .price-down {
+      color: #ff5555;
+    }
   </style>
 </head>
 <body>
@@ -758,12 +944,12 @@
     <div class="logo">KLY<span>Legacy</span></div>
     
     <nav class="nav-links">
-      <a href="index.html#dashboard">Dashboard</a>
-      <a href="stake.html">Staking</a>
-      <a href="dao.html">DAO</a>
-      <a href="course.html">Course</a>
-      <a href="launchpad.html">Launchpad</a>
-      <a href="nft-drop.html">NFT Drop</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#staking">Staking</a>
+      <a href="#dao">DAO</a>
+      <a href="#education">Education</a>
+      <a href="#launchpad">Launchpad</a>
+      <a href="#nft">NFTs</a>
     </nav>
     
     <div class="wallet-info">
@@ -778,356 +964,109 @@
   <main>
     <!-- Hero Section -->
     <section class="hero-section">
-      <h1 class="hero-title">BUILD WEALTH. OWN LEGACY.</h1>
-      <p class="hero-subtitle">Powered by KLY Token - your gateway to tokenized education, DeFi, and DAO governance on BNB Chain.</p>
+      <h1 class="hero-title" data-aos="fade-down">BUILD WEALTH. OWN LEGACY.</h1>
+      <p class="hero-subtitle" data-aos="fade-down" data-aos-delay="100">Powered by KLY Token - your gateway to tokenized education, DeFi, and DAO governance on BNB Chain.</p>
       
       <div class="hero-grid">
-        <div class="hero-card">
+        <div class="hero-card" data-aos="fade-up" data-aos-delay="200">
           <i class="fas fa-chart-line"></i>
           <h3>Tokenized Education</h3>
           <p>Access premium courses and earn NFT certifications through KLY tokens</p>
         </div>
         
-        <div class="hero-card">
+        <div class="hero-card" data-aos="fade-up" data-aos-delay="300">
           <i class="fas fa-coins"></i>
           <h3>DeFi Ecosystem</h3>
           <p>Stake, provide liquidity, and earn rewards in our decentralized finance platform</p>
         </div>
         
-        <div class="hero-card">
+        <div class="hero-card" data-aos="fade-up" data-aos-delay="400">
           <i class="fas fa-users"></i>
           <h3>DAO Governance</h3>
           <p>Shape the future of KLY through decentralized decision-making</p>
         </div>
         
-        <div class="hero-card">
+        <div class="hero-card" data-aos="fade-up" data-aos-delay="500">
           <i class="fas fa-rocket"></i>
           <h3>Launchpad</h3>
           <p>Launch your own token projects with KLY's dedicated launch platform</p>
-        </div>
-      </div>
-      
-     <section>
-  <div id="dashboardStats" class="dashboard-card neon-card">
-  <h2 class="section-title">Your KLY Token Dashboard</h2>
-  <p><strong>Your KLY Balance:</strong> <span id="userBalance" class="token-data">-</span></p>
-  <p><strong>Total Supply:</strong> <span id="totalSupply" class="token-data">-</span></p>
-  <button id="refreshData" class="cta-button neon-button" style="display:none;">Refresh Data</button>
-</div>
-</section>
-
-    <!-- Why KLY Section -->
-    <section class="section" id="why">
-      <h2 class="section-title">WHY KLY TOKEN?</h2>
-      
-      <div class="section-content">
-        <div class="section-text">
-          <p>The Kelly Legacy Token (KLY) represents a revolutionary approach to wealth building in the Web3 era. We combine education, decentralized finance, and community governance into a single powerful ecosystem.</p>
-          
-          <p>Unlike traditional cryptocurrencies, KLY is backed by real-world utility through our educational platform, staking rewards, and DAO governance system. This creates sustainable value that grows with our community.</p>
-          
-          <p>Built on BNB Chain for low fees and high speed, KLY is designed to be accessible to everyone while providing enterprise-grade infrastructure for serious investors and builders.</p>
-          
-          <a href="#dashboard" class="cta-button">EXPLORE DASHBOARD</a>
-        </div>
-        
-        <div class="section-image">
-          <img src="https://images.unsplash.com/photo-1639762681057-408e52192e55?q=80&w=1000" alt="Blockchain visualization">
-        </div>
-      </div>
-      
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="totalSupplyStat">--</div>
-          <div class="stat-label">Total Supply</div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-value" id="stakedAmountStat">--</div>
-          <div class="stat-label">Tokens Staked</div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-value" id="holdersStat">--</div>
-          <div class="stat-label">Token Holders</div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-value" id="apy">--</div>
-          <div class="stat-label">Average APY</div>
         </div>
       </div>
     </section>
     
     <!-- Dashboard Section -->
     <section class="section" id="dashboard">
-      <h2 class="section-title">DASHBOARD</h2>
+      <h2 class="section-title">YOUR KLY DASHBOARD</h2>
       
-      <div class="section-content">
-        <div class="section-image">
-          <img src="https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=1000" alt="Dashboard visualization">
+      <div class="dashboard-card" id="dashboardStats" style="display:none;">
+        <h2 class="section-title">Your KLY Token Dashboard</h2>
+        
+        <div class="section-content">
+          <div class="section-text">
+            <p><strong>Your KLY Balance:</strong> <span id="userBalance" class="token-data">-</span></p>
+            <p><strong>Your Staked KLY:</strong> <span id="userStaked" class="token-data">-</span></p>
+            <p><strong>Your Estimated Rewards:</strong> <span id="userRewards" class="token-data">-</span></p>
+            <p><strong>Your DAO Voting Power:</strong> <span id="votingPower" class="token-data">-</span></p>
+            
+            <div class="chart-container">
+              <canvas id="portfolioChart"></canvas>
+            </div>
+          </div>
+          
+          <div class="section-text">
+            <p><strong>Total Supply:</strong> <span id="totalSupply" class="token-data">-</span></p>
+            <p><strong>Circulating Supply:</strong> <span id="circulatingSupply" class="token-data">-</span></p>
+            <p><strong>Market Cap:</strong> <span id="marketCap" class="token-data">-</span></p>
+            <p><strong>Current Price:</strong> <span id="currentPrice" class="token-data">-</span></p>
+            
+            <div class="chart-container">
+              <canvas id="priceChart"></canvas>
+            </div>
+          </div>
         </div>
         
-        <div class="section-text">
-          <p>Your personal KLY dashboard provides real-time insights into your token holdings, staking rewards, governance participation, and educational progress.</p>
-          
-          <p>Monitor your portfolio performance, track your rewards, and manage all aspects of your KLY ecosystem participation from one centralized interface.</p>
-          
-          <p>Connect your wallet to view your personalized dashboard and access all KLY features.</p>
-        </div>
-
         <div class="lp-card">
-  <h3>Top LP Holders – KLY/USDT</h3>
-  <table class="lp-holders-table">
-    <thead>
-      <tr>
-        <th>Wallet</th>
-        <th>LP Balance</th>
-        <th>Pool %</th>
-      </tr>
-    </thead>
-    <tbody id="lpTableBody">
-      <tr><td colspan="3">Loading...</td></tr>
-    </tbody>
-  </table>
-</div>
-
-        <div class="lp-links">
-  <a href="https://pancakeswap.finance/add/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52/0x55d398326f99059fF775485246999027B3197955" 
-     target="_blank" class="cta-button neon-button">
-     Add Liquidity
-  </a>
-  <a href="https://pancakeswap.finance/remove/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52/0x55d398326f99059fF775485246999027B3197955" 
-     target="_blank" class="cta-button neon-button outline">
-     Remove Liquidity
-  </a>
-</div>
-      </div>
-    </div>
-  
-    
-    <!-- Staking Section -->
-    <section class="section" id="staking">
-      <h2 class="section-title">STAKING</h2>
-      
-      <div class="section-content">
-        <div class="section-text">
-          <p>Earn passive income by staking your KLY tokens in our secure smart contracts. Choose between flexible staking or lock-up periods for higher rewards.</p>
+          <h3>Top LP Holders – KLY/USDT</h3>
+          <table class="lp-holders-table">
+            <thead>
+              <tr>
+                <th>Wallet</th>
+                <th>LP Balance</th>
+                <th>Pool %</th>
+              </tr>
+            </thead>
+            <tbody id="lpTableBody">
+              <tr><td colspan="3">Connect your wallet to view LP data</td></tr>
+            </tbody>
+          </table>
           
-          <p>Our staking pools are designed to provide sustainable yields while supporting the overall KLY ecosystem liquidity and stability.</p>
-          
-          <p>Stakers also receive bonus NFT rewards and increased DAO voting power based on their staked amount and duration.</p>
-          
-          <a href="stake.html" class="cta-button">STAKE NOW</a>
+          <div class="lp-links">
+            <a href="https://pancakeswap.finance/add/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52/0x55d398326f99059fF775485246999027B3197955" 
+               target="_blank" class="neon-button">
+               <i class="fas fa-plus-circle"></i> Add Liquidity
+            </a>
+            <a href="https://pancakeswap.finance/remove/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52/0x55d398326f99059fF775485246999027B3197955" 
+               target="_blank" class="neon-button outline">
+               <i class="fas fa-minus-circle"></i> Remove Liquidity
+            </a>
+          </div>
         </div>
         
-        <div class="section-image">
-          <img src="https://images.unsplash.com/photo-1621761191319-c6fb62004040?q=80&w=1000" alt="Staking visualization">
-        </div>
+        <button id="refreshData" class="cta-button">Refresh Data</button>
+      </div>
+      
+      <div id="connectPrompt" class="dashboard-card" style="text-align: center;">
+        <h2 class="section-title">Connect Your Wallet</h2>
+        <p>To view your personalized KLY dashboard, please connect your wallet.</p>
+        <button id="connectWallet2" class="cta-button">
+          <i class="fas fa-wallet"></i> Connect Wallet
+        </button>
       </div>
     </section>
     
-    <!-- DAO Section -->
-    <section class="section" id="dao">
-      <h2 class="section-title">DAO GOVERNANCE</h2>
-      
-      <div class="section-content">
-        <div class="section-image">
-          <img src="https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=1000" alt="DAO visualization">
-        </div>
-        
-        <div class="section-text">
-          <p>The KLY DAO puts the power in the hands of token holders. Participate in proposals, vote on ecosystem decisions, and help shape the future of the platform.</p>
-          
-          <p>Your voting power is proportional to your KLY holdings and staking participation. The more you contribute, the greater your influence.</p>
-          
-          <p>Current proposals include treasury allocations, new feature implementations, and partnership opportunities.</p>
-          
-          <a href="dao.html" class="cta-button">ENTER DAO</a>
-        </div>
-      </div>
-    </section>
-  </main>
-  
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-content">
-      <div class="footer-about">
-        <div class="footer-logo">KLY TOKEN</div>
-        <p class="footer-description">The future of tokenized education, wealth building, and decentralized governance on BNB Chain.</p>
-        <div class="social-links">
-          <a href="#"><i class="fab fa-twitter"></i></a>
-          <a href="#"><i class="fab fa-telegram"></i></a>
-          <a href="#"><i class="fab fa-discord"></i></a>
-          <a href="#"><i class="fab fa-medium"></i></a>
-          <a href="#"><i class="fab fa-github"></i></a>
-        </div>
-      </div>
-      
-      <div class="footer-links">
-        <h3>Ecosystem</h3>
-        <ul>
-          <li><a href="#dashboard">Dashboard</a></li>
-          <li><a href="stake.html">Staking</a></li>
-          <li><a href="dao.html">DAO Governance</a></li>
-          <li><a href="course.html">Education</a></li>
-          <li><a href="launchpad.html">Launchpad</a></li>
-        </ul>
-      </div>
-      
-      <div class="footer-links">
-        <h3>Resources</h3>
-        <ul>
-          <li><a href="white-paper.html">Whitepaper</a></li>
-          <li><a href="documentation.html">Documentation</a></li>
-          <li><a href="smart-contracts.html">Smart Contracts</a></li>
-          <li><a href="tokenomics.html">Tokenomics</a></li>
-          <li><a href="roadmap.html">Roadmap</a></li>
-        </ul>
-      </div>
-      
-      <div class="footer-links">
-        <h3>Company</h3>
-        <ul>
-          <li><a href="#">About Us</a></li>
-          <li><a href="#">Team</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Contact</a></li>
-          <li><a href="#">Legal</a></li>
-        </ul>
-      </div>
-    </div>
-    
-    <div class="copyright">
-      &copy; 2025 Kelly Legacy Estates. All rights reserved.
-    </div>
-  </footer>
-
-  <!-- AOS JavaScript -->
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-  <script>
-    AOS.init({
-      duration: 1000,  // animation duration in ms
-      once: true       // whether animation should happen only once
-    });
-  </script>
-  
-  <script>
-    // Initialize particles.js
-    particlesJS("particles-js", {
-      "particles": {
-        "number": {
-          "value": 80,
-          "density": {
-            "enable": true,
-            "value_area": 800
-          }
-        },
-        "color": {
-          "value": "#00ffe7"
-        },
-        "shape": {
-          "type": "circle",
-          "stroke": {
-            "width": 0,
-            "color": "#000000"
-          },
-          "polygon": {
-            "nb_sides": 5
-          }
-        },
-        "opacity": {
-          "value": 0.5,
-          "random": false,
-          "anim": {
-            "enable": false,
-            "speed": 1,
-            "opacity_min": 0.1,
-            "sync": false
-          }
-        },
-        "size": {
-          "value": 3,
-          "random": true,
-          "anim": {
-            "enable": false,
-            "speed": 40,
-            "size_min": 0.1,
-            "sync": false
-          }
-        },
-        "line_linked": {
-          "enable": true,
-          "distance": 150,
-          "color": "#00ffe7",
-          "opacity": 0.2,
-          "width": 1
-        },
-        "move": {
-          "enable": true,
-          "speed": 2,
-          "direction": "none",
-          "random": false,
-          "straight": false,
-          "out_mode": "out",
-          "bounce": false,
-          "attract": {
-            "enable": false,
-            "rotateX": 600,
-            "rotateY": 1200
-          }
-        }
-      },
-      "interactivity": {
-        "detect_on": "canvas",
-        "events": {
-          "onhover": {
-            "enable": true,
-            "mode": "grab"
-          },
-          "onclick": {
-            "enable": true,
-            "mode": "push"
-          },
-          "resize": true
-        },
-        "modes": {
-          "grab": {
-            "distance": 140,
-            "line_linked": {
-              "opacity": 1
-            }
-          },
-          "bubble": {
-            "distance": 400,
-            "size": 40,
-            "duration": 2,
-            "opacity": 8,
-            "speed": 3
-          },
-          "repulse": {
-            "distance": 200,
-            "duration": 0.4
-          },
-          "push": {
-            "particles_nb": 4
-          },
-          "remove": {
-            "particles_nb": 2
-          }
-        }
-      },
-      "retina_detect": true
-    });
-  </script>
-
-  <!-- External Web3 Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.umd.min.js"></script>
-  <script type="module" src="kly-dashboard-integrated.js"></script>
-
-</body>
-</html>section class="section" id="why">
+    <!-- Why KLY Section -->
+    <!-- Why KLY Section -->
+    <section class="section" id="why">
       <h2 class="section-title">WHY KLY TOKEN?</h2>
       
       <div class="section-content">
