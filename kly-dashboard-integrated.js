@@ -39,18 +39,19 @@
   let provider, signer, wallet;
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("MetaMask not found.");
+    if (!window.ethereum) return alert("MetaMask not detected.");
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     wallet = await signer.getAddress();
 
-    document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+    const shortWallet = wallet.slice(0, 6) + "..." + wallet.slice(-4);
     document.getElementById("walletStatus").textContent = "Wallet: Connected";
-    document.getElementById("accessStatus").textContent = "Wallet: Connected";
+    document.getElementById("walletAddress").textContent = shortWallet;
+    document.getElementById("accessStatus")?.textContent = "Wallet: Connected";
 
-    updateDashboardStats();
-    fetchKLYHolderCount();
+    await updateDashboardStats();
+    await fetchKLYHolderCount();
   }
 
   async function getKLYBalance() {
@@ -71,7 +72,7 @@
     const [bal, supply] = await Promise.all([getKLYBalance(), getKLYTotalSupply()]);
     document.getElementById("userBalance").textContent = bal.toFixed(2) + " KLY";
     document.getElementById("totalSupply").textContent = supply.toLocaleString();
-    document.getElementById("totalSupplyStat").textContent = supply.toLocaleString();
+    document.getElementById("totalSupplyStat")?.textContent = supply.toLocaleString();
   }
 
   async function fetchKLYHolderCount() {
@@ -85,23 +86,23 @@
     }
   }
 
-  // ========== Staking ==========
+  // ===== Staking =====
   async function stakeKLY(amount) {
-    const parsed = ethers.utils.parseEther(amount);
-    const token = new ethers.Contract(KLY_TOKEN, ERC20_ABI, signer);
+    const amt = ethers.utils.parseEther(amount);
+    const kly = new ethers.Contract(KLY_TOKEN, ERC20_ABI, signer);
     const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
-    await token.approve(STAKING_CONTRACT, parsed);
-    const tx = await stake.stake(parsed);
+    await kly.approve(STAKING_CONTRACT, amt);
+    const tx = await stake.stake(amt);
     await tx.wait();
     alert("KLY staked!");
   }
 
   async function withdrawKLY(amount) {
-    const parsed = ethers.utils.parseEther(amount);
+    const amt = ethers.utils.parseEther(amount);
     const stake = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
-    const tx = await stake.withdraw(parsed);
+    const tx = await stake.withdraw(amt);
     await tx.wait();
-    alert("Withdraw complete.");
+    alert("KLY withdrawn!");
   }
 
   async function claimRewards() {
@@ -111,7 +112,7 @@
     alert("Rewards claimed!");
   }
 
-  // ========== DAO ==========
+  // ===== DAO =====
   async function createProposal(description) {
     const dao = new ethers.Contract(DAO_CONTRACT, DAO_ABI, signer);
     const tx = await dao.propose(description);
@@ -119,21 +120,21 @@
     alert("Proposal submitted.");
   }
 
-  async function voteOnProposal(proposalId, voteType) {
+  async function voteOnProposal(id, voteType) {
     const dao = new ethers.Contract(DAO_CONTRACT, DAO_ABI, signer);
-    const tx = await dao.castVote(proposalId, voteType);
+    const tx = await dao.castVote(id, voteType);
     await tx.wait();
-    alert("Vote recorded.");
+    alert("Vote submitted.");
   }
 
-  async function executeProposal(proposalId) {
+  async function executeProposal(id) {
     const dao = new ethers.Contract(DAO_CONTRACT, DAO_ABI, signer);
-    const tx = await dao.execute(proposalId);
+    const tx = await dao.execute(id);
     await tx.wait();
     alert("Proposal executed.");
   }
 
-  // ========== UI BINDING ==========
+  // ===== UI Bindings =====
   window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
     document.getElementById("refreshData")?.addEventListener("click", updateDashboardStats);
@@ -142,13 +143,12 @@
     document.getElementById("claimBtn")?.addEventListener("click", claimRewards);
 
     document.getElementById("submitProposal")?.addEventListener("click", async () => {
-      const desc = document.getElementById("proposalDesc").value.trim();
-      if (!desc) return alert("Proposal description required.");
+      const desc = document.getElementById("proposalDesc")?.value.trim();
+      if (!desc) return alert("Enter proposal description");
       await createProposal(desc);
       document.getElementById("proposalDesc").value = "";
     });
 
-    // Optional: Vote and execute buttons by index/data-id
     document.querySelectorAll(".vote-yes").forEach((btn, i) =>
       btn.addEventListener("click", () => voteOnProposal(i + 1, 1))
     );
@@ -159,7 +159,6 @@
       btn.addEventListener("click", () => executeProposal(parseInt(btn.dataset.id)))
     );
 
-    // Auto-connect
     if (window.ethereum?.selectedAddress) connectWallet();
   });
 </script>
