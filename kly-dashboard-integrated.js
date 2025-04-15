@@ -166,4 +166,15 @@
 
     if (window.ethereum?.selectedAddress) connectWallet();
   });
+
+export {
+  connectWallet,
+  updateDashboardStats,
+  stakeKLY,
+  withdrawKLY,
+  claimRewards,
+  createProposal,
+  voteOnProposal,
+  executeProposal
+};
 </script>
