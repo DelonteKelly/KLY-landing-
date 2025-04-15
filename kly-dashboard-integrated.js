@@ -157,37 +157,6 @@ async function executeProposal(proposalId) {
   alert("Proposal executed.");
 }
 
-async function loadLPHolders() {
-  const pairAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const apiKey = "3GA78IZXNIRMUYZ7KF2HRF9N9YZJJY95K2";
-
-  try {
-    const response = await fetch(`https://api.bscscan.com/api?module=token&action=tokenholderlist&contractaddress=${pairAddress}&page=1&offset=10&apikey=${apiKey}`);
-    const data = await response.json();
-
-    const holders = data.result;
-    const total = holders.reduce((sum, h) => sum + parseFloat(h.TokenHolderQuantity), 0);
-
-    const tableBody = document.getElementById("lpTableBody");
-    tableBody.innerHTML = "";
-
-    holders.forEach(h => {
-      const percent = ((parseFloat(h.TokenHolderQuantity) / total) * 100).toFixed(2);
-      const row = `
-        <tr>
-          <td>${h.TokenHolderAddress.slice(0, 6)}...${h.TokenHolderAddress.slice(-4)}</td>
-          <td>${parseFloat(h.TokenHolderQuantity).toFixed(0)}</td>
-          <td>${percent}%</td>
-        </tr>`;
-      tableBody.innerHTML += row;
-    });
-  } catch (err) {
-    console.error("LP Holders Load Failed:", err);
-    document.getElementById("lpTableBody").innerHTML = `<tr><td colspan="3">Failed to load data.</td></tr>`;
-  }
-}
-
-window.addEventListener("load", loadLPHolders);
 
 // ========== UI Events ==========
 window.addEventListener("DOMContentLoaded", async () => {
