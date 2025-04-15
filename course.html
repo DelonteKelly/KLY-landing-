@@ -540,74 +540,51 @@
     }
   }
 
-  async function mintNFT() {
-    if (!wallet) {
-      const connected = await connectWallet();
-      if (!connected) return;
-    }
+async function mintNFT() {
+  if (!wallet) {
+    const connected = await connectWallet();
+    if (!connected) return;
+  }
 
-    try {
-      const contract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT);
-      const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
-      const data = "0x";
+  try {
+    const contract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT);
+    const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
+    const data = "0x";
 
-const tx = await contract.methods
-  .mint(wallet, 1, baseURI, data)
-  .send({
-    from: wallet,
-    value: web3.utils.toWei("0", "ether") // Required even if it's 0
-  });
+    // Estimate gas first
+    const gasEstimate = await contract.methods
+      .mint(wallet, 1, baseURI, data)
+      .estimateGas({ from: wallet });
+
+    const tx = await contract.methods
+      .mint(wallet, 1, baseURI, data)
+      .send({
+        from: wallet,
+        value: web3.utils.toWei("0", "ether"),
+        gas: Math.floor(gasEstimate * 1.2) // Add 20% buffer
+      });
 
     document.getElementById("mintStatus").innerHTML = `
-  ✅ NFT minted successfully!<br>
-  <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
-    View on BscScan
-  </a>
-`;
-showToast("✅ NFT minted successfully!");
-      
-    catch (err) {
-  const message = err?.message || "Unknown mint error.";
-  console.error("Mint failed:", message);
-  document.getElementById("mintStatus").innerText = `Mint failed: ${message}`;
-}
-
-  function showNextModule(mod) {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
+      ✅ NFT minted successfully!<br>
+      <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
+        View on BscScan
+      </a>
+    `;
+    showToast("✅ NFT minted successfully!");
+    
+  } catch (err) {
+    console.error("Mint failed:", err);
+    let errorMessage = err.message;
+    
+    // Handle specific revert reasons
+    if (err.message.includes("revert")) {
+      errorMessage = err.message.match(/reason string: '(.+?)'/)?.[1] || err.message;
     }
-    document.getElementById("mintSection").classList.add("hidden");
-
-    if (mod === 'mint') {
-      document.getElementById("mintSection").classList.remove("hidden");
-    } else {
-      document.getElementById(`module${mod}`)?.classList.remove("hidden");
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    document.getElementById("mintStatus").innerText = `Mint failed: ${errorMessage}`;
+    showToast(`❌ Mint failed: ${errorMessage}`);
   }
-
-  function showPreviousModule(mod) {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
-    }
-    document.getElementById("mintSection").classList.add("hidden");
-    document.getElementById(`module${mod}`)?.classList.remove("hidden");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-    function showToast(message) {
-  const toast = document.getElementById("toast");
-  toast.innerText = message;
-  toast.classList.remove("hidden");
-  toast.classList.add("show");
-
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => {
-      toast.classList.add("hidden");
-    }, 400);
-  }, 3000); // Visible for 3 seconds
 }
-
   // Expose to HTML
   window.connectWallet = connectWallet;
   window.verifyAccess = verifyAccess;
