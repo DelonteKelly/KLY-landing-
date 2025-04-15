@@ -523,7 +523,8 @@
     }
 
     try {
-      const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
+      const readWeb3 = new Web3(new Web3.providers.HttpProvider("https://bsc.publicnode.com"));
+      const contract = new readWeb3.eth.Contract(KLY_ABI, KLY_TOKEN);
       const balance = await contract.methods.balanceOf(wallet).call();
       const balanceEth = web3.utils.fromWei(balance, "ether");
 
@@ -531,12 +532,13 @@
         document.getElementById("accessPanel").classList.add("hidden");
         document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText = 
+        document.getElementById("accessStatus").innerText =
           `Access Denied: You hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
       }
     } catch (err) {
       console.error("Access check error:", err);
-      document.getElementById("accessStatus").innerText = `Error: ${err.message}`;
+      document.getElementById("accessStatus").innerText =
+        `Network error: Could not verify balance. Try again later.`;
     }
   }
 
