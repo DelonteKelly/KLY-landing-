@@ -39,19 +39,27 @@
   let provider, signer, wallet;
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("MetaMask not detected.");
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    wallet = await signer.getAddress();
+    if (!window.ethereum) {
+      alert("MetaMask not detected. Please install MetaMask.");
+      return;
+    }
 
-    const shortWallet = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-    document.getElementById("walletStatus").textContent = "Wallet: Connected";
-    document.getElementById("walletAddress").textContent = shortWallet;
-    document.getElementById("accessStatus")?.textContent = "Wallet: Connected";
+    try {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      wallet = await signer.getAddress();
 
-    await updateDashboardStats();
-    await fetchKLYHolderCount();
+      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("walletAddress").style.display = "block";
+      document.getElementById("accessStatus").textContent = "Wallet: Connected";
+
+      await updateDashboardStats?.();
+      await fetchKLYHolderCount?.();
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      alert("Wallet connection failed. Check console.");
+    }
   }
 
   async function getKLYBalance() {
@@ -86,7 +94,6 @@
     }
   }
 
-  // ===== Staking =====
   async function stakeKLY(amount) {
     const amt = ethers.utils.parseEther(amount);
     const kly = new ethers.Contract(KLY_TOKEN, ERC20_ABI, signer);
@@ -112,7 +119,6 @@
     alert("Rewards claimed!");
   }
 
-  // ===== DAO =====
   async function createProposal(description) {
     const dao = new ethers.Contract(DAO_CONTRACT, DAO_ABI, signer);
     const tx = await dao.propose(description);
@@ -134,7 +140,6 @@
     alert("Proposal executed.");
   }
 
-  // ===== UI Bindings =====
   window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
     document.getElementById("refreshData")?.addEventListener("click", updateDashboardStats);
