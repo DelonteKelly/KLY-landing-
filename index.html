@@ -11,9 +11,11 @@
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-  <style>:root {
+ <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@latest/dist/sdk.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/wallets@latest/dist/wallets.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/react-core@latest/dist/react-core.umd.min.js"></script>
+  <style>
+    :root {
   --neon-green: #00ffe7;
   --neon-pink: #ff00aa;
   --neon-purple: #aa00ff;
@@ -1252,99 +1254,40 @@ main {
       },
       "retina_detect": true
     });
-  </script>
-      
 
-    
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
+    <script type="module">
+  const { ThirdwebSDK } = window.thirdweb;
 
-// === Constants ===
-const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const tokenABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function totalSupply() view returns (uint256)"
-];
-const BSC_API_KEY = "Your_BscScan_API_Key"; // <-- Replace this with your actual API key from BscScan
+  const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const chain = "binance";
 
-// === Global Variables ===
-let provider, signer, userAddress;
+  let sdk, tokenContract, walletAddress;
 
-// === On Load ===
-window.addEventListener("DOMContentLoaded", () => {
-  const walletBtn = document.getElementById("connectWalletBtn");
-  if (walletBtn) {
-    walletBtn.addEventListener("click", connectWallet);
-  }
-});
+  async function connectWallet() {
+    try {
+      const provider = await window.ethereum.request({ method: "eth_requestAccounts" });
+      walletAddress = provider[0];
+      document.getElementById("walletAddress").textContent = shorten(walletAddress);
+      document.getElementById("connectWalletBtn").textContent = "Wallet Connected";
 
-// === Connect Wallet ===
-async function connectWallet() {
-  try {
-    if (!window.ethereum) {
-      alert("MetaMask is required to use this site.");
-      return;
+      sdk = new ThirdwebSDK("binance", { clientId: "your-client-id" }); // optional: add your Thirdweb clientId
+      tokenContract = await sdk.getToken(tokenAddress);
+
+      const balance = await tokenContract.balanceOf(walletAddress);
+      const supply = await tokenContract.totalSupply();
+
+      document.getElementById("tokenBalance").textContent = balance.displayValue;
+      document.getElementById("totalSupply").textContent = supply.displayValue;
+    } catch (err) {
+      console.error("Error connecting wallet:", err);
     }
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    // Update wallet UI
-    document.getElementById("walletAddress").textContent = shortenAddress(userAddress);
-    document.getElementById("connectWalletBtn").textContent = "Wallet Connected";
-
-    // Load token stats
-    await loadTokenBalance();
-    await loadTotalSupply();
-    await loadHolderCount();
-  } catch (error) {
-    console.error("Wallet connection failed:", error);
   }
-}
 
-// === Load KLY Balance ===
-async function loadTokenBalance() {
-  try {
-    const token = new ethers.Contract(tokenAddress, tokenABI, provider);
-    const balance = await token.balanceOf(userAddress);
-    document.getElementById("tokenBalance").textContent = ethers.utils.formatUnits(balance, 18);
-  } catch (err) {
-    console.error("Error fetching balance:", err);
-    document.getElementById("tokenBalance").textContent = "Error";
+  function shorten(addr) {
+    return addr.slice(0, 6) + "..." + addr.slice(-4);
   }
-}
 
-// === Load Total Supply ===
-async function loadTotalSupply() {
-  try {
-    const token = new ethers.Contract(tokenAddress, tokenABI, provider);
-    const totalSupply = await token.totalSupply();
-    document.getElementById("totalSupply").textContent = ethers.utils.formatUnits(totalSupply, 18);
-  } catch (err) {
-    console.error("Error fetching total supply:", err);
-    document.getElementById("totalSupply").textContent = "Error";
-  }
-}
-
-// === Load Holder Count ===
-async function loadHolderCount() {
-  try {
-    const apiURL = `https://api.bscscan.com/api?module=token&action=tokenholderlist&contractaddress=${tokenAddress}&apikey=${BSC_API_KEY}`;
-    const res = await fetch(apiURL);
-    const json = await res.json();
-    const count = json?.result?.length || "N/A";
-    document.getElementById("holderCount").textContent = count;
-  } catch (err) {
-    console.error("Error fetching holders:", err);
-    document.getElementById("holderCount").textContent = "Error";
-  }
-}
-
-// === Helpers ===
-function shortenAddress(addr) {
-  return addr.slice(0, 6) + "..." + addr.slice(-4);
-}
-  </script>
+  document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+</script>
 </body>
 </html>
