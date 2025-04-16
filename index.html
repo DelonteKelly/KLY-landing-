@@ -11,9 +11,7 @@
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
   <!-- Scripts -->
- <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@latest/dist/sdk.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/wallets@latest/dist/wallets.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/react-core@latest/dist/react-core.umd.min.js"></script>
+<script src="https://sdk.thirdweb.com/js/v3/thirdweb.umd.js"></script>
   <style>
     :root {
   --neon-green: #00ffe7;
@@ -1255,39 +1253,44 @@ main {
       "retina_detect": true
     });
 
-    <script type="module">
-  const { ThirdwebSDK } = window.thirdweb;
+  <script type="module">
+    const { ThirdwebSDK } = window.thirdweb;
 
-  const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const chain = "binance";
+    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const chain = "binance";
 
-  let sdk, tokenContract, walletAddress;
+    let sdk, tokenContract, walletAddress;
 
-  async function connectWallet() {
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-walletAddress = window.ethereum.selectedAddress;
-      document.getElementById("walletAddress").textContent = shorten(walletAddress);
-      document.getElementById("connectWalletBtn").textContent = "Wallet Connected";
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) throw new Error("MetaMask not found");
 
-      sdk = new ThirdwebSDK("binance", { clientId: "your-client-id" }); // optional: add your Thirdweb clientId
-      tokenContract = await sdk.getToken(tokenAddress);
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        walletAddress = accounts[0];
 
-      const balance = await tokenContract.balanceOf(walletAddress);
-      const supply = await tokenContract.totalSupply();
+        document.getElementById("walletAddress").textContent = shorten(walletAddress);
+        document.getElementById("connectWalletBtn").textContent = "Wallet Connected";
 
-      document.getElementById("tokenBalance").textContent = balance.displayValue;
-      document.getElementById("totalSupply").textContent = supply.displayValue;
-    } catch (err) {
-      console.error("Error connecting wallet:", err);
+        sdk = new ThirdwebSDK(chain, { clientId: "your-client-id" }); // Replace with your actual client ID
+        tokenContract = await sdk.getToken(tokenAddress);
+
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const supply = await tokenContract.totalSupply();
+
+        document.getElementById("tokenBalance").textContent = balance.displayValue;
+        document.getElementById("totalSupply").textContent = supply.displayValue;
+      } catch (err) {
+        console.error("Error connecting wallet:", err);
+      }
     }
-  }
 
-  function shorten(addr) {
-    return addr.slice(0, 6) + "..." + addr.slice(-4);
-  }
+    function shorten(addr) {
+      return addr.slice(0, 6) + "..." + addr.slice(-4);
+    }
 
-  document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
-</script>
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+    });
+  </script>
 </body>
 </html>
