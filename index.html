@@ -1253,44 +1253,149 @@ main {
       "retina_detect": true
     });
 
-  <script type="module">
-    const { ThirdwebSDK } = window.thirdweb;
+<script type="module">
+  const { ThirdwebSDK } = window.thirdweb;
 
-    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const chain = "binance";
+  // Configuration
+  const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const chain = "binance";
+  const clientId = "YOUR_THIRDWEB_CLIENT_ID"; // Replace with your actual client ID
 
-    let sdk, tokenContract, walletAddress;
+  // State
+  let sdk, tokenContract, walletAddress;
 
-    async function connectWallet() {
-      try {
-        if (!window.ethereum) throw new Error("MetaMask not found");
+  // DOM Elements
+  const elements = {
+    connectBtn: document.getElementById("connectWalletBtn"),
+    walletAddress: document.getElementById("walletAddress"),
+    tokenStats: document.getElementById("tokenStats"),
+    tokenBalance: document.getElementById("tokenBalance"),
+    totalSupply: document.getElementById("totalSupply")
+  };
 
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        walletAddress = accounts[0];
+  // Show notification
+  function showNotification(message, type = "info") {
+    const notification = document.createElement("div");
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.classList.add("fade-out");
+      setTimeout(() => notification.remove(), 500);
+    }, 3000);
+  }
 
-        document.getElementById("walletAddress").textContent = shorten(walletAddress);
-        document.getElementById("connectWalletBtn").textContent = "Wallet Connected";
+  // Shorten wallet address
+  function shortenAddress(addr) {
+    return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
+  }
 
-        sdk = new ThirdwebSDK(chain, { clientId: "your-client-id" }); // Replace with your actual client ID
-        tokenContract = await sdk.getToken(tokenAddress);
-
-        const balance = await tokenContract.balanceOf(walletAddress);
-        const supply = await tokenContract.totalSupply();
-
-        document.getElementById("tokenBalance").textContent = balance.displayValue;
-        document.getElementById("totalSupply").textContent = supply.displayValue;
-      } catch (err) {
-        console.error("Error connecting wallet:", err);
+  // Connect wallet
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        throw new Error("MetaMask not detected. Please install MetaMask.");
       }
-    }
 
-    function shorten(addr) {
-      return addr.slice(0, 6) + "..." + addr.slice(-4);
-    }
+      // Show loading state
+      elements.connectBtn.disabled = true;
+      elements.connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
 
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+      // Request account access
+      const accounts = await window.ethereum.request({ 
+        method: "eth_requestAccounts" 
+      });
+      
+      walletAddress = accounts[0];
+      
+      // Initialize SDK and contract
+      sdk = new ThirdwebSDK(chain, { clientId });
+      tokenContract = await sdk.getToken(tokenAddress);
+
+      // Update UI
+      elements.walletAddress.textContent = shortenAddress(walletAddress);
+      elements.walletAddress.style.display = "block";
+      elements.connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
+      elements.tokenStats.style.display = "block";
+
+      // Load token data
+      await loadTokenData();
+      
+      showNotification("Wallet connected successfully!", "success");
+
+      // Set up event listeners
+      setupEventListeners();
+
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      showNotification(`Connection failed: ${err.message}`, "error");
+      resetWalletState();
+    } finally {
+      elements.connectBtn.disabled = false;
+    }
+  }
+
+  // Load token data
+  async function loadTokenData() {
+    try {
+      elements.tokenStats.classList.add("loading");
+      
+      const [balance, supply] = await Promise.all([
+        tokenContract.balanceOf(walletAddress),
+        tokenContract.totalSupply()
+      ]);
+
+      elements.tokenBalance.textContent = balance.displayValue;
+      elements.totalSupply.textContent = supply.displayValue;
+
+    } catch (err) {
+      console.error("Error loading token data:", err);
+      showNotification("Failed to load token data", "error");
+    } finally {
+      elements.tokenStats.classList.remove("loading");
+    }
+  }
+
+  // Set up event listeners
+  function setupEventListeners() {
+    // Account changed
+    window.ethereum.on("accountsChanged", (accounts) => {
+      if (accounts.length === 0) {
+        // Wallet disconnected
+        showNotification("Wallet disconnected", "info");
+        resetWalletState();
+      } else {
+        // Account changed
+        walletAddress = accounts[0];
+        elements.walletAddress.textContent = shortenAddress(walletAddress);
+        loadTokenData();
+      }
     });
-  </script>
+
+    // Chain changed
+    window.ethereum.on("chainChanged", () => {
+      window.location.reload();
+    });
+  }
+
+  // Reset wallet state
+  function resetWalletState() {
+    walletAddress = null;
+    elements.walletAddress.style.display = "none";
+    elements.tokenStats.style.display = "none";
+    elements.connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+  }
+
+  // Initialize
+  document.addEventListener("DOMContentLoaded", () => {
+    elements.connectBtn.addEventListener("click", connectWallet);
+    
+    // Auto-connect if wallet already connected
+    if (window.ethereum?.selectedAddress) {
+      connectWallet();
+    }
+  });
+</script>
 </body>
 </html>
