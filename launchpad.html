@@ -430,6 +430,51 @@ input:focus {
     window.ethereum.on("accountsChanged", () => window.location.reload());
     window.ethereum.on("chainChanged", () => window.location.reload());
   }
+   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+
+const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const requiredKLY = 10000;
+
+document.getElementById("tokenDeployForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const tokenName = document.getElementById("tokenName").value;
+  const tokenSymbol = document.getElementById("tokenSymbol").value;
+  const initialSupply = document.getElementById("initialSupply").value;
+
+  if (!tokenName || !tokenSymbol || !initialSupply) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  const sdk = new ThirdwebSDK(signer); // signer already exists from wallet connection
+  const userAddress = await signer.getAddress();
+
+  const klyToken = await sdk.getToken(treasuryWallet); // KLY token contract address
+  const klyBalance = await klyToken.balanceOf(userAddress);
+
+  if (parseFloat(klyBalance.displayValue) < requiredKLY) {
+    alert("You need at least 10,000 KLY to launch a token.");
+    return;
+  }
+
+  try {
+    const deployedToken = await sdk.deployer.deployToken({
+      name: tokenName,
+      symbol: tokenSymbol,
+      primary_sale_recipient: userAddress,
+      total_supply: initialSupply,
+    });
+
+    const fivePercent = ethers.BigNumber.from(initialSupply).div(20); // 5%
+    await deployedToken.transfer(treasuryWallet, fivePercent);
+
+    alert(`Token deployed! Address: ${deployedToken.getAddress()}`);
+  } catch (err) {
+    console.error(err);
+    alert("Token deployment failed.");
+  }
+});
 </script>
 </body>
 </html>
