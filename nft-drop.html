@@ -9,9 +9,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
 
-  <!-- Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
   <style>
     :root {
       --primary: #00ffe7;
@@ -305,10 +302,11 @@
     <div id="badgeOwned" style="color:lime; display:none;">✔ You already minted this NFT.</div>
     
 
- <script type="module">
+<script type="module">
   import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@3";
-  import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2"; // Use v5 as ES module
+  import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2";
 
+  // DOM Elements
   const connectBtn = document.getElementById("connectBtn");
   const mintBtn = document.getElementById("mintBtn");
   const walletDisplay = document.getElementById("walletDisplay");
@@ -317,82 +315,141 @@
   const remainingEl = document.getElementById("remainingCount");
   const statusText = document.getElementById("statusText");
 
+  // Contract Configuration
   const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  const CHAIN_ID = 56; // BSC Mainnet
+  const CHAIN_ID_HEX = "0x38";
+
+  // State Variables
   let sdk, signer, userAddress, nftContract;
 
+  // Wallet Connection
   async function connectWallet() {
     try {
       if (!window.ethereum) {
-        alert("Please install MetaMask.");
+        alert("Please install MetaMask or another Ethereum-compatible wallet.");
         return;
       }
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found");
+      }
+
       signer = provider.getSigner();
       userAddress = await signer.getAddress();
 
+      // Check and switch network if needed
       const network = await provider.getNetwork();
-      if (network.chainId !== 56) {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x38" }],
-        });
+      if (network.chainId !== CHAIN_ID) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CHAIN_ID_HEX }],
+          });
+        } catch (switchError) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            throw new Error("Please add Binance Smart Chain to your wallet");
+          }
+          throw switchError;
+        }
       }
 
+      // Initialize SDK and contract
       sdk = new ThirdwebSDK(signer);
       nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
 
+      // Update UI
       walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-      connectBtn.innerText = "Wallet Connected";
+      connectBtn.innerText = "Connected";
+      connectBtn.disabled = true;
       mintBtn.disabled = false;
 
-      loadSupply();
-      checkMinted();
+      // Load data
+      await loadSupply();
+      await checkMinted();
+      
     } catch (err) {
-      statusText.innerText = "Error: " + err.message;
+      console.error("Wallet connection error:", err);
+      statusText.innerText = `Error: ${err.message}`;
+      statusText.style.color = "#ff4444";
     }
   }
 
+  // NFT Supply Information
   async function loadSupply() {
-    const total = await nftContract.erc721.maxSupply();
-    const minted = await nftContract.erc721.totalSupply();
-    const remaining = total - minted;
-
-    totalEl.innerText = total;
-    mintedEl.innerText = minted;
-    remainingEl.innerText = remaining;
-  }
-
-  async function checkMinted() {
-    const balance = await nftContract.erc721.balanceOf(userAddress);
-    if (balance > 0) {
-      statusText.innerHTML = "You've already minted your Genesis NFT.";
-      mintBtn.disabled = true;
-      document.getElementById("badgeOwned").style.display = "block";
+    try {
+      const [total, minted] = await Promise.all([
+        nftContract.erc721.maxSupply(),
+        nftContract.erc721.totalSupply()
+      ]);
+      
+      const remaining = total.sub(minted).toNumber();
+      
+      totalEl.innerText = total.toString();
+      mintedEl.innerText = minted.toString();
+      remainingEl.innerText = remaining.toString();
+      
+    } catch (err) {
+      console.error("Error loading supply:", err);
+      statusText.innerText = "Error loading supply data";
     }
   }
 
+  // Check if user already minted
+  async function checkMinted() {
+    try {
+      const balance = await nftContract.erc721.balanceOf(userAddress);
+      if (balance.gt(0)) {
+        statusText.innerHTML = "You've already minted your Genesis NFT!";
+        statusText.style.color = "#4CAF50";
+        mintBtn.disabled = true;
+        document.getElementById("badgeOwned").style.display = "block";
+      }
+    } catch (err) {
+      console.error("Error checking minted status:", err);
+    }
+  }
+
+  // Mint NFT Function
   async function mintNFT() {
     try {
       statusText.innerText = "Minting in progress...";
+      statusText.style.color = "inherit";
+      mintBtn.disabled = true;
+      
       const tx = await nftContract.erc721.claim(1);
-      const txHash = tx.receipt.transactionHash;
+      const receipt = await tx.receipt;
+      const txHash = receipt.transactionHash;
+      
       statusText.innerHTML = `
-        <span style="color:lime;">Success!</span><br>
-        <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:#00ffc3; font-weight: bold;">
-          View Transaction on BscScan
+        <span style="color:#4CAF50;">Mint successful!</span><br>
+        <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:#00bcd4; text-decoration: underline;">
+          View on BscScan
         </a>
       `;
-      loadSupply();
-      mintBtn.disabled = true;
+      
+      // Refresh data
+      await loadSupply();
+      await checkMinted();
+      
     } catch (err) {
-      statusText.innerHTML = "Mint failed: " + err.message;
+      console.error("Minting error:", err);
+      statusText.innerHTML = `Mint failed: ${err.message}`;
+      statusText.style.color = "#ff4444";
+      mintBtn.disabled = false;
     }
   }
 
+  // Event Listeners
   connectBtn.addEventListener("click", connectWallet);
   mintBtn.addEventListener("click", mintNFT);
+
+  // Initialize button states
+  if (mintBtn) mintBtn.disabled = true;
 </script>
   </div>
 </body>
