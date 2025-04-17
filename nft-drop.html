@@ -305,9 +305,9 @@
     <div id="badgeOwned" style="color:lime; display:none;">✔ You already minted this NFT.</div>
     
 
-  <script type="module">
-  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk";
-  import { ethers } from "https://esm.sh/ethers";
+ <script type="module">
+  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@3";
+  import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2"; // Use v5 as ES module
 
   const connectBtn = document.getElementById("connectBtn");
   const mintBtn = document.getElementById("mintBtn");
@@ -320,38 +320,40 @@
   const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
   let sdk, signer, userAddress, nftContract;
 
-async function connectWallet() {
-  try {
-    if (!window.ethereum) {
-      alert("Please install MetaMask.");
-      return;
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== 56) {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }],
+        });
+      }
+
+      sdk = new ThirdwebSDK(signer);
+      nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
+
+      walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+      connectBtn.innerText = "Wallet Connected";
+      mintBtn.disabled = false;
+
+      loadSupply();
+      checkMinted();
+    } catch (err) {
+      statusText.innerText = "Error: " + err.message;
     }
-
-    const provider = new ethers.providers.Web3Provider(window.ethereum); // ✅
-    await provider.send("eth_requestAccounts", []); // ✅ request connection
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    const network = await provider.getNetwork();
-    if (network.chainId !== 56) {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }],
-      });
-    }
-
-    sdk = new ThirdwebSDK(signer);
-    nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
-
-    walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-    connectBtn.innerText = "Wallet Connected";
-    loadSupply();
-    checkMinted();
-  } catch (err) {
-    statusText.innerText = "Error: " + err.message;
   }
-}
-  
+
   async function loadSupply() {
     const total = await nftContract.erc721.maxSupply();
     const minted = await nftContract.erc721.totalSupply();
@@ -362,27 +364,26 @@ async function connectWallet() {
     remainingEl.innerText = remaining;
   }
 
- async function checkMinted() {
-  const balance = await nftContract.erc721.balanceOf(userAddress);
-  if (balance > 0) {
-    statusText.innerHTML = "You've already minted your Genesis NFT.";
-    mintBtn.disabled = true;
-    document.getElementById("badgeOwned").style.display = "block";
+  async function checkMinted() {
+    const balance = await nftContract.erc721.balanceOf(userAddress);
+    if (balance > 0) {
+      statusText.innerHTML = "You've already minted your Genesis NFT.";
+      mintBtn.disabled = true;
+      document.getElementById("badgeOwned").style.display = "block";
+    }
   }
-}
 
   async function mintNFT() {
     try {
       statusText.innerText = "Minting in progress...";
-const tx = await nftContract.erc721.claim(1);
-
-const txHash = tx.receipt.transactionHash;
-statusText.innerHTML = `
-  <span style="color:lime;">Success!</span><br>
-  <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:#00ffc3; font-weight: bold;">
-    View Transaction on BscScan
-  </a>
-`;
+      const tx = await nftContract.erc721.claim(1);
+      const txHash = tx.receipt.transactionHash;
+      statusText.innerHTML = `
+        <span style="color:lime;">Success!</span><br>
+        <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:#00ffc3; font-weight: bold;">
+          View Transaction on BscScan
+        </a>
+      `;
       loadSupply();
       mintBtn.disabled = true;
     } catch (err) {
