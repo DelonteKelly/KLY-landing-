@@ -274,6 +274,18 @@
       </div>
     </div>
 
+    <div id="nft-preview" style="text-align:center; margin-bottom: 30px;">
+  <img 
+    src="https://ipfs.io/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4/image.png" 
+    alt="Genesis NFT"
+    style="width:200px; border: 2px solid #00ffc3; border-radius: 12px; box-shadow: 0 0 15px #00ffc3;">
+  <h2 style="color:#00ffc3; margin-top: 15px;">Legacy Builder Genesis NFT</h2>
+  <p style="color:#ccc; font-size: 16px; max-width: 400px; margin: auto;">
+    An exclusive badge honoring early supporters of the KLY ecosystem. 
+    Limited to 500 total mints. 1 per wallet. Stored on IPFS forever.
+  </p>
+</div>
+
     <div class="buttons">
       <button class="btn btn-primary" id="connectBtn">
         <i class="fas fa-wallet"></i> Connect Wallet
@@ -291,180 +303,80 @@
     </div>
     
 
-    <script>
-      const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-      const METADATA_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
+  <script type="module">
+  import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk";
+  import { ethers } from "https://esm.sh/ethers";
 
-      const GENESIS_ABI = [
-        // Standard ERC721 functions
-        { name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-        { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ name: "owner", type: "address" }], outputs: [{ type: "uint256" }] },
-        { name: "ownerOf", type: "function", stateMutability: "view", inputs: [{ name: "tokenId", type: "uint256" }], outputs: [{ type: "address" }] },
-        { name: "name", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
-        { name: "symbol", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
-        
-        // Minting function
-        { 
-          name: "mintTo", 
-          type: "function", 
-          stateMutability: "nonpayable", 
-          inputs: [
-            { name: "_to", type: "address" },
-            { name: "_uri", type: "string" }
-          ], 
-          outputs: [{ type: "uint256" }] 
-        },
-        
-        // Additional useful functions
-        { name: "nextTokenIdToMint", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-        { name: "contractURI", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] }
-      ];
+  const connectBtn = document.getElementById("connectBtn");
+  const mintBtn = document.getElementById("mintBtn");
+  const walletDisplay = document.getElementById("walletDisplay");
+  const totalEl = document.getElementById("totalSupply");
+  const mintedEl = document.getElementById("mintedCount");
+  const remainingEl = document.getElementById("remainingCount");
+  const statusText = document.getElementById("statusText");
 
-      let provider, signer, wallet, contract;
+  const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  let sdk, signer, userAddress, nftContract;
 
-      // Update UI status
-      function updateStatus(message, type = "default") {
-        const statusEl = document.getElementById("status");
-        statusEl.className = `status-${type}`;
-        document.getElementById("statusText").textContent = message;
-        
-        // Update icon based on status type
-        const icon = statusEl.querySelector("i");
-        icon.className = 
-          type === "success" ? "fas fa-check-circle" :
-          type === "error" ? "fas fa-exclamation-circle" :
-          type === "processing" ? "fas fa-spinner fa-spin" :
-          "fas fa-info-circle";
-      }
+  async function connectWallet() {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
 
-      // Initialize NFT drop
-      async function initNFTDrop() {
-        try {
-          updateStatus("Connecting to wallet...", "processing");
-          
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          signer = provider.getSigner();
-          wallet = await signer.getAddress();
-          contract = new ethers.Contract(GENESIS_NFT_CONTRACT, GENESIS_ABI, signer);
-
-          // Update wallet display
-          document.getElementById("walletDisplay").textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-          document.getElementById("connectBtn").style.display = "none";
-
-          // Load contract data
-          const [totalSupply, balanceOf, nextTokenId] = await Promise.all([
-            contract.totalSupply(),
-            contract.balanceOf(wallet),
-            contract.nextTokenIdToMint()
-          ]);
-
-          const remaining = 500 - totalSupply.toNumber();
-          
-          // Update stats
-          document.getElementById("mintedCount").textContent = totalSupply.toString();
-          document.getElementById("remainingCount").textContent = remaining.toString();
-
-          if (balanceOf.gt(0)) {
-            updateStatus("You've already minted your Genesis NFT.", "error");
-            document.getElementById("mintBtn").disabled = true;
-          } else if (totalSupply.gte(500)) {
-            updateStatus("All Genesis NFTs have been minted.", "error");
-            document.getElementById("mintBtn").disabled = true;
-          } else {
-            updateStatus("You're eligible to mint your Genesis NFT!", "success");
-            document.getElementById("mintBtn").disabled = false;
-          }
-
-        } catch (err) {
-          console.error("Initialization error:", err);
-          updateStatus("Error connecting to wallet. Please try again.", "error");
-        }
-      }
-
-      // Mint NFT function
-      async function mintNFT() {
-        try {
-          // Check if already minted
-          const alreadyMinted = await contract.balanceOf(wallet);
-          if (alreadyMinted.gt(0)) {
-            updateStatus("You've already minted your Genesis NFT.", "error");
-            return;
-          }
-
-          // Check supply
-          const totalSupply = await contract.totalSupply();
-          if (totalSupply.gte(500)) {
-            updateStatus("All Genesis NFTs have been minted.", "error");
-            return;
-          }
-
-          updateStatus("Minting your NFT...", "processing");
-          document.getElementById("mintBtn").disabled = true;
-
-          // Execute mint transaction
-          const tx = await contract.mintTo(wallet, METADATA_URI, {
-            gasLimit: 300000 // Set appropriate gas limit
-          });
-
-          updateStatus("Transaction sent. Waiting for confirmation...", "processing");
-          
-          // Wait for transaction confirmation
-          const receipt = await tx.wait();
-          console.log("Mint receipt:", receipt);
-
-          
-
-        } catch (err) {
-          console.error("Mint error:", err);
-          
-          let errorMessage = "Minting failed";
-          if (err.message.includes("user rejected transaction")) {
-            errorMessage = "Transaction rejected by user";
-          } else if (err.message.includes("insufficient funds")) {
-            errorMessage = "Insufficient funds for gas";
-          } else if (err.data?.message) {
-            errorMessage = err.data.message;
-          }
-          
-          updateStatus(errorMessage, "error");
-          document.getElementById("mintBtn").disabled = false;
-        }
-      }
-
-      // Event listeners
-      document.getElementById("connectBtn").addEventListener("click", async () => {
-        try {
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          initNFTDrop();
-        } catch (err) {
-          console.error("Wallet connection error:", err);
-          updateStatus("Error connecting wallet. Please try again.", "error");
-        }
-      });
-
-      document.getElementById("mintBtn").addEventListener("click", mintNFT);
-
-      // Auto-connect if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        initNFTDrop();
-      }
-
-      // Handle account changes
-      if (window.ethereum) {
-        window.ethereum.on("accountsChanged", (accounts) => {
-          if (accounts.length === 0) {
-            // Wallet disconnected
-            document.getElementById("connectBtn").style.display = "block";
-            document.getElementById("walletDisplay").textContent = "";
-            document.getElementById("mintBtn").disabled = true;
-            updateStatus("Connect your wallet to claim your Genesis NFT");
-          } else {
-            // Account changed
-            initNFTDrop();
-          }
+      const network = await provider.getNetwork();
+      if (network.chainId !== 56) {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }],
         });
       }
-    </script>
+
+      sdk = new ThirdwebSDK(signer);
+      nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
+
+      walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+      connectBtn.innerText = "Wallet Connected";
+      loadSupply();
+      checkMinted();
+    } catch (err) {
+      statusText.innerText = "Error: " + err.message;
+    }
+  }
+
+  async function loadSupply() {
+    const total = await nftContract.erc721.maxSupply();
+    const minted = await nftContract.erc721.totalSupply();
+    const remaining = total - minted;
+
+    totalEl.innerText = total;
+    mintedEl.innerText = minted;
+    remainingEl.innerText = remaining;
+  }
+
+  async function checkMinted() {
+    const balance = await nftContract.erc721.balanceOf(userAddress);
+    if (balance > 0) {
+      statusText.innerHTML = "You've already minted your Genesis NFT.";
+      mintBtn.disabled = true;
+    }
+  }
+
+  async function mintNFT() {
+    try {
+      statusText.innerText = "Minting in progress...";
+      const tx = await nftContract.erc721.claim(1);
+      statusText.innerHTML = `Success! TX Hash: ${tx.receipt.transactionHash}`;
+      loadSupply();
+      mintBtn.disabled = true;
+    } catch (err) {
+      statusText.innerHTML = "Mint failed: " + err.message;
+    }
+  }
+
+  connectBtn.addEventListener("click", connectWallet);
+  mintBtn.addEventListener("click", mintNFT);
+</script>
   </div>
 </body>
 </html>
