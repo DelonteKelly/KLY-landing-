@@ -333,7 +333,11 @@ input:focus {
   <button id="deployTokenBtn" type="submit" class="glow-button">Create Token</button>
   </form>
 
- <!-- Wallet Connect & Token Deployment Script -->
+# Enhanced Wallet Connection & Token Deployment Solution
+
+Here's an improved version of your script with better error handling, user feedback, and connection reliability:
+
+```html
 <script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
   import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@3";
@@ -361,75 +365,222 @@ input:focus {
   ];
 
   const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const BSC_TESTNET_CHAIN_ID = 97;
+  const BSC_TESTNET_CHAIN_HEX = "0x61";
 
   const connectBtn = document.getElementById("connectWallet");
   const walletInfoEl = document.getElementById("walletInfo");
   const walletAddressEl = document.getElementById("walletAddress");
   const statsDivs = document.querySelectorAll(".stats div");
+  const statusMessage = document.getElementById("statusMessage");
 
   let provider, signer, wallet;
+
+  // Update UI status
+  function updateStatus(message, type = "info") {
+    statusMessage.innerHTML = `<i class="fas fa-${getStatusIcon(type)}"></i> ${message}`;
+    statusMessage.className = `status-${type}`;
+  }
+
+  function getStatusIcon(type) {
+    const icons = {
+      info: "info-circle",
+      success: "check-circle",
+      error: "exclamation-circle",
+      warning: "exclamation-triangle",
+      loading: "spinner fa-spin"
+    };
+    return icons[type] || "info-circle";
+  }
+
+  // Check and switch network if needed
+  async function ensureCorrectNetwork() {
+    try {
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      
+      if (chainId !== BSC_TESTNET_CHAIN_HEX) {
+        updateStatus("Switching to BSC Testnet...", "warning");
+        
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BSC_TESTNET_CHAIN_HEX }],
+          });
+          // Give time for the switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (switchError) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            updateStatus("Please add BSC Testnet to your wallet", "error");
+            return false;
+          }
+          throw switchError;
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error("Network error:", err);
+      updateStatus("Network error: " + err.message, "error");
+      return false;
+    }
+  }
 
   async function connectWallet() {
     try {
       if (!window.ethereum) {
-        alert("Please install MetaMask.");
+        updateStatus("Please install MetaMask or another Web3 wallet", "error");
+        return;
+      }
+
+      updateStatus("Connecting wallet...", "loading");
+      connectBtn.disabled = true;
+      connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+
+      // Check and switch network
+      const networkCorrect = await ensureCorrectNetwork();
+      if (!networkCorrect) {
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect Wallet';
         return;
       }
 
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found. Please unlock your wallet.");
+      }
+
       signer = provider.getSigner();
       wallet = await signer.getAddress();
 
+      // Update UI
       connectBtn.classList.add("connected");
       connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
       walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
       walletInfoEl.style.display = "block";
+      updateStatus("Wallet connected successfully", "success");
 
+      // Load tokens
       await loadTokensByOwner(wallet);
+      
     } catch (err) {
       console.error("Wallet connection error:", err);
-      walletAddressEl.textContent = "Failed to connect";
+      
+      let errorMessage = "Connection failed";
+      if (err.code === 4001) {
+        errorMessage = "Connection rejected by user";
+      } else if (err.code === -32002) {
+        errorMessage = "Request already pending in wallet";
+      } else if (err.message.includes("User denied account authorization")) {
+        errorMessage = "Connection cancelled by user";
+      } else {
+        errorMessage = err.message;
+      }
+      
+      updateStatus(errorMessage, "error");
+      connectBtn.disabled = false;
+      connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect Wallet';
     }
   }
 
   async function loadTokensByOwner(wallet) {
     try {
+      updateStatus("Loading your tokens...", "loading");
+      
       const contract = new ethers.Contract(REGISTRY_ADDRESS, REGISTRY_ABI, provider);
       const tokens = await contract.getTokensByOwner(wallet);
+      
       statsDivs[0].querySelector("strong").innerText = tokens.length;
+
+      // Clear existing token list
+      const existingList = document.getElementById("tokenList");
+      if (existingList) existingList.remove();
 
       if (tokens.length > 0) {
         const listContainer = document.createElement("div");
+        listContainer.id = "tokenList";
         listContainer.style.marginTop = "2rem";
         listContainer.innerHTML = `<h2 style="color:#00ffe7; font-family:Orbitron;">Your Deployed Tokens</h2>`;
+        
         tokens.forEach((t) => {
           const item = document.createElement("div");
           item.style.padding = "0.5rem 0";
-          item.innerHTML = `<strong>${t.name}</strong><br/><code>${t.tokenAddress}</code>`;
+          item.style.borderBottom = "1px solid rgba(0, 255, 231, 0.1)";
+          
+          // Add copy to clipboard functionality
+          item.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong>${t.name}</strong><br/>
+                <code style="font-size: 0.8rem;">${t.tokenAddress}</code>
+              </div>
+              <button class="copy-btn" data-address="${t.tokenAddress}" 
+                style="background: transparent; border: 1px solid #00ffe7; 
+                color: #00ffe7; padding: 0.25rem 0.5rem; border-radius: 4px;
+                cursor: pointer;">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          `;
           listContainer.appendChild(item);
         });
+        
         document.querySelector(".container").appendChild(listContainer);
+        
+        // Add event listeners to copy buttons
+        document.querySelectorAll(".copy-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            navigator.clipboard.writeText(btn.getAttribute("data-address"));
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => {
+              btn.innerHTML = '<i class="far fa-copy"></i>';
+            }, 2000);
+          });
+        });
       }
+      
+      updateStatus("Tokens loaded successfully", "success");
     } catch (err) {
       console.error("Failed to load tokens:", err);
+      updateStatus("Failed to load tokens: " + err.message, "error");
     }
   }
 
   document.getElementById("tokenDeployForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const tokenName = document.getElementById("tokenName").value;
-    const tokenSymbol = document.getElementById("tokenSymbol").value;
-    const initialSupply = document.getElementById("initialSupply").value;
+    const tokenName = document.getElementById("tokenName").value.trim();
+    const tokenSymbol = document.getElementById("tokenSymbol").value.trim().toUpperCase();
+    const initialSupply = document.getElementById("initialSupply").value.trim();
 
     if (!tokenName || !tokenSymbol || !initialSupply) {
-      alert("Please fill in all fields.");
+      updateStatus("Please fill in all fields", "error");
+      return;
+    }
+
+    if (!wallet) {
+      updateStatus("Please connect your wallet first", "error");
       return;
     }
 
     try {
+      updateStatus("Preparing token deployment...", "loading");
+      const deployBtn = document.getElementById("deployBtn");
+      deployBtn.disabled = true;
+      deployBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deploying...';
+
+      // Ensure we're on the correct network
+      const networkCorrect = await ensureCorrectNetwork();
+      if (!networkCorrect) {
+        deployBtn.disabled = false;
+        deployBtn.innerHTML = '<i class="fas fa-rocket"></i> Deploy Token';
+        return;
+      }
+
       const sdk = new ThirdwebSDK(signer);
+      updateStatus("Deploying token contract...", "loading");
+
       const token = await sdk.deployer.deployToken({
         name: tokenName,
         symbol: tokenSymbol,
@@ -437,18 +588,46 @@ input:focus {
         primary_sale_recipient: treasuryWallet,
       });
 
-      alert(`Token deployed at: ${token.address}`);
+      updateStatus(`Token deployed at: ${token.address}`, "success");
+      
+      // Show success message with link
+      statusMessage.innerHTML = `
+        <i class="fas fa-check-circle"></i> Token deployed successfully!<br>
+        <small>Address: <code>${token.address}</code></small><br>
+        <a href="https://testnet.bscscan.com/address/${token.address}" 
+           target="_blank" 
+           style="color: #00ffe7; text-decoration: underline;">
+          View on BscScan
+        </a>
+      `;
 
-      // Optional: Call registry contract here to register
-      // e.g., await contract.connect(signer).registerToken(tokenName, token.address);
+      // Reset form
+      e.target.reset();
+      deployBtn.disabled = false;
+      deployBtn.innerHTML = '<i class="fas fa-rocket"></i> Deploy Token';
 
+      // Reload tokens
       await loadTokensByOwner(wallet);
+
     } catch (err) {
       console.error("Token deployment failed:", err);
-      alert("Token deployment failed. See console for details.");
+      
+      let errorMessage = "Deployment failed";
+      if (err.message.includes("user rejected transaction")) {
+        errorMessage = "Transaction rejected by user";
+      } else if (err.message.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for gas";
+      } else {
+        errorMessage = err.message;
+      }
+      
+      updateStatus(errorMessage, "error");
+      document.getElementById("deployBtn").disabled = false;
+      document.getElementById("deployBtn").innerHTML = '<i class="fas fa-rocket"></i> Deploy Token';
     }
   });
 
+  // Initialize
   connectBtn.addEventListener("click", connectWallet);
 
   window.addEventListener("DOMContentLoaded", () => {
@@ -457,10 +636,63 @@ input:focus {
     }
   });
 
+  // Listen for account/chain changes
   if (window.ethereum) {
-    window.ethereum.on("accountsChanged", () => window.location.reload());
-    window.ethereum.on("chainChanged", () => window.location.reload());
+    window.ethereum.on("accountsChanged", (accounts) => {
+      if (accounts.length > 0) {
+        connectWallet();
+      } else {
+        // Wallet disconnected
+        connectBtn.classList.remove("connected");
+        connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect Wallet';
+        walletInfoEl.style.display = "none";
+        updateStatus("Wallet disconnected", "warning");
+      }
+    });
+
+    window.ethereum.on("chainChanged", (chainId) => {
+      if (chainId !== BSC_TESTNET_CHAIN_HEX) {
+        updateStatus("Please switch back to BSC Testnet", "warning");
+      } else {
+        connectWallet();
+      }
+    });
   }
 </script>
+```
+
+## Key Improvements:
+
+1. **Enhanced Network Handling**:
+   - Added proper BSC Testnet chain ID checks
+   - Automatic network switching with better error handling
+   - Visual feedback during network switching
+
+2. **Better User Feedback**:
+   - Comprehensive status messages with icons
+   - Loading states for all async operations
+   - Clear error messages with common scenarios handled
+
+3. **Improved Token Display**:
+   - Added copy-to-clipboard functionality for token addresses
+   - Better formatting of token lists
+   - Automatic refresh after new token deployment
+
+4. **Form Submission Enhancements**:
+   - Better input validation
+   - Loading state during deployment
+   - Success message with BscScan link
+
+5. **Connection Reliability**:
+   - Proper handling of account changes
+   - Network change detection
+   - Auto-reconnect when chain changes back to correct network
+
+6. **Error Recovery**:
+   - Clear messages for common errors (rejected transactions, insufficient funds)
+   - Button state recovery after failures
+   - Network fallback checks
+
+This version provides a much more robust and user-friendly experience for both wallet connection and token deployment. The UI gives clear feedback at every step, and the code handles edge cases much more gracefully.
 </body>
 </html>
