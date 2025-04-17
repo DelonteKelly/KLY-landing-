@@ -430,9 +430,12 @@
   const CHAIN_ID = 56; // BSC Mainnet
   const CHAIN_ID_HEX = "0x38";
   const CHAIN_NAME = "Binance Smart Chain";
+  const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
 
   // State Variables
   let sdk, signer, userAddress, nftContract;
+  let connectionAttempts = 0;
+  const MAX_CONNECTION_ATTEMPTS = 3;
 
   // Update UI Status
   function updateStatus(message, type = "default") {
@@ -444,7 +447,8 @@
       default: "fa-info-circle",
       success: "fa-check-circle",
       error: "fa-exclamation-circle",
-      processing: "fa-spinner spinner"
+      processing: "fa-spinner spinner",
+      warning: "fa-exclamation-triangle"
     };
     
     statusEl.innerHTML = `<i class="fas ${iconMap[type]}"></i> <span id="statusText">${message}</span>`;
@@ -453,16 +457,42 @@
   // Wallet Connection
   async function connectWallet() {
     try {
+      connectionAttempts++;
+      
       if (!window.ethereum) {
-        updateStatus("Please install MetaMask or another Ethereum-compatible wallet.", "error");
-        window.open("https://metamask.io/download.html", "_blank");
+        updateStatus(`
+          <span style="color:#ff5555;">Wallet not detected!</span><br>
+          Please install <a href="https://metamask.io/download.html" target="_blank" style="color:#00ffe7;">MetaMask</a>
+          or another Web3 wallet
+        `, "error");
+        return;
+      }
+
+      // Reset connection attempts if successful previously
+      if (connectionAttempts > MAX_CONNECTION_ATTEMPTS) {
+        updateStatus("Too many connection attempts. Please refresh the page.", "error");
         return;
       }
 
       updateStatus("Connecting to wallet...", "processing");
+      connectBtn.innerHTML = `<i class="fas fa-spinner spinner"></i> Connecting...`;
       
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
+      // Try both modern and legacy Ethereum providers
+      const provider = window.ethereum.providers ? 
+        new ethers.providers.Web3Provider(window.ethereum.providers.find(p => p.isMetaMask)) :
+        new ethers.providers.Web3Provider(window.ethereum);
+
+      // Request accounts with error handling for different wallet behaviors
+      let accounts;
+      try {
+        accounts = await provider.send("eth_requestAccounts", []);
+      } catch (err) {
+        if (err.code === -32002) {
+          updateStatus("Please unlock your wallet and check for pending requests", "warning");
+          return;
+        }
+        throw err;
+      }
       
       if (!accounts || accounts.length === 0) {
         throw new Error("No accounts found. Please unlock your wallet.");
@@ -471,28 +501,55 @@
       signer = provider.getSigner();
       userAddress = await signer.getAddress();
 
-      // Check and switch network if needed
-      const network = await provider.getNetwork();
-      if (network.chainId !== CHAIN_ID) {
-        try {
+      // Network handling with fallback
+      try {
+        const network = await provider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
           updateStatus(`Switching to ${CHAIN_NAME}...`, "processing");
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: CHAIN_ID_HEX }],
-          });
-        } catch (switchError) {
-          // This error code indicates that the chain has not been added to MetaMask
-          if (switchError.code === 4902) {
-            throw new Error(`Please add ${CHAIN_NAME} to your wallet`);
+          
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: CHAIN_ID_HEX }],
+            });
+          } catch (switchError) {
+            // This error code indicates that the chain has not been added to MetaMask
+            if (switchError.code === 4902) {
+              updateStatus(`
+                <span style="color:#ffaa00;">${CHAIN_NAME} not configured!</span><br>
+                Please add BSC to your wallet
+              `, "error");
+              return;
+            }
+            throw switchError;
           }
-          throw switchError;
+          
+          // Add delay to ensure network switch completes
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
+      } catch (networkError) {
+        console.warn("Network switch failed, trying with custom provider...");
+        const bscProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_URL);
+        const network = await bscProvider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
+          throw new Error(`Failed to connect to ${CHAIN_NAME}`);
+        }
+        provider = bscProvider;
+        signer = provider.getSigner();
       }
 
-      // Initialize SDK and contract
-      updateStatus("Initializing contract...", "processing");
-      sdk = new ThirdwebSDK(signer);
-      nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
+      // Initialize SDK with error handling
+      try {
+        updateStatus("Initializing contract...", "processing");
+        sdk = new ThirdwebSDK(signer);
+        nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
+        
+        // Test contract connection
+        await nftContract.erc721.totalSupply();
+      } catch (contractError) {
+        console.error("Contract initialization error:", contractError);
+        throw new Error("Failed to connect to NFT contract");
+      }
 
       // Update UI
       walletDisplay.innerText = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
@@ -505,10 +562,38 @@
       await checkMinted();
       
       updateStatus("Ready to mint your Genesis NFT!", "success");
+      connectionAttempts = 0; // Reset on success
       
     } catch (err) {
       console.error("Wallet connection error:", err);
-      updateStatus(`Error: ${err.message}`, "error");
+      
+      let errorMessage = err.message;
+      if (err.code === 4001) {
+        errorMessage = "Connection rejected by user";
+      } else if (err.code === -32002) {
+        errorMessage = "Request already pending in wallet";
+      } else if (err.message.includes("User denied account authorization")) {
+        errorMessage = "Connection cancelled by user";
+      }
+      
+      updateStatus(`Connection error: ${errorMessage}`, "error");
+      connectBtn.innerHTML = `<i class="fas fa-plug"></i> Connect Wallet`;
+      
+      // Show retry button after first failure
+      if (connectionAttempts === 1) {
+        const retryBtn = document.createElement("button");
+        retryBtn.innerHTML = `<i class="fas fa-sync-alt"></i> Try Again`;
+        retryBtn.style.marginLeft = "10px";
+        retryBtn.style.padding = "5px 10px";
+        retryBtn.style.background = "transparent";
+        retryBtn.style.color = "#00ffe7";
+        retryBtn.style.border = "1px solid #00ffe7";
+        retryBtn.style.borderRadius = "4px";
+        retryBtn.style.cursor = "pointer";
+        retryBtn.onclick = connectWallet;
+        
+        statusEl.appendChild(retryBtn);
+      }
     }
   }
 
@@ -588,6 +673,8 @@
         errorMessage = "Transaction was cancelled";
       } else if (err.message.includes("insufficient funds")) {
         errorMessage = "Insufficient funds for gas fee";
+      } else if (err.message.includes("already claimed")) {
+        errorMessage = "You've already claimed this NFT";
       }
       
       updateStatus(`Mint failed: ${errorMessage}`, "error");
@@ -614,6 +701,32 @@
       }
     }
   });
+
+  // Listen for account changes
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        // Wallet disconnected
+        updateStatus("Wallet disconnected", "error");
+        connectBtn.innerHTML = `<i class="fas fa-plug"></i> Connect Wallet`;
+        connectBtn.disabled = false;
+        walletDisplay.innerText = "";
+        mintBtn.disabled = true;
+      } else {
+        // Account changed, reconnect
+        connectWallet();
+      }
+    });
+
+    window.ethereum.on('chainChanged', (chainId) => {
+      if (parseInt(chainId, 16) !== CHAIN_ID) {
+        updateStatus(`Please switch to ${CHAIN_NAME}`, "warning");
+        mintBtn.disabled = true;
+      } else {
+        connectWallet(); // Reconnect when chain changes to correct one
+      }
+    });
+  }
 </script>
   </div>
 </body>
