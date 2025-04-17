@@ -320,32 +320,38 @@
   const GENESIS_NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
   let sdk, signer, userAddress, nftContract;
 
-  async function connectWallet() {
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      const network = await provider.getNetwork();
-      if (network.chainId !== 56) {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x38" }],
-        });
-      }
-
-      sdk = new ThirdwebSDK(signer);
-      nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
-
-      walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-      connectBtn.innerText = "Wallet Connected";
-      loadSupply();
-      checkMinted();
-    } catch (err) {
-      statusText.innerText = "Error: " + err.message;
+async function connectWallet() {
+  try {
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
     }
-  }
 
+    const provider = new ethers.providers.Web3Provider(window.ethereum); // ✅
+    await provider.send("eth_requestAccounts", []); // ✅ request connection
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    const network = await provider.getNetwork();
+    if (network.chainId !== 56) {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x38" }],
+      });
+    }
+
+    sdk = new ThirdwebSDK(signer);
+    nftContract = await sdk.getContract(GENESIS_NFT_CONTRACT);
+
+    walletDisplay.innerText = `Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+    connectBtn.innerText = "Wallet Connected";
+    loadSupply();
+    checkMinted();
+  } catch (err) {
+    statusText.innerText = "Error: " + err.message;
+  }
+}
+  
   async function loadSupply() {
     const total = await nftContract.erc721.maxSupply();
     const minted = await nftContract.erc721.totalSupply();
