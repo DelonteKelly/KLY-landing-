@@ -333,37 +333,42 @@ input:focus {
   <button id="deployTokenBtn" type="submit" class="glow-button">Create Token</button>
   </form>
 
-  <!-- Wallet Connect Script -->
- <script type="module">
+ <!-- Wallet Connect & Token Deployment Script -->
+<script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
 
   // KLY Registry Contract Config
   const REGISTRY_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const REGISTRY_ABI = [
     {
-      "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
-      "name": "getTokensByOwner",
-      "outputs": [
+      inputs: [{ internalType: "address", name: "owner", type: "address" }],
+      name: "getTokensByOwner",
+      outputs: [
         {
-          "components": [
-            { "internalType": "string", "name": "name", "type": "string" },
-            { "internalType": "address", "name": "tokenAddress", "type": "address" }
+          components: [
+            { internalType: "string", name: "name", type: "string" },
+            { internalType: "address", name: "tokenAddress", type: "address" }
           ],
-          "internalType": "struct KLYTokenRegistry.TokenInfo[]",
-          "name": "",
-          "type": "tuple[]"
+          internalType: "struct KLYTokenRegistry.TokenInfo[]",
+          name: "",
+          type: "tuple[]"
         }
       ],
-      "stateMutability": "view",
-      "type": "function"
+      stateMutability: "view",
+      type: "function"
     }
   ];
 
+  const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const requiredKLY = 10000;
+
+  // DOM Elements
   const connectBtn = document.getElementById("connectWallet");
   const walletInfoEl = document.getElementById("walletInfo");
   const walletAddressEl = document.getElementById("walletAddress");
-
   const statsDivs = document.querySelectorAll(".stats div");
+
   let provider, signer, wallet;
 
   async function connectWallet() {
@@ -394,29 +399,53 @@ input:focus {
     try {
       const contract = new ethers.Contract(REGISTRY_ADDRESS, REGISTRY_ABI, provider);
       const tokens = await contract.getTokensByOwner(wallet);
-
-      // Update token count
       statsDivs[0].querySelector("strong").innerText = tokens.length;
 
-      // Inject token list if any
       if (tokens.length > 0) {
-        let listContainer = document.createElement("div");
+        const listContainer = document.createElement("div");
         listContainer.style.marginTop = "2rem";
         listContainer.innerHTML = `<h2 style="color:#00ffe7; font-family:Orbitron;">Your Deployed Tokens</h2>`;
-        
-        tokens.forEach((t, i) => {
+        tokens.forEach((t) => {
           const item = document.createElement("div");
           item.style.padding = "0.5rem 0";
           item.innerHTML = `<strong>${t.name}</strong><br/><code>${t.tokenAddress}</code>`;
           listContainer.appendChild(item);
         });
-
         document.querySelector(".container").appendChild(listContainer);
       }
     } catch (err) {
       console.error("Failed to load tokens:", err);
     }
   }
+
+  document.getElementById("tokenDeployForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const tokenName = document.getElementById("tokenName").value;
+    const tokenSymbol = document.getElementById("tokenSymbol").value;
+    const initialSupply = document.getElementById("initialSupply").value;
+
+    if (!tokenName || !tokenSymbol || !initialSupply) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    try {
+      const sdk = new ThirdwebSDK(signer);
+      const token = await sdk.deployer.deployToken({
+        name: tokenName,
+        symbol: tokenSymbol,
+        initialSupply,
+        primary_sale_recipient: treasuryWallet,
+      });
+
+      alert(`Token deployed at: ${token.address}`);
+      await loadTokensByOwner(wallet);
+    } catch (err) {
+      console.error("Token deployment failed:", err);
+      alert("Token deployment failed. See console for details.");
+    }
+  });
 
   connectBtn.addEventListener("click", connectWallet);
 
@@ -429,22 +458,6 @@ input:focus {
   if (window.ethereum) {
     window.ethereum.on("accountsChanged", () => window.location.reload());
     window.ethereum.on("chainChanged", () => window.location.reload());
-  }
-   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-
-const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const requiredKLY = 10000;
-
-document.getElementById("tokenDeployForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const tokenName = document.getElementById("tokenName").value;
-  const tokenSymbol = document.getElementById("tokenSymbol").value;
-  const initialSupply = document.getElementById("initialSupply").value;
-
-  if (!tokenName || !tokenSymbol || !initialSupply) {
-    alert("Please fill in all fields.");
-    return;
   }
 </script>
 </body>
