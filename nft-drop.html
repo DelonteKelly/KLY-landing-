@@ -301,6 +301,8 @@
       <i class="fas fa-info-circle"></i>
       <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
     </div>
+
+    <div id="badgeOwned" style="color:lime; display:none;">✔ You already minted this NFT.</div>
     
 
   <script type="module">
@@ -354,19 +356,27 @@
     remainingEl.innerText = remaining;
   }
 
-  async function checkMinted() {
-    const balance = await nftContract.erc721.balanceOf(userAddress);
-    if (balance > 0) {
-      statusText.innerHTML = "You've already minted your Genesis NFT.";
-      mintBtn.disabled = true;
-    }
+ async function checkMinted() {
+  const balance = await nftContract.erc721.balanceOf(userAddress);
+  if (balance > 0) {
+    statusText.innerHTML = "You've already minted your Genesis NFT.";
+    mintBtn.disabled = true;
+    document.getElementById("badgeOwned").style.display = "block";
   }
+}
 
   async function mintNFT() {
     try {
       statusText.innerText = "Minting in progress...";
-      const tx = await nftContract.erc721.claim(1);
-      statusText.innerHTML = `Success! TX Hash: ${tx.receipt.transactionHash}`;
+const tx = await nftContract.erc721.claim(1);
+
+const txHash = tx.receipt.transactionHash;
+statusText.innerHTML = `
+  <span style="color:lime;">Success!</span><br>
+  <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:#00ffc3; font-weight: bold;">
+    View Transaction on BscScan
+  </a>
+`;
       loadSupply();
       mintBtn.disabled = true;
     } catch (err) {
