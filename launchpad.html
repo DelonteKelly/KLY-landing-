@@ -446,6 +446,130 @@ input:focus {
       statsDivs[0].querySelector("strong").innerText = tokens.length;
     }
 
+  <!-- Wrap inputs and deploy button inside this form -->
+    <form id="tokenDeployForm">
+      <h2>Create New Token</h2>
+      <label for="tokenName">Token Name</label>
+      <input type="text" id="tokenName" placeholder="e.g. Kelly Legacy Token" />
+
+      <label for="tokenSymbol">Token Symbol</label>
+      <input type="text" id="tokenSymbol" placeholder="e.g. KLY" />
+
+      <label for="initialSupply">Initial Supply</label>
+      <input type="number" id="initialSupply" placeholder="e.g. 1000000" />
+
+      <button id="deployBtn" type="submit" class="glow-button">
+        <i class="fas fa-rocket"></i> Deploy Token
+      </button>
+    </form>
+  </div>
+
+<script type="module">
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+    import { ThirdwebSDK } from "https://esm.sh/@thirdweb-dev/sdk@3";
+
+    const REGISTRY_ADDRESS = "0x095418a82bc2439703b69fbe1210824f2247d77c";
+    const REGISTRY_ABI = [
+      {
+        inputs: [{ internalType: "address", name: "owner", type: "address" }],
+        name: "getTokensByOwner",
+        outputs: [
+          {
+            components: [
+              { internalType: "string", name: "name", type: "string" },
+              { internalType: "address", name: "tokenAddress", type: "address" }
+            ],
+            internalType: "struct KLYTokenRegistry.TokenInfo[]",
+            name: "",
+            type: "tuple[]"
+          }
+        ],
+        stateMutability: "view",
+        type: "function"
+      }
+    ];
+
+    const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const BSC_TESTNET_CHAIN_HEX = "0x61";
+
+    const connectBtn = document.getElementById("connectWallet");
+    const walletInfoEl = document.getElementById("walletInfo");
+    const walletAddressEl = document.getElementById("walletAddress");
+    const statusMessage = document.getElementById("statusMessage");
+    const statsDivs = document.querySelectorAll(".stats div");
+
+    let provider, signer, wallet;
+
+    function updateStatus(message, type = "info") {
+      const icons = {
+        info: "info-circle",
+        success: "check-circle",
+        error: "exclamation-circle",
+        warning: "exclamation-triangle",
+        loading: "spinner fa-spin"
+      };
+      const icon = icons[type] || "info-circle";
+      statusMessage.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    }
+
+    async function ensureCorrectNetwork() {
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== BSC_TESTNET_CHAIN_HEX) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BSC_TESTNET_CHAIN_HEX }],
+          });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (err) {
+          updateStatus("Please switch to BSC Testnet in MetaMask", "error");
+          return false;
+        }
+      }
+      return true;
+    }
+
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) {
+          updateStatus("MetaMask not found", "error");
+          return;
+        }
+
+        updateStatus("Connecting wallet...", "loading");
+        connectBtn.disabled = true;
+        connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+
+        const networkOk = await ensureCorrectNetwork();
+        if (!networkOk) return;
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        wallet = accounts[0];
+
+        connectBtn.classList.add("connected");
+        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+        walletAddressEl.textContent = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+        walletInfoEl.style.display = "block";
+        updateStatus("Wallet connected", "success");
+
+        await loadTokensByOwner(wallet);
+
+      } catch (err) {
+        console.error("Wallet connect error:", err);
+        updateStatus(err.message || "Wallet connection failed", "error");
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect Wallet';
+      }
+    }
+
+    async function loadTokensByOwner(address) {
+      const contract = new ethers.Contract(REGISTRY_ADDRESS, REGISTRY_ABI, provider);
+      const tokens = await contract.getTokensByOwner(address);
+      statsDivs[0].querySelector("strong").innerText = tokens.length;
+    }
+
     async function deployToken(e) {
       e.preventDefault();
 
