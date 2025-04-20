@@ -389,31 +389,51 @@
     </div>
   </div>
 
-  <!-- Script: Wallet + Mint Logic -->
-<script>
+ <!-- Load Thirdweb + Ethers -->
+<script type="module">
+  import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2";
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+
   const connectBtn = document.getElementById('connect-btn');
   const mintBtn = document.getElementById('mint-btn');
   const statusBox = document.getElementById('wallet-status');
 
+  let signer;
+
   async function connectWallet() {
     if (!window.ethereum) {
-      alert("MetaMask is required to use this site.");
+      statusBox.innerHTML = `<span style="color: #ff0044;">MetaMask not detected.</span>`;
       return;
     }
 
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
+    signer = provider.getSigner();
     const address = await signer.getAddress();
 
-    // Update UI
     connectBtn.innerText = "Wallet Connected";
     connectBtn.disabled = true;
     mintBtn.disabled = false;
     statusBox.innerHTML = `<strong>Wallet:</strong> ${address.substring(0, 6)}...${address.slice(-4)}`;
   }
 
+  async function mintNFT() {
+    try {
+      const sdk = new ThirdwebSDK(signer);
+      const nft = await sdk.getContract("0xc1a2E9A475779EfD04247EA473638717E26cd5C5", "nft-drop");
+
+      const tx = await nft.claim(1);
+      statusBox.innerHTML = `<span style="color: #00ffe7;">✅ Minted! 
+        <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a></span>`;
+      mintBtn.disabled = true;
+    } catch (err) {
+      console.error(err);
+      statusBox.innerHTML = `<span style="color: #ff0044;">Mint failed: ${err.message}</span>`;
+    }
+  }
+
   connectBtn.addEventListener('click', connectWallet);
+  mintBtn.addEventListener('click', mintNFT);
 </script>
 </body>
 </html>
