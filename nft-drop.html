@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Genesis NFT Drop</title>
@@ -11,467 +10,211 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
 
-  
   <style>
-    :root {
-      --primary: #00ffe7;
-      --secondary: #ff00aa;
-      --dark: #050505;
-      --light: #e0e0e0;
-      --card-bg: rgba(15, 15, 15, 0.8);
-      --success: #00ffaa;
-      --error: #ff5555;
-      --warning: #ffaa00;
-    }
-    
     body {
       font-family: 'Rajdhani', sans-serif;
-      background: var(--dark);
-      color: var(--light);
+      background: #050505;
+      color: #e0e0e0;
       margin: 0;
       padding: 0;
-      min-height: 100vh;
-      background-image: 
-        radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05) 0%, transparent 50%);
-      line-height: 1.6;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
       text-align: center;
+      background-image: radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05), transparent 50%), radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05), transparent 50%);
     }
 
     h1 {
       font-family: 'Orbitron', sans-serif;
-      font-size: 2.5rem;
-      color: var(--primary);
-      margin-bottom: 1rem;
+      color: #00ffe7;
       text-shadow: 0 0 10px rgba(0, 255, 231, 0.3);
-    }
-
-    .subtitle {
-      font-size: 1.2rem;
-      color: #ccc;
-      max-width: 600px;
-      margin: 0 auto 2rem;
-      line-height: 1.6;
+      margin-top: 2rem;
     }
 
     .nft-container {
-      position: relative;
       max-width: 400px;
       margin: 2rem auto;
+      position: relative;
     }
 
     .nft-image {
       width: 100%;
       border-radius: 16px;
-      border: 2px solid var(--primary);
+      border: 2px solid #00ffe7;
       box-shadow: 0 0 40px rgba(0,255,231,0.3);
-      transition: all 0.3s ease;
-    }
-
-    .nft-image:hover {
-      transform: scale(1.02);
-      box-shadow: 0 0 60px rgba(0,255,231,0.5);
     }
 
     .badge {
       position: absolute;
       top: -10px;
       right: -10px;
-      background: var(--secondary);
-      color: var(--dark);
+      background: #ff00aa;
+      color: #000;
       padding: 0.5rem 1rem;
       border-radius: 20px;
       font-family: 'Orbitron', sans-serif;
       font-weight: bold;
-      font-size: 0.9rem;
-      box-shadow: 0 0 15px rgba(255, 0, 170, 0.5);
-    }
-
-    .buttons {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin: 2rem 0;
-      flex-wrap: wrap;
     }
 
     .btn {
       font-family: 'Orbitron', sans-serif;
       padding: 1rem 2rem;
+      margin: 1rem;
       border: none;
       border-radius: 8px;
-      cursor: pointer;
       font-weight: bold;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      min-width: 200px;
-      justify-content: center;
+      cursor: pointer;
+      background: linear-gradient(135deg, #00ffe7, #ff00aa);
+      color: #000;
+      box-shadow: 0 0 15px rgba(0,255,231,0.3);
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: var(--dark);
-      box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-3px);
-      box-shadow: 0 0 25px rgba(0, 255, 231, 0.5);
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.7;
+    .btn:disabled {
+      opacity: 0.6;
       cursor: not-allowed;
-      background: #555;
     }
 
-    .btn-secondary {
-      background: var(--dark);
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
-
-    .btn-secondary:hover {
-      background: rgba(0, 255, 231, 0.1);
-    }
-
-    #status {
-      padding: 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      margin: 1rem auto;
-      max-width: 500px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.8rem;
-    }
-
-    .status-default {
-      background: rgba(0, 255, 231, 0.1);
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
-
-    .status-success {
-      background: rgba(0, 255, 170, 0.1);
-      color: var(--success);
-      border: 1px solid var(--success);
-    }
-
-    .status-error {
-      background: rgba(255, 85, 85, 0.1);
-      color: var(--error);
-      border: 1px solid var(--error);
-    }
-
-    .status-processing {
-      background: rgba(255, 170, 0, 0.1);
-      color: var(--warning);
-      border: 1px solid var(--warning);
+    .wallet-info, #statusText {
+      margin-top: 1.2rem;
+      font-size: 1rem;
     }
 
     .stats {
       display: flex;
       justify-content: center;
       gap: 2rem;
-      margin: 2rem 0;
-      flex-wrap: wrap;
+      margin-top: 1.5rem;
     }
 
     .stat-item {
-      background: var(--card-bg);
-      border: 1px solid rgba(0, 255, 231, 0.2);
-      border-radius: 8px;
-      padding: 1rem 2rem;
-      min-width: 150px;
-      transition: all 0.3s ease;
-    }
-
-    .stat-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 255, 231, 0.1);
-    }
-
-    .stat-value {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      color: var(--primary);
-      margin: 0.5rem 0;
-    }
-
-    .stat-label {
-      font-size: 0.9rem;
-      color: #aaa;
-    }
-
-    .wallet-info {
-      margin-top: 1rem;
-      font-family: 'Orbitron', sans-serif;
-      color: var(--primary);
-      font-size: 1.1rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid #00ffe7;
+      padding: 1rem;
+      border-radius: 10px;
     }
 
     .badge-owned {
-      color: var(--success);
-      background: rgba(0, 255, 170, 0.1);
+      margin-top: 2rem;
       padding: 1rem;
-      border-radius: 8px;
-      border: 1px solid var(--success);
-      max-width: 400px;
-      margin: 1rem auto;
+      background: rgba(0,255,170,0.1);
+      color: #00ffaa;
+      border: 1px solid #00ffaa;
+      border-radius: 10px;
       display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 0.8rem;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 10px;
-      background: rgba(0, 255, 231, 0.1);
-      border-radius: 5px;
-      margin: 1rem 0;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--primary), var(--secondary));
-      width: 0%;
-      transition: width 0.5s ease;
-    }
-
-    /* Animations */
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-
-    .pulse {
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .spinner {
-      animation: spin 1s linear infinite;
-      display: inline-block;
-    }
-
-    /* Tooltip */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      cursor: pointer;
-    }
-
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      width: 200px;
-      background-color: var(--card-bg);
-      color: var(--light);
-      text-align: center;
-      border-radius: 6px;
-      padding: 0.5rem;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      opacity: 0;
-      transition: opacity 0.3s;
-      border: 1px solid var(--primary);
-      font-size: 0.9rem;
-    }
-
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    /* Responsive design */
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 2rem;
-      }
-      
-      .subtitle {
-        font-size: 1rem;
-      }
-      
-      .nft-container {
-        max-width: 300px;
-      }
-      
-      .buttons {
-        flex-direction: column;
-      }
-      
-      .btn {
-        width: 100%;
-      }
-
-      .stats {
-        gap: 1rem;
-      }
-
-      .stat-item {
-        padding: 1rem;
-        min-width: 120px;
-      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>KLY Genesis NFT Drop</h1>
-    <p class="subtitle">Claim your limited edition Genesis NFT. Only 500 will ever exist. One per wallet. Free to mint for eligible holders.</p>
 
-    <div class="nft-container">
-      <div class="badge pulse">LIMITED EDITION</div>
-      <img src="https://gateway.pinata.cloud/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-           alt="Genesis NFT"
-           class="nft-image" />
+  <h1>KLY Genesis NFT Drop</h1>
+  <p class="subtitle">Claim your limited edition Genesis NFT. Only 500 will ever exist. One per wallet.</p>
+
+  <div class="nft-container">
+    <div class="badge">LIMITED</div>
+    <img src="https://gateway.pinata.cloud/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" class="nft-image" />
+  </div>
+
+  <div class="stats">
+    <div class="stat-item">
+      <div id="totalSupply">500</div>
+      <div>Total Supply</div>
     </div>
-
-    <div class="stats">
-      <div class="stat-item">
-        <div class="stat-value" id="totalSupply">500</div>
-        <div class="stat-label">Total Supply</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="mintedCount">0</div>
-        <div class="stat-label">Minted</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" id="remainingCount">500</div>
-        <div class="stat-label">Remaining</div>
-      </div>
+    <div class="stat-item">
+      <div id="mintedCount">0</div>
+      <div>Minted</div>
     </div>
-
-    <div class="buttons">
-      <button class="btn btn-primary" id="connectBtn">
-        <i class="fas fa-wallet"></i> Connect Wallet
-      </button>
-      <button class="btn btn-primary" id="mintBtn" disabled>
-        <i class="fas fa-gem"></i> Mint NFT
-      </button>
-    </div>
-
-    <div id="walletDisplay" class="wallet-info"></div>
-
-    <div id="status" class="status-default">
-      <i class="fas fa-info-circle"></i>
-      <span id="statusText">Connect your wallet to claim your Genesis NFT</span>
-    </div>
-
-    <div id="badgeOwned" class="badge-owned" style="display:none;">
-      <i class="fas fa-check-circle"></i>
-      <span>You already own this Genesis NFT!</span>
-    </div>
-
-    <div class="tooltip" style="margin-top: 2rem; color: #aaa; font-size: 0.9rem;">
-      <i class="fas fa-question-circle"></i> Need help?
-      <span class="tooltiptext">Make sure you're connected to Binance Smart Chain in your wallet. Minting is free (you only pay gas fees).</span>
+    <div class="stat-item">
+      <div id="remainingCount">500</div>
+      <div>Remaining</div>
     </div>
   </div>
 
- <!-- Load Thirdweb + Ethers -->
-<script type="module">
-  import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2";
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  <button class="btn" id="connectBtn"><i class="fas fa-wallet"></i> Connect Wallet</button>
+  <button class="btn" id="mintBtn" disabled><i class="fas fa-gem"></i> Mint NFT</button>
 
-  const connectBtn = document.getElementById('connectBtn');
-  const mintBtn = document.getElementById('mintBtn');
-  const statusBox = document.getElementById('statusText');
-  const walletDisplay = document.getElementById('walletDisplay');
-  const badgeOwned = document.getElementById('badgeOwned');
-  const mintedCount = document.getElementById('mintedCount');
-  const remainingCount = document.getElementById('remainingCount');
+  <div id="walletDisplay" class="wallet-info"></div>
+  <div id="statusText">Connect your wallet to mint.</div>
+  <div id="badgeOwned" class="badge-owned"><i class="fas fa-check-circle"></i> You already own this Genesis NFT!</div>
 
-  const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-  let sdk, signer, userAddress, nft;
+  <!-- Include Thirdweb + Ethers CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@3.10.10/dist/browser.umd.min.js"></script>
 
-  async function connectWallet() {
-    if (!window.ethereum) {
-      statusBox.innerHTML = `<span style="color: #ff0044;">MetaMask not detected.</span>`;
-      return;
-    }
+  <script>
+    const connectBtn = document.getElementById("connectBtn");
+    const mintBtn = document.getElementById("mintBtn");
+    const statusText = document.getElementById("statusText");
+    const walletDisplay = document.getElementById("walletDisplay");
+    const badgeOwned = document.getElementById("badgeOwned");
+    const mintedCount = document.getElementById("mintedCount");
+    const remainingCount = document.getElementById("remainingCount");
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
+    const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 
-    connectBtn.innerText = "Wallet Connected";
-    connectBtn.disabled = true;
-    walletDisplay.innerText = `Wallet: ${userAddress.substring(0, 6)}...${userAddress.slice(-4)}`;
+    let sdk, signer, nft, userAddress;
 
-    sdk = new ThirdwebSDK(signer);
-    nft = await sdk.getContract(NFT_CONTRACT_ADDRESS, "nft-drop");
-
-    await checkOwnershipAndSupply();
-  }
-
-  async function checkOwnershipAndSupply() {
-    try {
-      const balance = await nft.balanceOf(userAddress);
-      const owned = parseInt(balance.toString()) > 0;
-
-      const totalClaimed = await nft.totalClaimedSupply();
-      const totalSupply = await nft.totalSupply();
-
-      mintedCount.innerText = totalClaimed.toString();
-      remainingCount.innerText = (totalSupply.sub(totalClaimed)).toString();
-
-      if (owned) {
-        mintBtn.disabled = true;
-        badgeOwned.style.display = "flex";
-        statusBox.innerHTML = `<span style="color: #00ffaa;">You already own this Genesis NFT.</span>`;
-      } else {
-        mintBtn.disabled = false;
-        statusBox.innerHTML = `You're eligible to mint your Genesis NFT.`;
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask not detected.");
+        return;
       }
-    } catch (error) {
-      console.error("Error checking supply or ownership:", error);
-      statusBox.innerHTML = `<span style="color: #ff0044;">Error loading NFT data</span>`;
-    }
-  }
 
-  async function mintNFT() {
-    try {
-      mintBtn.disabled = true;
-      statusBox.innerHTML = `<span class="spinner">⏳</span> Minting your NFT...`;
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
 
-      const tx = await nft.claim(1);
-
-      statusBox.innerHTML = `<span style="color: #00ffaa;">✅ Minted! 
-        <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a></span>`;
-
-      badgeOwned.style.display = "flex";
-      await checkOwnershipAndSupply();
-    } catch (err) {
-      console.error(err);
-      statusBox.innerHTML = `<span style="color: #ff0044;">Mint failed: ${err.message}</span>`;
+      connectBtn.disabled = true;
       mintBtn.disabled = false;
-    }
-  }
+      walletDisplay.innerText = `Wallet: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+      statusText.innerText = "Connected. Checking NFT status...";
 
-  connectBtn.addEventListener('click', connectWallet);
-  mintBtn.addEventListener('click', mintNFT);
-</script>
+      sdk = new thirdweb.ThirdwebSDK(signer);
+      nft = await sdk.getContract(NFT_CONTRACT_ADDRESS, "nft-drop");
+
+      checkOwnershipAndSupply();
+    }
+
+    async function checkOwnershipAndSupply() {
+      try {
+        const balance = await nft.balanceOf(userAddress);
+        const owned = parseInt(balance.toString()) > 0;
+
+        const totalClaimed = await nft.totalClaimedSupply();
+        const totalSupply = await nft.totalSupply();
+
+        mintedCount.innerText = totalClaimed.toString();
+        remainingCount.innerText = (totalSupply.sub(totalClaimed)).toString();
+
+        if (owned) {
+          badgeOwned.style.display = "block";
+          mintBtn.disabled = true;
+          statusText.innerText = "You already own this NFT.";
+        } else {
+          statusText.innerText = "You can mint your Genesis NFT.";
+        }
+      } catch (err) {
+        console.error(err);
+        statusText.innerText = "Error loading NFT info.";
+      }
+    }
+
+    async function mintNFT() {
+      try {
+        mintBtn.disabled = true;
+        statusText.innerText = "Minting your NFT...";
+
+        const tx = await nft.claim(1);
+        statusText.innerHTML = `✅ Minted! <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank">View on BscScan</a>`;
+        badgeOwned.style.display = "block";
+        await checkOwnershipAndSupply();
+      } catch (err) {
+        console.error(err);
+        statusText.innerText = `Mint failed: ${err.message}`;
+        mintBtn.disabled = false;
+      }
+    }
+
+    connectBtn.addEventListener("click", connectWallet);
+    mintBtn.addEventListener("click", mintNFT);
+  </script>
+
 </body>
 </html>
