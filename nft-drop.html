@@ -394,11 +394,16 @@
   import { ethers } from "https://cdn.skypack.dev/ethers@5.7.2";
   import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
 
-  const connectBtn = document.getElementById('connectBtn'); // match HTML
-  const mintBtn = document.getElementById('mintBtn');       // match HTML
-  const statusBox = document.getElementById('statusText');  // use span inside status div
+  const connectBtn = document.getElementById('connectBtn');
+  const mintBtn = document.getElementById('mintBtn');
+  const statusBox = document.getElementById('statusText');
+  const walletDisplay = document.getElementById('walletDisplay');
+  const badgeOwned = document.getElementById('badgeOwned');
+  const mintedCount = document.getElementById('mintedCount');
+  const remainingCount = document.getElementById('remainingCount');
 
-  let signer;
+  const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  let sdk, signer, userAddress, nft;
 
   async function connectWallet() {
     if (!window.ethereum) {
@@ -409,28 +414,59 @@
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
-    const address = await signer.getAddress();
+    userAddress = await signer.getAddress();
 
     connectBtn.innerText = "Wallet Connected";
     connectBtn.disabled = true;
-    mintBtn.disabled = false;
+    walletDisplay.innerText = `Wallet: ${userAddress.substring(0, 6)}...${userAddress.slice(-4)}`;
 
-    document.getElementById('walletDisplay').innerText = `Wallet: ${address.substring(0, 6)}...${address.slice(-4)}`;
-    statusBox.innerHTML = `You're ready to mint your NFT.`;
+    sdk = new ThirdwebSDK(signer);
+    nft = await sdk.getContract(NFT_CONTRACT_ADDRESS, "nft-drop");
+
+    await checkOwnershipAndSupply();
+  }
+
+  async function checkOwnershipAndSupply() {
+    try {
+      const balance = await nft.balanceOf(userAddress);
+      const owned = parseInt(balance.toString()) > 0;
+
+      const totalClaimed = await nft.totalClaimedSupply();
+      const totalSupply = await nft.totalSupply();
+
+      mintedCount.innerText = totalClaimed.toString();
+      remainingCount.innerText = (totalSupply.sub(totalClaimed)).toString();
+
+      if (owned) {
+        mintBtn.disabled = true;
+        badgeOwned.style.display = "flex";
+        statusBox.innerHTML = `<span style="color: #00ffaa;">You already own this Genesis NFT.</span>`;
+      } else {
+        mintBtn.disabled = false;
+        statusBox.innerHTML = `You're eligible to mint your Genesis NFT.`;
+      }
+    } catch (error) {
+      console.error("Error checking supply or ownership:", error);
+      statusBox.innerHTML = `<span style="color: #ff0044;">Error loading NFT data</span>`;
+    }
   }
 
   async function mintNFT() {
     try {
-      const sdk = new ThirdwebSDK(signer);
-      const nft = await sdk.getContract("0xc1a2E9A475779EfD04247EA473638717E26cd5C5", "nft-drop");
+      mintBtn.disabled = true;
+      statusBox.innerHTML = `<span class="spinner">⏳</span> Minting your NFT...`;
 
       const tx = await nft.claim(1);
+
       statusBox.innerHTML = `<span style="color: #00ffaa;">✅ Minted! 
         <a href="https://bscscan.com/tx/${tx.receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a></span>`;
-      mintBtn.disabled = true;
+
+      badgeOwned.style.display = "flex";
+      await checkOwnershipAndSupply();
     } catch (err) {
       console.error(err);
       statusBox.innerHTML = `<span style="color: #ff0044;">Mint failed: ${err.message}</span>`;
+      mintBtn.disabled = false;
     }
   }
 
