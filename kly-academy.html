@@ -121,7 +121,17 @@
   </div>
 </div>
 
+  <div id="access-section" style="text-align: center; margin: 3rem auto;">
+  <p style="color: #ff00aa; font-size: 1.2rem;">
+    This course is only available to wallets holding 500+ KLY tokens.
+  </p>
+  <button id="connect-btn" class="nav-button" style="margin-top: 1rem;">
+    Connect Wallet to Unlock Course
+  </button>
+  <p id="access-message" style="margin-top: 1rem; color: #ccc;"></p>
+</div>
 
+<div id="course-wrapper" style="display: none;">
   <!-- MODULES -->
   <div id="module1" class="module-card">
   <div class="module-title">Module 1: What is DeFi?</div>
@@ -393,14 +403,57 @@
 
   </div>
 </div>
+</div>
   
-  <script>
-    function showModule(id) {
-      document.querySelectorAll('.module-card').forEach(card => card.style.display = 'none');
-      document.getElementById(id).style.display = 'block';
+<script type="module">
+  import { ethers } from 'https://cdn.skypack.dev/ethers';
+
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
+
+  const connectBtn = document.getElementById('connect-btn');
+  const accessSection = document.getElementById('access-section');
+  const accessMessage = document.getElementById('access-message');
+  const courseWrapper = document.getElementById('course-wrapper');
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask to use this feature.");
+      return;
     }
-    window.onload = () => showModule('module1'); // Auto show Module 1
-  </script>
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+    const rawBalance = await kly.balanceOf(userAddress);
+    const decimals = await kly.decimals();
+    const adjustedBalance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+    if (adjustedBalance >= 500) {
+      accessSection.style.display = 'none';
+      courseWrapper.style.display = 'block';
+      showModule('module1');
+    } else {
+      accessMessage.innerHTML = `You only have <strong>${adjustedBalance.toFixed(2)} KLY</strong>. 500 KLY required.`;
+    }
+  }
+
+  connectBtn.addEventListener('click', connectWallet);
+
+  function showModule(id) {
+    document.querySelectorAll('.module-card').forEach(card => card.style.display = 'none');
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+  }
+
+  window.showModule = showModule;
+</script>
 
 </body>
 </html>
