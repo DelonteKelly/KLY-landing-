@@ -150,22 +150,24 @@
   const badgeOwned = document.getElementById("badgeOwned");
   const walletDisplay = document.getElementById("walletDisplay");
 
- async function connectWallet() {
+async function connectWallet() {
   if (typeof window.ethereum !== "undefined") {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     const signer = provider.getSigner();
     walletAddress = await signer.getAddress();
     walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-    sdk = new ThirdwebSDK(signer);  // Initialize SDK first!
+    sdk = new ThirdwebSDK(signer);
     console.log("Wallet connected:", walletAddress);
 
-    await updateNFTStats(); // Now call this after sdk is ready
+    await updateNFTStats();
+
+    // ✅ Enable the mint button
+    mintBtn.disabled = false;
   } else {
     alert("Please install MetaMask to use this feature.");
   }
 }
-
   async function updateNFTStats() {
   if (!sdk) return;
 
