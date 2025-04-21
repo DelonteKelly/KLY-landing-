@@ -147,24 +147,38 @@
   const badgeOwned = document.getElementById("badgeOwned");
   const walletDisplay = document.getElementById("walletDisplay");
 
-  async function connectWallet() {
-    console.log("Attempting wallet connection...");
+async function connectWallet() {
+  console.log("Connect Wallet clicked");
 
-    if (typeof window.ethereum !== "undefined") {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
-      walletAddress = await signer.getAddress();
-      walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-      sdk = new ThirdwebSDK(signer);
-      console.log("Wallet connected:", walletAddress);
-
-      await updateNFTStats();
-      mintBtn.disabled = false;
-    } else {
-      alert("Please install MetaMask to use this feature.");
-    }
+  if (!window.ethereum) {
+    alert("MetaMask not found. Please open this page in the MetaMask browser.");
+    return;
   }
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+
+    // Ensure you're on BNB Smart Chain (Mainnet)
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x38" }],
+    });
+
+    const signer = provider.getSigner();
+    walletAddress = await signer.getAddress();
+    sdk = new ThirdwebSDK(signer);
+
+    walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+    console.log("Wallet connected:", walletAddress);
+
+    await updateNFTStats();
+    mintBtn.disabled = false;
+  } catch (err) {
+    console.error("Wallet connection error:", err);
+    statusText.innerText = "Wallet connection failed.";
+  }
+}
 
   async function updateNFTStats() {
     if (!sdk) return;
