@@ -155,36 +155,39 @@ async function connectWallet() {
 
   try {
     errorText.innerText = "";
-    statusText.innerText = "Connecting wallet...";
+    statusText.innerText = "Connecting to MetaMask...";
 
-    if (!window.ethereum) {
-      throw new Error("MetaMask is not installed.");
+    if (typeof window.ethereum === "undefined") {
+      throw new Error("MetaMask not detected. Please install MetaMask.");
     }
 
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
 
     const network = await provider.getNetwork();
+    console.log("Connected to network:", network.chainId);
+
     if (network.chainId !== BSC_CHAIN_ID) {
+      statusText.innerText = "Switching to BSC...";
       await switchToBSCNetwork();
     }
 
     signer = provider.getSigner();
     walletAddress = await signer.getAddress();
+    console.log("Wallet address:", walletAddress);
 
     sdk = new window.thirdweb.ThirdwebSDK(signer, {
-      clientId: "f77d19013c06895efd20b96c2311ba61",
+      clientId: "f77d19013c06895efd20b96c2311ba61", // Replace with your real clientId if different
     });
 
     walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
     statusText.innerText = "Wallet connected. Ready to mint!";
-    return true;
+    document.getElementById("mintBtn").disabled = false;
 
   } catch (err) {
-    console.error("Wallet connection error:", err);
-    errorText.innerText = `Error: ${err.message || err}`;
+    console.error("Wallet connection failed:", err);
+    errorText.innerText = `Error: ${err.message}`;
     statusText.innerText = "Connection failed.";
-    return false;
   }
 }
 
@@ -192,7 +195,7 @@ async function switchToBSCNetwork() {
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x38" }], // BSC Mainnet
+      params: [{ chainId: "0x38" }],
     });
   } catch (switchError) {
     if (switchError.code === 4902) {
