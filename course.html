@@ -468,124 +468,97 @@
 <div id="toast" class="toast hidden"></div>
 
 <!-- SCRIPT -->
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+<script>
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-  const CONFIG = {
-    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    NFT_CONTRACT: "0xDA76d35742190283E340dbeE2038ecc978a56950",
-    CHAIN_ID: 56
-  };
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
 
-  const KLY_ABI = [{
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  }];
+  const NFT_CONTRACT_ABI = [
+    "function mintTo(address to, string memory tokenURI) public"
+  ];
 
-  let provider, signer, sdk, wallet;
+  let provider, signer, userAddress;
 
-  // Connect wallet
   async function connectWallet() {
-    try {
-      if (!window.ethereum) throw new Error("MetaMask not found");
-      provider = new ethers.BrowserProvider(window.ethereum);
+    if (typeof window.ethereum !== 'undefined') {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      wallet = await signer.getAddress();
-      sdk = ThirdwebSDK.fromSigner(signer, "binance");
-      document.getElementById("accessStatus").innerText = `Wallet Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-    } catch (err) {
-      console.error("Wallet connection failed:", err);
-      document.getElementById("accessStatus").innerText = "Wallet connection failed.";
-    }
-  }
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
 
-  // Auto-check KLY token access on page load
-  async function checkKLYAccess() {
-    if (!window.ethereum) {
-      alert("Please connect your wallet to view this course.");
-      window.location.href = "/";
-      return;
-    }
-
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    wallet = await signer.getAddress();
-
-    const klyContract = new ethers.Contract(CONFIG.KLY_TOKEN, [
-      "function balanceOf(address owner) view returns (uint256)"
-    ], provider);
-
-    const balance = await klyContract.balanceOf(wallet);
-    const threshold = ethers.parseUnits("500", 18);
-
-    if (balance < threshold) {
-      alert("You need at least 500 KLY to access this course.");
-      window.location.href = "/";
+      showToast(`Connected: ${userAddress.substring(0, 6)}...`);
     } else {
-      document.getElementById("courseContent").classList.remove("hidden");
+      alert("Please install MetaMask.");
     }
   }
 
-  // Manual verification button
   async function verifyAccess() {
     try {
-      const web3 = new Web3(window.ethereum);
-      const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
-      const balance = await kly.methods.balanceOf(wallet).call();
-      const balanceEth = web3.utils.fromWei(balance, "ether");
+      const token = new ethers.Contract(KLY_TOKEN, KLY_TOKEN_ABI, provider);
+      const decimals = await token.decimals();
+      const balance = await token.balanceOf(userAddress);
+      const formatted = ethers.utils.formatUnits(balance, decimals);
 
-      if (parseFloat(balanceEth) >= 500) {
-        document.getElementById("accessStatus").innerText = "Access granted.";
-        document.getElementById("courseContent").classList.remove("hidden");
+      document.getElementById('balance').innerText = `${formatted} KLY`;
+      document.getElementById('balanceSection').style.display = "block";
+
+      const required = ethers.utils.parseUnits("500", decimals);
+
+      if (balance.gte(required)) {
+        showToast("Access Verified: You hold 500+ KLY!");
+        document.getElementById("accessPanel").classList.add("hidden");
+        document.getElementById("module1").classList.remove("hidden");
       } else {
-        document.getElementById("accessStatus").innerText = `Access denied: You have ${balanceEth} KLY`;
-        document.getElementById("courseContent").classList.add("hidden");
+        showToast("Insufficient KLY (need 500+)");
       }
-    } catch (err) {
-      console.error("Access check failed:", err);
-      document.getElementById("accessStatus").innerText = "Verification failed.";
+    } catch (error) {
+      console.error(error);
+      showToast("Verification Failed");
     }
   }
 
-  // Mint NFT Certificate
-  async function mintCertificate() {
+  function showNextModule(n) {
+    hideAllModules();
+    document.getElementById(`module${n}`).classList.remove("hidden");
+  }
+
+  function showPreviousModule(n) {
+    hideAllModules();
+    document.getElementById(`module${n}`).classList.remove("hidden");
+  }
+
+  function hideAllModules() {
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`module${i}`).classList.add("hidden");
+    }
+  }
+
+  async function mintNFT() {
     try {
-      if (!wallet) return alert("Connect your wallet first.");
-      document.getElementById("mintStatus").innerText = "Minting in progress...";
-
-      const contract = await sdk.getContract(CONFIG.NFT_CONTRACT);
-
-      await contract.call("mint", [
-        wallet,      // recipient
-        -276330,     // tickLower
-        276330,      // tickUpper
-        1,           // amount
-        "0x"         // data
-      ]);
-
-      document.getElementById("mintStatus").innerText = "✅ NFT Certificate Minted Successfully!";
+      const contract = new ethers.Contract(NFT_CONTRACT, NFT_CONTRACT_ABI, signer);
+      const tx = await contract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+      showToast("Minting...");
+      await tx.wait();
+      document.getElementById("mintStatus").innerText = "NFT Minted Successfully!";
+      showToast("NFT Certificate Minted!");
     } catch (err) {
-      console.error("Minting failed:", err);
-      document.getElementById("mintStatus").innerText = "❌ Minting failed.";
+      console.error(err);
+      showToast("Minting Failed.");
     }
   }
 
-  // Init on load
-  window.addEventListener("DOMContentLoaded", () => {
-    checkKLYAccess();
-    document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
-    document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
-    document.getElementById("completeCourseBtn")?.addEventListener("click", () => {
-      document.getElementById("mintSection").classList.remove("hidden");
-    });
-    document.getElementById("mintCertificate")?.addEventListener("click", mintCertificate);
-  });
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.classList.add("show");
+    toast.classList.remove("hidden");
+    setTimeout(() => toast.classList.remove("show"), 3500);
+  }
 </script>
   </body> 
       </html>
