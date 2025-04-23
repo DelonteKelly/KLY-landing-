@@ -467,65 +467,124 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<!-- Ethers.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<div class="module" id="certificate-claim">
-  <h3>Claim Your NFT Certificate</h3>
-  <p>You've completed the KLY Legacy Course. Now you can claim your official NFT Certificate on BNB Smart Chain to verify your knowledge and commitment to legacy building.</p>
-  <button id="claimCertificateBtn" class="claim-nft-button">Claim NFT Certificate</button>
-</div>
-<script>
-  // Connect wallet on page load
-  window.addEventListener("load", async () => {
-    if (typeof window.ethereum !== "undefined") {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-    }
-  });
+<!-- SCRIPT -->
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.6.4/+esm";
 
-  // Claim NFT Certificate logic
-  document.getElementById("claimCertificateBtn").addEventListener("click", async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to continue.");
+  const CONFIG = {
+    KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
+    NFT_CONTRACT: "0xDA76d35742190283E340dbeE2038ecc978a56950",
+    CHAIN_ID: 56
+  };
+
+  const KLY_ABI = [{
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }];
+
+  let provider, signer, sdk, wallet;
+
+  // Connect wallet
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) throw new Error("MetaMask not found");
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      wallet = await signer.getAddress();
+      sdk = ThirdwebSDK.fromSigner(signer, "binance");
+      document.getElementById("accessStatus").innerText = `Wallet Connected: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      document.getElementById("accessStatus").innerText = "Wallet connection failed.";
+    }
+  }
+
+  // Auto-check KLY token access on page load
+  async function checkKLYAccess() {
+    if (!window.ethereum) {
+      alert("Please connect your wallet to view this course.");
+      window.location.href = "/";
       return;
     }
 
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      const user = accounts[0];
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    wallet = await signer.getAddress();
 
-      if (!user) {
-        alert("Please connect your wallet to mint your certificate.");
-        return;
-      }
+    const klyContract = new ethers.Contract(CONFIG.KLY_TOKEN, [
+      "function balanceOf(address owner) view returns (uint256)"
+    ], provider);
 
-      const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-      const nftABI = [
-        {
-          "inputs": [
-            { "internalType": "address", "name": "to", "type": "address" },
-            { "internalType": "int24", "name": "tickLower", "type": "int24" },
-            { "internalType": "int24", "name": "tickUpper", "type": "int24" },
-            { "internalType": "uint128", "name": "amount", "type": "uint128" },
-            { "internalType": "bytes", "name": "data", "type": "bytes" }
-          ],
-          "name": "mint",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        }
-      ];
+    const balance = await klyContract.balanceOf(wallet);
+    const threshold = ethers.parseUnits("500", 18);
 
-      const signer = provider.getSigner();
-      const nftContract = new ethers.Contract(nftContractAddress, nftABI, signer);
-      await nftContract.mint(user, -887220, 887220, 1, "0x");
-
-      alert("NFT Certificate Minted Successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Minting failed. Please try again.");
+    if (balance < threshold) {
+      alert("You need at least 500 KLY to access this course.");
+      window.location.href = "/";
+    } else {
+      document.getElementById("courseContent").classList.remove("hidden");
     }
+  }
+
+  // Manual verification button
+  async function verifyAccess() {
+    try {
+      const web3 = new Web3(window.ethereum);
+      const kly = new web3.eth.Contract(KLY_ABI, CONFIG.KLY_TOKEN);
+      const balance = await kly.methods.balanceOf(wallet).call();
+      const balanceEth = web3.utils.fromWei(balance, "ether");
+
+      if (parseFloat(balanceEth) >= 500) {
+        document.getElementById("accessStatus").innerText = "Access granted.";
+        document.getElementById("courseContent").classList.remove("hidden");
+      } else {
+        document.getElementById("accessStatus").innerText = `Access denied: You have ${balanceEth} KLY`;
+        document.getElementById("courseContent").classList.add("hidden");
+      }
+    } catch (err) {
+      console.error("Access check failed:", err);
+      document.getElementById("accessStatus").innerText = "Verification failed.";
+    }
+  }
+
+  // Mint NFT Certificate
+  async function mintCertificate() {
+    try {
+      if (!wallet) return alert("Connect your wallet first.");
+      document.getElementById("mintStatus").innerText = "Minting in progress...";
+
+      const contract = await sdk.getContract(CONFIG.NFT_CONTRACT);
+
+      await contract.call("mint", [
+        wallet,      // recipient
+        -276330,     // tickLower
+        276330,      // tickUpper
+        1,           // amount
+        "0x"         // data
+      ]);
+
+      document.getElementById("mintStatus").innerText = "✅ NFT Certificate Minted Successfully!";
+    } catch (err) {
+      console.error("Minting failed:", err);
+      document.getElementById("mintStatus").innerText = "❌ Minting failed.";
+    }
+  }
+
+  // Init on load
+  window.addEventListener("DOMContentLoaded", () => {
+    checkKLYAccess();
+    document.getElementById("connectWallet")?.addEventListener("click", connectWallet);
+    document.getElementById("verifyAccess")?.addEventListener("click", verifyAccess);
+    document.getElementById("completeCourseBtn")?.addEventListener("click", () => {
+      document.getElementById("mintSection").classList.remove("hidden");
+    });
+    document.getElementById("mintCertificate")?.addEventListener("click", mintCertificate);
   });
 </script>
   </body> 
