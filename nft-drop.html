@@ -40,60 +40,76 @@
   <div id="statusText">Connect your wallet to mint.</div>
   <div id="errorText" class="error"></div>
 
-  <!-- Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    const CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-    const ABI = [
-      "function claim(uint256 quantity) public",
-      "function totalSupply() public view returns (uint256)"
-    ];
-
-    let provider, signer, contract;
-
-    async function connectWallet() {
-      const status = document.getElementById("statusText");
-      const walletDisplay = document.getElementById("walletDisplay");
-      const error = document.getElementById("errorText");
-
-      try {
-        if (!window.ethereum) throw new Error("MetaMask not found.");
-        
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        const address = await signer.getAddress();
-
-        walletDisplay.innerText = `Wallet: ${address.slice(0,6)}...${address.slice(-4)}`;
-        status.innerText = "Wallet connected. Ready to mint.";
-        document.getElementById("mintBtn").disabled = false;
-
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-      } catch (err) {
-        error.innerText = `Error: ${err.message}`;
-        status.innerText = "Connection failed.";
-      }
+<!-- Ethers.js -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+  const CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  const ABI = [
+    {
+      "inputs": [
+        { "internalType": "address", "name": "_to", "type": "address" },
+        { "internalType": "string", "name": "_uri", "type": "string" }
+      ],
+      "name": "mintTo",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
     }
+  ];
 
-    async function mintNFT() {
-      const status = document.getElementById("statusText");
-      const error = document.getElementById("errorText");
+  let provider, signer, contract, walletAddress;
 
-      try {
-        error.innerText = "";
-        status.innerText = "Minting... Confirm in wallet.";
+  async function connectWallet() {
+    const status = document.getElementById("statusText");
+    const walletDisplay = document.getElementById("walletDisplay");
+    const error = document.getElementById("errorText");
 
-        const tx = await contract.claim(1);
-        const receipt = await tx.wait();
+    try {
+      if (!window.ethereum) throw new Error("MetaMask not found.");
+      
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      walletAddress = await signer.getAddress();
 
-        status.innerHTML = `✅ Minted! <a href="https://bscscan.com/tx/${receipt.transactionHash}" target="_blank">View on BscScan</a>`;
-      } catch (err) {
-        console.error("Mint failed:", err);
-        error.innerText = `Mint failed: ${err.message}`;
-        status.innerText = "Mint failed.";
-      }
+      walletDisplay.innerText = `Wallet: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
+      status.innerText = "Wallet connected. Ready to mint.";
+      document.getElementById("mintBtn").disabled = false;
+
+      contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    } catch (err) {
+      error.innerText = `Error: ${err.message}`;
+      status.innerText = "Connection failed.";
     }
-  </script>
+  }
+
+  async function mintNFT() {
+    const status = document.getElementById("statusText");
+    const error = document.getElementById("errorText");
+
+    try {
+      error.innerText = "";
+      status.innerText = "Minting... Confirm in wallet.";
+
+      const metadataURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"; // Replace with your actual IPFS metadata URI
+      const tx = await contract.mintTo(walletAddress, metadataURI);
+      const receipt = await tx.wait();
+
+      status.innerHTML = `✅ Minted! <a href="https://bscscan.com/tx/${receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
+    } catch (err) {
+      console.error("Mint failed:", err);
+      error.innerText = `Mint failed: ${err.message}`;
+      status.innerText = "Mint failed.";
+    }
+  }
+</script>
 </body>
 </html>
