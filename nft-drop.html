@@ -63,99 +63,38 @@
   <div id="statusText">Connect your wallet to mint.</div>
   <div id="errorText" class="error"></div>
 
-  <!-- Scripts in correct order -->
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 
-  <!-- 1. Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+  let web3, wallet;
 
-  <!-- 2. Thirdweb SDK (UMD with correct global) -->
-<script src="https://unpkg.com/@thirdweb-dev/sdk@3.10.5/dist/browser.umd.min.js"></script>
+  async function connectWallet() {
+    const statusText = document.getElementById("statusText");
+    const walletDisplay = document.getElementById("walletDisplay");
+    const errorText = document.getElementById("errorText");
 
-  <!-- 3. Custom Wallet + Mint Logic -->
-  <script>
-    const CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5"; // KLY Genesis NFT
-    const BSC_CHAIN_ID = 56;
-    const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
-    let sdk, signer, provider, walletAddress;
-
-    async function connectWallet() {
-      const statusText = document.getElementById("statusText");
-      const walletDisplay = document.getElementById("walletDisplay");
-      const errorText = document.getElementById("errorText");
-
-      try {
-        errorText.innerText = "";
-        statusText.innerText = "Connecting to MetaMask...";
-
-        if (!window.ethereum) throw new Error("MetaMask not detected.");
-
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const network = await provider.getNetwork();
-
-        if (network.chainId !== BSC_CHAIN_ID) await switchToBSCNetwork();
-
-        signer = provider.getSigner();
-        walletAddress = await signer.getAddress();
-
-      sdk = new thirdweb.ThirdwebSDK(signer, {
-  clientId: "f77d19013c06895efd20b96c2311ba61"
-});
-
-        walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-        statusText.innerText = "Wallet connected. Ready to mint!";
-        document.getElementById("mintBtn").disabled = false;
-
-      } catch (err) {
-        console.error("Wallet connection error:", err);
-        errorText.innerText = `Error: ${err.message}`;
-        statusText.innerText = "Connection failed.";
-      }
+    if (!window.ethereum) {
+      alert("Please install MetaMask.");
+      return;
     }
 
-    async function switchToBSCNetwork() {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x38" }],
-        });
-      } catch (switchError) {
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x38",
-              chainName: "Binance Smart Chain",
-              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-              rpcUrls: [BSC_RPC_URL],
-              blockExplorerUrls: ["https://bscscan.com"],
-            }],
-          });
-        } else {
-          throw switchError;
-        }
-      }
+    try {
+      statusText.innerText = "Connecting to MetaMask...";
+      web3 = new Web3(window.ethereum);
+
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await web3.eth.getAccounts();
+      wallet = accounts[0];
+
+      statusText.innerText = "Wallet connected. Ready to mint!";
+      walletDisplay.innerText = `Wallet: ${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+      document.getElementById("mintBtn").disabled = false;
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      errorText.innerText = `Error: ${err.message}`;
+      statusText.innerText = "Connection failed.";
     }
-
-    async function mintNFT() {
-      const statusText = document.getElementById("statusText");
-      const errorText = document.getElementById("errorText");
-
-      try {
-        statusText.innerText = "Minting...";
-        errorText.innerText = "";
-
-        const contract = await sdk.getContract(CONTRACT_ADDRESS, "nft-drop");
-        const tx = await contract.claim(1);
-        const receipt = tx[0].receipt;
-
-        statusText.innerHTML = `✅ Minted! <a href="https://bscscan.com/tx/${receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
-      } catch (err) {
-        console.error("Mint error:", err);
-        errorText.innerText = `Error: ${err.message}`;
-        statusText.innerText = "Mint failed.";
-      }
-    }
-  </script>
+  }
+</script>
 </body>
 </html>
