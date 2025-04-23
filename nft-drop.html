@@ -18,39 +18,12 @@
       margin: 0;
       padding: 0;
       text-align: center;
-      background-image: radial-gradient(circle at 25% 25%, rgba(0, 255, 231, 0.05), transparent 50%), radial-gradient(circle at 75% 75%, rgba(255, 0, 170, 0.05), transparent 50%);
     }
 
     h1 {
       font-family: 'Orbitron', sans-serif;
       color: #00ffe7;
-      text-shadow: 0 0 10px rgba(0, 255, 231, 0.3);
       margin-top: 2rem;
-    }
-
-    .nft-container {
-      max-width: 400px;
-      margin: 2rem auto;
-      position: relative;
-    }
-
-    .nft-image {
-      width: 100%;
-      border-radius: 16px;
-      border: 2px solid #00ffe7;
-      box-shadow: 0 0 40px rgba(0,255,231,0.3);
-    }
-
-    .badge {
-      position: absolute;
-      top: -10px;
-      right: -10px;
-      background: #ff00aa;
-      color: #000;
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-family: 'Orbitron', sans-serif;
-      font-weight: bold;
     }
 
     .btn {
@@ -71,152 +44,117 @@
       cursor: not-allowed;
     }
 
-    .wallet-info, #statusText {
-      margin-top: 1.2rem;
-      font-size: 1rem;
-    }
-
-    .stats {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      margin-top: 1.5rem;
-    }
-
-    .stat-item {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid #00ffe7;
-      padding: 1rem;
-      border-radius: 10px;
-    }
-
-    .badge-owned {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: rgba(0,255,170,0.1);
-      color: #00ffaa;
-      border: 1px solid #00ffaa;
-      border-radius: 10px;
-      display: none;
+    .wallet-info, #statusText, .error {
+      margin-top: 1rem;
     }
 
     .error {
       color: #ff5555;
-      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
 
   <h1>KLY Genesis NFT Drop</h1>
-  <p class="subtitle">Claim your limited edition Genesis NFT. Only 500 will ever exist. One per wallet.</p>
-
-  <div class="nft-container">
-    <div class="badge">LIMITED</div>
-    <img src="https://gateway.pinata.cloud/ipfs/bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4" alt="Genesis NFT" class="nft-image" />
-  </div>
-
-  <div class="stats">
-    <div class="stat-item">
-      <div id="totalSupply">500</div>
-      <div>Total Supply</div>
-    </div>
-    <div class="stat-item">
-      <div id="mintedCount">0</div>
-      <div>Minted</div>
-    </div>
-    <div class="stat-item">
-      <div id="remainingCount">500</div>
-      <div>Remaining</div>
-    </div>
-  </div>
-
-  <button onclick="connectWallet()">Connect Wallet</button>
-  <button class="btn" id="mintBtn" disabled><i class="fas fa-gem"></i> Mint NFT</button>
+  <button class="btn" onclick="connectWallet()">Connect Wallet</button>
+  <button class="btn" id="mintBtn" onclick="mintNFT()" disabled>Mint NFT</button>
 
   <div id="walletDisplay" class="wallet-info"></div>
   <div id="statusText">Connect your wallet to mint.</div>
   <div id="errorText" class="error"></div>
-  <div id="badgeOwned" class="badge-owned"><i class="fas fa-check-circle"></i> You already own this Genesis NFT!</div>
-  
-<!-- Ethers.js -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
-<!-- Thirdweb SDK (correct UMD version) -->
-<script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.umd.js"></script>
-<script>
-const BSC_CHAIN_ID = 56;
-const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
-let sdk, signer, provider, walletAddress;
+  <!-- Ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
-async function connectWallet() {
-  const statusText = document.getElementById("statusText");
-  const walletDisplay = document.getElementById("walletDisplay");
-  const errorText = document.getElementById("errorText");
+  <!-- Thirdweb SDK (Verified UMD version) -->
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@3.11.10/dist/browser.umd.min.js"></script>
 
-  try {
-    errorText.innerText = "";
-    statusText.innerText = "Connecting to MetaMask...";
+  <script>
+    const CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5"; // KLY Genesis
+    const BSC_CHAIN_ID = 56;
+    const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+    let sdk, signer, provider, walletAddress;
 
-    if (typeof window.ethereum === "undefined") {
-      throw new Error("MetaMask not detected. Please install MetaMask.");
+    async function connectWallet() {
+      const statusText = document.getElementById("statusText");
+      const walletDisplay = document.getElementById("walletDisplay");
+      const errorText = document.getElementById("errorText");
+
+      try {
+        errorText.innerText = "";
+        statusText.innerText = "Connecting to MetaMask...";
+
+        if (!window.ethereum) throw new Error("MetaMask not detected.");
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const network = await provider.getNetwork();
+
+        if (network.chainId !== BSC_CHAIN_ID) {
+          await switchToBSCNetwork();
+        }
+
+        signer = provider.getSigner();
+        walletAddress = await signer.getAddress();
+
+        sdk = new window.thirdweb.ThirdwebSDK(signer, {
+          clientId: "f77d19013c06895efd20b96c2311ba61"
+        });
+
+        walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+        statusText.innerText = "Wallet connected. Ready to mint!";
+        document.getElementById("mintBtn").disabled = false;
+
+      } catch (err) {
+        console.error("Wallet connection error:", err);
+        errorText.innerText = `Error: ${err.message}`;
+        statusText.innerText = "Connection failed.";
+      }
     }
 
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-
-    const network = await provider.getNetwork();
-    console.log("Connected to network:", network.chainId);
-
-    if (network.chainId !== BSC_CHAIN_ID) {
-      statusText.innerText = "Switching to BSC...";
-      await switchToBSCNetwork();
+    async function switchToBSCNetwork() {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }],
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x38",
+              chainName: "Binance Smart Chain",
+              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+              rpcUrls: [BSC_RPC_URL],
+              blockExplorerUrls: ["https://bscscan.com"],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
     }
 
-    signer = provider.getSigner();
-    walletAddress = await signer.getAddress();
-    console.log("Wallet address:", walletAddress);
+    async function mintNFT() {
+      const statusText = document.getElementById("statusText");
+      const errorText = document.getElementById("errorText");
 
-    sdk = new window.thirdweb.ThirdwebSDK(signer, {
-      clientId: "f77d19013c06895efd20b96c2311ba61", // Replace with your real clientId if different
-    });
+      try {
+        statusText.innerText = "Minting...";
+        errorText.innerText = "";
 
-    walletDisplay.innerText = `Wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-    statusText.innerText = "Wallet connected. Ready to mint!";
-    document.getElementById("mintBtn").disabled = false;
+        const contract = await sdk.getContract(CONTRACT_ADDRESS, "nft-drop");
+        const tx = await contract.claim(1);
+        const receipt = tx[0].receipt;
 
-  } catch (err) {
-    console.error("Wallet connection failed:", err);
-    errorText.innerText = `Error: ${err.message}`;
-    statusText.innerText = "Connection failed.";
-  }
-}
-
-async function switchToBSCNetwork() {
-  try {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x38" }],
-    });
-  } catch (switchError) {
-    if (switchError.code === 4902) {
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x38",
-          chainName: "Binance Smart Chain Mainnet",
-          nativeCurrency: {
-            name: "BNB",
-            symbol: "BNB",
-            decimals: 18,
-          },
-          rpcUrls: [BSC_RPC_URL],
-          blockExplorerUrls: ["https://bscscan.com"],
-        }],
-      });
-    } else {
-      throw switchError;
+        statusText.innerHTML = `✅ Minted! <a href="https://bscscan.com/tx/${receipt.transactionHash}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
+      } catch (err) {
+        console.error("Mint error:", err);
+        errorText.innerText = `Error: ${err.message}`;
+        statusText.innerText = "Mint failed.";
+      }
     }
-  }
-}
-</script>
+  </script>
+</body>
+</html>
