@@ -498,29 +498,34 @@
   }
 
   async function verifyAccess() {
-    try {
-      const token = new ethers.Contract(KLY_TOKEN, KLY_TOKEN_ABI, provider);
-      const decimals = await token.decimals();
-      const balance = await token.balanceOf(userAddress);
-      const formatted = ethers.utils.formatUnits(balance, decimals);
-
-      document.getElementById('balance').innerText = `${formatted} KLY`;
-      document.getElementById('balanceSection').style.display = "block";
-
-      const required = ethers.utils.parseUnits("500", decimals);
-
-      if (balance.gte(required)) {
-        showToast("Access Verified: You hold 500+ KLY!");
-        document.getElementById("accessPanel").classList.add("hidden");
-        document.getElementById("module1").classList.remove("hidden");
-      } else {
-        showToast("Insufficient KLY (need 500+)");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Verification Failed");
+  try {
+    if (!provider || !signer || !userAddress) {
+      showToast("Please connect your wallet first.");
+      return;
     }
+
+    const token = new ethers.Contract(KLY_TOKEN, KLY_TOKEN_ABI, provider);
+    const decimals = await token.decimals();
+    const balance = await token.balanceOf(userAddress);
+    const formatted = ethers.utils.formatUnits(balance, decimals);
+
+    document.getElementById('balance').innerText = `${formatted} KLY`;
+    document.getElementById('balanceSection').style.display = "block";
+
+    const required = ethers.utils.parseUnits("500", decimals);
+
+    if (balance.gte(required)) {
+      showToast("Access Verified: You hold 500+ KLY!");
+      document.getElementById("accessPanel").classList.add("hidden");
+      document.getElementById("module1").classList.remove("hidden");
+    } else {
+      showToast("Insufficient KLY (need 500+)");
+    }
+  } catch (error) {
+    console.error("Verify Error:", error);
+    showToast("Verification Failed");
   }
+}
 
   function showNextModule(n) {
     hideAllModules();
