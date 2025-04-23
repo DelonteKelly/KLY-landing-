@@ -467,46 +467,63 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<!-- Dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script type="module">
+    import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+    import { ethers } from "https://cdn.skypack.dev/ethers";
 
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-  import { ethers } from "https://cdn.skypack.dev/ethers";
+    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Course NFT contract
+    const MINT_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
 
-  window.mintNFT = async function () {
-    const status = document.getElementById("mintStatus");
-    status.innerText = "Connecting wallet...";
+    let signer, connectedAddress;
 
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
+    window.connectWallet = async function () {
+      const status = document.getElementById("mintStatus");
+      try {
+        if (!window.ethereum) throw new Error("MetaMask is not installed.");
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        connectedAddress = await signer.getAddress();
+        status.innerText = `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
+        showToast("Wallet connected!");
+      } catch (err) {
+        console.error(err);
+        status.innerText = `❌ ${err.message}`;
+        showToast("Connection failed.");
+      }
+    };
 
-      const sdk = new ThirdwebSDK(signer, {
-        clientId: "f77d19013c06895efd20b96c2311ba61", // your Thirdweb client ID
-      });
+    window.mintNFT = async function () {
+      const status = document.getElementById("mintStatus");
+      status.innerText = "Minting... Please confirm in wallet.";
+      try {
+        if (!signer) throw new Error("Connect your wallet first.");
+        const sdk = new ThirdwebSDK(signer, {
+          clientId: "f77d19013c06895efd20b96c2311ba61"
+        });
+        const contract = await sdk.getContract(CONTRACT_ADDRESS, "nft-drop");
+        const tx = await contract.claim(1);
+        const receipt = tx[0].receipt;
+        const url = `https://bscscan.com/tx/${receipt.transactionHash}`;
+        status.innerHTML = `✅ NFT minted! <a href="${url}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
+        showToast("NFT minted!");
+      } catch (err) {
+        console.error(err);
+        status.innerText = `❌ ${err.message}`;
+        showToast("Minting failed.");
+      }
+    };
 
-      // Updated contract address and type
-      const contract = await sdk.getContract("0xDA76d35742190283E340dbeE2038ecc978a56950", "nft-drop");
-
-      // Mint one NFT from the drop
-      const tx = await contract.claim(1);
-      const receipt = tx[0].receipt;
-      const txUrl = `https://bscscan.com/tx/${receipt.transactionHash}`;
-
-      status.innerHTML = `✅ NFT minted!<br><a href="${txUrl}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
-    } catch (err) {
-      console.error(err);
-      status.innerText = `❌ Error: ${err.message}`;
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.classList.add("show");
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.remove("show"), 3000);
     }
-  };
-
-  // If you're using other functions like wallet connect/verify/navigation
-  window.connectWallet = connectWallet;
-  window.verifyAccess = verifyAccess;
-  window.mintNFT = mintNFT;
-  window.showNextModule = showNextModule;
-  window.showPreviousModule = showPreviousModule;
-</script>
+  </script>
+</body>
+</html>
  
