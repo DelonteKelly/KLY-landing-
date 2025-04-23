@@ -467,44 +467,67 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<!-- Ethers.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<div class="module" id="certificate-claim">
+  <h3>Claim Your NFT Certificate</h3>
+  <p>You've completed the KLY Legacy Course. Now you can claim your official NFT Certificate on BNB Smart Chain to verify your knowledge and commitment to legacy building.</p>
+  <button id="claimCertificateBtn" class="claim-nft-button">Claim NFT Certificate</button>
+</div>
 <script>
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const KLY_ABI = [{
-    constant: true,
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  }];
-
-  let wallet;
-
-  async function connectWallet() {
-    if (!window.ethereum) return alert("Please install MetaMask.");
-    const web3 = new Web3(window.ethereum);
-    await window.ethereum.request({ method: "eth_requestAccounts" });
-    const accounts = await web3.eth.getAccounts();
-    wallet = accounts[0];
-    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
-    console.log("Connected wallet:", wallet);
-  }
-
-  async function verifyAccess() {
-    if (!wallet) return alert("Connect your wallet first.");
-    const web3 = new Web3(window.ethereum);
-    const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
-    const balance = await contract.methods.balanceOf(wallet).call();
-    const balanceEth = web3.utils.fromWei(balance, "ether");
-    console.log("KLY Balance:", balanceEth);
-
-    if (parseFloat(balanceEth) >= 500) {
-      document.getElementById("accessPanel").classList.add("hidden");
-      document.getElementById("courseContent").classList.remove("hidden");
-    } else {
-      document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY";
+  // Connect wallet on page load
+  window.addEventListener("load", async () => {
+    if (typeof window.ethereum !== "undefined") {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
     }
-  }
+  });
+
+  // Claim NFT Certificate logic
+  document.getElementById("claimCertificateBtn").addEventListener("click", async () => {
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask to continue.");
+      return;
+    }
+
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      const user = accounts[0];
+
+      if (!user) {
+        alert("Please connect your wallet to mint your certificate.");
+        return;
+      }
+
+      const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+      const nftABI = [
+        {
+          "inputs": [
+            { "internalType": "address", "name": "to", "type": "address" },
+            { "internalType": "int24", "name": "tickLower", "type": "int24" },
+            { "internalType": "int24", "name": "tickUpper", "type": "int24" },
+            { "internalType": "uint128", "name": "amount", "type": "uint128" },
+            { "internalType": "bytes", "name": "data", "type": "bytes" }
+          ],
+          "name": "mint",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ];
+
+      const signer = provider.getSigner();
+      const nftContract = new ethers.Contract(nftContractAddress, nftABI, signer);
+      await nftContract.mint(user, -887220, 887220, 1, "0x");
+
+      alert("NFT Certificate Minted Successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Minting failed. Please try again.");
+    }
+  });
 </script>
-</body>
-</html>
+  </body> 
+      </html>
 
