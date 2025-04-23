@@ -467,61 +467,44 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<!-- Dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script type="module">
-  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
-  import { ethers } from "https://cdn.skypack.dev/ethers";
+<script>
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_ABI = [{
+    constant: true,
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function"
+  }];
 
-  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const KLY_TOKEN_ADDRESS = "0xYourKLYTokenAddress"; // Replace with actual
-  const ACCESS_THRESHOLD = 500;
-  let signer, connectedAddress;
+  let wallet;
 
-  window.connectWallet = async function () {
-    const status = document.getElementById("mintStatus");
-    try {
-      if (!window.ethereum) throw new Error("MetaMask is not installed.");
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      connectedAddress = await signer.getAddress();
-      status.innerText = `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
-      showToast("Wallet connected!");
-    } catch (err) {
-      console.error(err);
-      status.innerText = `❌ ${err.message}`;
-      showToast("Connection failed.");
+  async function connectWallet() {
+    if (!window.ethereum) return alert("Please install MetaMask.");
+    const web3 = new Web3(window.ethereum);
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    const accounts = await web3.eth.getAccounts();
+    wallet = accounts[0];
+    document.getElementById("accessStatus").innerText = "Wallet connected: " + wallet.slice(0,6) + "..." + wallet.slice(-4);
+    console.log("Connected wallet:", wallet);
+  }
+
+  async function verifyAccess() {
+    if (!wallet) return alert("Connect your wallet first.");
+    const web3 = new Web3(window.ethereum);
+    const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
+    const balance = await contract.methods.balanceOf(wallet).call();
+    const balanceEth = web3.utils.fromWei(balance, "ether");
+    console.log("KLY Balance:", balanceEth);
+
+    if (parseFloat(balanceEth) >= 500) {
+      document.getElementById("accessPanel").classList.add("hidden");
+      document.getElementById("courseContent").classList.remove("hidden");
+    } else {
+      document.getElementById("accessStatus").innerText = "Access Denied: You only hold " + balanceEth + " KLY";
     }
-  };
-
-  window.verifyAccess = async function () {
-    const status = document.getElementById("accessStatus");
-    try {
-      if (!signer) throw new Error("Please connect your wallet first.");
-      const tokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, ["function balanceOf(address) view returns (uint256)"], signer);
-      const balanceRaw = await tokenContract.balanceOf(await signer.getAddress());
-      const balance = parseFloat(ethers.utils.formatUnits(balanceRaw, 18));
-      if (balance >= ACCESS_THRESHOLD) {
-        showToast("✅ Access granted!");
-      } else {
-        status.innerText = `You need at least 500 KLY. You have ${balance.toFixed(2)}.`;
-        showToast("Insufficient KLY balance.");
-      }
-    } catch (err) {
-      console.error(err);
-      status.innerText = `❌ ${err.message}`;
-      showToast("Access check failed.");
-    }
-  };
-
-  function showToast(msg) {
-    const toast = document.getElementById("toast");
-    toast.innerText = msg;
-    toast.classList.add("show");
-    toast.classList.remove("hidden");
-    setTimeout(() => toast.classList.remove("show"), 3000);
   }
 </script>
 </body>
 </html>
+
