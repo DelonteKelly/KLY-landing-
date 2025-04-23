@@ -469,161 +469,35 @@
 <!-- Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 
-<script>
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const NFT_CONTRACT = "0xc75f0ea874c8f7a9493ca9d5a7d354359bf0e79b";
+<script type="module">
+  import { ThirdwebSDK } from "https://cdn.skypack.dev/@thirdweb-dev/sdk";
+  import { ethers } from "https://cdn.skypack.dev/ethers";
 
-  const KLY_ABI = [{
-    constant: true,
-    inputs: [{ name: "owner", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    type: "function"
-  }];
-
-  const NFT_ABI = [{
-    "inputs": [
-      { "internalType": "address", "name": "to", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "string", "name": "baseURI", "type": "string" },
-      { "internalType": "bytes", "name": "data", "type": "bytes" }
-    ],
-    "name": "mint",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  }];
-
-  let wallet = null;
-  let web3;
-
-  async function connectWallet() {
-    if (!window.ethereum) {
-      alert("Please install MetaMask.");
-      return false;
-    }
+  window.mintNFT = async function () {
+    const status = document.getElementById("mintStatus");
+    status.innerText = "Connecting wallet...";
 
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      wallet = accounts[0];
-      web3 = new Web3(window.ethereum);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
 
-      document.getElementById("walletAddress").innerText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-      document.getElementById("walletAddress").style.display = "block";
-      document.getElementById("connectWallet").style.display = "none";
-      document.getElementById("accessStatus").innerText = "Wallet connected";
+      const sdk = new ThirdwebSDK(signer, {
+        clientId: "f77d19013c06895efd20b96c2311ba61", // your Thirdweb client ID
+      });
 
-      return true;
+      const contract = await sdk.getContract("0xc1a2E9A475779EfD04247EA473638717E26cd5C5", "nft-collection");
+
+      const tx = await contract.erc721.claim(1);
+      const receipt = tx[0].receipt;
+      const txUrl = `https://bscscan.com/tx/${receipt.transactionHash}`;
+
+      status.innerHTML = `✅ NFT minted!<br><a href="${txUrl}" target="_blank" style="color:#00ffe7;">View on BscScan</a>`;
     } catch (err) {
-      console.error("Wallet connect error:", err);
-      return false;
+      console.error(err);
+      status.innerText = `❌ Error: ${err.message}`;
     }
-  }
-
-  async function verifyAccess() {
-    if (!wallet) {
-      const connected = await connectWallet();
-      if (!connected) return;
-    }
-
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== "0x38") {
-      document.getElementById("accessStatus").innerText = "Please switch to BNB Smart Chain.";
-      return;
-    }
-
-    try {
-      const contract = new web3.eth.Contract(KLY_ABI, KLY_TOKEN);
-      const balance = await contract.methods.balanceOf(wallet).call();
-      const balanceEth = web3.utils.fromWei(balance, "ether");
-      document.getElementById("balanceSection").style.display = "block";
-document.getElementById("balance").innerText = `${parseFloat(balanceEth).toFixed(2)} KLY`;
-
-      if (parseFloat(balanceEth) >= 500) {
-        document.getElementById("accessPanel").classList.add("hidden");
-        document.getElementById("module1").classList.remove("hidden");
-      } else {
-        document.getElementById("accessStatus").innerText =
-          `Access Denied: You hold ${parseFloat(balanceEth).toFixed(2)} KLY (500 required)`;
-      }
-    } catch (err) {
-      console.error("Access check error:", err);
-      document.getElementById("accessStatus").innerText = `Error: ${err.message}`;
-    }
-  }
-
-  async function mintNFT() {
-    if (!wallet) {
-      const connected = await connectWallet();
-      if (!connected) return;
-    }
-
-    try {
-      const contract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT);
-      const baseURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
-      const data = "0x";
-
-      const tx = await contract.methods
-        .mint(wallet, 1, baseURI, data)
-        .send({
-          from: wallet,
-          value: web3.utils.toWei("0", "ether")
-        });
-
-      document.getElementById("mintStatus").innerHTML = `
-        ✅ NFT minted successfully!<br>
-        <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#00ffe7;">
-          View on BscScan
-        </a>
-      `;
-      showToast("✅ NFT minted successfully!");
-    } catch (err) {
-      const message = err?.message || "Unknown mint error.";
-      console.error("Mint failed:", message);
-      document.getElementById("mintStatus").innerText = `Mint failed: ${message}`;
-      showToast(`❌ Mint failed: ${message}`);
-    }
-  }
-
-  function showNextModule(mod) {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
-    }
-    document.getElementById("mintSection").classList.add("hidden");
-
-    if (mod === 'mint') {
-      document.getElementById("mintSection").classList.remove("hidden");
-    } else {
-      document.getElementById(`module${mod}`)?.classList.remove("hidden");
-    }
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function showPreviousModule(mod) {
-    for (let i = 1; i <= 5; i++) {
-      document.getElementById(`module${i}`)?.classList.add("hidden");
-    }
-    document.getElementById("mintSection").classList.add("hidden");
-    document.getElementById(`module${mod}`)?.classList.remove("hidden");
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function showToast(message) {
-    const toast = document.getElementById("toast");
-    toast.innerText = message;
-    toast.classList.remove("hidden");
-    toast.classList.add("show");
-
-    setTimeout(() => {
-      toast.classList.remove("show");
-      setTimeout(() => {
-        toast.classList.add("hidden");
-      }, 400);
-    }, 3000);
-  }
-
+  };
   // Expose to HTML
   window.connectWallet = connectWallet;
   window.verifyAccess = verifyAccess;
