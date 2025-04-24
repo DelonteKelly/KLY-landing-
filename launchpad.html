@@ -1,37 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Wallet Connect Test</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>KLY Launchpad - Mainnet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="font-family: sans-serif; background: #111; color: #eee; padding: 2rem; text-align: center;">
-
+<body>
   <h1>Connect Wallet Test</h1>
-  <button id="connectBtn" style="padding: 12px 24px; font-size: 16px; cursor: pointer;">Connect Wallet</button>
-  <p id="walletAddress" style="margin-top: 1rem;"></p>
+  <button id="connectWallet">Connect Wallet</button>
+  <div id="walletStatus"></div>
+  <script type="module">
+    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm';
 
-  <script>
-    const connectBtn = document.getElementById("connectBtn");
-    const walletAddressDisplay = document.getElementById("walletAddress");
+    const connectButton = document.getElementById("connectWallet");
+    const walletStatus = document.getElementById("walletStatus");
 
-    connectBtn.addEventListener("click", async () => {
-      if (!window.ethereum) {
-        alert("MetaMask not found. Please install it.");
-        return;
-      }
-
+    connectButton.addEventListener("click", async () => {
       try {
+        if (!window.ethereum) {
+          walletStatus.innerText = "MetaMask is not installed";
+          return;
+        }
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         const signer = provider.getSigner();
         const address = await signer.getAddress();
-        walletAddressDisplay.textContent = `Connected: ${address}`;
-        connectBtn.innerText = "Connected!";
-        connectBtn.disabled = true;
-      } catch (err) {
-        console.error(err);
-        walletAddressDisplay.textContent = "Failed to connect: " + err.message;
+
+        walletStatus.innerText = "Connected: " + address;
+        connectButton.innerText = "Connected!";
+        connectButton.disabled = true;
+      } catch (error) {
+        walletStatus.innerText = "Error: " + error.message;
       }
     });
   </script>
