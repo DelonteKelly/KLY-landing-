@@ -403,6 +403,11 @@
       <a href="kly-academy.html" class="module-next">Return to Academy Dashboard</a>
     </div>
 
+    <div style="text-align: center; margin-top: 2.5rem;">
+  <button class="nav-button" onclick="mintCertificate()">Mint NFT Certificate</button>
+  <p id="mint-status" style="margin-top: 1rem; color: #00ffe7; font-weight: bold;"></p>
+</div>
+
   </div>
 </div>
 </div>
@@ -451,8 +456,40 @@
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
   }
+  
 
   window.showModule = showModule;
+
+
+  const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+const NFT_CONTRACT_ABI = [
+  "function mintTo(address to, string memory uri) public"
+];
+
+async function mintCertificate() {
+  try {
+    if (!window.ethereum) {
+      alert("Please install MetaMask to mint your NFT.");
+      return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+
+    const tx = await contract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+    document.getElementById("mint-status").innerText = "Minting in progress...";
+
+    await tx.wait();
+    document.getElementById("mint-status").innerText = "Certificate Minted Successfully!";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("mint-status").innerText = "Minting failed. Please try again.";
+  }
+}
+
+window.mintCertificate = mintCertificate;
 </script>
 </body>
 </html>
