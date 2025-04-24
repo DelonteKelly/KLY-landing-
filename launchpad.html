@@ -1,116 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>KLY Launchpad</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      background: #050505;
-      font-family: 'Rajdhani', sans-serif;
-      color: #e0e0e0;
-      padding: 2rem;
-      text-align: center;
-    }
-    h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #00ffe7;
-    }
-    input, button {
-      padding: 0.75rem;
-      font-size: 1rem;
-      margin: 0.5rem 0;
-      width: 100%;
-      max-width: 400px;
-    }
-    button {
-      background: linear-gradient(135deg, #00ffe7, #ff00aa);
-      color: black;
-      border: none;
-      cursor: pointer;
-    }
-    .status {
-      margin-top: 1rem;
-      color: #00ffe7;
-      font-weight: bold;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Wallet Connect Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
-<body>
-  <h1>KLY Launchpad</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="walletAddress" class="status"></div>
-  <form id="tokenDeployForm">
-    <input id="tokenName" placeholder="Token Name" />
-    <input id="tokenSymbol" placeholder="Token Symbol" />
-    <input id="initialSupply" type="number" placeholder="Initial Supply" />
-    <button type="submit">Deploy Token</button>
-  </form>
-  <div id="statusMessage" class="status"></div>
-  <script type="module">
-    import {{ ethers }} from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
-    import {{ ThirdwebSDK }} from "https://esm.sh/@thirdweb-dev/sdk@3";
+<body style="font-family: sans-serif; background: #111; color: #eee; padding: 2rem; text-align: center;">
 
-    const BNB_MAINNET_CHAIN_ID = "0x38";
-    const treasuryWallet = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  <h1>Connect Wallet Test</h1>
+  <button id="connectBtn" style="padding: 12px 24px; font-size: 16px; cursor: pointer;">Connect Wallet</button>
+  <p id="walletAddress" style="margin-top: 1rem;"></p>
 
-    let provider, signer, wallet;
+  <script>
+    const connectBtn = document.getElementById("connectBtn");
+    const walletAddressDisplay = document.getElementById("walletAddress");
 
-    async function connectWallet() {{
-      if (!window.ethereum) {{
-        alert("Please install MetaMask");
+    connectBtn.addEventListener("click", async () => {
+      if (!window.ethereum) {
+        alert("MetaMask not found. Please install it.");
         return;
-      }}
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      wallet = await signer.getAddress();
-      document.getElementById("walletAddress").innerText = "Connected: " + wallet;
-    }}
+      }
 
-    async function ensureMainnet() {{
-      const chainId = await window.ethereum.request({{ method: 'eth_chainId' }});
-      if (chainId !== BNB_MAINNET_CHAIN_ID) {{
-        await window.ethereum.request({{
-          method: 'wallet_switchEthereumChain',
-          params: [{{ chainId: BNB_MAINNET_CHAIN_ID }}],
-        }});
-      }}
-    }}
-
-    async function deployToken(e) {{
-      e.preventDefault();
-      const name = document.getElementById("tokenName").value;
-      const symbol = document.getElementById("tokenSymbol").value;
-      const supply = document.getElementById("initialSupply").value;
-
-      if (!name || !symbol || !supply) {{
-        document.getElementById("statusMessage").innerText = "Fill all fields";
-        return;
-      }}
-
-      try {{
-        await ensureMainnet();
-        const sdk = new ThirdwebSDK(signer);
-        const token = await sdk.deployer.deployToken({{
-          name,
-          symbol,
-          initialSupply: supply,
-          primary_sale_recipient: treasuryWallet,
-        }});
-        document.getElementById("statusMessage").innerHTML = `
-          Token Deployed: <a href="https://bscscan.com/address/${{token.address}}" target="_blank">${{token.address}}</a>
-        `;
-      }} catch (err) {{
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        walletAddressDisplay.textContent = `Connected: ${address}`;
+        connectBtn.innerText = "Connected!";
+        connectBtn.disabled = true;
+      } catch (err) {
         console.error(err);
-        document.getElementById("statusMessage").innerText = "Error: " + err.message;
-      }}
-    }}
-
-    document.getElementById("connectWallet").addEventListener("click", connectWallet);
-    document.getElementById("tokenDeployForm").addEventListener("submit", deployToken);
+        walletAddressDisplay.textContent = "Failed to connect: " + err.message;
+      }
+    });
   </script>
-
 </body>
 </html>
