@@ -2,38 +2,106 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>KLY Launchpad - Mainnet</title>
+  <title>KLY Launchpad - Enhanced UI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #00ffe7;
+      --secondary: #ff00aa;
+      --bg-dark: #0b0b0b;
+      --text-light: #e0e0e0;
+      --card-glow: 0 0 15px rgba(0, 255, 231, 0.5);
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: linear-gradient(to bottom right, #050505, #0f0f0f);
+      color: var(--text-light);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--card-glow);
+      backdrop-filter: blur(8px);
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+      border: 1px solid rgba(0, 255, 231, 0.1);
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      text-shadow: 0 0 10px var(--primary);
+    }
+
+    button {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      color: #000;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 20px var(--primary);
+      margin-top: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      box-shadow: 0 0 30px var(--secondary);
+      transform: translateY(-2px);
+    }
+
+    #walletAddress {
+      margin-top: 1rem;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>Welcome to the KLY Launchpad</h1>
-  <button id="connectWallet">Connect Wallet</button>
-  <div id="walletStatus"></div>
+  <div class="card">
+    <h1>Welcome to the KLY Launchpad</h1>
+    <button id="connectWallet"><i class="fas fa-wallet"></i> Connect Wallet</button>
+    <div id="walletAddress"></div>
+  </div>
+
   <script type="module">
     import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm';
-
     const connectButton = document.getElementById("connectWallet");
-    const walletStatus = document.getElementById("walletStatus");
+    const walletAddressEl = document.getElementById("walletAddress");
 
     connectButton.addEventListener("click", async () => {
       try {
         if (!window.ethereum) {
-          walletStatus.innerText = "MetaMask is not installed";
+          walletAddressEl.innerText = "MetaMask not detected";
           return;
         }
-
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         const signer = provider.getSigner();
         const address = await signer.getAddress();
-
-        walletStatus.innerText = "Connected: " + address;
+        walletAddressEl.innerText = `Connected: ${address}`;
         connectButton.innerText = "Connected!";
         connectButton.disabled = true;
-      } catch (error) {
-        walletStatus.innerText = "Error: " + error.message;
+      } catch (err) {
+        walletAddressEl.innerText = "Connection failed: " + err.message;
       }
     });
   </script>
 </body>
 </html>
+
