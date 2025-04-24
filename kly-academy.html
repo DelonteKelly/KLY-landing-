@@ -412,11 +412,19 @@
 </div>
 </div>
   
+<!-- Load Ethers.js -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script>
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
   const KLY_TOKEN_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
+    "function balanceOf(address) view returns (uint256)",
     "function decimals() view returns (uint8)"
+  ];
+
+  const NFT_CONTRACT_ABI = [
+    "function mintTo(address to, string memory uri) public"
   ];
 
   const connectBtn = document.getElementById('connect-btn');
@@ -424,16 +432,18 @@
   const accessMessage = document.getElementById('access-message');
   const courseWrapper = document.getElementById('course-wrapper');
 
+  let signer, provider, userAddress;
+
   async function connectWallet() {
     if (!window.ethereum) {
       alert("Please install MetaMask to use this feature.");
       return;
     }
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    const userAddress = await signer.getAddress();
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
 
     const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
     const rawBalance = await kly.balanceOf(userAddress);
@@ -449,47 +459,35 @@
     }
   }
 
+  async function mintCertificate() {
+    try {
+      if (!signer || !userAddress) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+      const tx = await contract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+
+      document.getElementById("mint-status").innerText = "Minting in progress...";
+      await tx.wait();
+      document.getElementById("mint-status").innerText = "Certificate Minted Successfully!";
+    } catch (err) {
+      console.error(err);
+      document.getElementById("mint-status").innerText = "Minting failed. Please try again.";
+    }
+  }
+
   connectBtn.addEventListener('click', connectWallet);
+  window.mintCertificate = mintCertificate;
 
   function showModule(id) {
     document.querySelectorAll('.module-card').forEach(card => card.style.display = 'none');
     const el = document.getElementById(id);
     if (el) el.style.display = 'block';
   }
-  
 
   window.showModule = showModule;
-
-
-  const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-const NFT_CONTRACT_ABI = [
-  "function mintTo(address to, string memory uri) public"
-];
-
-async function mintCertificate() {
-  try {
-    if (!window.ethereum) {
-      alert("Please install MetaMask to mint your NFT.");
-      return;
-    }
-
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const userAddress = await signer.getAddress();
-    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-
-    const tx = await contract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
-    document.getElementById("mint-status").innerText = "Minting in progress...";
-
-    await tx.wait();
-    document.getElementById("mint-status").innerText = "Certificate Minted Successfully!";
-  } catch (err) {
-    console.error(err);
-    document.getElementById("mint-status").innerText = "Minting failed. Please try again.";
-  }
-}
-
-window.mintCertificate = mintCertificate;
 </script>
 </body>
 </html>
