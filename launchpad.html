@@ -214,6 +214,45 @@
       100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
     }
 
+    .token-info {
+      margin-top: 2rem;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 231, 0.2);
+    }
+
+    .token-info h3 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .token-info p {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .token-balance {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+
+    .action-buttons button {
+      flex: 1;
+      max-width: 200px;
+    }
+
     .features {
       display: flex;
       flex-wrap: wrap;
@@ -293,6 +332,14 @@
       .feature {
         width: 100%;
       }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .action-buttons button {
+        max-width: 100%;
+      }
     }
   </style>
 </head>
@@ -322,12 +369,40 @@
       <span id="statusIndicator" class="status-indicator"></span>
       <span id="addressText">Not connected</span>
     </div>
+    
+    <div class="token-info" id="tokenInfo" style="display: none;">
+      <h3>KLY Token Information</h3>
+      <p>Contract: 0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52</p>
+      <div class="token-balance" id="tokenBalance">Balance: 0 KLY</div>
+    </div>
+    
+    <div class="action-buttons" id="actionButtons" style="display: none;">
+      <button id="buyTokens"><i class="fas fa-coins"></i> Buy Tokens</button>
+      <button id="viewOnExplorer"><i class="fas fa-external-link-alt"></i> Explorer</button>
+    </div>
   </div>
 
   <div id="notification" class="notification"></div>
 
-  <script type="module">
-    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm';
+  <script>
+    // Token contract details
+    const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const TOKEN_ABI = [
+      // ERC-20 standard functions
+      "function name() view returns (string)",
+      "function symbol() view returns (string)",
+      "function decimals() view returns (uint8)",
+      "function totalSupply() view returns (uint256)",
+      "function balanceOf(address account) view returns (uint256)",
+      "function transfer(address recipient, uint256 amount) returns (bool)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
+      
+      // Add any custom functions your token might have
+      "function buyTokens(uint256 amount) payable",
+      "function sellTokens(uint256 amount)"
+    ];
     
     // DOM elements
     const connectButton = document.getElementById("connectWallet");
@@ -335,25 +410,200 @@
     const walletAddressEl = document.getElementById("addressText");
     const statusIndicator = document.getElementById("statusIndicator");
     const notification = document.getElementById("notification");
+    const tokenInfo = document.getElementById("tokenInfo");
+    const tokenBalance = document.getElementById("tokenBalance");
+    const actionButtons = document.getElementById("actionButtons");
+    const buyTokensButton = document.getElementById("buyTokens");
+    const viewOnExplorerButton = document.getElementById("viewOnExplorer");
+    
+    // Global variables
+    let provider;
+    let signer;
+    let tokenContract;
+    let currentChainId;
+    
+    // Initialize the application
+    async function init() {
+      await checkConnectedWallet();
+      setupEventListeners();
+    }
     
     // Check if wallet is already connected
     async function checkConnectedWallet() {
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        updateUI(address);
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        currentChainId = await provider.getNetwork().then(network => network.chainId);
+        
+        if (window.ethereum.selectedAddress) {
+          signer = provider.getSigner();
+          const address = await signer.getAddress();
+          await updateUI(address);
+          await loadTokenInfo();
+        }
       }
     }
     
+    // Setup event listeners
+    function setupEventListeners() {
+      connectButton.addEventListener("click", connectWallet);
+      buyTokensButton.addEventListener("click", buyTokens);
+      viewOnExplorerButton.addEventListener("click", viewOnExplorer);
+      
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+        window.ethereum.on('chainChanged', handleChainChanged);
+      }
+    }
+    
+    // Connect wallet handler
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) {
+          showNotification("Please install MetaMask or another Web3 wallet", "error");
+          walletAddressEl.textContent = "Web3 wallet not detected";
+          return;
+        }
+        
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Request account access
+        await provider.send("eth_requestAccounts", []);
+        
+        // Get signer and address
+        signer = provider.getSigner();
+        const address = await signer.getAddress();
+        
+        // Update UI and load token info
+        await updateUI(address);
+        await loadTokenInfo();
+        
+        showNotification("Wallet connected successfully!", "success");
+        
+      } catch (err) {
+        console.error("Connection error:", err);
+        walletAddressEl.textContent = "Connection failed";
+        showNotification(`Connection failed: ${err.message}`, "error");
+      }
+    }
+    
+    // Handle account changes
+    async function handleAccountsChanged(accounts) {
+      if (accounts.length === 0) {
+        // Wallet disconnected
+        walletAddressEl.textContent = "Not connected";
+        statusIndicator.classList.remove("connected");
+        buttonText.textContent = "Connect Wallet";
+        connectButton.disabled = false;
+        tokenInfo.style.display = "none";
+        actionButtons.style.display = "none";
+        showNotification("Wallet disconnected", "error");
+      } else {
+        // Account changed
+        signer = provider.getSigner();
+        await updateUI(accounts[0]);
+        await loadTokenInfo();
+        showNotification("Account changed", "info");
+      }
+    }
+    
+    // Handle chain changes
+    async function handleChainChanged(chainId) {
+      // Convert chainId from hex to decimal
+      currentChainId = parseInt(chainId, 16);
+      window.location.reload();
+    }
+    
     // Update UI after connection
-    function updateUI(address) {
+    async function updateUI(address) {
       const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
       walletAddressEl.textContent = shortenedAddress;
       walletAddressEl.title = address; // Show full address on hover
       statusIndicator.classList.add("connected");
       buttonText.textContent = "Connected";
       connectButton.disabled = true;
+      
+      // Show token info and action buttons
+      tokenInfo.style.display = "block";
+      actionButtons.style.display = "flex";
+    }
+    
+    // Load token information
+    async function loadTokenInfo() {
+      try {
+        // Initialize token contract
+        tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, TOKEN_ABI, signer);
+        
+        // Get token details
+        const [name, symbol, decimals, balance] = await Promise.all([
+          tokenContract.name(),
+          tokenContract.symbol(),
+          tokenContract.decimals(),
+          tokenContract.balanceOf(await signer.getAddress())
+        ]);
+        
+        // Format balance
+        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+        
+        // Update UI
+        tokenBalance.textContent = `Balance: ${formattedBalance} ${symbol}`;
+        
+      } catch (err) {
+        console.error("Error loading token info:", err);
+        showNotification("Error loading token information", "error");
+      }
+    }
+    
+    // Buy tokens function
+    async function buyTokens() {
+      try {
+        // Example implementation - adjust based on your token's purchase function
+        showNotification("Preparing transaction...", "info");
+        
+        // You would typically have some input for amount to buy
+        const amount = ethers.utils.parseEther("1"); // Example: buy 1 ETH worth of tokens
+        
+        // Call the token purchase function (adjust based on your contract)
+        const tx = await tokenContract.buyTokens(amount, {
+          value: amount // Sending ETH with the transaction
+        });
+        
+        showNotification("Transaction sent! Waiting for confirmation...", "info");
+        
+        // Wait for transaction confirmation
+        await tx.wait();
+        
+        showNotification("Tokens purchased successfully!", "success");
+        
+        // Refresh balance
+        await loadTokenInfo();
+        
+      } catch (err) {
+        console.error("Error buying tokens:", err);
+        showNotification(`Error: ${err.message}`, "error");
+      }
+    }
+    
+    // View on explorer function
+    function viewOnExplorer() {
+      let explorerUrl;
+      
+      // Determine explorer based on chain ID
+      switch(currentChainId) {
+        case 1: // Ethereum Mainnet
+          explorerUrl = `https://etherscan.io/token/${TOKEN_CONTRACT_ADDRESS}`;
+          break;
+        case 56: // BSC
+          explorerUrl = `https://bscscan.com/token/${TOKEN_CONTRACT_ADDRESS}`;
+          break;
+        case 137: // Polygon
+          explorerUrl = `https://polygonscan.com/token/${TOKEN_CONTRACT_ADDRESS}`;
+          break;
+        // Add more chains as needed
+        default:
+          explorerUrl = `https://etherscan.io/token/${TOKEN_CONTRACT_ADDRESS}`;
+      }
+      
+      window.open(explorerUrl, '_blank');
     }
     
     // Show notification
@@ -366,58 +616,15 @@
       }, 5000);
     }
     
-    // Connect wallet handler
-    connectButton.addEventListener("click", async () => {
-      try {
-        if (!window.ethereum) {
-          showNotification("Please install MetaMask or another Web3 wallet", "error");
-          walletAddressEl.textContent = "Web3 wallet not detected";
-          return;
-        }
-        
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Request account access
-        await provider.send("eth_requestAccounts", []);
-        
-        // Get address
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        
-        // Update UI
-        updateUI(address);
-        showNotification("Wallet connected successfully!", "success");
-        
-        // Listen for account changes
-        window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) {
-            // Wallet disconnected
-            walletAddressEl.textContent = "Not connected";
-            statusIndicator.classList.remove("connected");
-            buttonText.textContent = "Connect Wallet";
-            connectButton.disabled = false;
-            showNotification("Wallet disconnected", "error");
-          } else {
-            // Account changed
-            updateUI(accounts[0]);
-            showNotification("Account changed", "info");
-          }
-        });
-        
-        // Listen for chain changes
-        window.ethereum.on('chainChanged', () => {
-          window.location.reload();
-        });
-        
-      } catch (err) {
-        console.error("Connection error:", err);
-        walletAddressEl.textContent = "Connection failed";
-        showNotification(`Connection failed: ${err.message}`, "error");
-      }
-    });
-    
-    // Initialize
-    checkConnectedWallet();
+    // Load Ethers.js dynamically if not already loaded
+    if (typeof ethers === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+      script.onload = init;
+      document.head.appendChild(script);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
