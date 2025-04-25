@@ -254,6 +254,16 @@
     </div>
   </div>
 
+  <div id="swapWidgetContainer" style="display: none; margin-top: 2rem;">
+  <iframe
+    src="https://pancakeswap.finance/swap?outputCurrency=0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52&inputCurrency=0x55d398326f99059fF775485246999027B3197955"
+    width="100%"
+    height="550"
+    style="border: none; border-radius: 12px;"
+    allow="clipboard-write; encrypted-media"
+  ></iframe>
+</div>
+
   <div id="notification" class="notification"></div>
 
   <script>
@@ -510,50 +520,42 @@
     }
     
     // Buy tokens function
-    async function buyTokens() {
-      try {
-        // Validate network first
-        if (currentChainId !== BSC_CHAIN_ID) {
-          showNotification("Please switch to BNB Chain", "error");
-          return;
-        }
-        
-        showNotification("Preparing transaction...", "info");
-        
-        // Example: Buy 100 tokens (adjust based on your contract)
-        const amount = ethers.utils.parseUnits("100", 18); // Assuming 18 decimals
-        
-        // Call the buyTokens function (adjust based on your contract)
-        const tx = await tokenContract.buyTokens(amount, {
-          value: ethers.utils.parseEther("0.1") // Sending 0.1 BNB
-        });
-        
-        showNotification("Transaction sent! Waiting for confirmation...", "info");
-        
-        // Wait for transaction confirmation
-        await tx.wait();
-        
-        showNotification("Tokens purchased successfully!", "success");
-        
-        // Refresh balance
-        await loadTokenInfo();
-        
-      } catch (err) {
-        console.error("Error buying tokens:", err);
-        
-        let userMessage = err.message;
-        if (err.code === 'INSUFFICIENT_FUNDS') {
-          userMessage = "Insufficient BNB balance";
-        } else if (err.code === 'UNPREDICTABLE_GAS_LIMIT') {
-          userMessage = "Transaction would fail (check token sale status)";
-        } else if (err.message.includes("JSON-RPC")) {
-          userMessage = "Network error - please try again";
-        }
-        
-        showNotification(`Error: ${userMessage}`, "error");
-      }
+async function buyTokens() {
+  try {
+    if (currentChainId !== BSC_CHAIN_ID) {
+      showNotification("Please switch to BNB Chain", "error");
+      return;
     }
+
+    // Show the embedded swap interface
+    const swapContainer = document.getElementById("swapWidgetContainer");
+    swapContainer.style.display = "block";
+    showNotification("Swap widget loaded below", "success");
+  } catch (err) {
+    console.error("Error showing swap widget:", err);
+    showNotification("Failed to load swap widget", "error");
+  }
+}
+
+    showNotification("Redirecting to PancakeSwap...", "info");
+
+    // Your token and USDT contract addresses
+    const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY
+    const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // USDT on BNB Chain
+
+    // Build PancakeSwap swap URL
+    const pancakeSwapURL = `https://pancakeswap.finance/swap?outputCurrency=${tokenAddress}&inputCurrency=${usdtAddress}`;
+
+    // Open PancakeSwap in a new tab
+    window.open(pancakeSwapURL, '_blank');
+
+    showNotification("Swap page opened in new tab.", "success");
     
+  } catch (err) {
+    console.error("Error redirecting to PancakeSwap:", err);
+    showNotification("Error opening swap page", "error");
+  }
+}
     // View on explorer function
     function viewOnExplorer() {
       window.open(`https://bscscan.com/token/${TOKEN_CONTRACT_ADDRESS}`, '_blank');
