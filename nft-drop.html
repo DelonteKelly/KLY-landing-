@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KLY Genesis NFT Drop | Exclusive Collection</title>
-  <meta name="description" content="Mint your exclusive KLY Genesis NFT - Limited edition digital collectibles">
+  <title>KLY Genesis NFT Drop | BNB Chain</title>
+  <meta name="description" content="Mint your exclusive KLY Genesis NFT on BNB Chain - Limited edition digital collectibles">
   
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -21,6 +21,7 @@
       --light: #e0e0e0;
       --error: #ff5555;
       --success: #00ff88;
+      --bnb-yellow: #F0B90B;
     }
     
     * {
@@ -74,6 +75,17 @@
       margin-bottom: 1.5rem;
       font-size: 2.5rem;
       letter-spacing: 1px;
+    }
+    
+    .network-badge {
+      display: inline-block;
+      background: rgba(240, 185, 11, 0.2);
+      color: var(--bnb-yellow);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--bnb-yellow);
     }
     
     .subtitle {
@@ -174,13 +186,14 @@
     }
     
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--light);
+      background: rgba(240, 185, 11, 0.1);
+      color: var(--bnb-yellow);
       box-shadow: none;
+      border: 1px solid var(--bnb-yellow);
     }
     
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(240, 185, 11, 0.2);
     }
     
     .wallet-display {
@@ -344,6 +357,9 @@
 <body>
   <div class="container">
     <h1>KLY GENESIS NFT DROP</h1>
+    <div class="network-badge">
+      <i class="fab fa-btc"></i> BNB Chain
+    </div>
     <p class="subtitle">Exclusive limited edition NFT collection for early supporters of the KLY ecosystem</p>
     
     <div class="nft-preview">
@@ -366,11 +382,11 @@
       </div>
       <div class="info-row">
         <span class="info-label">Price:</span>
-        <span id="mintPrice">0.1 ETH</span>
+        <span id="mintPrice">- BNB</span>
       </div>
       <div class="info-row">
-        <span class="info-label">Network:</span>
-        <span id="networkName">Ethereum Mainnet</span>
+        <span class="info-label">Contract:</span>
+        <span id="contractAddress">0xc1a2...d5C5</span>
       </div>
     </div>
     
@@ -416,9 +432,14 @@
   <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
-    // Contract details
+    // Contract details - BNB Chain (BSC)
     const CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+    const BSC_CHAIN_ID = 56; // BNB Smart Chain Mainnet
+    const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+    
+    // ABI with additional functions we might need
     const ABI = [
+      // Mint function
       {
         "inputs": [
           { "internalType": "address", "name": "_to", "type": "address" },
@@ -429,6 +450,7 @@
         "stateMutability": "nonpayable",
         "type": "function"
       },
+      // Standard ERC721 functions
       {
         "inputs": [],
         "name": "totalSupply",
@@ -447,6 +469,13 @@
         "inputs": [],
         "name": "mintPrice",
         "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "baseURI",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
         "stateMutability": "view",
         "type": "function"
       }
@@ -471,7 +500,7 @@
     const totalSupplyEl = document.getElementById("totalSupply");
     const mintedCountEl = document.getElementById("mintedCount");
     const mintPriceEl = document.getElementById("mintPrice");
-    const networkNameEl = document.getElementById("networkName");
+    const contractAddressEl = document.getElementById("contractAddress");
     const mintProgressBar = document.getElementById("mintProgressBar");
     const notification = document.getElementById("notification");
     
@@ -486,6 +515,9 @@
     
     // Initialize
     async function init() {
+      contractAddressEl.textContent = `${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(CONTRACT_ADDRESS.length - 4)}`;
+      contractAddressEl.title = CONTRACT_ADDRESS;
+      
       await checkConnectedWallet();
       setupEventListeners();
     }
@@ -496,12 +528,61 @@
         provider = new ethers.providers.Web3Provider(window.ethereum);
         currentChainId = await provider.getNetwork().then(network => network.chainId);
         
+        // Check if we're on BSC
+        if (currentChainId !== BSC_CHAIN_ID) {
+          try {
+            await switchToBSC();
+          } catch (err) {
+            showNotification("Please switch to BNB Smart Chain", "error");
+          }
+        }
+        
         if (window.ethereum.selectedAddress) {
           signer = provider.getSigner();
           userAddress = await signer.getAddress();
           await updateUI();
           await loadContractData();
         }
+      }
+    }
+    
+    // Switch to BSC network
+    async function switchToBSC() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
+        });
+        return true;
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
+                  chainName: 'BNB Smart Chain Mainnet',
+                  nativeCurrency: {
+                    name: 'BNB',
+                    symbol: 'BNB',
+                    decimals: 18
+                  },
+                  rpcUrls: [BSC_RPC_URL],
+                  blockExplorerUrls: ['https://bscscan.com/']
+                }
+              ]
+            });
+            return true;
+          } catch (addError) {
+            console.error("Error adding BSC network:", addError);
+            showNotification("Failed to add BNB Chain network", "error");
+            return false;
+          }
+        }
+        console.error("Error switching to BSC:", switchError);
+        return false;
       }
     }
     
@@ -525,10 +606,24 @@
         // Request account access
         await provider.send("eth_requestAccounts", []);
         
+        // Get current chain ID
+        currentChainId = await provider.getNetwork().then(network => network.chainId);
+        
+        // Ensure we're on BSC
+        if (currentChainId !== BSC_CHAIN_ID) {
+          const switched = await switchToBSC();
+          if (!switched) {
+            setStatus("Please switch to BNB Chain", "error");
+            return;
+          }
+          // After switching, we need to reload
+          window.location.reload();
+          return;
+        }
+        
         // Get signer and address
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
-        currentChainId = await provider.getNetwork().then(network => network.chainId);
         
         // Update UI and load contract data
         await updateUI();
@@ -560,9 +655,11 @@
     }
     
     // Handle chain changes
-    async function handleChainChanged(chainId) {
-      // Convert chainId from hex to decimal
-      currentChainId = parseInt(chainId, 16);
+    async function handleChainChanged(chainIdHex) {
+      const chainId = parseInt(chainIdHex, 16);
+      if (chainId !== BSC_CHAIN_ID) {
+        showNotification("Please switch to BNB Chain", "error");
+      }
       window.location.reload();
     }
     
@@ -614,31 +711,15 @@
         // Update UI
         totalSupplyEl.textContent = maxSupply;
         mintedCountEl.textContent = totalSupply.toNumber();
-        mintPriceEl.textContent = `${mintPrice} ETH`;
+        mintPriceEl.textContent = `${mintPrice} BNB`;
         
         // Update progress bar
         const progress = (totalSupply.toNumber() / maxSupply) * 100;
         mintProgressBar.style.width = `${progress}%`;
         
-        // Update network name
-        networkNameEl.textContent = await getNetworkName(currentChainId);
-        
       } catch (err) {
         console.error("Error loading contract data:", err);
         showNotification("Error loading contract data", "error");
-      }
-    }
-    
-    // Get network name from chain ID
-    async function getNetworkName(chainId) {
-      switch(chainId) {
-        case 1: return "Ethereum Mainnet";
-        case 5: return "Ethereum Goerli";
-        case 56: return "Binance Smart Chain";
-        case 97: return "BSC Testnet";
-        case 137: return "Polygon Mainnet";
-        case 80001: return "Polygon Mumbai";
-        default: return `Chain ID ${chainId}`;
       }
     }
     
@@ -679,7 +760,7 @@
         // Update UI
         successText.innerHTML = `
           <p>✅ Successfully minted ${amount} KLY Genesis NFT${amount > 1 ? 's' : ''}!</p>
-          <p><a href="https://etherscan.io/tx/${mockTxHash}" target="_blank" style="color:var(--primary);">View on Etherscan</a></p>
+          <p><a href="https://bscscan.com/tx/${mockTxHash}" target="_blank" style="color:var(--primary);">View on BscScan</a></p>
         `;
         successText.style.display = "block";
         
@@ -701,6 +782,8 @@
           errorMessage = "Transaction rejected by user";
         } else if (err.code === -32603) {
           errorMessage = "Transaction failed (check gas limit)";
+        } else if (err.message.includes("insufficient funds")) {
+          errorMessage = "Insufficient BNB balance";
         }
         
         setStatus("Mint failed", "error");
@@ -712,24 +795,7 @@
     
     // View collection function
     function viewCollection() {
-      let url;
-      switch(currentChainId) {
-        case 1: // Ethereum
-          url = `https://opensea.io/assets/ethereum/${CONTRACT_ADDRESS}`;
-          break;
-        case 5: // Goerli
-          url = `https://testnets.opensea.io/assets/goerli/${CONTRACT_ADDRESS}`;
-          break;
-        case 56: // BSC
-          url = `https://opensea.io/assets/bsc/${CONTRACT_ADDRESS}`;
-          break;
-        case 137: // Polygon
-          url = `https://opensea.io/assets/matic/${CONTRACT_ADDRESS}`;
-          break;
-        default:
-          url = `https://etherscan.io/address/${CONTRACT_ADDRESS}#code`;
-      }
-      window.open(url, '_blank');
+      window.open(`https://opensea.io/assets/bsc/${CONTRACT_ADDRESS}`, '_blank');
     }
     
     // Set status message
