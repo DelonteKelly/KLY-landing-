@@ -730,68 +730,65 @@
       mintAmountInput.value = "1";
     }
     
-    // Mint NFT function
-    async function mintNFT() {
-      try {
-        const amount = parseInt(mintAmountInput.value);
-        
-        if (isNaN(amount) || amount < 1 || amount > 5) {
-          setStatus("Please enter a valid amount (1-5)", "error");
-          return;
-        }
-        
-        setLoading(true, "confirmMintBtn");
-        setStatus(`Initiating mint for ${amount} NFT${amount > 1 ? 's' : ''}...`, "info");
-        
-        // For demo purposes, we'll simulate the minting process
-        // In a real implementation, you would call the contract's mint function
-        
-        // Simulate transaction approval
-        showNotification("Please confirm the transaction in your wallet", "info");
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Simulate mining
-        setStatus("Transaction submitted. Waiting for confirmation...", "info");
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Simulate success
-        const mockTxHash = "0x" + Math.random().toString(16).substr(2, 64);
-        
-        // Update UI
-        successText.innerHTML = `
-          <p>✅ Successfully minted ${amount} KLY Genesis NFT${amount > 1 ? 's' : ''}!</p>
-          <p><a href="https://bscscan.com/tx/${mockTxHash}" target="_blank" style="color:var(--primary);">View on BscScan</a></p>
-        `;
-        successText.style.display = "block";
-        
-        setStatus("Mint completed successfully!", "success");
-        showNotification(`Successfully minted ${amount} NFT${amount > 1 ? 's' : ''}!`, "success");
-        
-        // Hide the form and show the mint button again
-        mintForm.style.display = "none";
-        mintBtn.style.display = "inline-flex";
-        
-        // Refresh contract data
-        await loadContractData();
-        
-      } catch (err) {
-        console.error("Mint error:", err);
-        
-        let errorMessage = err.message;
-        if (err.code === 4001) {
-          errorMessage = "Transaction rejected by user";
-        } else if (err.code === -32603) {
-          errorMessage = "Transaction failed (check gas limit)";
-        } else if (err.message.includes("insufficient funds")) {
-          errorMessage = "Insufficient BNB balance";
-        }
-        
-        setStatus("Mint failed", "error");
-        showNotification(`Mint failed: ${errorMessage}`, "error");
-      } finally {
-        setLoading(false, "confirmMintBtn");
-      }
+async function mintNFT() {
+  try {
+    const amount = parseInt(mintAmountInput.value);
+
+    if (isNaN(amount) || amount < 1 || amount > 5) {
+      setStatus("Please enter a valid amount (1-5)", "error");
+      return;
     }
+
+    setLoading(true, "confirmMintBtn");
+    setStatus(`Initiating mint for ${amount} NFT${amount > 1 ? 's' : ''}...`, "info");
+
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    showNotification("Please confirm the transaction in your wallet", "info");
+
+    const txs = [];
+    for (let i = 0; i < amount; i++) {
+      const tx = await contract.mintTo(userAddress, METADATA_URI);
+      txs.push(tx);
+    }
+
+    // Wait for the last transaction to be confirmed
+    const receipt = await txs[txs.length - 1].wait();
+    const txHash = receipt.transactionHash;
+
+    successText.innerHTML = `
+      <p>✅ Successfully minted ${amount} KLY Genesis NFT${amount > 1 ? 's' : ''}!</p>
+      <p><a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color:var(--primary);">View on BscScan</a></p>
+    `;
+    successText.style.display = "block";
+
+    setStatus("Mint completed successfully!", "success");
+    showNotification(`Successfully minted ${amount} NFT${amount > 1 ? 's' : ''}!`, "success");
+
+    mintForm.style.display = "none";
+    mintBtn.style.display = "inline-flex";
+
+    await loadContractData();
+
+  } catch (err) {
+    console.error("Mint error:", err);
+
+    let errorMessage = err.message;
+    if (err.code === 4001) {
+      errorMessage = "Transaction rejected by user";
+    } else if (err.code === -32603) {
+      errorMessage = "Transaction failed (check gas or contract logic)";
+    } else if (err.message.includes("insufficient funds")) {
+      errorMessage = "Insufficient BNB balance";
+    }
+
+    setStatus("Mint failed", "error");
+    showNotification(`Mint failed: ${errorMessage}`, "error");
+
+  } finally {
+    setLoading(false, "confirmMintBtn");
+  }
+}
     
     // View collection function
     function viewCollection() {
