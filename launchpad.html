@@ -256,317 +256,326 @@
 
   <div id="notification" class="notification"></div>
 
-  <script>
-    // Token contract details - BNB Chain
-    const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const BSC_CHAIN_ID = 56; // BNB Smart Chain Mainnet
-    const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+<script>
+  // Token contract details - BNB Chain
+  const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fe8cf8131B4E5"; // Fixed to match UI
+  const BSC_CHAIN_ID = 56; // BNB Smart Chain Mainnet
+  const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+  
+  // Updated ABI with mint function
+  const TOKEN_ABI = [
+    // ERC-20 standard functions
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function totalSupply() view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+    "function transfer(address recipient, uint256 amount) returns (bool)",
     
-    // ABI with essential functions
-    const TOKEN_ABI = [
-      // ERC-20 standard functions
-      "function name() view returns (string)",
-      "function symbol() view returns (string)",
-      "function decimals() view returns (uint8)",
-      "function totalSupply() view returns (uint256)",
-      "function balanceOf(address account) view returns (uint256)",
-      "function transfer(address recipient, uint256 amount) returns (bool)",
+    // Custom functions from your contract
+    "function buyTokens(uint256 amount) payable",
+    "function getPlatformFeeInfo() view returns (address, uint16)",
+    
+    // Added mint function (if exists in your contract)
+    "function mintTo(address recipient, uint256 amount) external"
+  ];
+  
+  // DOM elements
+  const connectButton = document.getElementById("connectWallet");
+  const buttonText = document.getElementById("buttonText");
+  const walletAddressEl = document.getElementById("addressText");
+  const statusIndicator = document.getElementById("statusIndicator");
+  const notification = document.getElementById("notification");
+  const tokenInfo = document.getElementById("tokenInfo");
+  const tokenBalance = document.getElementById("tokenBalance");
+  const actionButtons = document.getElementById("actionButtons");
+  const mintTokensButton = document.getElementById("mintButton"); // Fixed ID to match HTML
+  const viewOnExplorerButton = document.getElementById("viewOnExplorer");
+  
+  // Global variables
+  let provider;
+  let signer;
+  let tokenContract;
+  let currentChainId;
+  
+  // Initialize the application
+  async function init() {
+    await checkConnectedWallet();
+    setupEventListeners();
+  }
+  
+  // Check if wallet is already connected
+  async function checkConnectedWallet() {
+    if (window.ethereum) {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      currentChainId = await provider.getNetwork().then(network => network.chainId);
       
-      // Custom functions from your contract
-      "function buyTokens(uint256 amount) payable",
-      "function getPlatformFeeInfo() view returns (address, uint16)"
-    ];
-    
-    // DOM elements
-    const connectButton = document.getElementById("connectWallet");
-    const buttonText = document.getElementById("buttonText");
-    const walletAddressEl = document.getElementById("addressText");
-    const statusIndicator = document.getElementById("statusIndicator");
-    const notification = document.getElementById("notification");
-    const tokenInfo = document.getElementById("tokenInfo");
-    const tokenBalance = document.getElementById("tokenBalance");
-    const actionButtons = document.getElementById("actionButtons");
-   const mintTokensButton = document.getElementById("mintTokens");
-    const viewOnExplorerButton = document.getElementById("viewOnExplorer");
-    
-    // Global variables
-    let provider;
-    let signer;
-    let tokenContract;
-    let currentChainId;
-    
-    // Initialize the application
-    async function init() {
-      await checkConnectedWallet();
-      setupEventListeners();
-    }
-    
-    // Check if wallet is already connected
-    async function checkConnectedWallet() {
-      if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        currentChainId = await provider.getNetwork().then(network => network.chainId);
-        
-        // Check if we're on BSC
-        if (currentChainId !== BSC_CHAIN_ID) {
-          try {
-            await switchToBSC();
-          } catch (err) {
-            showNotification("Please switch to BNB Chain", "error");
-          }
-        }
-        
-        if (window.ethereum.selectedAddress) {
-          signer = provider.getSigner();
-          const address = await signer.getAddress();
-          await updateUI(address);
-          await loadTokenInfo();
+      // Check if we're on BSC
+      if (currentChainId !== BSC_CHAIN_ID) {
+        try {
+          await switchToBSC();
+        } catch (err) {
+          showNotification("Please switch to BNB Chain", "error");
         }
       }
-    }
-    
-    // Switch to BSC network
-    async function switchToBSC() {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
-        });
-        return true;
-      } catch (switchError) {
-        // This error code indicates that the chain has not been added to MetaMask
-        if (switchError.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
-                  chainName: 'BNB Smart Chain Mainnet',
-                  nativeCurrency: {
-                    name: 'BNB',
-                    symbol: 'BNB',
-                    decimals: 18
-                  },
-                  rpcUrls: [BSC_RPC_URL],
-                  blockExplorerUrls: ['https://bscscan.com/']
-                }
-              ]
-            });
-            return true;
-          } catch (addError) {
-            console.error("Error adding BSC network:", addError);
-            showNotification("Failed to add BNB Chain network", "error");
-            return false;
-          }
-        }
-        console.error("Error switching to BSC:", switchError);
-        return false;
-      }
-    }
-    
-    // Setup event listeners
-    function setupEventListeners() {
-      connectButton.addEventListener("click", connectWallet);
-     mintTokensButton.addEventListener("click", mintTokens);
-      viewOnExplorerButton.addEventListener("click", viewOnExplorer);
       
-      if (window.ethereum) {
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
-      }
-    }
-    
-    // Connect wallet handler
-    async function connectWallet() {
-      try {
-        if (!window.ethereum) {
-          showNotification("Please install MetaMask or another Web3 wallet", "error");
-          walletAddressEl.textContent = "Web3 wallet not detected";
-          return;
-        }
-        
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Request account access
-        await provider.send("eth_requestAccounts", []);
-        
-        // Get current chain ID
-        currentChainId = await provider.getNetwork().then(network => network.chainId);
-        
-        // Ensure we're on BSC
-        if (currentChainId !== BSC_CHAIN_ID) {
-          const switched = await switchToBSC();
-          if (!switched) {
-            setStatus("Please switch to BNB Chain", "error");
-            return;
-          }
-          // After switching, we need to reload
-          window.location.reload();
-          return;
-        }
-        
-        // Get signer and address
+      if (window.ethereum.selectedAddress) {
         signer = provider.getSigner();
         const address = await signer.getAddress();
-        
-        // Update UI and load token info
         await updateUI(address);
         await loadTokenInfo();
-        
-        showNotification("Wallet connected successfully!", "success");
-        
-      } catch (err) {
-        console.error("Connection error:", err);
-        walletAddressEl.textContent = "Connection failed";
-        showNotification(`Connection failed: ${err.message}`, "error");
       }
     }
-    
-    // Handle account changes
-    async function handleAccountsChanged(accounts) {
-      if (accounts.length === 0) {
-        // Wallet disconnected
-        walletAddressEl.textContent = "Not connected";
-        statusIndicator.classList.remove("connected");
-        buttonText.textContent = "Connect Wallet";
-        connectButton.disabled = false;
-        tokenInfo.style.display = "none";
-        actionButtons.style.display = "none";
-        showNotification("Wallet disconnected", "error");
-      } else {
-        // Account changed
-        signer = provider.getSigner();
-        await updateUI(accounts[0]);
-        await loadTokenInfo();
-        showNotification("Account changed", "info");
-      }
-    }
-    
-    // Handle chain changes
-    async function handleChainChanged(chainIdHex) {
-      const chainId = parseInt(chainIdHex, 16);
-      if (chainId !== BSC_CHAIN_ID) {
-        showNotification("Please switch to BNB Chain", "error");
-      }
-      window.location.reload();
-    }
-    
-    // Update UI after connection
-    async function updateUI(address) {
-      const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-      walletAddressEl.textContent = shortenedAddress;
-      walletAddressEl.title = address; // Show full address on hover
-      statusIndicator.classList.add("connected");
-      buttonText.textContent = "Connected";
-      connectButton.disabled = true;
-      
-      // Show token info and action buttons
-      tokenInfo.style.display = "block";
-      actionButtons.style.display = "flex";
-    }
-    
-    // Load token information
-    async function loadTokenInfo() {
-      try {
-        showNotification("Loading token information...", "info");
-        
-        // Initialize token contract
-        tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, TOKEN_ABI, signer);
-        
-        // First check if the contract is deployed on this chain
-        const code = await provider.getCode(TOKEN_CONTRACT_ADDRESS);
-        if (code === '0x') {
-          throw new Error("Token contract not found on BNB Chain");
-        }
-
-        // Get token details
-        const [name, symbol, decimals, balance] = await Promise.all([
-          tokenContract.name(),
-          tokenContract.symbol(),
-          tokenContract.decimals(),
-          tokenContract.balanceOf(await signer.getAddress())
-        ]);
-        
-        // Format balance
-        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
-        
-        // Update UI
-        tokenBalance.textContent = `Balance: ${formattedBalance} ${symbol}`;
-        
-      } catch (err) {
-        console.error("Error loading token info:", err);
-        
-        let errorMsg = "Error loading token information";
-        if (err.message.includes("JSON-RPC")) {
-          errorMsg = "Network connection issue - please try again";
-        } else if (err.message.includes("not found")) {
-          errorMsg = "Token contract not found on BNB Chain";
-        }
-        
-        showNotification(errorMsg, "error");
-        tokenBalance.textContent = "Balance: Error loading";
-      }
-    }
-    
- // Mint tokens to connected wallet
-async function mintTokens() {
-  try {
-    // Validate network first
-    if (currentChainId !== BSC_CHAIN_ID) {
-      showNotification("Please switch to BNB Chain", "error");
-      return;
-    }
-
-    showNotification("Preparing mint transaction...", "info");
-
-    const signer = provider.getSigner();
-    const userAddress = await signer.getAddress();
-
-    // Example: Mint 100 tokens (adjust if needed)
-    const amount = ethers.utils.parseUnits("100", 18); // Assuming 18 decimals
-
-    // Call mintTo(address, amount)
-    const tx = await tokenContract.mintTo(userAddress, amount);
-
-    showNotification("Transaction sent! Waiting for confirmation...", "info");
-
-    // Wait for transaction confirmation
-    await tx.wait();
-
-    showNotification("Tokens minted successfully!", "success");
-
-  } catch (error) {
-    console.error(error);
-    showNotification("Minting failed: " + (error.message || error), "error");
   }
-}     
-    
-    
-    // View on explorer function
-    function viewOnExplorer() {
-      window.open(`https://bscscan.com/token/${TOKEN_CONTRACT_ADDRESS}`, '_blank');
+  
+  // Switch to BSC network
+  async function switchToBSC() {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
+      });
+      return true;
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
+                chainName: 'BNB Smart Chain Mainnet',
+                nativeCurrency: {
+                  name: 'BNB',
+                  symbol: 'BNB',
+                  decimals: 18
+                },
+                rpcUrls: [BSC_RPC_URL],
+                blockExplorerUrls: ['https://bscscan.com/']
+              }
+            ]
+          });
+          return true;
+        } catch (addError) {
+          console.error("Error adding BSC network:", addError);
+          showNotification("Failed to add BNB Chain network", "error");
+          return false;
+        }
+      }
+      console.error("Error switching to BSC:", switchError);
+      return false;
     }
+  }
+  
+  // Setup event listeners
+  function setupEventListeners() {
+    connectButton.addEventListener("click", connectWallet);
+    mintTokensButton.addEventListener("click", mintTokens);
+    viewOnExplorerButton.addEventListener("click", viewOnExplorer);
     
-    // Show notification
-    function showNotification(message, type = "info") {
-      notification.textContent = message;
-      notification.className = `notification ${type} show`;
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+    }
+  }
+  
+  // Connect wallet handler
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        showNotification("Please install MetaMask or another Web3 wallet", "error");
+        walletAddressEl.textContent = "Web3 wallet not detected";
+        return;
+      }
       
-      setTimeout(() => {
-        notification.classList.remove("show");
-      }, 5000);
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      currentChainId = await provider.getNetwork().then(network => network.chainId);
+      
+      if (currentChainId !== BSC_CHAIN_ID) {
+        const switched = await switchToBSC();
+        if (!switched) {
+          setStatus("Please switch to BNB Chain", "error");
+          return;
+        }
+        window.location.reload();
+        return;
+      }
+      
+      signer = provider.getSigner();
+      const address = await signer.getAddress();
+      await updateUI(address);
+      await loadTokenInfo();
+      showNotification("Wallet connected successfully!", "success");
+      
+    } catch (err) {
+      console.error("Connection error:", err);
+      walletAddressEl.textContent = "Connection failed";
+      showNotification(`Connection failed: ${err.message}`, "error");
     }
-    
-    // Load Ethers.js dynamically if not already loaded
-    if (typeof ethers === 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
-      script.onload = init;
-      document.head.appendChild(script);
+  }
+  
+  // Handle account changes
+  async function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+      walletAddressEl.textContent = "Not connected";
+      statusIndicator.classList.remove("connected");
+      buttonText.textContent = "Connect Wallet";
+      connectButton.disabled = false;
+      tokenInfo.style.display = "none";
+      actionButtons.style.display = "none";
+      showNotification("Wallet disconnected", "error");
     } else {
-      init();
+      signer = provider.getSigner();
+      await updateUI(accounts[0]);
+      await loadTokenInfo();
+      showNotification("Account changed", "info");
     }
-  </script>
+  }
+  
+  // Handle chain changes
+  async function handleChainChanged(chainIdHex) {
+    const chainId = parseInt(chainIdHex, 16);
+    if (chainId !== BSC_CHAIN_ID) {
+      showNotification("Please switch to BNB Chain", "error");
+    }
+    window.location.reload();
+  }
+  
+  // Update UI after connection
+  async function updateUI(address) {
+    const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    walletAddressEl.textContent = shortenedAddress;
+    walletAddressEl.title = address;
+    statusIndicator.classList.add("connected");
+    buttonText.textContent = "Connected";
+    connectButton.disabled = true;
+    tokenInfo.style.display = "block";
+    actionButtons.style.display = "flex";
+  }
+  
+  // Load token information
+  async function loadTokenInfo() {
+    try {
+      showNotification("Loading token information...", "info");
+      tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, TOKEN_ABI, signer);
+      
+      const code = await provider.getCode(TOKEN_CONTRACT_ADDRESS);
+      if (code === '0x') {
+        throw new Error("Token contract not found on BNB Chain");
+      }
+
+      const [name, symbol, decimals, balance] = await Promise.all([
+        tokenContract.name(),
+        tokenContract.symbol(),
+        tokenContract.decimals(),
+        tokenContract.balanceOf(await signer.getAddress())
+      ]);
+      
+      const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+      tokenBalance.textContent = `Balance: ${formattedBalance} ${symbol}`;
+      
+    } catch (err) {
+      console.error("Error loading token info:", err);
+      let errorMsg = "Error loading token information";
+      if (err.message.includes("JSON-RPC")) {
+        errorMsg = "Network connection issue - please try again";
+      } else if (err.message.includes("not found")) {
+        errorMsg = "Token contract not found on BNB Chain";
+      }
+      showNotification(errorMsg, "error");
+      tokenBalance.textContent = "Balance: Error loading";
+    }
+  }
+  
+  // Mint tokens function with enhanced error handling
+  async function mintTokens() {
+    try {
+      // Validate network
+      if (currentChainId !== BSC_CHAIN_ID) {
+        showNotification("Please switch to BNB Chain", "error");
+        return;
+      }
+
+      // Validate contract
+      if (!tokenContract) {
+        throw new Error("Token contract not initialized");
+      }
+
+      // Check if mint function exists
+      if (!tokenContract.mintTo) {
+        throw new Error("This contract doesn't support minting");
+      }
+
+      showNotification("Preparing mint transaction...", "info");
+
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+      const amount = ethers.utils.parseUnits("100", 18); // Mint 100 tokens
+
+      // Estimate gas first
+      try {
+        const estimatedGas = await tokenContract.estimateGas.mintTo(userAddress, amount);
+        console.log("Estimated gas:", estimatedGas.toString());
+      } catch (estError) {
+        console.warn("Gas estimation failed:", estError);
+      }
+
+      // Send transaction
+      const tx = await tokenContract.mintTo(userAddress, amount);
+      showNotification("Transaction sent! Waiting for confirmation...", "info");
+
+      // Wait for confirmation
+      const receipt = await tx.wait();
+      console.log("Transaction receipt:", receipt);
+
+      // Update balance after minting
+      await loadTokenInfo();
+      showNotification("Tokens minted successfully!", "success");
+
+    } catch (error) {
+      console.error("Minting error:", error);
+      
+      let errorMessage = "Minting failed";
+      if (error.message.includes("user rejected transaction")) {
+        errorMessage = "Transaction rejected by user";
+      } else if (error.message.includes("execution reverted")) {
+        errorMessage = "Contract rejected the transaction";
+      } else if (error.message) {
+        errorMessage += ": " + error.message;
+      }
+      
+      showNotification(errorMessage, "error");
+    }
+  }
+  
+  // View on explorer function
+  function viewOnExplorer() {
+    window.open(`https://bscscan.com/token/${TOKEN_CONTRACT_ADDRESS}`, '_blank');
+  }
+  
+  // Show notification
+  function showNotification(message, type = "info") {
+    notification.textContent = message;
+    notification.className = `notification ${type} show`;
+    
+    setTimeout(() => {
+      notification.classList.remove("show");
+    }, 5000);
+  }
+  
+  // Load Ethers.js dynamically if not already loaded
+  if (typeof ethers === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+    script.onload = init;
+    document.head.appendChild(script);
+  } else {
+    init();
+  }
+</script>
+
+
+
 </body>
 </html>
