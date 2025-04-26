@@ -465,83 +465,135 @@
 </div>
 
 
-<div id="toast" class="toast hidden"></div>
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
 
-<!-- SCRIPT -->
+<!-- Ethers -->
 <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+
 <script>
+  // Addresses
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
+  // ABIs
   const KLY_TOKEN_ABI = [
     "function balanceOf(address owner) view returns (uint256)",
     "function decimals() view returns (uint8)"
   ];
-
   const NFT_ABI = [
     "function mintTo(address to, string memory uri) public"
   ];
 
-  const connectBtn = document.getElementById('connect-btn');
-  const accessSection = document.getElementById('access-section');
-  const accessMessage = document.getElementById('access-message');
-  const courseWrapper = document.getElementById('course-wrapper');
-
+  // State
   let provider, signer, userAddress;
+  let currentModule = 0;
+  const modulesContent = [
+    {
+      title: "Module 1: Web3 Foundations",
+      description: "Learn the basics of decentralization, wallets, and Web3 philosophy."
+    },
+    {
+      title: "Module 2: Tokenization",
+      description: "Understand ERC standards, minting, burning, transferring tokens."
+    },
+    {
+      title: "Module 3: Smart Contracts",
+      description: "How smart contracts automate trust and actions on the blockchain."
+    },
+    {
+      title: "Module 4: DeFi, Credit & Capital",
+      description: "Explore decentralized finance, liquidity pools, and passive income."
+    },
+    {
+      title: "Module 5: Ownership & Legacy",
+      description: "Learn to protect, govern, and pass down digital wealth and reputation."
+    }
+  ];
+
+  // Initialize
+  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
 
   async function connectWallet() {
     if (!window.ethereum) {
-      if (navigator.userAgent.includes("MetaMask")) {
-        alert("Please open in MetaMask via:\nhttps://metamask.app.link/dapp/kellylegacyestates.com");
-      } else {
-        alert("Please install MetaMask.");
-      }
+      showToast("Please install MetaMask!");
       return;
     }
-
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
+    showToast("Wallet connected!");
+  }
 
+  async function verifyAccess() {
+    if (!signer) {
+      showToast("Connect your wallet first!");
+      return;
+    }
     const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
     const decimals = await token.decimals();
     const rawBalance = await token.balanceOf(userAddress);
     const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-
     if (balance >= 500) {
-      accessSection.style.display = 'none';
-      courseWrapper.style.display = 'block';
-      showModule('module1');
+      document.getElementById('accessPanel').classList.add('hidden');
+      document.getElementById('modules').classList.remove('hidden');
+      loadModule();
+      showToast("Access granted!");
     } else {
-      accessMessage.innerHTML = `You only have <strong>${balance.toFixed(2)} KLY</strong>. 500 KLY required.`;
+      document.getElementById('accessStatus').innerHTML = `Only <strong>${balance.toFixed(2)} KLY</strong> found. 500 required.`;
     }
+  }
+
+  function loadModule() {
+    const container = document.getElementById('moduleContainer');
+    const module = modulesContent[currentModule];
+    container.innerHTML = `<h2>${module.title}</h2><p>${module.description}</p>`;
+    updateButtons();
+  }
+
+  function showNextModule() {
+    if (currentModule < modulesContent.length - 1) {
+      currentModule++;
+      loadModule();
+    }
+  }
+
+  function showPreviousModule() {
+    if (currentModule > 0) {
+      currentModule--;
+      loadModule();
+    }
+  }
+
+  function updateButtons() {
+    document.getElementById('prevBtn').classList.toggle('hidden', currentModule === 0);
+    document.getElementById('nextBtn').classList.toggle('hidden', currentModule === modulesContent.length - 1);
+    document.getElementById('mintBtn').classList.toggle('hidden', currentModule !== modulesContent.length - 1);
   }
 
   async function mintCertificate() {
     try {
-      const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
-      const tx = await contract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
-      document.getElementById("mint-status").innerText = "Minting...";
-
+      const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
+      const tx = await nftContract.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+      showToast("Minting...");
       await tx.wait();
-      document.getElementById("mint-status").innerText = "NFT Certificate Minted!";
+      showToast("NFT Certificate Minted Successfully!");
     } catch (err) {
       console.error(err);
-      document.getElementById("mint-status").innerText = "Minting failed. Try again.";
+      showToast("Mint failed.");
     }
   }
 
-  function showModule(id) {
-    document.querySelectorAll('.module-card').forEach(el => el.style.display = 'none');
-    const module = document.getElementById(id);
-    if (module) module.style.display = 'block';
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 4000);
   }
-
-  connectBtn.addEventListener('click', connectWallet);
-  window.showModule = showModule;
-  window.mintCertificate = mintCertificate;
 </script>
-  </body> 
-      </html>
+
+</body>
+</html>
+  
 
