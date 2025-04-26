@@ -249,7 +249,7 @@
     </div>
     
     <div class="action-buttons" id="actionButtons" style="display: none;">
-      <button id="buyTokens"><i class="fas fa-coins"></i> Buy Tokens</button>
+     <button id="mintButton">Mint Tokens</button>
       <button id="viewOnExplorer"><i class="fas fa-external-link-alt"></i> Explorer</button>
     </div>
   </div>
@@ -286,7 +286,7 @@
     const tokenInfo = document.getElementById("tokenInfo");
     const tokenBalance = document.getElementById("tokenBalance");
     const actionButtons = document.getElementById("actionButtons");
-    const buyTokensButton = document.getElementById("buyTokens");
+   const mintTokensButton = document.getElementById("mintTokens");
     const viewOnExplorerButton = document.getElementById("viewOnExplorer");
     
     // Global variables
@@ -509,33 +509,39 @@
       }
     }
     
-    // Buy tokens function
-    async function buyTokens() {
-      try {
-        // Validate network first
-        if (currentChainId !== BSC_CHAIN_ID) {
-          showNotification("Please switch to BNB Chain", "error");
-          return;
-        }
-        
-        showNotification("Preparing transaction...", "info");
-        
-        // Example: Buy 100 tokens (adjust based on your contract)
-        const amount = ethers.utils.parseUnits("100", 18); // Assuming 18 decimals
-        
-        // Call the buyTokens function (adjust based on your contract)
-        const tx = await tokenContract.buyTokens(amount, {
-          value: ethers.utils.parseEther("0.1") // Sending 0.1 BNB
-        });
-        
-        showNotification("Transaction sent! Waiting for confirmation...", "info");
-        
-        // Wait for transaction confirmation
-        await tx.wait();
-        
-        showNotification("Tokens purchased successfully!", "success");
-        
-        // Refresh balance
+ // Mint tokens to connected wallet
+async function mintTokens() {
+  try {
+    // Validate network first
+    if (currentChainId !== BSC_CHAIN_ID) {
+      showNotification("Please switch to BNB Chain", "error");
+      return;
+    }
+
+    showNotification("Preparing mint transaction...", "info");
+
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    // Example: Mint 100 tokens (adjust if needed)
+    const amount = ethers.utils.parseUnits("100", 18); // Assuming 18 decimals
+
+    // Call mintTo(address, amount)
+    const tx = await tokenContract.mintTo(userAddress, amount);
+
+    showNotification("Transaction sent! Waiting for confirmation...", "info");
+
+    // Wait for transaction confirmation
+    await tx.wait();
+
+    showNotification("Tokens minted successfully!", "success");
+
+  } catch (error) {
+    console.error(error);
+    showNotification("Minting failed: " + (error.message || error), "error");
+  }
+}     
+    // Refresh balance
         await loadTokenInfo();
         
       } catch (err) {
