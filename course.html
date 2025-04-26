@@ -112,6 +112,43 @@
       font-weight: bold;
       color: #ff00aa;
     }
+    #courseContent {
+      text-align: left;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    #courseContent h3 {
+      color: #00ffe7;
+      margin-top: 1.5rem;
+    }
+    #courseContent ul, #courseContent ol {
+      margin-left: 1.5rem;
+      line-height: 1.6;
+    }
+    #courseContent a {
+      color: #ff00aa;
+      text-decoration: none;
+    }
+    #courseContent a:hover {
+      text-decoration: underline;
+    }
+    #completeCourseBtn {
+      background: linear-gradient(135deg, #00ffe7, #ff00aa);
+      color: #000;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 0 15px rgba(0,255,231,0.5);
+      cursor: pointer;
+      margin-bottom: 2rem;
+    }
+    #completeCourseBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(0,255,231,0.7);
+    }
   </style>
 </head>
 
@@ -125,14 +162,100 @@
   <p id="status"></p>
 </div>
 
-  <!-- Course Content -->
-<div id="courseContent" class="hidden">
+<div id="modules" class="hidden">
+  <div class="modules-grid">
+    <button class="module-button" onclick="openModule(1)">Module 1: Foundation</button>
+    <button class="module-button" onclick="openModule(2)">Module 2: Tokenization</button>
+    <button class="module-button" onclick="openModule(3)">Module 3: Web3 Business</button>
+    <button class="module-button" onclick="openModule(4)">Module 4: Credit & Capital</button>
+    <button class="module-button" onclick="openModule(5)">Module 5: Ownership & Legacy</button>
+  </div>
+</div>
 
+<div id="courseContent" class="hidden">
+  <!-- Module content will be dynamically inserted here -->
+</div>
+
+<div id="module-container" class="container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<script>
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
+
+  let provider, signer, userAddress;
+
+  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      document.getElementById('status').textContent = "Please install MetaMask or another Web3 wallet";
+      return;
+    }
+    
+    try {
+      document.getElementById('status').textContent = "Connecting wallet...";
+      
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+      
+      document.getElementById('status').textContent = "Wallet connected! Verifying KLY balance...";
+
+      // Verify KLY balance
+      const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+      const decimals = await token.decimals();
+      const rawBalance = await token.balanceOf(userAddress);
+      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+      if (balance >= 500) {
+        document.getElementById('connect-section').classList.add('hidden');
+        document.getElementById('modules').classList.remove('hidden');
+        document.getElementById('status').textContent = "";
+      } else {
+        document.getElementById('status').textContent = `You only have ${balance.toFixed(2)} KLY. 500 KLY required to access this course.`;
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      document.getElementById('status').textContent = "Error connecting wallet: " + error.message;
+    }
+  }
+
+  const modulesContent = {
+    1: document.getElementById('module1') ? document.getElementById('module1').innerHTML : "Module 1 content not found",
+    2: document.getElementById('module2') ? document.getElementById('module2').innerHTML : "Module 2 content not found",
+    3: document.getElementById('module3') ? document.getElementById('module3').innerHTML : "Module 3 content not found",
+    4: document.getElementById('module4') ? document.getElementById('module4').innerHTML : "Module 4 content not found",
+    5: document.getElementById('module5') ? document.getElementById('module5').innerHTML : "Module 5 content not found"
+  };
+
+  function openModule(moduleId) {
+    document.getElementById('modules').classList.add('hidden');
+    document.getElementById('courseContent').classList.remove('hidden');
+    document.getElementById('courseContent').innerHTML = `
+      ${modulesContent[moduleId]}
+      <div style="text-align:center; margin-top: 2rem;">
+        <button class="back-button" onclick="backToModules()">Back to Modules</button>
+      </div>
+    `;
+  }
+
+  function backToModules() {
+    document.getElementById('courseContent').classList.add('hidden');
+    document.getElementById('modules').classList.remove('hidden');
+  }
+
+  // Course content (hidden in HTML but accessible to JS)
+  const hiddenContent = `
   <!-- Module 1: Foundation -->
   <section class="module" id="module1">
     <h2>Module 1: Foundation</h2>
     <h3>Overview</h3>
-    <p>This module lays the groundwork for your journey into Web3 entrepreneurship by teaching how to structure a legal business entity. You’ll learn how to use LLCs, trusts, and strategic ownership planning to protect your assets and create a legacy that lasts generations.</p>
+    <p>This module lays the groundwork for your journey into Web3 entrepreneurship by teaching how to structure a legal business entity. You'll learn how to use LLCs, trusts, and strategic ownership planning to protect your assets and create a legacy that lasts generations.</p>
 
     <h3>Objectives</h3>
     <ul>
@@ -286,11 +409,11 @@
     </ul>
 
     <h3>Real-World Example</h3>
-    <p>Justice protects his family’s KLY assets by building a living trust tied to their multisig wallet for seamless inheritance without probate.</p>
+    <p>Justice protects his family's KLY assets by building a living trust tied to their multisig wallet for seamless inheritance without probate.</p>
   </section>
 
   <!-- Smart Contract Course (Bonus) -->
-  <section id="smart-contract-course">
+  <section>
     <h2>Smart Contract Fundamentals</h2>
     <p>Learn what smart contracts are, how they automate trust, real-world examples (NFTs, DeFi, DAOs), and build your first contract using Solidity or no-code tools like Thirdweb.</p>
 
@@ -306,137 +429,13 @@
   <div style="text-align:center; margin-top: 2rem;">
     <button id="completeCourseBtn">Complete Course & Mint Certificate</button>
   </div>
+  `;
 
-</div>
-
-<div id="modules" class="hidden">
-  <div class="modules-grid">
-    <button class="module-button" onclick="openModule(1)">Module 1</button>
-    <button class="module-button" onclick="openModule(2)">Module 2</button>
-    <button class="module-button" onclick="openModule(3)">Module 3</button>
-    <button class="module-button" onclick="openModule(4)">Module 4</button>
-    <button class="module-button" onclick="openModule(5)">Module 5</button>
-  </div>
-</div>
-
-<div id="module-container" class="container"></div>
-
-<script>
-  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const KLY_TOKEN_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function decimals() view returns (uint8)"
-  ];
-
-  let provider, signer, userAddress;
-
-  async function connectWallet() {
-    if (!window.ethereum) {
-      showToast("Please install MetaMask!");
-      return;
-    }
-    try {
-      showToast("Connecting wallet...");
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-      
-      showToast("Wallet connected!");
-
-      // Now verify KLY balance immediately
-      const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-      const decimals = await token.decimals();
-      const rawBalance = await token.balanceOf(userAddress);
-      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-
-      if (balance >= 500) {
-        document.getElementById('connect-section').classList.add('hidden');
-        document.getElementById('modules').classList.remove('hidden');
-        showToast("Access granted!");
-      } else {
-        document.getElementById('status').innerHTML = `You only have <strong>${balance.toFixed(2)} KLY</strong>. 500 required.`;
-        showToast("Not enough KLY balance.");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Wallet connection failed.");
-    }
-  }
-
-  const modulesContent = {
-    1: `
-      <div class="module-content">
-        <h2>Module 1: Web3 Foundations</h2>
-        <p>Introduction to decentralization, blockchain basics, wallets, and Web3 tools like ENS, IPFS, and DAOs.</p>
-        <button class="back-button" onclick="closeModule()">Back to Modules</button>
-      </div>`,
-    2: `
-      <div class="module-content">
-        <h2>Module 2: Tokenization</h2>
-        <p>Learn how tokens work, ERC-20/ERC-721/ERC-1155 standards, token mechanics, and sustainable tokenomics.</p>
-        <button class="back-button" onclick="closeModule()">Back to Modules</button>
-      </div>`,
-    3: `
-      <div class="module-content">
-        <h2>Module 3: Smart Contracts</h2>
-        <p>Understand smart contract automation, Solidity basics, security practices, and no-code Web3 tools.</p>
-        <button class="back-button" onclick="closeModule()">Back to Modules</button>
-      </div>`,
-    4: `
-      <div class="module-content">
-        <h2>Module 4: DeFi, Credit & Capital</h2>
-        <p>Explore DeFi protocols, liquidity pools, yield farming, passive income strategies, and on-chain credit.</p>
-        <button class="back-button" onclick="closeModule()">Back to Modules</button>
-      </div>`,
-    5: `
-      <div class="module-content">
-        <h2>Module 5: Ownership & Legacy</h2>
-        <p>Learn about multisig wallets, family DAOs, NFT wills, decentralized identity, and building digital legacies.</p>
-        <button class="back-button" onclick="closeModule()">Back to Modules</button>
-      </div>`
-  };
-
-  function openModule(moduleId) {
-    const container = document.getElementById('module-container');
-    container.innerHTML = modulesContent[moduleId];
-    document.getElementById('modules').classList.add('hidden');
-    container.style.display = 'block';
-  }
-
-  function closeModule() {
-    const container = document.getElementById('module-container');
-    container.style.display = 'none';
-    container.innerHTML = '';
-    document.getElementById('modules').classList.remove('hidden');
-  }
-
-  function showToast(message) {
-    let toast = document.getElementById('toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'toast';
-      toast.style.position = 'fixed';
-      toast.style.bottom = '30px';
-      toast.style.right = '30px';
-      toast.style.background = '#00ffe7';
-      toast.style.color = '#000';
-      toast.style.padding = '14px 22px';
-      toast.style.borderRadius = '8px';
-      toast.style.fontWeight = 'bold';
-      toast.style.boxShadow = '0 0 15px #00ffe7';
-      toast.style.zIndex = '9999';
-      document.body.appendChild(toast);
-    }
-    toast.innerHTML = message;
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(50px)';
-    }, 4000);
-  }
+  // Store the hidden content in a div that's not displayed
+  const hiddenDiv = document.createElement('div');
+  hiddenDiv.style.display = 'none';
+  hiddenDiv.innerHTML = hiddenContent;
+  document.body.appendChild(hiddenDiv);
 </script>
-
 </body>
 </html>
