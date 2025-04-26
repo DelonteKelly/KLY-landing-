@@ -488,66 +488,46 @@
     }
   }
   
-  // Mint tokens function with enhanced error handling
-  async function mintTokens() {
-    try {
-      // Validate network
-      if (currentChainId !== BSC_CHAIN_ID) {
-        showNotification("Please switch to BNB Chain", "error");
-        return;
-      }
-
-      // Validate contract
-      if (!tokenContract) {
-        throw new Error("Token contract not initialized");
-      }
-
-      // Check if mint function exists
-      if (!tokenContract.mintTo) {
-        throw new Error("This contract doesn't support minting");
-      }
-
-      showNotification("Preparing mint transaction...", "info");
-
-      const signer = provider.getSigner();
-      const userAddress = await signer.getAddress();
-      const amount = ethers.utils.parseUnits("100", 18); // Mint 100 tokens
-
-      // Estimate gas first
-      try {
-        const estimatedGas = await tokenContract.estimateGas.mintTo(userAddress, amount);
-        console.log("Estimated gas:", estimatedGas.toString());
-      } catch (estError) {
-        console.warn("Gas estimation failed:", estError);
-      }
-
-      // Send transaction
-      const tx = await tokenContract.mintTo(userAddress, amount);
-      showNotification("Transaction sent! Waiting for confirmation...", "info");
-
-      // Wait for confirmation
-      const receipt = await tx.wait();
-      console.log("Transaction receipt:", receipt);
-
-      // Update balance after minting
-      await loadTokenInfo();
-      showNotification("Tokens minted successfully!", "success");
-
-    } catch (error) {
-      console.error("Minting error:", error);
-      
-      let errorMessage = "Minting failed";
-      if (error.message.includes("user rejected transaction")) {
-        errorMessage = "Transaction rejected by user";
-      } else if (error.message.includes("execution reverted")) {
-        errorMessage = "Contract rejected the transaction";
-      } else if (error.message) {
-        errorMessage += ": " + error.message;
-      }
-      
-      showNotification(errorMessage, "error");
+ async function transferTokens() {
+  try {
+    if (currentChainId !== BSC_CHAIN_ID) {
+      showNotification("Please switch to BNB Chain", "error");
+      return;
     }
+
+    if (!tokenContract) {
+      throw new Error("Token contract not initialized");
+    }
+
+    showNotification("Preparing transfer...", "info");
+
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+    const amount = ethers.utils.parseUnits("100", 18); // 100 tokens to send
+
+    // Send tokens from your own wallet to the user
+    const tx = await tokenContract.transfer(userAddress, amount);
+
+    showNotification("Transaction sent! Waiting for confirmation...", "info");
+
+    await tx.wait();
+
+    await loadTokenInfo();
+    showNotification("Tokens transferred successfully!", "success");
+
+  } catch (error) {
+    console.error("Transfer error:", error);
+    let errorMessage = "Transfer failed";
+    if (error.message.includes("user rejected transaction")) {
+      errorMessage = "Transaction rejected by user";
+    } else if (error.message.includes("execution reverted")) {
+      errorMessage = "Transaction reverted (maybe not enough balance?)";
+    } else if (error.message) {
+      errorMessage += ": " + error.message;
+    }
+    showNotification(errorMessage, "error");
   }
+}
   
   // View on explorer function
   function viewOnExplorer() {
