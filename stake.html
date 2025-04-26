@@ -448,8 +448,7 @@
   <div class="footer">
     &copy; 2025 Kelly Legacy Estates. All rights reserved.
   </div>
-  
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 <script>
   // Contract Configuration
   const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
@@ -661,8 +660,123 @@
     statusElement.className = `status-${type}`;
   }
 
-  // ... rest of your functions remain the same ...
-  
+  // Set Max Amount function
+  async function setMaxAmount() {
+    try {
+      const balance = await klyContract.balanceOf(userAddress);
+      document.getElementById('stakeAmount').value = ethers.utils.formatUnits(balance, klyDecimals);
+    } catch (error) {
+      console.error("Error getting balance:", error);
+      showStatus('Failed to fetch wallet balance', 'error');
+    }
+  }
+
+  // Stake KLY function
+  async function stakeKLY() {
+    try {
+      const amountInput = document.getElementById('stakeAmount').value;
+      if (!amountInput || isNaN(amountInput)) {
+        showStatus('Please enter a valid amount', 'error');
+        return;
+      }
+
+      const amount = ethers.utils.parseUnits(amountInput, klyDecimals);
+
+      // Check allowance
+      const allowance = await klyContract.allowance(userAddress, STAKING_CONTRACT);
+      if (allowance.lt(amount)) {
+        showStatus('Approving KLY tokens...', 'processing');
+        const approveTx = await klyContract.approve(STAKING_CONTRACT, amount);
+        await approveTx.wait();
+      }
+
+      showStatus('Staking KLY tokens...', 'processing');
+      const stakeTx = await stakingContract.stake(amount);
+      await stakeTx.wait();
+
+      showStatus('Tokens staked successfully!', 'success');
+      await fetchStakingStats();
+
+    } catch (error) {
+      console.error("Stake error:", error);
+      showStatus(`Staking failed: ${getUserFriendlyError(error)}`, 'error');
+    }
+  }
+
+  // Withdraw Stake function
+  async function withdrawStake() {
+    try {
+      const amountInput = document.getElementById('stakeAmount').value;
+      if (!amountInput || isNaN(amountInput)) {
+        showStatus('Please enter a valid amount', 'error');
+        return;
+      }
+
+      const amount = ethers.utils.parseUnits(amountInput, klyDecimals);
+
+      showStatus('Withdrawing staked tokens...', 'processing');
+      const withdrawTx = await stakingContract.withdraw(amount);
+      await withdrawTx.wait();
+
+      showStatus('Withdrawal successful!', 'success');
+      await fetchStakingStats();
+
+    } catch (error) {
+      console.error("Withdraw error:", error);
+      showStatus(`Withdrawal failed: ${getUserFriendlyError(error)}`, 'error');
+    }
+  }
+
+  // Claim Rewards function
+  async function claimRewards() {
+    try {
+      showStatus('Claiming rewards...', 'processing');
+      const claimTx = await stakingContract.claim();
+      await claimTx.wait();
+
+      showStatus('Rewards claimed successfully!', 'success');
+      await fetchStakingStats();
+
+    } catch (error) {
+      console.error("Claim error:", error);
+      showStatus(`Claim failed: ${getUserFriendlyError(error)}`, 'error');
+    }
+  }
+
+  // Fetch updated staking stats
+  async function fetchStakingStats() {
+    try {
+      const [balance, stakeInfo, reward, totalStaked] = await Promise.all([
+        klyContract.balanceOf(userAddress),
+        stakingContract.getStakeInfo(userAddress),
+        stakingContract.getRewardInfo(userAddress),
+        stakingContract.totalStaked()
+      ]);
+
+      // Format values
+      const formattedBalance = ethers.utils.formatUnits(balance, klyDecimals);
+      const formattedStaked = ethers.utils.formatUnits(stakeInfo.staked, klyDecimals);
+      const formattedReward = ethers.utils.formatUnits(reward, klyDecimals);
+      const formattedTotal = ethers.utils.formatUnits(totalStaked, klyDecimals);
+
+      // Calculate user share
+      const userShare = stakeInfo.staked.gt(0)
+        ? (stakeInfo.staked.mul(10000).div(totalStaked).toNumber() / 100)
+        : 0;
+
+      // Update UI
+      document.getElementById('userKLY').textContent = formattedBalance;
+      document.getElementById('userStaked').textContent = formattedStaked;
+      document.getElementById('userRewards').textContent = formattedReward;
+      document.getElementById('totalStaked').textContent = formattedTotal;
+      document.getElementById('userShare').textContent = `${userShare.toFixed(2)}%`;
+
+    } catch (error) {
+      console.error("Error fetching staking stats:", error);
+      showStatus('Error loading staking info', 'error');
+    }
+  }
+
   // Make functions available globally
   window.connectWallet = connectWallet;
   window.setMaxAmount = setMaxAmount;
