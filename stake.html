@@ -494,6 +494,13 @@
 </div>
 
 <script>
+# Improved Wallet Connection and Staking Implementation
+
+I've analyzed your code and identified several areas for improvement. Here's a comprehensive solution that addresses wallet connection issues and enhances the staking functionality:
+
+## Complete Fixed Implementation
+
+```javascript
 const STAKING_CONTRACT = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 const STAKING_ABI = [
   "function stake(uint256 _amount) payable",
@@ -502,140 +509,297 @@ const STAKING_ABI = [
   "function getStakeInfo(address _staker) view returns (uint256 _tokensStaked, uint256 _rewards)"
 ];
 
+// Global variables
 let provider, signer, stakingContract, userAddress;
+let isConnected = false;
 
-window.addEventListener('load', async () => {
-  if (typeof window.ethereum !== 'undefined') {
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    document.getElementById('connectWallet').onclick = connectWallet;
-  } else {
-    alert('Please install MetaMask!');
-  }
+// Initialize when page loads
+window.addEventListener('DOMContentLoaded', async () => {
+  await initializeWallet();
 });
+
+async function initializeWallet() {
+  if (typeof window.ethereum === 'undefined') {
+    showStatus('Please install MetaMask or another Web3 wallet!', 'error');
+    document.getElementById('connectWallet').disabled = true;
+    return;
+  }
+
+  // Set up event listeners
+  window.ethereum.on('accountsChanged', (accounts) => {
+    if (accounts.length === 0) {
+      // Wallet disconnected
+      handleDisconnect();
+    } else {
+      // Account changed
+      userAddress = accounts[0];
+      updateWalletUI();
+      loadUserData();
+    }
+  });
+
+  window.ethereum.on('chainChanged', () => {
+    window.location.reload();
+  });
+
+  // Check if already connected
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  if (accounts.length > 0) {
+    await connectWallet();
+  }
+
+  // Set up connect button
+  document.getElementById('connectWallet').onclick = connectWallet;
+}
 
 async function connectWallet() {
   try {
-    await provider.send("eth_requestAccounts", []);
+    if (isConnected) return;
+    
+    showStatus('Connecting wallet...', 'processing');
+    
+    // Request account access
+    const accounts = await window.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    
+    if (accounts.length === 0) {
+      throw new Error('No accounts found');
+    }
+
+    // Initialize provider and signer
+    provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
+    // Initialize staking contract
     stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
 
+    // Update UI and load data
     updateWalletUI();
     await loadUserData();
-
+    
+    isConnected = true;
+    showStatus('Wallet connected successfully!', 'success');
   } catch (error) {
     console.error('Connection error:', error);
-    showStatus('Could not connect: ' + error.message, 'error');
+    showStatus('Could not connect: ' + getUserFriendlyError(error), 'error');
+    isConnected = false;
   }
+}
+
+function handleDisconnect() {
+  isConnected = false;
+  provider = null;
+  signer = null;
+  userAddress = null;
+  stakingContract = null;
+  
+  // Reset UI
+  document.getElementById('connectWallet').classList.remove('connected', 'shine');
+  document.getElementById('connectWallet').disabled = false;
+  document.getElementById('buttonText').textContent = "Connect Wallet";
+  document.getElementById('walletAddress').textContent = '';
+  
+  // Disable action buttons
+  document.getElementById('stakeButton').disabled = true;
+  document.getElementById('withdrawButton').disabled = true;
+  document.getElementById('claimButton').disabled = true;
+  
+  // Reset displayed values
+  document.getElementById('userKLY').textContent = '-';
+  document.getElementById('userStaked').textContent = '-';
+  document.getElementById('userRewards').textContent = '-';
+  
+  showStatus('Wallet disconnected', 'warning');
 }
 
 async function setMaxAmount() {
   try {
+    if (!isConnected) {
+      showStatus('Please connect your wallet first', 'error');
+      return;
+    }
+    
     const balance = await provider.getBalance(userAddress);
     document.getElementById('stakeAmount').value = ethers.utils.formatEther(balance);
   } catch (err) {
-    console.error('Max error:', err);
+    console.error('Max amount error:', err);
+    showStatus('Failed to get balance: ' + getUserFriendlyError(err), 'error');
   }
 }
 
 async function stakeKLY() {
   try {
-    const amountInput = document.getElementById('stakeAmount').value;
-    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
-      showStatus('Enter a valid amount', 'error');
+    if (!isConnected) {
+      showStatus('Please connect your wallet first', 'error');
       return;
     }
+    
+    const amountInput = document.getElementById('stakeAmount').value;
+    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
+      showStatus('Please enter a valid amount to stake', 'error');
+      return;
+    }
+    
     const amount = ethers.utils.parseEther(amountInput);
+    const balance = await provider.getBalance(userAddress);
+    
+    if (balance.lt(amount)) {
+      showStatus('Insufficient balance', 'error');
+      return;
+    }
 
+    showStatus('Staking tokens...', 'processing');
     const tx = await stakingContract.stake(amount, { value: amount });
-    showStatus('Staking...', 'processing');
     await tx.wait();
-    showStatus('Stake successful!', 'success');
+    showStatus('Tokens staked successfully!', 'success');
     await loadUserData();
   } catch (error) {
-    console.error(error);
-    showStatus('Stake failed: ' + getUserFriendlyError(error), 'error');
+    console.error('Staking error:', error);
+    showStatus('Staking failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
 async function withdrawStake() {
   try {
-    const amountInput = document.getElementById('stakeAmount').value;
-    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
-      showStatus('Enter a valid amount', 'error');
+    if (!isConnected) {
+      showStatus('Please connect your wallet first', 'error');
       return;
     }
+    
+    const amountInput = document.getElementById('stakeAmount').value;
+    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
+      showStatus('Please enter a valid amount to withdraw', 'error');
+      return;
+    }
+    
     const amount = ethers.utils.parseEther(amountInput);
+    const stakeInfo = await stakingContract.getStakeInfo(userAddress);
+    const stakedAmount = stakeInfo[0];
+    
+    if (stakedAmount.lt(amount)) {
+      showStatus('Insufficient staked amount', 'error');
+      return;
+    }
 
+    showStatus('Withdrawing stake...', 'processing');
     const tx = await stakingContract.withdraw(amount);
-    showStatus('Withdrawing...', 'processing');
     await tx.wait();
-    showStatus('Withdraw successful!', 'success');
+    showStatus('Withdrawal successful!', 'success');
     await loadUserData();
   } catch (error) {
-    console.error(error);
-    showStatus('Withdraw failed: ' + getUserFriendlyError(error), 'error');
+    console.error('Withdrawal error:', error);
+    showStatus('Withdrawal failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
 async function claimRewards() {
   try {
-    const tx = await stakingContract.claimRewards();
+    if (!isConnected) {
+      showStatus('Please connect your wallet first', 'error');
+      return;
+    }
+    
+    const stakeInfo = await stakingContract.getStakeInfo(userAddress);
+    const rewards = stakeInfo[1];
+    
+    if (rewards.isZero()) {
+      showStatus('No rewards available to claim', 'warning');
+      return;
+    }
+
     showStatus('Claiming rewards...', 'processing');
+    const tx = await stakingContract.claimRewards();
     await tx.wait();
-    showStatus('Rewards claimed!', 'success');
+    showStatus('Rewards claimed successfully!', 'success');
     await loadUserData();
   } catch (error) {
-    console.error(error);
+    console.error('Claim error:', error);
     showStatus('Claim failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
 async function loadUserData() {
   try {
+    if (!isConnected) return;
+    
     const [stakeInfo, balance] = await Promise.all([
       stakingContract.getStakeInfo(userAddress),
-      provider.getBalance(userAddress),
+      provider.getBalance(userAddress)
     ]);
+    
     const [staked, rewards] = stakeInfo;
 
+    // Update UI with formatted values
     document.getElementById('userKLY').textContent = ethers.utils.formatEther(balance);
     document.getElementById('userStaked').textContent = ethers.utils.formatEther(staked);
     document.getElementById('userRewards').textContent = ethers.utils.formatEther(rewards);
 
+    // Enable action buttons
     document.getElementById('stakeButton').disabled = false;
-    document.getElementById('withdrawButton').disabled = false;
-    document.getElementById('claimButton').disabled = false;
+    document.getElementById('withdrawButton').disabled = !staked.isZero();
+    document.getElementById('claimButton').disabled = rewards.isZero();
   } catch (err) {
-    console.error('User Data error:', err);
+    console.error('User data error:', err);
+    showStatus('Failed to load user data: ' + getUserFriendlyError(err), 'error');
   }
 }
 
 function updateWalletUI() {
   const buttonText = document.getElementById('buttonText');
   const walletAddress = document.getElementById('walletAddress');
+  
   buttonText.textContent = "Connected";
-  walletAddress.textContent = userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+  walletAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
 
   const connectBtn = document.getElementById('connectWallet');
   connectBtn.classList.add('connected', 'shine');
   connectBtn.disabled = true;
+  
+  // Remove shine effect after animation
+  setTimeout(() => {
+    connectBtn.classList.remove('shine');
+  }, 2000);
 }
 
 function showStatus(message, type) {
   const status = document.getElementById('status');
   status.textContent = message;
-  status.className = `status-${type}`;
+  status.className = `status-${type} fade-in`;
   status.style.display = 'block';
+
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    status.classList.remove('fade-in');
+    status.classList.add('fade-out');
+    setTimeout(() => {
+      status.style.display = 'none';
+      status.className = '';
+    }, 500);
+  }, 5000);
 }
 
 function getUserFriendlyError(error) {
-  if (error.code === 4001) return 'User rejected transaction';
-  return error.message || 'Transaction failed';
+  if (!error) return 'Unknown error occurred';
+  
+  // Handle MetaMask specific errors
+  if (error.code === 4001) return 'Transaction rejected by user';
+  if (error.code === -32002) return 'Request already pending - check your wallet';
+  
+  // Handle general error messages
+  const message = error.message || error.toString();
+  
+  if (message.includes('User denied')) return 'Request rejected by user';
+  if (message.includes('already pending')) return 'Request already pending';
+  if (message.includes('insufficient funds')) return 'Insufficient balance';
+  if (message.includes('reverted')) return 'Transaction reverted - check your inputs';
+  
+  // Return first line of error message
+  return message.split('\n')[0].split('(')[0];
 }
 
-/* Expose functions to window */
+// Expose functions to window
 window.setMaxAmount = setMaxAmount;
 window.stakeKLY = stakeKLY;
 window.withdrawStake = withdrawStake;
