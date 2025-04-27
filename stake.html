@@ -506,58 +506,93 @@
       showStatus('Please install MetaMask or another Web3 wallet', 'error');
     }
   }
-  
-  async function connectWallet() {
-    try {
-      // Check if Ethereum provider is available
-      if (!window.ethereum) {
-        showStatus('Web3 wallet not detected. Please install MetaMask.', 'error');
-        return;
-      }
 
-      // Initialize provider
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      
-      // Request accounts
-      const accounts = await provider.send("eth_requestAccounts", []);
-      if (accounts.length === 0) {
-        showStatus('No accounts found', 'error');
-        return;
-      }
-
-      // Check network
-      const network = await provider.getNetwork();
-      if (network.chainId !== BSC_CHAIN_ID) {
-        const switched = await switchToBSC();
-        if (!switched) return;
-      }
-
-      // Initialize signer and contracts
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-      
-      klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, signer);
-      stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
-
-      // Get token decimals
+async function connectWallet() {
+  try {
+    // Request account access
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    
+    // Check if connected to BSC (Chain ID 56)
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (parseInt(chainId) !== BSC_CHAIN_ID) {
       try {
-        klyDecimals = await klyContract.decimals();
-      } catch {
-        console.log("Using default decimals (18)");
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
+        });
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          showStatus('Please add Binance Smart Chain to your MetaMask', 'error');
+          return;
+        }
+        console.error("Failed to switch chains:", switchError);
       }
-      
-      // Update UI
-      updateWalletDisplay();
-      enableButtons();
-      await fetchStakingStats();
-      
-      showStatus('Wallet connected successfully!', 'success');
-
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      showStatus(`Connection failed: ${getUserFriendlyError(error)}`, 'error');
     }
+    
+    // Initialize provider and signer
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    
+    // Initialize contracts
+    klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, signer);
+    stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+    
+    // Get token decimals (cache it)
+    klyDecimals = await klyContract.decimals();
+    
+    // Update UI
+    document.getElementById('walletAddress').textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+    document.getElementById('connectWallet').textContent = 'Connected';
+    document.getElementById('connectWallet').disabled = true;
+    
+    showStatus('Wallet connected successfully!', 'success');
+    
+    // Load user data
+    await loadUserData();
+    
+  } catch (error) {
+    console.error("Wallet connection error:", error);
+    showStatus('Failed to connect wallet: ' + error.message, 'error');
   }
+}
+
+async function switchToBSC() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
+    });
+    return true;
+  } catch (switchError) {
+    if (switchError.code === 4902) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
+            chainName: 'Binance Smart Chain',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'bnb',
+              decimals: 18
+            },
+            rpcUrls: ['https://bsc-dataseed.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com']
+          }]
+        });
+        return true;
+      } catch (addError) {
+        console.error("Failed to add BSC network:", addError);
+        return false;
+      }
+    }
+    console.error("Failed to switch to BSC:", switchError);
+    return false;
+  }
+}
+
 
   function getUserFriendlyError(error) {
     if (error.code === 4001) return 'User rejected the request';
@@ -565,46 +600,6 @@
     return error.message.split('(')[0];
   }
 
-  async function switchToBSC() {
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
-      });
-      return true;
-    } catch (switchError) {
-      if (switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
-              chainName: 'BNB Smart Chain',
-              nativeCurrency: {
-                name: 'BNB',
-                symbol: 'BNB',
-                decimals: 18
-              },
-              rpcUrls: [
-                'https://bsc-dataseed.binance.org/',
-                'https://bsc-dataseed1.defibit.io/',
-                'https://bsc-dataseed1.ninicoin.io/'
-              ],
-              blockExplorerUrls: ['https://bscscan.com']
-            }]
-          });
-          return true;
-        } catch (addError) {
-          console.error("Error adding BSC:", addError);
-          showStatus('Failed to add BNB Chain', 'error');
-          return false;
-        }
-      }
-      console.error("Switch error:", switchError);
-      showStatus('Failed to switch to BNB Chain', 'error');
-      return false;
-    }
-  }
 
   function handleAccountsChanged(accounts) {
     if (accounts.length === 0) {
