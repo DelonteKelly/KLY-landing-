@@ -493,195 +493,159 @@
   &copy; 2025 Kelly Legacy Estates. All rights reserved.
 </div>
 
-<!-- SCRIPTS -->
 <script>
 /* ----------------- Constants & Contracts ----------------- */
-const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
-const BSC_CHAIN_ID = 56;
-
-const KLY_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)",
-  "function allowance(address,address) view returns (uint256)",
-  "function approve(address,uint256) returns (bool)"
-];
-
 const STAKING_ABI = [
-  "function stake(uint256 amount) external",
-  "function withdraw(uint256 amount) external",
-  "function claim() external",
-  "function getStakeInfo(address) view returns (uint256 staked, uint256 timestamp)",
-  "function getRewardInfo(address) view returns (uint256)",
-  "function totalStaked() view returns (uint256)"
+  "function stake(uint256 _amount) payable",
+  "function withdraw(uint256 _amount) nonpayable",
+  "function claimRewards() nonpayable",
+  "function getStakeInfo(address _staker) view returns (uint256 _tokensStaked, uint256 _rewards)",
+  "function stakingToken() view returns (address)",
+  "function rewardToken() view returns (address)"
 ];
 
-let provider, signer, userAddress, klyContract, stakingContract, klyDecimals = 18;
+let provider, signer, userAddress, stakingContract, stakingTokenContract, rewardTokenContract;
+let stakingTokenDecimals = 18;
 
 /* ----------------- Initialization ----------------- */
 window.addEventListener('load', async () => {
-  const connectBtn = document.getElementById('connectWallet');
-  connectBtn.addEventListener('click', connectWallet);
-
   if (typeof window.ethereum !== 'undefined') {
     provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
+    await init();
+  } else {
+    alert('Please install MetaMask!');
   }
-
-  await init();
 });
 
 /* ----------------- Wallet Connection ----------------- */
 async function init() {
-  if (!window.ethereum) {
-    showStatus('MetaMask not detected. Please install it.', 'error');
-    document.getElementById('connectWallet').disabled = true;
-    return;
-  }
-
-  ethereum.on('accountsChanged', handleAccountsChanged);
+  ethereum.on('accountsChanged', () => window.location.reload());
   ethereum.on('chainChanged', () => window.location.reload());
 
-  const accounts = await ethereum.request({ method: 'eth_accounts' });
-  if (accounts.length > 0) await connectWallet();
+  document.getElementById('connectWallet').onclick = connectWallet;
 }
 
 async function connectWallet() {
+  await ethereum.request({ method: 'eth_requestAccounts' });
+  signer = provider.getSigner();
+  userAddress = await signer.getAddress();
+  
+  stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+
+  const stakingTokenAddress = await stakingContract.stakingToken();
+  stakingTokenContract = new ethers.Contract(stakingTokenAddress, [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)"
+  ], signer);
+
+  stakingTokenDecimals = await stakingTokenContract.decimals();
+
+  updateWalletUI();
+  await loadUserData();
+}
+
+async function setMaxAmount() {
+  const balance = await stakingTokenContract.balanceOf(userAddress);
+  document.getElementById('stakeAmount').value = ethers.utils.formatUnits(balance, stakingTokenDecimals);
+}
+
+async function stakeKLY() {
   try {
-    const connectBtn = document.getElementById('connectWallet');
-    const buttonText = document.getElementById('buttonText');
-
-    connectBtn.disabled = true;
-    buttonText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-
-    if (!window.ethereum) {
-      showStatus('Please install MetaMask!', 'error');
-      return;
+    const amountInput = document.getElementById('stakeAmount').value;
+    const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
+    
+    const allowance = await stakingTokenContract.allowance(userAddress, STAKING_CONTRACT);
+    if (allowance.lt(amount)) {
+      const approveTx = await stakingTokenContract.approve(STAKING_CONTRACT, ethers.constants.MaxUint256);
+      await approveTx.wait();
     }
 
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts.length) {
-      showStatus('No accounts found', 'error');
-      return;
-    }
-
-    await checkChain();
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, signer);
-    stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
-    klyDecimals = await klyContract.decimals();
-
-    updateWalletUI();
+    const tx = await stakingContract.stake(amount);
+    showStatus('Staking transaction sent...', 'processing');
+    await tx.wait();
+    showStatus('Stake successful!', 'success');
     await loadUserData();
-
   } catch (error) {
-    console.error('connectWallet() error:', error);
-    showStatus('Connection failed: ' + getUserFriendlyError(error), 'error');
-    document.getElementById('connectWallet').disabled = false;
-    document.getElementById('buttonText').textContent = 'Connect Wallet';
+    console.error(error);
+    showStatus('Stake failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
-async function checkChain() {
-  const chainId = parseInt(await ethereum.request({ method: 'eth_chainId' }), 16);
-  if (chainId !== BSC_CHAIN_ID) {
-    await ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }]
-    });
-  }
-}
-
-/* ----------------- Core Functions ----------------- */
-/* (your setMaxAmount, stakeKLY, withdrawStake, claimRewards, etc. unchanged) */
-
-/* ----------------- User Data & UI ----------------- */
-async function loadUserData() {
+async function withdrawStake() {
   try {
-    const [balance, stakeInfo, reward, totalStaked] = await Promise.all([
-      klyContract.balanceOf(userAddress),
-      stakingContract.getStakeInfo(userAddress),
-      stakingContract.getRewardInfo(userAddress),
-      stakingContract.totalStaked()
-    ]);
-
-    updateStats({
-      balance: ethers.utils.formatUnits(balance, klyDecimals),
-      staked: ethers.utils.formatUnits(stakeInfo.staked, klyDecimals),
-      reward: ethers.utils.formatUnits(reward, klyDecimals),
-      totalStaked: ethers.utils.formatUnits(totalStaked, klyDecimals),
-      share: totalStaked.gt(0)
-        ? (stakeInfo.staked.mul(10000).div(totalStaked).toNumber() / 100).toFixed(2)
-        : '0.00'
-    });
-
-    enableButtons();
-  } catch (err) {
-    console.error("Load user data error:", err);
-    showStatus('Error loading staking info', 'error');
+    const amountInput = document.getElementById('stakeAmount').value;
+    const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
+    
+    const tx = await stakingContract.withdraw(amount);
+    showStatus('Withdraw transaction sent...', 'processing');
+    await tx.wait();
+    showStatus('Withdraw successful!', 'success');
+    await loadUserData();
+  } catch (error) {
+    console.error(error);
+    showStatus('Withdraw failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
-function updateWalletUI() {
-  const connectBtn = document.getElementById('connectWallet');
-  const buttonText = document.getElementById('buttonText');
-
-  document.getElementById('walletAddress').textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-  buttonText.textContent = 'Connected';
-  connectBtn.classList.add('connected', 'shine');
-  connectBtn.disabled = true;
-
-  setTimeout(() => connectBtn.classList.remove('shine'), 3000);
+async function claimRewards() {
+  try {
+    const tx = await stakingContract.claimRewards();
+    showStatus('Claiming rewards...', 'processing');
+    await tx.wait();
+    showStatus('Rewards claimed!', 'success');
+    await loadUserData();
+  } catch (error) {
+    console.error(error);
+    showStatus('Claim failed: ' + getUserFriendlyError(error), 'error');
+  }
 }
 
-function updateStats({ balance, staked, reward, totalStaked, share }) {
-  document.getElementById('userKLY').textContent = balance;
-  document.getElementById('userStaked').textContent = staked;
-  document.getElementById('userRewards').textContent = reward;
-  document.getElementById('totalStaked').textContent = totalStaked;
-  document.getElementById('userShare').textContent = `${share}%`;
-}
+/* ----------------- Load and Update User Data ----------------- */
+async function loadUserData() {
+  const [stakeInfo, balance] = await Promise.all([
+    stakingContract.getStakeInfo(userAddress),
+    stakingTokenContract.balanceOf(userAddress),
+  ]);
 
-let statusTimeout;
-function showStatus(message, type = 'info') {
-  const status = document.getElementById('status');
-  clearTimeout(statusTimeout);
-  status.textContent = message;
-  status.className = `status-${type} fade-in`;
-  statusTimeout = setTimeout(() => {
-    status.classList.remove('fade-in');
-    status.classList.add('fade-out');
-    setTimeout(() => { status.className = ''; status.textContent = ''; }, 500);
-  }, 4000);
-}
+  const [staked, rewards] = stakeInfo;
 
-function enableButtons() {
+  document.getElementById('userKLY').textContent = ethers.utils.formatUnits(balance, stakingTokenDecimals);
+  document.getElementById('userStaked').textContent = ethers.utils.formatUnits(staked, stakingTokenDecimals);
+  document.getElementById('userRewards').textContent = ethers.utils.formatUnits(rewards, stakingTokenDecimals);
+
   document.getElementById('stakeButton').disabled = false;
   document.getElementById('withdrawButton').disabled = false;
   document.getElementById('claimButton').disabled = false;
 }
 
-function handleAccountsChanged(accounts) {
-  if (accounts.length === 0) {
-    window.location.reload();
-  } else {
-    userAddress = accounts[0];
-    updateWalletUI();
-    loadUserData();
-  }
+function updateWalletUI() {
+  const buttonText = document.getElementById('buttonText');
+  const walletAddress = document.getElementById('walletAddress');
+  buttonText.textContent = "Connected";
+  walletAddress.textContent = userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+
+  const connectBtn = document.getElementById('connectWallet');
+  connectBtn.classList.add('connected', 'shine');
+  connectBtn.disabled = true;
+}
+
+function showStatus(message, type) {
+  const status = document.getElementById('status');
+  status.textContent = message;
+  status.className = `status-${type}`;
+  status.style.display = 'block';
 }
 
 function getUserFriendlyError(error) {
-  if (error.code === 4001) return 'User rejected request';
-  if (error.code === -32002) return 'Request already pending';
-  return error.message ? error.message.split('(')[0] : 'Unknown error';
+  if (error.code === 4001) return 'User rejected transaction';
+  return error.message ? error.message.split('(')[0] : 'Error occurred';
 }
 
-// Expose functions for HTML buttons
+/* Expose buttons */
 window.setMaxAmount = setMaxAmount;
 window.stakeKLY = stakeKLY;
 window.withdrawStake = withdrawStake;
