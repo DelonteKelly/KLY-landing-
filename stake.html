@@ -514,6 +514,12 @@ window.addEventListener('load', async () => {
     provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
     await init();
+
+    // Auto connect if already authorized
+    const accounts = await ethereum.request({ method: 'eth_accounts' });
+    if (accounts.length > 0) {
+      await connectWallet();
+    }
   } else {
     alert('Please install MetaMask!');
   }
@@ -528,26 +534,32 @@ async function init() {
 }
 
 async function connectWallet() {
-  await ethereum.request({ method: 'eth_requestAccounts' });
-  signer = provider.getSigner();
-  userAddress = await signer.getAddress();
-  
-  stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
+  try {
+    await ethereum.request({ method: 'eth_requestAccounts' });
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
 
-  const stakingTokenAddress = await stakingContract.stakingToken();
-  stakingTokenContract = new ethers.Contract(stakingTokenAddress, [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function decimals() view returns (uint8)",
-    "function approve(address spender, uint256 amount) returns (bool)",
-    "function allowance(address owner, address spender) view returns (uint256)"
-  ], signer);
+    stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
 
-  stakingTokenDecimals = await stakingTokenContract.decimals();
+    const stakingTokenAddress = await stakingContract.stakingToken();
+    stakingTokenContract = new ethers.Contract(stakingTokenAddress, [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function allowance(address owner, address spender) view returns (uint256)"
+    ], signer);
 
-  updateWalletUI();
-  await loadUserData();
+    stakingTokenDecimals = await stakingTokenContract.decimals();
+
+    updateWalletUI();
+    await loadUserData();
+  } catch (err) {
+    console.error('Connection Error:', err);
+    showStatus('Could not connect wallet: ' + getUserFriendlyError(err), 'error');
+  }
 }
 
+/* ----------------- Staking Actions ----------------- */
 async function setMaxAmount() {
   const balance = await stakingTokenContract.balanceOf(userAddress);
   document.getElementById('stakeAmount').value = ethers.utils.formatUnits(balance, stakingTokenDecimals);
@@ -557,7 +569,7 @@ async function stakeKLY() {
   try {
     const amountInput = document.getElementById('stakeAmount').value;
     const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
-    
+
     const allowance = await stakingTokenContract.allowance(userAddress, STAKING_CONTRACT);
     if (allowance.lt(amount)) {
       const approveTx = await stakingTokenContract.approve(STAKING_CONTRACT, ethers.constants.MaxUint256);
@@ -579,7 +591,7 @@ async function withdrawStake() {
   try {
     const amountInput = document.getElementById('stakeAmount').value;
     const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
-    
+
     const tx = await stakingContract.withdraw(amount);
     showStatus('Withdraw transaction sent...', 'processing');
     await tx.wait();
@@ -622,6 +634,7 @@ async function loadUserData() {
   document.getElementById('claimButton').disabled = false;
 }
 
+/* ----------------- UI Updates ----------------- */
 function updateWalletUI() {
   const buttonText = document.getElementById('buttonText');
   const walletAddress = document.getElementById('walletAddress');
