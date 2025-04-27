@@ -494,28 +494,24 @@
 </div>
 
 <script>
-/* ----------------- Constants & Contracts ----------------- */
 const STAKING_CONTRACT = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 const STAKING_ABI = [
   "function stake(uint256 _amount) payable",
-  "function withdraw(uint256 _amount) nonpayable",
-  "function claimRewards() nonpayable",
+  "function withdraw(uint256 _amount)",
+  "function claimRewards()",
   "function getStakeInfo(address _staker) view returns (uint256 _tokensStaked, uint256 _rewards)",
   "function stakingToken() view returns (address)",
   "function rewardToken() view returns (address)"
 ];
 
-let provider, signer, userAddress, stakingContract, stakingTokenContract, rewardTokenContract;
-let stakingTokenDecimals = 18;
+let provider, signer, userAddress, stakingContract;
 
-/* ----------------- Initialization ----------------- */
 window.addEventListener('load', async () => {
   if (typeof window.ethereum !== 'undefined') {
     provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
     await init();
 
-    // Auto connect if already authorized
     const accounts = await ethereum.request({ method: 'eth_accounts' });
     if (accounts.length > 0) {
       await connectWallet();
@@ -525,7 +521,6 @@ window.addEventListener('load', async () => {
   }
 });
 
-/* ----------------- Wallet Connection ----------------- */
 async function init() {
   ethereum.on('accountsChanged', () => window.location.reload());
   ethereum.on('chainChanged', () => window.location.reload());
@@ -541,16 +536,6 @@ async function connectWallet() {
 
     stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
 
-    const stakingTokenAddress = await stakingContract.stakingToken();
-    stakingTokenContract = new ethers.Contract(stakingTokenAddress, [
-      "function balanceOf(address owner) view returns (uint256)",
-      "function decimals() view returns (uint8)",
-      "function approve(address spender, uint256 amount) returns (bool)",
-      "function allowance(address owner, address spender) view returns (uint256)"
-    ], signer);
-
-    stakingTokenDecimals = await stakingTokenContract.decimals();
-
     updateWalletUI();
     await loadUserData();
   } catch (err) {
@@ -561,22 +546,16 @@ async function connectWallet() {
 
 /* ----------------- Staking Actions ----------------- */
 async function setMaxAmount() {
-  const balance = await stakingTokenContract.balanceOf(userAddress);
-  document.getElementById('stakeAmount').value = ethers.utils.formatUnits(balance, stakingTokenDecimals);
+  const balance = await provider.getBalance(userAddress);
+  document.getElementById('stakeAmount').value = ethers.utils.formatEther(balance);
 }
 
 async function stakeKLY() {
   try {
     const amountInput = document.getElementById('stakeAmount').value;
-    const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
+    const amount = ethers.utils.parseEther(amountInput);
 
-    const allowance = await stakingTokenContract.allowance(userAddress, STAKING_CONTRACT);
-    if (allowance.lt(amount)) {
-      const approveTx = await stakingTokenContract.approve(STAKING_CONTRACT, ethers.constants.MaxUint256);
-      await approveTx.wait();
-    }
-
-    const tx = await stakingContract.stake(amount);
+    const tx = await stakingContract.stake(amount, { value: amount });
     showStatus('Staking transaction sent...', 'processing');
     await tx.wait();
     showStatus('Stake successful!', 'success');
@@ -590,7 +569,7 @@ async function stakeKLY() {
 async function withdrawStake() {
   try {
     const amountInput = document.getElementById('stakeAmount').value;
-    const amount = ethers.utils.parseUnits(amountInput, stakingTokenDecimals);
+    const amount = ethers.utils.parseEther(amountInput);
 
     const tx = await stakingContract.withdraw(amount);
     showStatus('Withdraw transaction sent...', 'processing');
@@ -620,14 +599,14 @@ async function claimRewards() {
 async function loadUserData() {
   const [stakeInfo, balance] = await Promise.all([
     stakingContract.getStakeInfo(userAddress),
-    stakingTokenContract.balanceOf(userAddress),
+    provider.getBalance(userAddress),
   ]);
 
   const [staked, rewards] = stakeInfo;
 
-  document.getElementById('userKLY').textContent = ethers.utils.formatUnits(balance, stakingTokenDecimals);
-  document.getElementById('userStaked').textContent = ethers.utils.formatUnits(staked, stakingTokenDecimals);
-  document.getElementById('userRewards').textContent = ethers.utils.formatUnits(rewards, stakingTokenDecimals);
+  document.getElementById('userKLY').textContent = ethers.utils.formatEther(balance);
+  document.getElementById('userStaked').textContent = ethers.utils.formatEther(staked);
+  document.getElementById('userRewards').textContent = ethers.utils.formatEther(rewards);
 
   document.getElementById('stakeButton').disabled = false;
   document.getElementById('withdrawButton').disabled = false;
