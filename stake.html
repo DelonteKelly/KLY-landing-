@@ -375,6 +375,26 @@
         font-size: 2rem;
       }
     }
+
+    @keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s forwards;
+}
+
+.fade-out {
+  animation: fadeOut 0.5s forwards;
+}
+
+    
   </style>
 </head>
 <body>
@@ -661,10 +681,27 @@ function updateStats({ balance, staked, reward, totalStaked, share }) {
   document.getElementById('userShare').textContent = `${share}%`;
 }
 
+let statusTimeout; // Add this global variable
+
 function showStatus(message, type = 'info') {
   const status = document.getElementById('status');
+  
+  clearTimeout(statusTimeout); // Clear previous timeout if any
+
   status.textContent = message;
-  status.className = `status-${type}`;
+  status.className = `status-${type} fade-in`;
+
+  // After 4 seconds, fade out
+  statusTimeout = setTimeout(() => {
+    status.classList.remove('fade-in');
+    status.classList.add('fade-out');
+    
+    // After fade-out animation completes, hide it
+    setTimeout(() => {
+      status.className = ''; 
+      status.textContent = '';
+    }, 500); // match fadeOut animation duration
+  }, 4000);
 }
 
 function disableWallet(msg) {
