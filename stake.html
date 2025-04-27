@@ -530,12 +530,23 @@ async function init() {
 
 async function connectWallet() {
   try {
+    if (!window.ethereum) {
+      showStatus('Please install MetaMask!', 'error');
+      return;
+    }
+
     const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts.length) {
+      showStatus('No accounts found', 'error');
+      return;
+    }
+
     await checkChain();
 
-    provider = new ethers.providers.Web3Provider(ethereum);
+    provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
+
     klyContract = new ethers.Contract(KLY_ADDRESS, KLY_ABI, signer);
     stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
     klyDecimals = await klyContract.decimals();
@@ -543,7 +554,8 @@ async function connectWallet() {
     updateWalletUI();
     await loadUserData();
   } catch (error) {
-    showStatus(getUserFriendlyError(error), 'error');
+    console.error('connectWallet() error:', error);
+    showStatus('Connection failed: ' + getUserFriendlyError(error), 'error');
   }
 }
 
