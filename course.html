@@ -178,53 +178,57 @@
 
 <div id="module-container" class="container"></div>
 
+<!-- Load ethers.js -->
 <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+
+<!-- THEN your wallet connection and course script -->
 <script>
-  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  const KLY_TOKEN_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function decimals() view returns (uint8)"
-  ];
+  window.addEventListener('load', function() {
+    const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const KLY_TOKEN_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)"
+    ];
 
-  let provider, signer, userAddress;
+    let provider, signer, userAddress;
 
-  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+    document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
 
-  async function connectWallet() {
-    if (!window.ethereum) {
-      document.getElementById('status').textContent = "Please install MetaMask or another Web3 wallet";
-      return;
-    }
-    
-    try {
-      document.getElementById('status').textContent = "Connecting wallet...";
-      
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-      
-      document.getElementById('status').textContent = "Wallet connected! Verifying KLY balance...";
-
-      // Verify KLY balance
-      const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-      const decimals = await token.decimals();
-      const rawBalance = await token.balanceOf(userAddress);
-      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-
-      if (balance >= 500) {
-        document.getElementById('connect-section').classList.add('hidden');
-        document.getElementById('modules').classList.remove('hidden');
-        document.getElementById('status').textContent = "";
-      } else {
-        document.getElementById('status').textContent = `You only have ${balance.toFixed(2)} KLY. 500 KLY required to access this course.`;
+    async function connectWallet() {
+      if (!window.ethereum) {
+        document.getElementById('status').textContent = "Please install MetaMask or another Web3 wallet";
+        return;
       }
-    } catch (error) {
-      console.error("Connection error:", error);
-      document.getElementById('status').textContent = "Error connecting wallet: " + error.message;
-    }
-  }
+      
+      try {
+        document.getElementById('status').textContent = "Connecting wallet...";
+        
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        
+        document.getElementById('status').textContent = "Wallet connected! Verifying KLY balance...";
 
+        const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+        const decimals = await token.decimals();
+        const rawBalance = await token.balanceOf(userAddress);
+        const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+        if (balance >= 500) {
+          document.getElementById('connect-section').classList.add('hidden');
+          document.getElementById('modules').classList.remove('hidden');
+          document.getElementById('status').textContent = "";
+        } else {
+          document.getElementById('status').textContent = `You only have ${balance.toFixed(2)} KLY. 500 KLY required to access this course.`;
+        }
+      } catch (error) {
+        console.error("Connection error:", error);
+        document.getElementById('status').textContent = "Error connecting wallet: " + error.message;
+      }
+    }
+
+    // 
   const modulesContent = {
     1: document.getElementById('module1') ? document.getElementById('module1').innerHTML : "Module 1 content not found",
     2: document.getElementById('module2') ? document.getElementById('module2').innerHTML : "Module 2 content not found",
