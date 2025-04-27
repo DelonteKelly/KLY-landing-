@@ -510,59 +510,70 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initializeWallet() {
-  if (typeof window.ethereum === 'undefined') {
-    showStatus('Please install MetaMask or another Web3 wallet!', 'error');
-    document.getElementById('connectWallet').disabled = true;
+  if (!window.ethereum) {
+    showStatus('MetaMask not installed!', 'error');
+    disableConnectButton();
     return;
   }
 
-  window.ethereum.on('accountsChanged', (accounts) => {
+  // Listen for account or network changes
+  window.ethereum.on('accountsChanged', async (accounts) => {
     if (accounts.length === 0) {
       handleDisconnect();
     } else {
-      userAddress = accounts[0];
-      updateWalletUI();
-      loadUserData();
+      await connectWallet();
     }
   });
 
-  window.ethereum.on('chainChanged', () => {
-    window.location.reload();
+  window.ethereum.on('chainChanged', async () => {
+    await connectWallet();
   });
 
+  // Setup connect button
+  const connectBtn = document.getElementById('connectWallet');
+  connectBtn.disabled = false;
+  connectBtn.onclick = connectWallet;
+
+  // Try to auto-connect if already authorized
   const accounts = await window.ethereum.request({ method: 'eth_accounts' });
   if (accounts.length > 0) {
     await connectWallet();
   }
-
-  document.getElementById('connectWallet').onclick = connectWallet;
 }
 
 async function connectWallet() {
+  const connectBtn = document.getElementById('connectWallet');
+  const buttonText = document.getElementById('buttonText');
+
   try {
     if (isConnected) return;
-    
-    showStatus('Connecting wallet...', 'processing');
-    
+
+    showSpinner(true);
+
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (accounts.length === 0) {
-      throw new Error('No accounts found');
+
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No accounts returned');
     }
 
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
     stakingContract = new ethers.Contract(STAKING_CONTRACT, STAKING_ABI, signer);
 
+    isConnected = true;
     updateWalletUI();
     await loadUserData();
-    
-    isConnected = true;
     showStatus('Wallet connected successfully!', 'success');
+
   } catch (error) {
-    console.error('Connection error:', error);
-    showStatus('Could not connect: ' + getUserFriendlyError(error), 'error');
+    console.error('Connect error:', error);
+    showStatus(getUserFriendlyError(error), 'error');
     isConnected = false;
+    connectBtn.disabled = false;
+    buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+  } finally {
+    showSpinner(false);
   }
 }
 
@@ -570,12 +581,13 @@ function handleDisconnect() {
   isConnected = false;
   provider = null;
   signer = null;
-  userAddress = null;
   stakingContract = null;
-  
-  document.getElementById('connectWallet').classList.remove('connected', 'shine');
-  document.getElementById('connectWallet').disabled = false;
-  document.getElementById('buttonText').textContent = "Connect Wallet";
+  userAddress = null;
+
+  const connectBtn = document.getElementById('connectWallet');
+  connectBtn.classList.remove('connected', 'shine');
+  connectBtn.disabled = false;
+  document.getElementById('buttonText').innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
   document.getElementById('walletAddress').textContent = '';
 
   document.getElementById('stakeButton').disabled = true;
@@ -585,112 +597,21 @@ function handleDisconnect() {
   document.getElementById('userKLY').textContent = '-';
   document.getElementById('userStaked').textContent = '-';
   document.getElementById('userRewards').textContent = '-';
-  
+
   showStatus('Wallet disconnected', 'warning');
 }
 
-async function setMaxAmount() {
-  try {
-    if (!isConnected) {
-      showStatus('Please connect your wallet first', 'error');
-      return;
-    }
-    const balance = await provider.getBalance(userAddress);
-    document.getElementById('stakeAmount').value = ethers.utils.formatEther(balance);
-  } catch (err) {
-    console.error('Max amount error:', err);
-    showStatus('Failed to get balance: ' + getUserFriendlyError(err), 'error');
-  }
+function disableConnectButton() {
+  const connectBtn = document.getElementById('connectWallet');
+  connectBtn.disabled = true;
 }
 
-async function stakeKLY() {
-  try {
-    if (!isConnected) {
-      showStatus('Please connect your wallet first', 'error');
-      return;
-    }
-
-    const amountInput = document.getElementById('stakeAmount').value;
-    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
-      showStatus('Please enter a valid amount to stake', 'error');
-      return;
-    }
-
-    const amount = ethers.utils.parseEther(amountInput);
-    const balance = await provider.getBalance(userAddress);
-    
-    if (balance.lt(amount)) {
-      showStatus('Insufficient balance', 'error');
-      return;
-    }
-
-    showStatus('Staking tokens...', 'processing');
-    const tx = await stakingContract.stake(amount, { value: amount });
-    await tx.wait();
-    showStatus('Tokens staked successfully!', 'success');
-    await loadUserData();
-  } catch (error) {
-    console.error('Staking error:', error);
-    showStatus('Staking failed: ' + getUserFriendlyError(error), 'error');
-  }
-}
-
-async function withdrawStake() {
-  try {
-    if (!isConnected) {
-      showStatus('Please connect your wallet first', 'error');
-      return;
-    }
-
-    const amountInput = document.getElementById('stakeAmount').value;
-    if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
-      showStatus('Please enter a valid amount to withdraw', 'error');
-      return;
-    }
-
-    const amount = ethers.utils.parseEther(amountInput);
-    const stakeInfo = await stakingContract.getStakeInfo(userAddress);
-    const stakedAmount = stakeInfo[0];
-
-    if (stakedAmount.lt(amount)) {
-      showStatus('Insufficient staked amount', 'error');
-      return;
-    }
-
-    showStatus('Withdrawing stake...', 'processing');
-    const tx = await stakingContract.withdraw(amount);
-    await tx.wait();
-    showStatus('Withdrawal successful!', 'success');
-    await loadUserData();
-  } catch (error) {
-    console.error('Withdrawal error:', error);
-    showStatus('Withdrawal failed: ' + getUserFriendlyError(error), 'error');
-  }
-}
-
-async function claimRewards() {
-  try {
-    if (!isConnected) {
-      showStatus('Please connect your wallet first', 'error');
-      return;
-    }
-
-    const stakeInfo = await stakingContract.getStakeInfo(userAddress);
-    const rewards = stakeInfo[1];
-    
-    if (rewards.isZero()) {
-      showStatus('No rewards available to claim', 'warning');
-      return;
-    }
-
-    showStatus('Claiming rewards...', 'processing');
-    const tx = await stakingContract.claimRewards();
-    await tx.wait();
-    showStatus('Rewards claimed successfully!', 'success');
-    await loadUserData();
-  } catch (error) {
-    console.error('Claim error:', error);
-    showStatus('Claim failed: ' + getUserFriendlyError(error), 'error');
+function showSpinner(isLoading) {
+  const buttonText = document.getElementById('buttonText');
+  if (isLoading) {
+    buttonText.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Connecting...`;
+  } else {
+    buttonText.innerHTML = `Connected`;
   }
 }
 
@@ -713,7 +634,7 @@ async function loadUserData() {
     document.getElementById('withdrawButton').disabled = staked.isZero();
     document.getElementById('claimButton').disabled = rewards.isZero();
   } catch (err) {
-    console.error('User data error:', err);
+    console.error('Load user data error:', err);
     showStatus('Failed to load user data: ' + getUserFriendlyError(err), 'error');
   }
 }
@@ -740,7 +661,7 @@ function showStatus(message, type) {
       status.style.display = 'none';
       status.className = '';
     }, 500);
-  }, 5000);
+  }, 4000);
 }
 
 function getUserFriendlyError(error) {
@@ -754,12 +675,6 @@ function getUserFriendlyError(error) {
   if (message.includes('reverted')) return 'Transaction reverted - check your inputs';
   return message.split('\n')[0].split('(')[0];
 }
-
-// Expose functions
-window.setMaxAmount = setMaxAmount;
-window.stakeKLY = stakeKLY;
-window.withdrawStake = withdrawStake;
-window.claimRewards = claimRewards;
 </script>
 </body>
 </html>
