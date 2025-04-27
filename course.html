@@ -179,62 +179,72 @@
 <div id="module-container" class="container"></div>
 
 <!-- Load ethers.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" integrity="sha512-lZp4A6HkeC2q/VzYbkgDW9c6Zj8Z4UhyLZ9EoRMw4bB6g61kD8vpmvf8E+NmQW4Rk3SzIsnv3P2UhSjbDh/F9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<!-- THEN your wallet connection and course script -->
 <script>
-  window.addEventListener('load', function() {
-    const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const KLY_TOKEN_ABI = [
-      "function balanceOf(address owner) view returns (uint256)",
-      "function decimals() view returns (uint8)"
-    ];
+window.addEventListener('load', function() {
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
 
-    let provider, signer, userAddress;
+  let provider, signer, userAddress;
 
-    document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
 
-    async function connectWallet() {
-      if (!window.ethereum) {
-        document.getElementById('status').textContent = "Please install MetaMask or another Web3 wallet";
-        return;
-      }
-      
-      try {
-        document.getElementById('status').textContent = "Connecting wallet...";
-        
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        
-        document.getElementById('status').textContent = "Wallet connected! Verifying KLY balance...";
-
-        const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-        const decimals = await token.decimals();
-        const rawBalance = await token.balanceOf(userAddress);
-        const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-
-        if (balance >= 500) {
-          document.getElementById('connect-section').classList.add('hidden');
-          document.getElementById('modules').classList.remove('hidden');
-          document.getElementById('status').textContent = "";
-        } else {
-          document.getElementById('status').textContent = `You only have ${balance.toFixed(2)} KLY. 500 KLY required to access this course.`;
-        }
-      } catch (error) {
-        console.error("Connection error:", error);
-        document.getElementById('status').textContent = "Error connecting wallet: " + error.message;
-      }
+  async function connectWallet() {
+    if (!window.ethereum) {
+      document.getElementById('status').textContent = "Please install MetaMask";
+      return;
     }
+    
+    try {
+      document.getElementById('status').textContent = "Connecting wallet...";
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
 
-    // 
+      document.getElementById('status').textContent = "Wallet connected! Verifying KLY balance...";
+      
+      const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+      const decimals = await token.decimals();
+      const rawBalance = await token.balanceOf(userAddress);
+      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+      if (balance >= 500) {
+        document.getElementById('connect-section').classList.add('hidden');
+        document.getElementById('modules').classList.remove('hidden');
+        document.getElementById('status').textContent = "";
+      } else {
+        document.getElementById('status').textContent = `You only have ${balance.toFixed(2)} KLY. 500 KLY required.`;
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      document.getElementById('status').textContent = "Error connecting wallet: " + error.message;
+    }
+  }
+
+  // Create hidden div first
+  const hiddenDiv = document.createElement('div');
+  hiddenDiv.style.display = 'none';
+  hiddenDiv.innerHTML = `
+    <section id="module1"><h2>Module 1: Foundation</h2><p>...</p></section>
+    <section id="module2"><h2>Module 2: Tokenization</h2><p>...</p></section>
+    <section id="module3"><h2>Module 3: Web3 Business</h2><p>...</p></section>
+    <section id="module4"><h2>Module 4: Credit & Capital</h2><p>...</p></section>
+    <section id="module5"><h2>Module 5: Ownership & Legacy</h2><p>...</p></section>
+  `;
+  document.body.appendChild(hiddenDiv);
+
+  // NOW modulesContent can safely load
   const modulesContent = {
-    1: document.getElementById('module1') ? document.getElementById('module1').innerHTML : "Module 1 content not found",
-    2: document.getElementById('module2') ? document.getElementById('module2').innerHTML : "Module 2 content not found",
-    3: document.getElementById('module3') ? document.getElementById('module3').innerHTML : "Module 3 content not found",
-    4: document.getElementById('module4') ? document.getElementById('module4').innerHTML : "Module 4 content not found",
-    5: document.getElementById('module5') ? document.getElementById('module5').innerHTML : "Module 5 content not found"
+    1: document.getElementById('module1').innerHTML,
+    2: document.getElementById('module2').innerHTML,
+    3: document.getElementById('module3').innerHTML,
+    4: document.getElementById('module4').innerHTML,
+    5: document.getElementById('module5').innerHTML
   };
 
   function openModule(moduleId) {
@@ -242,204 +252,15 @@
     document.getElementById('courseContent').classList.remove('hidden');
     document.getElementById('courseContent').innerHTML = `
       ${modulesContent[moduleId]}
-      <div style="text-align:center; margin-top: 2rem;">
-        <button class="back-button" onclick="backToModules()">Back to Modules</button>
+      <div style="text-align:center; margin-top:2rem;">
+        <button onclick="backToModules()">Back to Modules</button>
       </div>
     `;
   }
 
-  function backToModules() {
+  window.backToModules = function() {
     document.getElementById('courseContent').classList.add('hidden');
     document.getElementById('modules').classList.remove('hidden');
-  }
-
-  // Course content (hidden in HTML but accessible to JS)
-  const hiddenContent = `
-  <!-- Module 1: Foundation -->
-  <section class="module" id="module1">
-    <h2>Module 1: Foundation</h2>
-    <h3>Overview</h3>
-    <p>This module lays the groundwork for your journey into Web3 entrepreneurship by teaching how to structure a legal business entity. You'll learn how to use LLCs, trusts, and strategic ownership planning to protect your assets and create a legacy that lasts generations.</p>
-
-    <h3>Objectives</h3>
-    <ul>
-      <li>Register a legal entity (LLC) in your state.</li>
-      <li>Set up an Operating Agreement.</li>
-      <li>Understand the role of trusts in asset protection.</li>
-      <li>Strategically assign ownership.</li>
-      <li>Open business bank accounts and DUNS profile.</li>
-    </ul>
-
-    <h3>Step-by-Step Instructions</h3>
-    <ol>
-      <li>Form an LLC.</li>
-      <li>Draft an Operating Agreement.</li>
-      <li>Obtain an EIN from the IRS.</li>
-      <li>Establish a Family Trust (optional but powerful).</li>
-      <li>Open a Business Bank Account.</li>
-      <li>Register for a DUNS number.</li>
-    </ol>
-
-    <h3>Tools & Resources</h3>
-    <ul>
-      <li><a href="https://www.njportal.com/DOR/BusinessFormation/" target="_blank">NJ Business Portal</a></li>
-      <li><a href="https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-ein-online" target="_blank">IRS EIN Assistant</a></li>
-      <li><a href="https://www.rocketlawyer.com/" target="_blank">Rocket Lawyer</a> for Operating Agreements</li>
-    </ul>
-
-    <h3>Real-World Example</h3>
-    <p>Delonte creates "Kelly Legacy Estate LLC", assigning ownership through a trust to secure generational wealth and future token activities.</p>
-  </section>
-
-  <!-- Module 2: Tokenization -->
-  <section class="module" id="module2">
-    <h2>Module 2: Tokenization</h2>
-    <h3>Overview</h3>
-    <p>Learn to create your own token, structure its economics, and use the KLY Launchpad to launch purpose-driven blockchain projects.</p>
-
-    <h3>Objectives</h3>
-    <ul>
-      <li>Understand tokens and their standards (ERC-20, ERC-721, ERC-1155).</li>
-      <li>Launch a token using KLY Launchpad.</li>
-      <li>Define supply, utility, and governance models.</li>
-    </ul>
-
-    <h3>Step-by-Step Instructions</h3>
-    <ol>
-      <li>Access KLY Launchpad.</li>
-      <li>Define token details: Name, Symbol, Total Supply.</li>
-      <li>Launch and verify your token on BNB Smart Chain.</li>
-    </ol>
-
-    <h3>Tools & Resources</h3>
-    <ul>
-      <li>KLY Launchpad</li>
-      <li>BNB Smart Chain</li>
-      <li>BscScan Token Verification</li>
-    </ul>
-
-    <h3>Real-World Example</h3>
-    <p>Kenyetta launches "LegacyToken" for her educational platform and builds a reward ecosystem around it.</p>
-  </section>
-
-  <!-- Module 3: Web3 Business -->
-  <section class="module" id="module3">
-    <h2>Module 3: Web3 Business</h2>
-    <h3>Overview</h3>
-    <p>Turn your token into an actual business model. Offer Web3 services, gated content, and decentralized experiences powered by your token.</p>
-
-    <h3>Objectives</h3>
-    <ul>
-      <li>Create service offerings powered by smart contracts.</li>
-      <li>Build staking or NFT access models.</li>
-      <li>Design decentralized revenue streams.</li>
-    </ul>
-
-    <h3>Step-by-Step Instructions</h3>
-    <ol>
-      <li>Define your business use case.</li>
-      <li>Create utility tied to your token.</li>
-      <li>Set up Web3 workflows and smart contracts.</li>
-    </ol>
-
-    <h3>Tools & Resources</h3>
-    <ul>
-      <li>Thirdweb SDK</li>
-      <li>Moralis APIs</li>
-      <li>Google Sites, GitHub Pages</li>
-    </ul>
-
-    <h3>Real-World Example</h3>
-    <p>Justice builds a mentorship dApp where users pay in KLY to access premium education and mint certificates.</p>
-  </section>
-
-  <!-- Module 4: Credit & Capital -->
-  <section class="module" id="module4">
-    <h2>Module 4: Credit & Capital</h2>
-    <h3>Overview</h3>
-    <p>Learn to build business credit under your LLC, access funding, and leverage your blockchain assets as proof of value and community trust.</p>
-
-    <h3>Objectives</h3>
-    <ul>
-      <li>Establish business credit profiles.</li>
-      <li>Secure funding through fintech and blockchain-based reputation.</li>
-      <li>Separate personal and business financial profiles.</li>
-    </ul>
-
-    <h3>Step-by-Step Instructions</h3>
-    <ol>
-      <li>Set up Net-30 vendor accounts.</li>
-      <li>Apply for business credit cards.</li>
-      <li>Link blockchain assets as additional proof of business revenue.</li>
-    </ol>
-
-    <h3>Tools & Resources</h3>
-    <ul>
-      <li>Dun & Bradstreet (DUNS Number)</li>
-      <li>Divvy, Brex, Ramp (business credit cards)</li>
-      <li>BscScan dashboards</li>
-    </ul>
-
-    <h3>Real-World Example</h3>
-    <p>Brielle secures over $15,000 in funding for her Web3 business using a hybrid of business credit and blockchain asset reporting.</p>
-  </section>
-
-  <!-- Module 5: Ownership & Legacy -->
-  <section class="module" id="module5">
-    <h2>Module 5: Ownership & Legacy</h2>
-    <h3>Overview</h3>
-    <p>Plan the long-term protection and transfer of your assets using digital estate planning, smart contracts, and family trusts integrated with blockchain.</p>
-
-    <h3>Objectives</h3>
-    <ul>
-      <li>Protect digital and business assets.</li>
-      <li>Assign blockchain assets in legal trusts.</li>
-      <li>Document and secure your digital estate plan.</li>
-    </ul>
-
-    <h3>Step-by-Step Instructions</h3>
-    <ol>
-      <li>Create a Living Trust.</li>
-      <li>Secure wallets with hardware devices.</li>
-      <li>Document and encrypt your digital legacy plan.</li>
-      <li>Assign beneficiaries using multisig wallets or smart contracts.</li>
-    </ol>
-
-    <h3>Tools & Resources</h3>
-    <ul>
-      <li>Trust & Will (estate planning)</li>
-      <li>Ledger/Trezor hardware wallets</li>
-      <li>Gnosis Safe (multi-sig)</li>
-    </ul>
-
-    <h3>Real-World Example</h3>
-    <p>Justice protects his family's KLY assets by building a living trust tied to their multisig wallet for seamless inheritance without probate.</p>
-  </section>
-
-  <!-- Smart Contract Course (Bonus) -->
-  <section>
-    <h2>Smart Contract Fundamentals</h2>
-    <p>Learn what smart contracts are, how they automate trust, real-world examples (NFTs, DeFi, DAOs), and build your first contract using Solidity or no-code tools like Thirdweb.</p>
-
-    <h3>Final Project:</h3>
-    <ul>
-      <li>Deploy a simple voting contract.</li>
-      <li>Interact via frontend dApp.</li>
-      <li>Launch on a testnet (Goerli, Sepolia).</li>
-    </ul>
-  </section>
-
-  <!-- Complete Course Button -->
-  <div style="text-align:center; margin-top: 2rem;">
-    <button id="completeCourseBtn">Complete Course & Mint Certificate</button>
-  </div>
-  `;
-
-  // Store the hidden content in a div that's not displayed
-  const hiddenDiv = document.createElement('div');
-  hiddenDiv.style.display = 'none';
-  hiddenDiv.innerHTML = hiddenContent;
-  document.body.appendChild(hiddenDiv);
+  };
+});
 </script>
-</body>
-</html>
