@@ -510,12 +510,16 @@
 
 <script>
 // ====== You will need these constants ======
-const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // << Replace with real KLY token address
+<script type="module">
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+
+const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY token address
 const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
 const ERC20_ABI = [
   "function approve(address spender, uint256 amount) public returns (bool)",
   "function allowance(address owner, address spender) public view returns (uint256)",
+  "function balanceOf(address owner) view returns (uint256)"
 ];
 
 const STAKING_ABI = [
@@ -533,7 +537,7 @@ let isConnected = false;
 // ====== Wallet Initialization on Page Load ======
 window.addEventListener('DOMContentLoaded', async () => {
   await initializeWallet();
-  document.getElementById('stakeButton').addEventListener('click', approveAndStakeKLY); // Connect the Stake Button here!
+  document.getElementById('stakeButton').addEventListener('click', approveAndStakeKLY);
 });
 
 async function initializeWallet() {
@@ -575,9 +579,7 @@ async function connectWallet() {
     showSpinner(true);
 
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts.length) {
-      throw new Error('No accounts returned');
-    }
+    if (!accounts.length) throw new Error('No accounts returned');
 
     provider = new ethers.providers.Web3Provider(window.ethereum, "any");
     signer = provider.getSigner();
@@ -654,10 +656,12 @@ async function loadUserData() {
       return;
     }
 
-    const [stakeInfo, balance, stakingTokenBalance] = await Promise.all([
+    const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
+
+    const [stakeInfo, stakingTokenBalance, balance] = await Promise.all([
       stakingContract.getStakeInfo(userAddress),
-      provider.getBalance(userAddress),
-      stakingContract.stakingTokenBalance()
+      stakingContract.stakingTokenBalance(),
+      klyToken.balanceOf(userAddress)
     ]);
 
     const [staked, rewards] = stakeInfo;
@@ -666,7 +670,7 @@ async function loadUserData() {
     const rewardsFormatted = ethers.utils.formatEther(rewards);
     const totalStakedFormatted = ethers.utils.formatEther(stakingTokenBalance);
 
-    document.getElementById('userKLY').textContent = ethers.utils.formatEther(balance);
+    document.getElementById('userKLY').textContent = ethers.utils.formatUnits(balance, 18);
     document.getElementById('userStaked').textContent = stakedFormatted;
     document.getElementById('userRewards').textContent = rewardsFormatted;
     document.getElementById('totalStaked').textContent = totalStakedFormatted;
@@ -726,16 +730,10 @@ async function approveAndStakeKLY() {
   try {
     showStatus('Preparing...', 'processing');
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const wallet = await signer.getAddress(); // << REDEFINE wallet here!!
-
     const parsedAmount = ethers.utils.parseUnits(amountInput.toString(), 18);
 
     const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
-    const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
-    const allowance = await klyToken.allowance(wallet, STAKING_CONTRACT_ADDRESS);
+    const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
 
     if (allowance.lt(parsedAmount)) {
       showStatus('Approving KLY...', 'processing');
