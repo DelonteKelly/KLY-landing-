@@ -718,43 +718,40 @@ function getUserFriendlyError(error) {
 // ====== FINAL FUNCTION Approve + Stake ======
 
 async function approveAndStakeKLY() {
-  const amount = document.getElementById('stakeAmount').value;
-  if (!amount || isNaN(amount) || Number(amount) <= 0) {
-    showStatus('Enter a valid amount!', 'error');
+  const amountInput = document.getElementById('stakeAmount').value;
+  if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
+    showStatus('Enter a valid stake amount', 'error');
     return;
   }
 
   try {
-    showStatus('Preparing to stake...', 'processing');
-    const parsedAmount = ethers.utils.parseUnits(amount.toString(), 18);
+    showStatus('Preparing...', 'processing');
+    const parsedAmount = ethers.utils.parseUnits(amountInput.toString(), 18);
 
-    const tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
+    const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
     const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
 
-    const allowance = await tokenContract.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+    const allowance = await klyToken.allowance(wallet, STAKING_CONTRACT_ADDRESS);
 
     if (allowance.lt(parsedAmount)) {
-      showStatus('Approving tokens...', 'processing');
-
-      const approveTx = await tokenContract.approve(STAKING_CONTRACT_ADDRESS, parsedAmount);
+      showStatus('Approving KLY...', 'processing');
+      const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, parsedAmount);
       await approveTx.wait();
-
       showStatus('Approval successful!', 'success');
     } else {
-      console.log('Sufficient allowance already exists. Skipping approval.');
+      console.log('✅ Sufficient allowance.');
     }
 
     showStatus('Staking tokens...', 'processing');
-
-    const stakeTx = await stakingContract.stake(parsedAmount); // ✅ NO { value: parsedAmount }
+    const stakeTx = await stakingContract.stake(parsedAmount);
     await stakeTx.wait();
 
-    showStatus('Stake successful!', 'success');
-    await loadUserData();
+    showStatus('Stake complete!', 'success');
+    await loadUserData(); // reload user's balances if needed
 
   } catch (err) {
-    console.error('Approve/Stake error:', err);
-    showStatus(getUserFriendlyError(err), 'error');
+    console.error('Staking error:', err);
+    showStatus('Error: ' + getUserFriendlyError(err), 'error');
   }
 }
 </script>
