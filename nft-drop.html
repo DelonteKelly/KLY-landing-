@@ -352,6 +352,60 @@
         width: 100%;
       }
     }
+
+    /* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(5, 5, 5, 0.8);
+  backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: var(--darker);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  animation: popUp 0.4s ease;
+}
+
+.modal-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  color: var(--success);
+  margin-bottom: 1rem;
+}
+
+.modal-header i {
+  color: var(--success);
+  margin-right: 0.5rem;
+}
+
+.modal-body {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  color: var(--light);
+}
+
+.modal-footer {
+  text-align: center;
+}
+
+@keyframes popUp {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
   </style>
 </head>
 <body>
@@ -428,6 +482,21 @@
   </div>
   
   <div class="notification" id="notification"></div>
+
+  <!-- Success Modal -->
+<div id="successModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <i class="fas fa-check-circle"></i> Mint Successful!
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Dynamic content inserted here -->
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal()" class="btn">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -593,11 +662,12 @@ async function mintNFT() {
     const receipt = await txs[txs.length - 1].wait();
     notify(`Successfully minted ${amount} NFT(s)!`, "success");
 
-    successText.innerHTML = `
-      ✅ Minted ${amount} KLY Genesis NFTs!<br>
-      <a href="https://bscscan.com/tx/${receipt.transactionHash}" target="_blank" style="color:var(--primary);">View on BscScan</a>
-    `;
-    successText.style.display = "block";
+    const explorerLink = `https://bscscan.com/tx/${receipt.transactionHash}`;
+const successHTML = `
+  <p>✅ You minted <strong>${amount}</strong> KLY Genesis NFT${amount > 1 ? 's' : ''}!</p>
+  <p><a href="${explorerLink}" target="_blank" style="color: var(--primary);">View Transaction on BscScan</a></p>
+`;
+openModal(successHTML);
 
     mintForm.style.display = "none";
     mintBtn.style.display = "inline-flex";
@@ -680,6 +750,18 @@ function setLoading(isLoading) {
 
 // Init on page load
 document.addEventListener("DOMContentLoaded", init);
+
+  function openModal(successHTML) {
+  const modal = document.getElementById('successModal');
+  const body = document.getElementById('modalBody');
+  body.innerHTML = successHTML;
+  modal.style.display = 'flex';
+}
+
+function closeModal() {
+  const modal = document.getElementById('successModal');
+  modal.style.display = 'none';
+}
 </script>
 </body>
 </html>
