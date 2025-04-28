@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1040,43 +1039,45 @@
     }
   }
 
-  // Submit proposal
-  async function submitProposalHandler() {
-    const title = proposalTitle.value.trim();
-    const desc = proposalDescription.value.trim();
-    
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error", proposalStatus);
-      return;
-    }
-    
-    if (!title || !desc) {
-      showStatus("Please fill in both title and description", "error", proposalStatus);
-      return;
-    }
-    
-    try {
-      updateSubmitButton(true, "Submitting...");
-      showStatus("Preparing proposal...", "info", proposalStatus);
-      
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-      const tx = await dao.propose(
-        ["0x0000000000000000000000000000000000000000"], // targets
-         ["0x"], // calldatas
-  desc  // description
-);
-await tx.wait();
-showStatus("Proposal submitted!", "success", proposalStatus);
-updateSubmitButton(false, "Submit Proposal");
-proposalTitle.value = "";
-proposalDescription.value = "";
-} catch (err) {
-  console.error("Proposal submission error:", err);
-  showStatus(`Failed to submit proposal: ${err.message}`, "error", proposalStatus);
-  updateSubmitButton(false, "Submit Proposal");
-}
-}
+async function submitProposalHandler() {
+  const title = proposalTitle.value.trim();
+  const desc = proposalDescription.value.trim();
+  
+  if (!wallet) {
+    showStatus("Please connect your wallet first", "error", proposalStatus);
+    return;
+  }
+  
+  if (!title || !desc) {
+    showStatus("Please fill in both title and description", "error", proposalStatus);
+    return;
+  }
+  
+  try {
+    updateSubmitButton(true, "Submitting...");
+    showStatus("Preparing proposal...", "info", proposalStatus);
 
+    const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+    const tx = await dao.propose(
+      ["0x0000000000000000000000000000000000000000"], // targets
+      [0],                                          // values
+      ["0x"],                                       // calldatas
+      desc                                          // description
+    );
+
+    await tx.wait();
+    
+    showStatus("Proposal submitted successfully!", "success", proposalStatus);
+    updateSubmitButton(false, "Submit Proposal");
+    proposalTitle.value = "";
+    proposalDescription.value = "";
+
+  } catch (err) {
+    console.error("Proposal submission error:", err);
+    showStatus(`Failed to submit proposal: ${err.message}`, "error", proposalStatus);
+    updateSubmitButton(false, "Submit Proposal");
+  }
+}
 submitProposal.addEventListener("click", submitProposalHandler);
 delegateVotesBtn.addEventListener("click", delegateVotes);
 connectBtn.addEventListener("click", connectWallet);
