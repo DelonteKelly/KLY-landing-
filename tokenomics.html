@@ -678,10 +678,9 @@ async function connectWallet() {
   }
 
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send('eth_requestAccounts', []);
-    const signer = provider.getSigner();
-    const address = await signer.getAddress();
+    // Request accounts directly
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const address = accounts[0];
 
     console.log('Wallet connected:', address);
 
@@ -700,19 +699,18 @@ async function checkIfWalletIsConnected() {
     return;
   }
 
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const accounts = await provider.listAccounts();
-  if (accounts.length > 0) {
-    const address = accounts[0];
-    const walletButton = document.getElementById('wallet-address');
-    walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-    walletButton.classList.add('connected');
-    
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts.length > 0) {
+      const address = accounts[0];
+      const walletButton = document.getElementById('wallet-address');
+      walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
+      walletButton.classList.add('connected');
+    }
+  } catch (error) {
+    console.error('Auto-connect check failed:', error);
   }
 }
-
-document.getElementById('wallet-address').addEventListener('click', connectWallet);
-checkIfWalletIsConnected(); // <--- New 
 </script>
 </body>
 </html>
