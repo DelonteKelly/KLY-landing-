@@ -500,9 +500,8 @@ body {
   </footer>
 
 <script>
-  // Initialize charts
   document.addEventListener('DOMContentLoaded', function() {
-    // --- Allocation Pie Chart ---
+    // === Allocation Chart ===
     const allocationCtx = document.getElementById('allocationChart').getContext('2d');
     new Chart(allocationCtx, {
       type: 'doughnut',
@@ -510,28 +509,18 @@ body {
         labels: ['Community', 'Founders & Team', 'Staking Rewards', 'Treasury', 'Liquidity'],
         datasets: [{
           data: [50, 20, 15, 10, 5],
-          backgroundColor: [
-            '#00ffe7',
-            '#ff00aa',
-            '#ffaa00',
-            '#00ff99',
-            '#9900ff'
-          ],
+          backgroundColor: ['#00ffe7', '#ff00aa', '#ffaa00', '#00ff99', '#9900ff'],
           borderWidth: 0
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '60%',
         plugins: {
           legend: {
             position: 'right',
-            labels: {
-              color: '#e0e0e0',
-              font: {
-                family: 'Rajdhani'
-              }
-            }
+            labels: { color: '#e0e0e0', font: { family: 'Rajdhani' } }
           },
           tooltip: {
             callbacks: {
@@ -540,12 +529,11 @@ body {
               }
             }
           }
-        },
-        cutout: '60%'
+        }
       }
     });
 
-    // --- Supply Bar Chart ---
+    // === Supply Chart ===
     const supplyCtx = document.getElementById('supplyChart').getContext('2d');
     new Chart(supplyCtx, {
       type: 'bar',
@@ -555,16 +543,10 @@ body {
           label: 'KLY Tokens',
           data: [1000000000, 350000000, 650000000, 0],
           backgroundColor: [
-            'rgba(0, 255, 231, 0.7)',
-            'rgba(0, 255, 231, 0.5)',
-            'rgba(255, 0, 170, 0.5)',
-            'rgba(255, 170, 0, 0.5)'
+            'rgba(0,255,231,0.7)', 'rgba(0,255,231,0.5)', 'rgba(255,0,170,0.5)', 'rgba(255,170,0,0.5)'
           ],
           borderColor: [
-            'rgba(0, 255, 231, 1)',
-            'rgba(0, 255, 231, 1)',
-            'rgba(255, 0, 170, 1)',
-            'rgba(255, 170, 0, 1)'
+            'rgba(0,255,231,1)', 'rgba(0,255,231,1)', 'rgba(255,0,170,1)', 'rgba(255,170,0,1)'
           ],
           borderWidth: 1
         }]
@@ -575,29 +557,16 @@ body {
         scales: {
           y: {
             beginAtZero: true,
-            ticks: {
-              color: '#e0e0e0',
-              callback: function(value) {
-                return (value / 1000000) + 'M';
-              }
-            },
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
-            }
+            ticks: { color: '#e0e0e0', callback: value => (value/1000000)+'M' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
           },
           x: {
-            ticks: {
-              color: '#e0e0e0'
-            },
-            grid: {
-              display: false
-            }
+            ticks: { color: '#e0e0e0' },
+            grid: { display: false }
           }
         },
         plugins: {
-          legend: {
-            display: false
-          },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: function(context) {
@@ -609,7 +578,7 @@ body {
       }
     });
 
-    // --- Treasury Growth Line Chart ---
+    // === Treasury Chart ===
     const treasuryCtx = document.getElementById('treasuryChart').getContext('2d');
     new Chart(treasuryCtx, {
       type: 'line',
@@ -619,7 +588,7 @@ body {
           label: 'Treasury Value (USD)',
           data: [500000, 1200000, 2500000, 4200000, 6500000, 9000000],
           borderColor: '#00ffe7',
-          backgroundColor: 'rgba(0, 255, 231, 0.1)',
+          backgroundColor: 'rgba(0,255,231,0.1)',
           borderWidth: 2,
           fill: true,
           tension: 0.4
@@ -631,33 +600,17 @@ body {
         scales: {
           y: {
             beginAtZero: false,
-            ticks: {
-              color: '#e0e0e0',
-              callback: function(value) {
-                return '$' + (value / 1000000).toFixed(1) + 'M';
-              }
-            },
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
-            }
+            ticks: { color: '#e0e0e0', callback: value => '$'+(value/1000000).toFixed(1)+'M' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
           },
           x: {
-            ticks: {
-              color: '#e0e0e0'
-            },
-            grid: {
-              display: false
-            }
+            ticks: { color: '#e0e0e0' },
+            grid: { display: false }
           }
         },
         plugins: {
           legend: {
-            labels: {
-              color: '#e0e0e0',
-              font: {
-                family: 'Rajdhani'
-              }
-            }
+            labels: { color: '#e0e0e0', font: { family: 'Rajdhani' } }
           },
           tooltip: {
             callbacks: {
@@ -670,52 +623,101 @@ body {
       }
     });
 
-    // Wallet Connect Functionality
-async function connectWallet() {
-  if (typeof window.ethereum === 'undefined') {
-    alert('MetaMask is not installed!');
-    return;
-  }
-
-  try {
-    // Request accounts directly
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    const address = accounts[0];
-
-    console.log('Wallet connected:', address);
-
-    const walletButton = document.getElementById('wallet-address');
-    walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-    walletButton.classList.add('connected');
-
-  } catch (error) {
-    console.error('Wallet connection error:', error);
-    alert('Failed to connect wallet.');
-  }
-}
-
-async function checkIfWalletIsConnected() {
-  if (typeof window.ethereum === 'undefined') {
-    return;
-  }
-
-  try {
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (accounts.length > 0) {
-      const address = accounts[0];
-      const walletButton = document.getElementById('wallet-address');
-      walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-      walletButton.classList.add('connected');
+    // === Wallet Connection Logic ===
+  async function connectWallet() {
+    if (typeof window.ethereum === 'undefined') {
+      alert('MetaMask is not installed!');
+      return;
     }
-  } catch (error) {
-    console.error('Auto-connect check failed:', error);
-  }
-}
-    // Auto-check if already connected on page load
-document.addEventListener('DOMContentLoaded', checkIfWalletIsConnected);
 
-// Attach click event to the connect button
-document.getElementById('wallet-address').addEventListener('click', connectWallet);
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const address = accounts[0];
+
+      console.log('Connected wallet:', address);
+
+      updateWalletUI(address);
+
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      alert('Failed to connect wallet.');
+    }
+  }
+
+  async function checkIfWalletIsConnected() {
+    if (typeof window.ethereum === 'undefined') {
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        const address = accounts[0];
+        updateWalletUI(address);
+      }
+    } catch (error) {
+      console.error('Auto-connect check failed:', error);
+    }
+  }
+
+  async function updateWalletUI(address) {
+    const walletButton = document.getElementById('wallet-address');
+    const networkName = await getNetworkName();
+
+    walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)} | ${networkName}`;
+    walletButton.classList.add('connected');
+  }
+
+  async function getNetworkName() {
+    try {
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      switch (chainId) {
+        case '0x1':
+          return 'Ethereum';
+        case '0x38':
+          return 'BNB Chain';
+        case '0x89':
+          return 'Polygon';
+        case '0x5':
+          return 'Goerli Testnet';
+        case '0x61':
+          return 'BSC Testnet';
+        default:
+          return 'Unknown';
+      }
+    } catch (error) {
+      console.error('Failed to get network:', error);
+      return 'Unknown';
+    }
+  }
+
+  // Listen to account changes
+  if (typeof window.ethereum !== 'undefined') {
+    window.ethereum.on('accountsChanged', function(accounts) {
+      if (accounts.length > 0) {
+        updateWalletUI(accounts[0]);
+      } else {
+        // Disconnected
+        const walletButton = document.getElementById('wallet-address');
+        walletButton.innerHTML = `<i class="fas fa-wallet"></i> Connect Wallet`;
+        walletButton.classList.remove('connected');
+      }
+    });
+
+    // Listen to chain changes
+    window.ethereum.on('chainChanged', function(_chainId) {
+      // Refresh page to update network info
+      window.location.reload();
+    });
+  }
+
+  // Initial Checks
+  checkIfWalletIsConnected();
+
+  // Attach to button
+  document.getElementById('wallet-address').addEventListener('click', connectWallet);
+
+}); // END DOMContentLoaded
 </script>
 </body>
 </html>
