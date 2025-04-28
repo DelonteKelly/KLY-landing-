@@ -705,6 +705,69 @@ function getUserFriendlyError(error) {
   if (message.includes('reverted')) return 'Transaction reverted - check your inputs';
   return message.split('\n')[0].split('(')[0];
 }
+
+async function setMaxAmount() {
+  try {
+    const balance = await provider.getBalance(userAddress);
+    const maxAmount = ethers.utils.formatEther(balance);
+    document.getElementById('stakeAmount').value = parseFloat(maxAmount).toFixed(4);
+  } catch (err) {
+    console.error('Error setting max amount:', err);
+  }
+}
+
+async function stakeKLY() {
+  const amount = document.getElementById('stakeAmount').value;
+  if (!amount || isNaN(amount) || Number(amount) <= 0) {
+    showStatus('Enter a valid amount!', 'error');
+    return;
+  }
+
+  try {
+    const value = ethers.utils.parseEther(amount.toString());
+    const tx = await stakingContract.stake(value, { value });
+    showStatus('Staking in progress...', 'processing');
+    await tx.wait();
+    showStatus('Stake successful!', 'success');
+    await loadUserData();
+  } catch (err) {
+    console.error('Stake error:', err);
+    showStatus(getUserFriendlyError(err), 'error');
+  }
+}
+
+async function withdrawStake() {
+  const amount = document.getElementById('stakeAmount').value;
+  if (!amount || isNaN(amount) || Number(amount) <= 0) {
+    showStatus('Enter a valid amount!', 'error');
+    return;
+  }
+
+  try {
+    const value = ethers.utils.parseEther(amount.toString());
+    const tx = await stakingContract.withdraw(value);
+    showStatus('Withdrawal in progress...', 'processing');
+    await tx.wait();
+    showStatus('Withdrawal successful!', 'success');
+    await loadUserData();
+  } catch (err) {
+    console.error('Withdraw error:', err);
+    showStatus(getUserFriendlyError(err), 'error');
+  }
+}
+
+async function claimRewards() {
+  try {
+    const tx = await stakingContract.claimRewards();
+    showStatus('Claiming rewards...', 'processing');
+    await tx.wait();
+    showStatus('Rewards claimed successfully!', 'success');
+    await loadUserData();
+  } catch (err) {
+    console.error('Claim error:', err);
+    showStatus(getUserFriendlyError(err), 'error');
+  }
+}
 </script>
 </body>
 </html>
