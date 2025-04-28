@@ -661,61 +661,85 @@ body {
     <p>&copy; 2025 Kelly Legacy Estates. All rights reserved.</p>
   </footer>
 
-  <script>
-    // Filter functionality
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Update active button
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        const filter = btn.dataset.filter;
-        
-        // Show/hide sections
-        document.querySelectorAll('.roadmap-section').forEach(section => {
-          if (filter === 'all') {
-            section.style.display = 'block';
-          } else {
-            section.style.display = section.dataset.category === filter ? 'block' : 'none';
-          }
-        });
-        
-        // Trigger animations for newly visible cards
-        if (filter === 'all' || filter === section.dataset.category) {
-          const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('animate');
-              }
-            });
-          }, { threshold: 0.1 });
+ <script>
+  // Filter functionality
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update active button
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
 
-          document.querySelectorAll('.milestone-card').forEach(card => {
-            if (card.closest('.roadmap-section').style.display !== 'none') {
-              observer.observe(card);
-            }
-          });
+      const filter = btn.dataset.filter;
+
+      // Show/hide sections
+      document.querySelectorAll('.roadmap-section').forEach(section => {
+        if (filter === 'all') {
+          section.style.display = 'block';
+        } else {
+          section.style.display = section.dataset.category === filter ? 'block' : 'none';
         }
       });
+
+      // Trigger animations
+      triggerAnimations();
     });
+  });
 
-    // Animation on scroll
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animate');
-        }
-      });
-    }, { threshold: 0.1 });
+  // Animation on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('animate');
+      }
+    });
+  }, { threshold: 0.1 });
 
+  function triggerAnimations() {
     document.querySelectorAll('.milestone-card').forEach(card => {
-      observer.observe(card);
+      if (card.closest('.roadmap-section').style.display !== 'none') {
+        observer.observe(card);
+      }
     });
+  }
 
-    // Initialize with all sections visible
-    document.querySelectorAll('.roadmap-section').forEach(section => {
-      section.style.display = 'block';
-    });
-  </script>
+  // Initialize animations
+  document.querySelectorAll('.milestone-card').forEach(card => {
+    observer.observe(card);
+  });
+
+  // Initialize all sections visible
+  document.querySelectorAll('.roadmap-section').forEach(section => {
+    section.style.display = 'block';
+  });
+
+  // -------- Wallet Connect Button --------
+  async function connectWallet() {
+    if (typeof window.ethereum === 'undefined') {
+      alert('MetaMask is not installed!');
+      return;
+    }
+
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+
+      console.log('Wallet connected:', address);
+
+      const walletButton = document.querySelector('.wallet-button');
+      walletButton.innerHTML = `<i class="fas fa-wallet"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
+      walletButton.classList.add('connected');
+      
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      alert('Failed to connect wallet.');
+    }
+  }
+
+  // Attach connectWallet to the wallet button
+  document.querySelector('.wallet-button').addEventListener('click', connectWallet);
+
+</script>
 </body>
 </html>
