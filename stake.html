@@ -716,7 +716,6 @@ function getUserFriendlyError(error) {
 }
 
 // ====== FINAL FUNCTION Approve + Stake ======
-
 async function approveAndStakeKLY() {
   const amountInput = document.getElementById('stakeAmount').value;
   if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
@@ -726,12 +725,17 @@ async function approveAndStakeKLY() {
 
   try {
     showStatus('Preparing...', 'processing');
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const wallet = await signer.getAddress(); // << REDEFINE wallet here!!
+
     const parsedAmount = ethers.utils.parseUnits(amountInput.toString(), 18);
 
     const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
     const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
 
-    const allowance = await klyToken.allowance(wallet, STAKING_CONTRACT_ADDRESS); // << fixed this line!
+    const allowance = await klyToken.allowance(wallet, STAKING_CONTRACT_ADDRESS);
 
     if (allowance.lt(parsedAmount)) {
       showStatus('Approving KLY...', 'processing');
@@ -747,7 +751,7 @@ async function approveAndStakeKLY() {
     await stakeTx.wait();
 
     showStatus('Stake complete!', 'success');
-    await loadUserData(); // reload user's balances if needed
+    await loadUserData();
 
   } catch (err) {
     console.error('Staking error:', err);
