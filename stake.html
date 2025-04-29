@@ -509,56 +509,121 @@
 
 
 <script>
-// ====== You will need these constants ======
-<script type="module">
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
+<!-- Load Web3.js -->
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 
-const ERC20_ABI = [
-  "function approve(address spender, uint256 amount) public returns (bool)",
-  "function allowance(address owner, address spender) public view returns (uint256)"
-];
+<script>
+  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 
-const STAKING_ABI = [
-  "function stake(uint256 _amount) payable"
-];
+  const ABI = [
+    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+  ];
 
-let provider, signer, userAddress;
+  const TOKEN_ABI = [
+    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" },
+    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+  ];
 
-document.addEventListener('DOMContentLoaded', async () => {
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  userAddress = await signer.getAddress();
+  let web3, wallet, contract, token;
 
-  document.getElementById('stakeButton').addEventListener('click', approveAndStakeKLY);
-});
+  async function connect() {
+    if (!window.ethereum) return alert("Please install MetaMask.");
+    try {
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await web3.eth.getAccounts();
+      wallet = accounts[0];
 
-function showStatus(msg) {
-  document.getElementById('status').textContent = msg;
-}
+      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("walletAddress").style.display = "inline-block";
+      document.getElementById("dashboardStats").style.display = "block";
+      document.getElementById("refreshData").style.display = "inline-block";
 
-async function approveAndStakeKLY() {
-  const amount = document.getElementById('stakeAmount').value;
-  if (!amount) return showStatus("Enter amount!");
+      contract = new web3.eth.Contract(ABI, STAKE_CONTRACT);
+      token = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
 
-  const parsedAmount = ethers.utils.parseUnits(amount, 18);
-  const token = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
-  const stakeContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
-  const allowance = await token.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
-  if (allowance.lt(parsedAmount)) {
-    const tx = await token.approve(STAKING_CONTRACT_ADDRESS, parsedAmount);
-    await tx.wait();
-    showStatus("Approved!");
+      loadDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect wallet.");
+    }
   }
 
-  const stakeTx = await stakeContract.stake(parsedAmount);
-  await stakeTx.wait();
-  showStatus("Staked successfully!");
-}
+  async function loadDashboardData() {
+    try {
+      const balanceRaw = await token.methods.balanceOf(wallet).call();
+      const decimals = await token.methods.decimals().call();
+      const balance = parseFloat(balanceRaw / (10 ** decimals)).toFixed(2);
+      document.getElementById("userBalance").textContent = balance;
+
+      // Placeholder: add logic to fetch staked and rewards if available
+      document.getElementById("userStaked").textContent = "--";
+      document.getElementById("userRewards").textContent = "--";
+      document.getElementById("votingPower").textContent = "--";
+    } catch (err) {
+      console.error("Error loading dashboard data", err);
+    }
+  }
+
+  async function stakeKLY() {
+    const status = document.getElementById("status");
+    if (!wallet) return alert("Please connect your wallet first.");
+
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || parseFloat(amount) <= 0) {
+      return alert("Enter a valid amount to stake.");
+    }
+
+    try {
+      const amountWei = web3.utils.toWei(amount, "ether");
+      status.textContent = "Approving KLY...";
+      await token.methods.approve(STAKE_CONTRACT, amountWei).send({ from: wallet });
+
+      status.textContent = "Staking KLY...";
+      await contract.methods.stake(amountWei).send({ from: wallet });
+
+      status.textContent = "✅ Staked successfully!";
+    } catch (err) {
+      console.error(err);
+      status.textContent = "❌ Transaction failed.";
+    }
+  }
+
+  async function claimRewards() {
+    const status = document.getElementById("status");
+    if (!wallet) return alert("Please connect your wallet first.");
+
+    try {
+      status.textContent = "Claiming rewards...";
+      await contract.methods.claim().send({ from: wallet });
+      status.textContent = "✅ Rewards claimed!";
+    } catch (err) {
+      console.error(err);
+      status.textContent = "❌ Failed to claim rewards.";
+    }
+  }
+
+  async function withdrawStake() {
+    const status = document.getElementById("status");
+    if (!wallet) return alert("Please connect your wallet first.");
+
+    try {
+      status.textContent = "Withdrawing stake...";
+      await contract.methods.withdraw().send({ from: wallet });
+      status.textContent = "✅ Stake withdrawn!";
+    } catch (err) {
+      console.error(err);
+      status.textContent = "❌ Failed to withdraw stake.";
+    }
+  }
+
+  document.getElementById("connectWallet").addEventListener("click", connect);
+  document.getElementById("refreshData").addEventListener("click", loadDashboardData);
 </script>
 
 </body>
