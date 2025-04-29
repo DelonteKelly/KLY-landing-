@@ -513,249 +513,53 @@
 <script type="module">
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY token address
+const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
 const ERC20_ABI = [
   "function approve(address spender, uint256 amount) public returns (bool)",
-  "function allowance(address owner, address spender) public view returns (uint256)",
-  "function balanceOf(address owner) view returns (uint256)"
+  "function allowance(address owner, address spender) public view returns (uint256)"
 ];
 
 const STAKING_ABI = [
-  "function stake(uint256 _amount) payable",
-  "function withdraw(uint256 _amount)",
-  "function claimRewards()",
-  "function getStakeInfo(address _staker) view returns (uint256 _tokensStaked, uint256 _rewards)",
-  "function stakingTokenBalance() view returns (uint256)"
+  "function stake(uint256 _amount) payable"
 ];
 
-// Global variables
-let provider, signer, stakingContract, userAddress;
-let isConnected = false;
+let provider, signer, userAddress;
 
-// ====== Wallet Initialization on Page Load ======
-window.addEventListener('DOMContentLoaded', async () => {
-  await initializeWallet();
+document.addEventListener('DOMContentLoaded', async () => {
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  userAddress = await signer.getAddress();
+
   document.getElementById('stakeButton').addEventListener('click', approveAndStakeKLY);
 });
 
-async function initializeWallet() {
-  if (!window.ethereum) {
-    showStatus('MetaMask not installed!', 'error');
-    disableConnectButton();
-    return;
-  }
-
-  const connectBtn = document.getElementById('connectWallet');
-  connectBtn.disabled = false;
-  connectBtn.onclick = connectWallet;
-
-  window.ethereum.on('accountsChanged', async (accounts) => {
-    if (accounts.length === 0) {
-      handleDisconnect();
-    } else {
-      await connectWallet();
-    }
-  });
-
-  window.ethereum.on('chainChanged', () => {
-    window.location.reload();
-  });
-
-  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-  if (accounts.length > 0) {
-    await connectWallet();
-  }
+function showStatus(msg) {
+  document.getElementById('status').textContent = msg;
 }
 
-async function connectWallet() {
-  const connectBtn = document.getElementById('connectWallet');
-  const buttonText = document.getElementById('buttonText');
-
-  try {
-    if (isConnected) return;
-
-    showSpinner(true);
-
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts.length) throw new Error('No accounts returned');
-
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-    stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
-    isConnected = true;
-    updateWalletUI();
-    await loadUserData();
-    showStatus('Wallet connected successfully!', 'success');
-
-  } catch (error) {
-    console.error('Connect error:', error);
-    showStatus(getUserFriendlyError(error), 'error');
-    isConnected = false;
-    connectBtn.disabled = false;
-    buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-  } finally {
-    showSpinner(false);
-  }
-}
-
-function disableConnectButton() {
-  const connectBtn = document.getElementById('connectWallet');
-  connectBtn.disabled = true;
-}
-
-function showSpinner(isLoading) {
-  const buttonText = document.getElementById('buttonText');
-  buttonText.innerHTML = isLoading ? `<i class="fas fa-spinner fa-spin"></i> Connecting...` : `Connected`;
-}
-
-function updateWalletUI() {
-  const connectBtn = document.getElementById('connectWallet');
-  connectBtn.classList.add('connected', 'shine');
-  connectBtn.disabled = true;
-  document.getElementById('buttonText').textContent = "Connected";
-  document.getElementById('walletAddress').textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-  setTimeout(() => connectBtn.classList.remove('shine'), 2000);
-}
-
-function handleDisconnect() {
-  isConnected = false;
-  provider = null;
-  signer = null;
-  stakingContract = null;
-  userAddress = null;
-
-  const connectBtn = document.getElementById('connectWallet');
-  connectBtn.classList.remove('connected', 'shine');
-  connectBtn.disabled = false;
-  document.getElementById('buttonText').innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-  document.getElementById('walletAddress').textContent = '';
-
-  document.getElementById('stakeButton').disabled = true;
-  document.getElementById('withdrawButton').disabled = true;
-  document.getElementById('claimButton').disabled = true;
-
-  document.getElementById('userKLY').textContent = '-';
-  document.getElementById('userStaked').textContent = '-';
-  document.getElementById('userRewards').textContent = '-';
-
-  showStatus('Wallet disconnected', 'warning');
-}
-
-async function loadUserData() {
-  document.getElementById('stakeButton').disabled = true;
-  document.getElementById('withdrawButton').disabled = true;
-  document.getElementById('claimButton').disabled = true;
-
-  try {
-    if (!isConnected) {
-      console.warn('Wallet not connected, skipping loadUserData.');
-      return;
-    }
-
-    const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
-
-    const [stakeInfo, stakingTokenBalance, balance] = await Promise.all([
-      stakingContract.getStakeInfo(userAddress),
-      stakingContract.stakingTokenBalance(),
-      klyToken.balanceOf(userAddress)
-    ]);
-
-    const [staked, rewards] = stakeInfo;
-
-    const stakedFormatted = ethers.utils.formatEther(staked);
-    const rewardsFormatted = ethers.utils.formatEther(rewards);
-    const totalStakedFormatted = ethers.utils.formatEther(stakingTokenBalance);
-
-    document.getElementById('userKLY').textContent = ethers.utils.formatUnits(balance, 18);
-    document.getElementById('userStaked').textContent = stakedFormatted;
-    document.getElementById('userRewards').textContent = rewardsFormatted;
-    document.getElementById('totalStaked').textContent = totalStakedFormatted;
-
-    let userShare = "0";
-    if (Number(totalStakedFormatted) > 0) {
-      userShare = ((Number(stakedFormatted) / Number(totalStakedFormatted)) * 100).toFixed(2);
-    }
-    document.getElementById('userShare').textContent = userShare + "%";
-
-    document.getElementById('stakeButton').disabled = false;
-    document.getElementById('withdrawButton').disabled = staked.isZero();
-    document.getElementById('claimButton').disabled = rewards.isZero();
-
-  } catch (err) {
-    console.error('Error while loading user data:', err);
-    showStatus('Failed to load data: ' + getUserFriendlyError(err), 'error');
-  }
-}
-
-function showStatus(message, type) {
-  const status = document.getElementById('status');
-  status.textContent = message;
-  status.className = `status-${type} fade-in`;
-  status.style.display = 'block';
-
-  setTimeout(() => {
-    status.classList.remove('fade-in');
-    status.classList.add('fade-out');
-    setTimeout(() => {
-      status.style.display = 'none';
-      status.className = '';
-    }, 500);
-  }, 4000);
-}
-
-function getUserFriendlyError(error) {
-  if (!error) return 'Unknown error occurred';
-  if (error.code === 4001) return 'Transaction rejected by user';
-  if (error.code === -32002) return 'Request already pending - check your wallet';
-  const message = error.message || error.toString();
-  if (message.includes('User denied')) return 'Request rejected by user';
-  if (message.includes('already pending')) return 'Request already pending';
-  if (message.includes('insufficient funds')) return 'Insufficient balance';
-  if (message.includes('reverted')) return 'Transaction reverted - check your inputs';
-  return message.split('\n')[0].split('(')[0];
-}
-
-// ====== FINAL FUNCTION Approve + Stake ======
 async function approveAndStakeKLY() {
-  const amountInput = document.getElementById('stakeAmount').value;
-  if (!amountInput || isNaN(amountInput) || Number(amountInput) <= 0) {
-    showStatus('Enter a valid stake amount', 'error');
-    return;
+  const amount = document.getElementById('stakeAmount').value;
+  if (!amount) return showStatus("Enter amount!");
+
+  const parsedAmount = ethers.utils.parseUnits(amount, 18);
+  const token = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
+  const stakeContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+
+  const allowance = await token.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+  if (allowance.lt(parsedAmount)) {
+    const tx = await token.approve(STAKING_CONTRACT_ADDRESS, parsedAmount);
+    await tx.wait();
+    showStatus("Approved!");
   }
 
-  try {
-    showStatus('Preparing...', 'processing');
-
-    const parsedAmount = ethers.utils.parseUnits(amountInput.toString(), 18);
-
-    const klyToken = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
-    const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
-
-    if (allowance.lt(parsedAmount)) {
-      showStatus('Approving KLY...', 'processing');
-      const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, parsedAmount);
-      await approveTx.wait();
-      showStatus('Approval successful!', 'success');
-    } else {
-      console.log('✅ Sufficient allowance.');
-    }
-
-    showStatus('Staking tokens...', 'processing');
-    const stakeTx = await stakingContract.stake(parsedAmount);
-    await stakeTx.wait();
-
-    showStatus('Stake complete!', 'success');
-    await loadUserData();
-
-  } catch (err) {
-    console.error('Staking error:', err);
-    showStatus('Error: ' + getUserFriendlyError(err), 'error');
-  }
+  const stakeTx = await stakeContract.stake(parsedAmount);
+  await stakeTx.wait();
+  showStatus("Staked successfully!");
 }
 </script>
+
 </body>
 </html>
