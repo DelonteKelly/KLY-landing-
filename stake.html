@@ -510,120 +510,137 @@
 
 <script>
 
-<!-- Load Web3.js -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+<script type="module">
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-<script>
-  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const STAKE_CONTRACT_ADDRESS = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
 
-  const ABI = [
-    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
-  ];
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) public returns (bool)",
+  "function allowance(address owner, address spender) public view returns (uint256)",
+  "function balanceOf(address owner) public view returns (uint256)",
+  "function decimals() public view returns (uint8)"
+];
 
-  const TOKEN_ABI = [
-    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" },
-    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
-  ];
+const STAKING_ABI = [
+  "function stake(uint256 _amount) payable",
+  "function claim()",
+  "function withdraw()"
+];
 
-  let web3, wallet, contract, token;
+let provider, signer, walletAddress, tokenContract, stakingContract;
 
-  async function connect() {
-    if (!window.ethereum) return alert("Please install MetaMask.");
-    try {
-      web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      wallet = accounts[0];
-
-      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-      document.getElementById("walletAddress").style.display = "inline-block";
-      document.getElementById("dashboardStats").style.display = "block";
-      document.getElementById("refreshData").style.display = "inline-block";
-
-      contract = new web3.eth.Contract(ABI, STAKE_CONTRACT);
-      token = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
-
-      loadDashboardData();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect wallet.");
-    }
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("Please install MetaMask first!");
+    return;
   }
 
-  async function loadDashboardData() {
-    try {
-      const balanceRaw = await token.methods.balanceOf(wallet).call();
-      const decimals = await token.methods.decimals().call();
-      const balance = parseFloat(balanceRaw / (10 ** decimals)).toFixed(2);
-      document.getElementById("userBalance").textContent = balance;
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  walletAddress = await signer.getAddress();
 
-      // Placeholder: add logic to fetch staked and rewards if available
-      document.getElementById("userStaked").textContent = "--";
-      document.getElementById("userRewards").textContent = "--";
-      document.getElementById("votingPower").textContent = "--";
-    } catch (err) {
-      console.error("Error loading dashboard data", err);
-    }
+  tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
+  stakingContract = new ethers.Contract(STAKE_CONTRACT_ADDRESS, STAKING_ABI, signer);
+
+  document.getElementById("walletAddress").textContent = walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4);
+  document.getElementById("stakeButton").disabled = false;
+  document.getElementById("withdrawButton").disabled = false;
+  document.getElementById("claimButton").disabled = false;
+
+  await loadUserData();
+}
+
+async function loadUserData() {
+  const balance = await tokenContract.balanceOf(walletAddress);
+  const decimals = await tokenContract.decimals();
+  const balanceFormatted = ethers.utils.formatUnits(balance, decimals);
+
+  document.getElementById("userKLY").textContent = balanceFormatted;
+}
+
+async function stakeKLY() {
+  const amount = document.getElementById("stakeAmount").value;
+  if (!amount || isNaN(amount) || Number(amount) <= 0) {
+    alert("Enter a valid amount to stake");
+    return;
   }
 
-  async function stakeKLY() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
+  const status = document.getElementById("status");
+  status.className = "status-processing";
+  status.textContent = "Approving KLY...";
 
-    const amount = document.getElementById("stakeAmount").value;
-    if (!amount || parseFloat(amount) <= 0) {
-      return alert("Enter a valid amount to stake.");
+  const decimals = await tokenContract.decimals();
+  const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+  try {
+    const allowance = await tokenContract.allowance(walletAddress, STAKE_CONTRACT_ADDRESS);
+
+    if (allowance.lt(parsedAmount)) {
+      const approveTx = await tokenContract.approve(STAKE_CONTRACT_ADDRESS, parsedAmount);
+      await approveTx.wait();
     }
 
-    try {
-      const amountWei = web3.utils.toWei(amount, "ether");
-      status.textContent = "Approving KLY...";
-      await token.methods.approve(STAKE_CONTRACT, amountWei).send({ from: wallet });
+    status.textContent = "Staking KLY...";
+    const stakeTx = await stakingContract.stake(parsedAmount);
+    await stakeTx.wait();
 
-      status.textContent = "Staking KLY...";
-      await contract.methods.stake(amountWei).send({ from: wallet });
-
-      status.textContent = "✅ Staked successfully!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Transaction failed.";
-    }
+    status.className = "status-success";
+    status.textContent = "✅ Staked successfully!";
+    await loadUserData();
+  } catch (err) {
+    console.error(err);
+    status.className = "status-error";
+    status.textContent = "❌ Transaction failed.";
   }
+}
 
-  async function claimRewards() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
+async function claimRewards() {
+  const status = document.getElementById("status");
+  status.className = "status-processing";
+  status.textContent = "Claiming rewards...";
 
-    try {
-      status.textContent = "Claiming rewards...";
-      await contract.methods.claim().send({ from: wallet });
-      status.textContent = "✅ Rewards claimed!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to claim rewards.";
-    }
+  try {
+    const claimTx = await stakingContract.claim();
+    await claimTx.wait();
+
+    status.className = "status-success";
+    status.textContent = "✅ Rewards claimed!";
+    await loadUserData();
+  } catch (err) {
+    console.error(err);
+    status.className = "status-error";
+    status.textContent = "❌ Failed to claim rewards.";
   }
+}
 
-  async function withdrawStake() {
-    const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
+async function withdrawStake() {
+  const status = document.getElementById("status");
+  status.className = "status-processing";
+  status.textContent = "Withdrawing stake...";
 
-    try {
-      status.textContent = "Withdrawing stake...";
-      await contract.methods.withdraw().send({ from: wallet });
-      status.textContent = "✅ Stake withdrawn!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to withdraw stake.";
-    }
+  try {
+    const withdrawTx = await stakingContract.withdraw();
+    await withdrawTx.wait();
+
+    status.className = "status-success";
+    status.textContent = "✅ Stake withdrawn!";
+    await loadUserData();
+  } catch (err) {
+    console.error(err);
+    status.className = "status-error";
+    status.textContent = "❌ Failed to withdraw stake.";
   }
+}
 
-  document.getElementById("connectWallet").addEventListener("click", connect);
-  document.getElementById("refreshData").addEventListener("click", loadDashboardData);
+// Attach event listeners
+document.getElementById("connectWallet").addEventListener("click", connectWallet);
+document.getElementById("stakeButton").addEventListener("click", stakeKLY);
+document.getElementById("claimButton").addEventListener("click", claimRewards);
+document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
+
 </script>
 
 </body>
