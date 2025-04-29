@@ -491,8 +491,7 @@
 </div>
 
 
-<script>
-
+<!-- Load ethers.js and staking logic -->
 <script type="module">
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
@@ -516,7 +515,7 @@ let provider, signer, walletAddress, tokenContract, stakingContract;
 
 async function connectWallet() {
   if (!window.ethereum) {
-    alert("Please install MetaMask first!");
+    alert("Please install MetaMask!");
     return;
   }
 
@@ -540,14 +539,13 @@ async function loadUserData() {
   const balance = await tokenContract.balanceOf(walletAddress);
   const decimals = await tokenContract.decimals();
   const balanceFormatted = ethers.utils.formatUnits(balance, decimals);
-
   document.getElementById("userKLY").textContent = balanceFormatted;
 }
 
 async function stakeKLY() {
   const amount = document.getElementById("stakeAmount").value;
   if (!amount || isNaN(amount) || Number(amount) <= 0) {
-    alert("Enter a valid amount to stake");
+    alert("Enter a valid amount to stake.");
     return;
   }
 
@@ -560,7 +558,6 @@ async function stakeKLY() {
 
   try {
     const allowance = await tokenContract.allowance(walletAddress, STAKE_CONTRACT_ADDRESS);
-
     if (allowance.lt(parsedAmount)) {
       const approveTx = await tokenContract.approve(STAKE_CONTRACT_ADDRESS, parsedAmount);
       await approveTx.wait();
@@ -584,11 +581,10 @@ async function claimRewards() {
   const status = document.getElementById("status");
   status.className = "status-processing";
   status.textContent = "Claiming rewards...";
-
+  
   try {
     const claimTx = await stakingContract.claim();
     await claimTx.wait();
-
     status.className = "status-success";
     status.textContent = "✅ Rewards claimed!";
     await loadUserData();
@@ -607,7 +603,6 @@ async function withdrawStake() {
   try {
     const withdrawTx = await stakingContract.withdraw();
     await withdrawTx.wait();
-
     status.className = "status-success";
     status.textContent = "✅ Stake withdrawn!";
     await loadUserData();
@@ -618,7 +613,6 @@ async function withdrawStake() {
   }
 }
 
-// Attach event listeners
 document.getElementById("connectWallet").addEventListener("click", connectWallet);
 document.getElementById("stakeButton").addEventListener("click", stakeKLY);
 document.getElementById("claimButton").addEventListener("click", claimRewards);
