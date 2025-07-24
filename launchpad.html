@@ -8,7 +8,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* 🎨 STYLE: Neon Theme */
     :root {
       --primary: #00ffe7;
       --secondary: #ff00aa;
@@ -68,10 +67,17 @@
       cursor: pointer;
       margin-top: 1rem;
       width: 100%;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 255, 231, 0.3);
     }
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
     }
     .token-info, .action-buttons {
       margin-top: 1.5rem;
@@ -93,11 +99,38 @@
       display: none;
       z-index: 1000;
       max-width: 300px;
+      border-radius: 0 5px 5px 0;
     }
-    .notification.show { display: block; }
+    .notification.show { display: block; animation: slideIn 0.3s ease-out; }
     .notification.success { border-color: var(--success); }
     .notification.error { border-color: var(--error); }
     .notification.pending { border-color: var(--warning); }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    
+    #walletStatus {
+      margin-top: 1rem;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      word-break: break-all;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    @media (max-width: 500px) {
+      .card {
+        padding: 1.5rem;
+      }
+      .action-buttons {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
@@ -107,7 +140,7 @@
     <p class="subtitle">The premier platform for token launches on BNB Chain</p>
 
     <button id="connectWallet"><i class="fas fa-wallet"></i> <span id="buttonText">Connect Wallet</span></button>
-    <div id="walletStatus" style="margin-top: 1rem;">Not connected</div>
+    <div id="walletStatus">Not connected</div>
 
     <div class="token-info" id="tokenInfo" style="display: none;">
       <h3>KLY Token Information</h3>
@@ -116,7 +149,7 @@
     </div>
 
     <div class="action-buttons" id="actionButtons" style="display: none;">
-      <button id="getTokensButton"><i class="fas fa-coins"></i> Mint 100 KLY</button>
+      <button id="getTokensButton"><i class="fas fa-coins"></i> Mint 100 KLY</button>
       <button id="viewExplorer"><i class="fas fa-external-link-alt"></i> Explorer</button>
     </div>
   </div>
@@ -125,6 +158,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
+    // Configuration
     const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     const BSC_CHAIN_ID = 56;
     const TOKEN_ABI = [
@@ -133,9 +167,18 @@
       "function balanceOf(address account) view returns (uint256)",
       "function mintTo(address recipient, uint256 amount)"
     ];
+    const BSC_RPC_URLS = [
+      "https://bsc-dataseed.binance.org/",
+      "https://bsc-dataseed1.defibit.io/",
+      "https://bsc-dataseed1.ninicoin.io/"
+    ];
 
+    // State
     let provider, signer, contract, decimals;
+    let isConnected = false;
+    let isOnCorrectNetwork = false;
 
+    // DOM Elements
     const connectBtn = document.getElementById("connectWallet");
     const buttonText = document.getElementById("buttonText");
     const walletStatus = document.getElementById("walletStatus");
@@ -146,73 +189,230 @@
     const viewExplorer = document.getElementById("viewExplorer");
     const notification = document.getElementById("notification");
 
-    connectBtn.onclick = async () => {
-      if (!window.ethereum) return showNotification("Please install MetaMask", "error");
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check if wallet is already connected
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        connectWallet();
+      }
+    });
+
+    // Main connection handler
+    async function connectWallet() {
+      if (!window.ethereum) {
+        return showNotification("Please install MetaMask or a Web3 wallet", "error");
+      }
+
       try {
+        showNotification("Connecting wallet...", "pending");
+        connectBtn.disabled = true;
+        
         provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Request account access
         await provider.send("eth_requestAccounts", []);
+        
+        // Check network
         const network = await provider.getNetwork();
-        if (network.chainId !== BSC_CHAIN_ID) {
-          try {
-            await provider.send("wallet_switchEthereumChain", [{ chainId: '0x38' }]);
-          } catch (switchError) {
-            return showNotification("Please switch your wallet to BNB Chain", "error");
+        isOnCorrectNetwork = network.chainId === BSC_CHAIN_ID;
+        
+        if (!isOnCorrectNetwork) {
+          const switched = await switchToBSC();
+          if (!switched) {
+            connectBtn.disabled = false;
+            return showNotification("Please switch to BNB Chain", "error");
           }
+          // Reload after successful network switch
+          window.location.reload();
+          return;
         }
+
+        // Get signer and address
         signer = provider.getSigner();
         const address = await signer.getAddress();
+        isConnected = true;
+        
+        // Update UI
         walletStatus.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
         buttonText.textContent = "Connected";
         connectBtn.disabled = true;
-
-        contract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, TOKEN_ABI, signer);
-        decimals = await contract.decimals();
-        const balance = await contract.balanceOf(address);
-        const symbol = await contract.symbol();
-        tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(balance, decimals)} ${symbol}`;
-
-       if (balance && symbol) {
-  tokenInfo.style.display = "block";
-  actionButtons.style.display = "block";
-} else {
-  showNotification("Could not fetch token info", "warning");
-}
-    } catch (err) {
-  console.error("❌ Connection Error:", err);
-  showNotification(`Connection failed: ${err.message}`, "error");
-}
-
-    getTokensButton.onclick = async () => {
-      if (!signer) return showNotification("Connect your wallet first", "warning");
-      try {
-        showNotification("Minting 100 KLY...", "pending");
-        const address = await signer.getAddress();
-        const tx = await contract.mintTo(address, ethers.utils.parseUnits("100", decimals), { gasLimit: 100000 });
-        await tx.wait();
-        showNotification("Mint successful!", "success");
-
-        const updated = await contract.balanceOf(address);
-        const symbol = await contract.symbol();
-        tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(updated, decimals)} ${symbol}`;
-      } catch (err) {
-        console.error(err);
-        const message = err.data?.message || err.message;
-        if (message.includes("minter")) {
-          showNotification("Mint failed: No MINTER_ROLE", "error");
-        } else {
-          showNotification("Mint failed or was rejected", "error");
+        
+        // Verify contract exists
+        const contractCode = await provider.getCode(TOKEN_CONTRACT_ADDRESS);
+        if (contractCode === '0x') {
+          tokenInfo.style.display = "none";
+          actionButtons.style.display = "none";
+          return showNotification("Contract not found at this address", "error");
         }
-      }
-    };
 
+        // Initialize contract and load token info
+        contract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, TOKEN_ABI, signer);
+        await loadTokenInfo();
+        
+        showNotification("Wallet connected successfully", "success");
+
+      } catch (err) {
+        console.error("Connection error:", err);
+        connectBtn.disabled = false;
+        
+        let errorMsg = "Connection failed";
+        if (err.code === 4001) {
+          errorMsg = "Connection rejected by user";
+        } else if (err.message.includes("User denied")) {
+          errorMsg = "Connection cancelled";
+        } else if (err.message.includes("network changed")) {
+          errorMsg = "Network switch failed";
+        }
+        
+        showNotification(errorMsg, "error");
+      }
+    }
+
+    // Network switching helper
+    async function switchToBSC() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x38' }], // 0x38 = 56 in decimal (BSC)
+        });
+        return true;
+      } catch (switchError) {
+        // If chain not added, add it
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0x38',
+                chainName: 'BNB Smart Chain',
+                nativeCurrency: {
+                  name: 'BNB',
+                  symbol: 'BNB',
+                  decimals: 18
+                },
+                rpcUrls: BSC_RPC_URLS,
+                blockExplorerUrls: ['https://bscscan.com/']
+              }]
+            });
+            return true;
+          } catch (addError) {
+            console.error("Error adding BSC:", addError);
+            return false;
+          }
+        }
+        return false;
+      }
+    }
+
+    // Load token information
+    async function loadTokenInfo() {
+      try {
+        showNotification("Loading token info...", "pending");
+        
+        decimals = await contract.decimals();
+        const [balance, symbol] = await Promise.all([
+          contract.balanceOf(await signer.getAddress()),
+          contract.symbol()
+        ]);
+        
+        tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(balance, decimals)} ${symbol}`;
+        tokenInfo.style.display = "block";
+        actionButtons.style.display = "flex";
+        
+      } catch (err) {
+        console.error("Token info error:", err);
+        showNotification("Connected but couldn't load token info", "warning");
+        tokenInfo.style.display = "none";
+        actionButtons.style.display = "none";
+      }
+    }
+
+    // Mint tokens function
+    async function mintTokens() {
+      if (!signer) {
+        return showNotification("Please connect your wallet first", "error");
+      }
+
+      try {
+        showNotification("Preparing mint transaction...", "pending");
+        getTokensButton.disabled = true;
+        
+        const address = await signer.getAddress();
+        const tx = await contract.mintTo(
+          address, 
+          ethers.utils.parseUnits("100", decimals),
+          { gasLimit: 200000 } // Increased gas limit for safety
+        );
+        
+        showNotification(`Transaction submitted: ${tx.hash}`, "pending");
+        
+        // Wait for transaction to be mined
+        const receipt = await tx.wait();
+        
+        // Update balance
+        const updatedBalance = await contract.balanceOf(address);
+        const symbol = await contract.symbol();
+        tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(updatedBalance, decimals)} ${symbol}`;
+        
+        showNotification("Mint successful! Balance updated", "success");
+        
+      } catch (err) {
+        console.error("Minting error:", err);
+        
+        let errorMsg = "Mint failed";
+        if (err.code === 4001) {
+          errorMsg = "Transaction rejected by user";
+        } else if (err.message.includes("revert")) {
+          errorMsg = "Transaction reverted (not authorized?)";
+        } else if (err.message.includes("mintTo")) {
+          errorMsg = "Minting function not available";
+        }
+        
+        showNotification(errorMsg, "error");
+      } finally {
+        getTokensButton.disabled = false;
+      }
+    }
+
+    // View on explorer
     viewExplorer.onclick = () => {
       window.open(`https://bscscan.com/token/${TOKEN_CONTRACT_ADDRESS}`, "_blank");
     };
 
+    // Notification handler
     function showNotification(msg, type = "info") {
       notification.textContent = msg;
       notification.className = `notification ${type} show`;
       setTimeout(() => notification.classList.remove("show"), 5000);
+    }
+
+    // Event listeners
+    connectBtn.onclick = connectWallet;
+    getTokensButton.onclick = mintTokens;
+
+    // Handle account/chain changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          // Wallet disconnected
+          isConnected = false;
+          connectBtn.disabled = false;
+          buttonText.textContent = "Connect Wallet";
+          walletStatus.textContent = "Not connected";
+          tokenInfo.style.display = "none";
+          actionButtons.style.display = "none";
+          showNotification("Wallet disconnected", "error");
+        } else if (isConnected) {
+          // Account changed
+          const address = accounts[0];
+          walletStatus.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
+          loadTokenInfo();
+        }
+      });
+
+      window.ethereum.on('chainChanged', (chainId) => {
+        window.location.reload();
+      });
     }
   </script>
 </body>
