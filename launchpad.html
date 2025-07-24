@@ -200,16 +200,14 @@ const notification = document.getElementById("notification");
 
 let provider, signer, contract, userAddress, tokenDecimals = 18;
 
-window.addEventListener('DOMContentLoaded', init);
-
-async function init() {
+window.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   if (window.ethereum) {
     provider = new ethers.providers.Web3Provider(window.ethereum);
     const accounts = await provider.listAccounts();
-    if (accounts.length) await connectWallet();
+    if (accounts.length > 0) await connectWallet();
   }
-}
+});
 
 function setupEventListeners() {
   connectBtn.addEventListener('click', connectWallet);
@@ -242,19 +240,16 @@ async function connectWallet() {
 
     const code = await provider.getCode(CONTRACT_ADDRESS);
     console.log("📦 Contract code:", code);
-    if (code === "0x") {
+    if (!code || code === "0x") {
       return showNotification("⚠️ Contract not found on BNB Chain", "error");
     }
-
-    console.log("✅ Contract is deployed");
 
     await loadTokenInfo();
     showNotification("Wallet connected successfully", "success");
 
   } catch (error) {
     console.error("❌ Connection error:", error);
-    let msg = "Connection failed";
-    if (error.code === 4001) msg = "Connection rejected";
+    const msg = error.code === 4001 ? "Connection rejected by user" : error.message || "Connection failed";
     showNotification(msg, "error");
   }
 }
@@ -295,48 +290,49 @@ async function loadTokenInfo() {
     const symbol = await contract.symbol();
     const decimals = await contract.decimals();
     const balance = await contract.balanceOf(userAddress);
-    const hasMint = !!contract.functions.mintTo;
-
-    console.log("🔤 Symbol:", symbol);
-    console.log("🔢 Decimals:", decimals);
-    console.log("💰 Raw balance:", balance.toString());
-    console.log("⚙️ mintTo available:", hasMint);
-
     tokenDecimals = decimals;
+
     tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(balance, decimals)} ${symbol}`;
     tokenInfo.style.display = "block";
     actionButtons.style.display = "flex";
 
-    if (!hasMint) {
-      getTokensButton.disabled = true;
-      showNotification("mintTo() function not available", "warning");
+    const hasMintTo = typeof contract.functions.mintTo === "function";
+    getTokensButton.disabled = !hasMintTo;
+
+    if (!hasMintTo) {
+      showNotification("mintTo() not available in contract", "warning");
     }
 
   } catch (err) {
-    console.error("❌ Token Info Error:", err);
+    console.error("❌ loadTokenInfo Error:", err);
     tokenBalance.textContent = "Balance: Error";
-    showNotification("Error loading token info", "error");
+    showNotification("Failed to load token info", "error");
   }
 }
 
 async function mintTokens() {
-  if (!signer) return showNotification("Connect your wallet first", "error");
+  if (!signer) return showNotification("Please connect your wallet", "error");
   try {
-    showNotification("Minting tokens...", "warning");
+    showNotification("Sending mint transaction...", "warning");
     getTokensButton.disabled = true;
     getTokensButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
     const tx = await contract.mintTo(userAddress, ethers.utils.parseUnits("100", tokenDecimals), {
       gasLimit: 250000
     });
-    showNotification(`Transaction: ${tx.hash}`, "warning");
+
+    showNotification(`Transaction sent: ${tx.hash}`, "warning");
     await tx.wait();
     await loadTokenInfo();
-    showNotification("Tokens minted!", "success");
+    showNotification("✅ Tokens minted!", "success");
+
   } catch (err) {
     console.error("❌ Mint error:", err);
-    let msg = "Mint failed";
-    if (err.code === 4001) msg = "Transaction rejected";
-    else if (err.message.includes("revert")) msg = "Transaction reverted";
+    const msg = err.code === 4001
+      ? "Transaction rejected"
+      : err.message.includes("revert")
+      ? "Transaction reverted (unauthorized?)"
+      : "Mint failed";
     showNotification(msg, "error");
   } finally {
     getTokensButton.disabled = false;
