@@ -13,6 +13,8 @@
       --bg-dark: #050505;
       --text-light: #e0e0e0;
       --text-muted: #888;
+      --module-bg: rgba(20, 20, 20, 0.7);
+      --module-complete: rgba(255, 0, 170, 0.1);
     }
     
     body {
@@ -24,7 +26,9 @@
       text-align: center;
       line-height: 1.6;
       min-height: 100vh;
-      background-image: radial-gradient(circle at 75% 25%, rgba(0, 255, 231, 0.03) 0%, transparent 50%);
+      background-image: 
+        radial-gradient(circle at 75% 25%, rgba(0, 255, 231, 0.03) 0%, transparent 50%),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.95));
       overflow-x: hidden;
     }
     
@@ -38,6 +42,27 @@
       font-size: 2.5rem;
       margin-bottom: 1.5rem;
       text-shadow: 0 0 10px rgba(0, 255, 231, 0.3);
+      letter-spacing: 1px;
+    }
+    
+    h2 {
+      font-size: 2rem;
+      margin-top: 2rem;
+      border-bottom: 1px solid rgba(0, 255, 231, 0.2);
+      padding-bottom: 0.5rem;
+    }
+    
+    h3 {
+      font-size: 1.5rem;
+      margin-top: 0;
+    }
+    
+    h4 {
+      font-size: 1.2rem;
+      color: var(--secondary);
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      margin: 0.5rem 0 1rem;
     }
     
     .container {
@@ -59,6 +84,7 @@
       cursor: pointer;
       transition: all 0.3s ease;
       margin: 1rem 0;
+      letter-spacing: 1px;
     }
     
     .connect-button:hover {
@@ -94,18 +120,24 @@
     }
     
     article {
-      background: rgba(20, 20, 20, 0.7);
+      background: var(--module-bg);
       border-left: 3px solid var(--primary);
       padding: 1.5rem;
       margin-bottom: 2rem;
       border-radius: 0 8px 8px 0;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
       position: relative;
       overflow: hidden;
     }
     
+    article:hover {
+      transform: translateX(5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
     article.completed {
       border-left-color: var(--secondary);
+      background: var(--module-complete);
     }
     
     article.completed::after {
@@ -118,22 +150,6 @@
       font-size: 1.2rem;
     }
     
-    article:hover {
-      transform: translateX(5px);
-    }
-    
-    article h3 {
-      margin-top: 0;
-      color: var(--primary);
-    }
-    
-    article h4 {
-      color: var(--secondary);
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      margin: 0.5rem 0 1rem;
-    }
-    
     ul, ol {
       margin-left: 1.5rem;
       line-height: 1.6;
@@ -142,12 +158,21 @@
     
     li {
       margin-bottom: 0.5rem;
+      position: relative;
+    }
+    
+    li:before {
+      content: '•';
+      color: var(--primary);
+      position: absolute;
+      left: -1rem;
     }
     
     a {
       color: var(--secondary);
       text-decoration: none;
       transition: color 0.3s ease;
+      font-weight: bold;
     }
     
     a:hover {
@@ -165,13 +190,24 @@
       border-radius: 10px;
       margin: 2rem 0;
       overflow: hidden;
+      position: relative;
+      height: 10px;
     }
     
     .progress-bar {
-      height: 10px;
+      height: 100%;
       background: linear-gradient(90deg, var(--primary), var(--secondary));
       width: 0%;
       transition: width 1s ease;
+      position: relative;
+    }
+    
+    .progress-text {
+      position: absolute;
+      right: 0;
+      top: -1.5rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
     
     .wallet-info {
@@ -200,6 +236,8 @@
       border-radius: 5px;
       cursor: pointer;
       transition: all 0.3s ease;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: bold;
     }
     
     .disconnect-btn:hover {
@@ -220,6 +258,8 @@
     
     .module-complete input {
       cursor: pointer;
+      width: 18px;
+      height: 18px;
     }
     
     .loading {
@@ -234,6 +274,25 @@
       vertical-align: middle;
     }
     
+    .practice-box {
+      background: rgba(0, 255, 231, 0.1);
+      border-left: 2px solid var(--primary);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 5px 5px 0;
+    }
+    
+    .bonus-section {
+      background: rgba(255, 0, 170, 0.1);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-top: 2rem;
+    }
+    
+    .bonus-section h3 {
+      color: var(--secondary);
+    }
+    
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -245,6 +304,14 @@
       
       h1 {
         font-size: 2rem;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      h3 {
+        font-size: 1.3rem;
       }
       
       .connect-button {
@@ -276,6 +343,7 @@
       <p id="status"></p>
       <div class="progress-container hidden" id="progressContainer">
         <div class="progress-bar" id="progressBar"></div>
+        <span class="progress-text" id="progressText">0% Complete</span>
       </div>
     </div>
     
@@ -287,13 +355,15 @@
         <h3>Module 1: Foundations of Self-Awareness</h3>
         <h4>Theme: Becoming the Observer</h4>
         <ul>
-          <li>What is self-awareness?</li>
-          <li>Mindfulness practices for daily life</li>
-          <li>Journaling for clarity and self-discovery</li>
-          <li>Identifying unconscious patterns and inherited beliefs</li>
+          <li><strong>What is self-awareness?</strong> Understanding the difference between being lost in thought and observing thoughts</li>
+          <li><strong>Mindfulness practices</strong> for daily life: The 5 senses grounding technique</li>
+          <li><strong>Journaling for clarity</strong> and self-discovery: Stream-of-consciousness vs. structured reflection</li>
+          <li><strong>Identifying unconscious patterns</strong> and inherited beliefs: The 3-layer belief audit</li>
         </ul>
-        <p><strong>Practice:</strong> 5-minute breath + journaling meditation</p>
-        <p><strong>Homework:</strong> Belief audit worksheet</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> 5-minute breath + journaling meditation</p>
+          <p><strong>Homework:</strong> Belief audit worksheet (download provided upon completion)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule1" data-module="1">
           <label for="completeModule1">Mark as complete</label>
@@ -304,12 +374,15 @@
         <h3>Module 2: Breaking the Illusion of Ego</h3>
         <h4>Theme: You Are Not Your Story</h4>
         <ul>
-          <li>Understanding ego vs. essence</li>
-          <li>The trap of roles, labels, and identity</li>
-          <li>The silent watcher: meeting your true Self</li>
+          <li><strong>Understanding ego vs. essence:</strong> The constructed self vs. the witnessing presence</li>
+          <li><strong>The trap of roles, labels, and identity:</strong> How we confuse "what we do" with "who we are"</li>
+          <li><strong>The silent watcher:</strong> Meeting your true Self beyond thought and form</li>
+          <li><strong>Ego's defense mechanisms:</strong> How it resists dissolution through spiritual materialism</li>
         </ul>
-        <p><strong>Practice:</strong> "Who am I?" self-inquiry meditation</p>
-        <p><strong>Reflection:</strong> Ego-story release exercise</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> "Who am I?" self-inquiry meditation (guided audio included)</p>
+          <p><strong>Reflection:</strong> Ego-story release exercise (burn ceremony ritual)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule2" data-module="2">
           <label for="completeModule2">Mark as complete</label>
@@ -320,12 +393,15 @@
         <h3>Module 3: Entering the Now</h3>
         <h4>Theme: Presence is Power</h4>
         <ul>
-          <li>The mind's obsession with past/future</li>
-          <li>Anchoring in the breath and senses</li>
-          <li>Listening as a gateway to stillness</li>
+          <li><strong>The mind's obsession with past/future:</strong> How we create unnecessary suffering</li>
+          <li><strong>Anchoring in the breath and senses:</strong> The body as gateway to presence</li>
+          <li><strong>Listening as meditation:</strong> Using sound as an anchor to the present moment</li>
+          <li><strong>The gap between thoughts:</strong> Discovering the space where awareness resides</li>
         </ul>
-        <p><strong>Practice:</strong> Presence scan + nature-based stillness exercise</p>
-        <p><strong>Challenge:</strong> 24-hour Presence Challenge</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> Presence scan + nature-based stillness exercise</p>
+          <p><strong>Challenge:</strong> 24-hour Presence Challenge (with accountability partner system)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule3" data-module="3">
           <label for="completeModule3">Mark as complete</label>
@@ -336,12 +412,15 @@
         <h3>Module 4: Surrender & Emotional Alchemy</h3>
         <h4>Theme: Freedom Through Letting Go</h4>
         <ul>
-          <li>What is surrender (vs. giving up)?</li>
-          <li>Allowing emotions to move without attachment</li>
-          <li>Accepting impermanence and imperfection</li>
+          <li><strong>What is surrender?</strong> (vs. giving up): The paradox of effort and non-effort</li>
+          <li><strong>Allowing emotions to move:</strong> The wave theory of emotional processing</li>
+          <li><strong>Accepting impermanence:</strong> How resistance to change creates suffering</li>
+          <li><strong>The art of non-attachment:</strong> Enjoying life without needing it to be different</li>
         </ul>
-        <p><strong>Practice:</strong> Guided emotion-release meditation</p>
-        <p><strong>Assignment:</strong> Journal prompts on resistance + peace with the now</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> Guided emotion-release meditation (body scan technique)</p>
+          <p><strong>Assignment:</strong> Journal prompts on resistance + peace with the now</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule4" data-module="4">
           <label for="completeModule4">Mark as complete</label>
@@ -352,12 +431,15 @@
         <h3>Module 5: The Reality of Oneness</h3>
         <h4>Theme: Beyond Separation</h4>
         <ul>
-          <li>The illusion of duality</li>
-          <li>Recognizing the Self in others</li>
-          <li>Compassion as a portal to unity</li>
+          <li><strong>The illusion of duality:</strong> Subject-object perception and its limitations</li>
+          <li><strong>Recognizing the Self in others:</strong> Mirror work and projection awareness</li>
+          <li><strong>Compassion as practice:</strong> How empathy dissolves the illusion of separation</li>
+          <li><strong>Interconnected systems:</strong> Seeing the web of life in daily experience</li>
         </ul>
-        <p><strong>Practice:</strong> Loving-kindness (Metta) meditation</p>
-        <p><strong>Group Reflection:</strong> "What connects us?"</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> Loving-kindness (Metta) meditation with specific visualizations</p>
+          <p><strong>Group Reflection:</strong> "What connects us?" (shared document collaboration)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule5" data-module="5">
           <label for="completeModule5">Mark as complete</label>
@@ -368,12 +450,15 @@
         <h3>Module 6: Ending the Inner Chase</h3>
         <h4>Theme: The Paradox of Awakening</h4>
         <ul>
-          <li>Why seeking can become another ego trap</li>
-          <li>Letting go of "special" spiritual identities</li>
-          <li>Embracing stillness, simplicity, and ordinariness</li>
+          <li><strong>Why seeking can become another ego trap:</strong> Spiritual materialism decoded</li>
+          <li><strong>Letting go of "special" spiritual identities:</strong> The ordinary nature of enlightenment</li>
+          <li><strong>Embracing stillness:</strong> The power of doing nothing</li>
+          <li><strong>The end of seeking:</strong> Recognizing what's already here</li>
         </ul>
-        <p><strong>Practice:</strong> Meditation on being vs. doing</p>
-        <p><strong>Prompt:</strong> "If I stopped chasing awakening, what would remain?"</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> Meditation on being vs. doing (non-doing awareness)</p>
+          <p><strong>Prompt:</strong> "If I stopped chasing awakening, what would remain?" (deep reflection)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule6" data-module="6">
           <label for="completeModule6">Mark as complete</label>
@@ -384,25 +469,30 @@
         <h3>Module 7: Living From Awakened Awareness</h3>
         <h4>Theme: Embodying the Truth</h4>
         <ul>
-          <li>Integrating awareness into relationships, work, and service</li>
-          <li>Responding instead of reacting</li>
-          <li>Trusting life's intelligence — surrender as daily practice</li>
+          <li><strong>Integrating awareness:</strong> Bringing presence into relationships, work, and service</li>
+          <li><strong>Responding vs. reacting:</strong> The pause that creates choice</li>
+          <li><strong>Trusting life's intelligence:</strong> Surrender as daily practice</li>
+          <li><strong>The awakened lifestyle:</strong> Practical frameworks for maintaining awareness</li>
         </ul>
-        <p><strong>Practice:</strong> Silent sitting + intuitive journaling</p>
-        <p><strong>Final Reflection:</strong> "How does life move through me when I don't interfere?"</p>
+        <div class="practice-box">
+          <p><strong>Practice:</strong> Silent sitting + intuitive journaling (unstructured awareness)</p>
+          <p><strong>Final Reflection:</strong> "How does life move through me when I don't interfere?" (culmination exercise)</p>
+        </div>
         <div class="module-complete">
           <input type="checkbox" id="completeModule7" data-module="7">
           <label for="completeModule7">Mark as complete</label>
         </div>
       </article>
       
-      <section>
+      <section class="bonus-section">
         <h3>Bonus Materials</h3>
         <ul>
-          <li>Satsang prompts for group sessions</li>
-          <li>Shadow work journal</li>
-          <li>Integration calendar (30 days of living awake)</li>
-          <li>Awakening roadmap PDF</li>
+          <li><strong>Satsang prompts:</strong> 50+ questions for deep group discussions</li>
+          <li><strong>Shadow work journal:</strong> 30-day guided exploration of the unconscious</li>
+          <li><strong>Integration calendar:</strong> 30 days of living awake (daily micro-practices)</li>
+          <li><strong>Awakening roadmap PDF:</strong> Visual guide to the stages of awakening</li>
+          <li><strong>Meditation library:</strong> Curated audio practices for each module</li>
+          <li><strong>Private community:</strong> Access to our members-only discussion forum</li>
         </ul>
       </section>
     </div>
@@ -429,6 +519,7 @@
       const walletAddress = document.getElementById('walletAddress');
       const progressContainer = document.getElementById('progressContainer');
       const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
       const moduleCheckboxes = document.querySelectorAll('.module-complete input');
       
       // State
@@ -460,6 +551,10 @@
         if (window.ethereum && localStorage.getItem('walletConnected')) {
           try {
             await connectWallet();
+          statusEl.textContent = "Automatically reconnected to your wallet";
+            setTimeout(() => {
+              statusEl.textContent = "";
+            }, 3000);
           } catch (error) {
             console.error("Auto-connect failed:", error);
             localStorage.removeItem('walletConnected');
@@ -506,10 +601,21 @@
             progressContainer.classList.remove('hidden');
             connectBtn.classList.add('hidden');
             courseContent.classList.add('visible');
-            statusEl.textContent = "";
+            statusEl.textContent = "Course unlocked!";
             
             // Save connection state
             localStorage.setItem('walletConnected', 'true');
+            
+            // Brief confirmation animation
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+              progressBar.style.transition = 'width 1s ease';
+              progressBar.style.width = '0%';
+              setTimeout(() => {
+                updateProgress();
+              }, 50);
+            }, 300);
           } else {
             statusEl.textContent = `You have ${balance.toFixed(2)} KLY. ${REQUIRED_BALANCE} KLY required to access this course.`;
           }
@@ -559,6 +665,12 @@
           if (!completedModules.includes(moduleNum)) {
             completedModules.push(moduleNum);
             moduleArticle.classList.add('completed');
+            
+            // Brief completion animation
+            moduleArticle.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+              moduleArticle.style.transform = '';
+            }, 300);
           }
         } else {
           completedModules = completedModules.filter(m => m !== moduleNum);
@@ -576,6 +688,7 @@
         const progressPercent = (completedCount / totalModules) * 100;
         
         progressBar.style.width = `${progressPercent}%`;
+        progressText.textContent = `${Math.round(progressPercent)}% Complete`;
         
         if (completedCount > 0) {
           statusEl.textContent = `Progress: ${completedCount}/${totalModules} modules completed`;
