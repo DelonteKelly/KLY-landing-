@@ -171,9 +171,8 @@
 
   <div id="notification" class="notification"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
-    // Configuration
     const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     const BSC_CHAIN_ID = 56;
     const RPC_URLS = [
@@ -181,19 +180,14 @@
       "https://bsc-dataseed1.defibit.io/",
       "https://bsc-dataseed1.ninicoin.io/"
     ];
-    
-    // Enhanced ABI with common ERC-20 functions
+
     const TOKEN_ABI = [
-      "function name() view returns (string)",
       "function symbol() view returns (string)",
       "function decimals() view returns (uint8)",
-      "function totalSupply() view returns (uint256)",
       "function balanceOf(address) view returns (uint256)",
-      "function transfer(address to, uint256 amount)",
       "function mintTo(address to, uint256 amount)"
     ];
 
-    // DOM Elements
     const connectBtn = document.getElementById("connectWallet");
     const buttonText = document.getElementById("buttonText");
     const walletStatus = document.getElementById("walletStatus");
@@ -203,20 +197,17 @@
     const actionButtons = document.getElementById("actionButtons");
     const viewExplorer = document.getElementById("viewExplorer");
     const notification = document.getElementById("notification");
-    const contractAddressEl = document.getElementById("contractAddress");
 
-    // State
-    let provider, signer, contract, userAddress;
+    let provider, signer, contract, userAddress, tokenDecimals = 18;
 
-    // Initialize
     window.addEventListener('DOMContentLoaded', init);
 
     async function init() {
       setupEventListeners();
-      
-      // Check if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        await connectWallet();
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        if (accounts.length) await connectWallet();
       }
     }
 
@@ -224,78 +215,42 @@
       connectBtn.addEventListener('click', connectWallet);
       getTokensButton.addEventListener('click', mintTokens);
       viewExplorer.addEventListener('click', viewOnExplorer);
-      
       if (window.ethereum) {
         window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.on('chainChanged', () => window.location.reload());
       }
     }
 
     async function connectWallet() {
-      if (!window.ethereum) {
-        return showNotification("Please install MetaMask or a Web3 wallet", "error");
-      }
-
+      if (!window.ethereum) return showNotification("Please install MetaMask", "error");
       try {
         showNotification("Connecting wallet...", "warning");
-        connectBtn.disabled = true;
-        
-        // Initialize provider
         provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Request account access
         await provider.send("eth_requestAccounts", []);
-        
-        // Check/switch network
         const network = await provider.getNetwork();
-        if (network.chainId !== BSC_CHAIN_ID) {
-          const switched = await switchToBSC();
-          if (!switched) {
-            connectBtn.disabled = false;
-            return showNotification("Please switch to BNB Chain", "error");
-          }
-          // Reload after network switch
-          window.location.reload();
-          return;
+
+        if (network.chainId !== BSC_CHAIN_ID && !(await switchToBSC())) {
+          return showNotification("Please switch to BNB Chain", "error");
         }
 
-        // Get signer and address
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
-        
-        // Update UI
-        walletStatus.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+        walletStatus.textContent = formatAddress(userAddress);
         buttonText.textContent = "Connected";
-        connectBtn.disabled = true;
-        
-        // Initialize contract
         contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
-        
-        // Verify contract exists
+
         const code = await provider.getCode(CONTRACT_ADDRESS);
         if (code === '0x') {
-          tokenInfo.style.display = "none";
-          actionButtons.style.display = "none";
-          return showNotification("Contract not found at this address", "error");
+          return showNotification("Contract not found", "error");
         }
 
-        // Load token info
         await loadTokenInfo();
-        
-        showNotification("Wallet connected successfully", "success");
+        showNotification("Wallet connected", "success");
 
       } catch (error) {
-        console.error("Connection error:", error);
-        connectBtn.disabled = false;
-        
-        let errorMsg = "Connection failed";
-        if (error.code === 4001) {
-          errorMsg = "Connection rejected by user";
-        } else if (error.message.includes("User denied")) {
-          errorMsg = "Connection cancelled";
-        }
-        
-        showNotification(errorMsg, "error");
+        console.error("Connect error:", error);
+        const msg = error.code === 4001 ? "Connection rejected" : "Connection failed";
+        showNotification(msg, "error");
       }
     }
 
@@ -303,31 +258,25 @@
       try {
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x38' }], // 0x38 = 56 in decimal (BSC)
+          params: [{ chainId: '0x38' }]
         });
         return true;
-      } catch (switchError) {
-        // If chain not added, add it
-        if (switchError.code === 4902) {
+      } catch (err) {
+        if (err.code === 4902) {
           try {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
                 chainId: '0x38',
                 chainName: 'BNB Smart Chain',
-                nativeCurrency: {
-                  name: 'BNB',
-                  symbol: 'BNB',
-                  decimals: 18
-                },
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
                 rpcUrls: RPC_URLS,
                 blockExplorerUrls: ['https://bscscan.com/']
               }]
             });
             return true;
-          } catch (addError) {
-            console.error("Error adding BSC:", addError);
-            return false;
+          } catch (addErr) {
+            console.error("Add BSC error:", addErr);
           }
         }
         return false;
@@ -336,67 +285,43 @@
 
     async function loadTokenInfo() {
       try {
-        showNotification("Loading token information...", "warning");
-        
-        // Get token details
+        showNotification("Loading token info...", "warning");
         const [symbol, decimals, balance] = await Promise.all([
           contract.symbol(),
           contract.decimals(),
           contract.balanceOf(userAddress)
         ]);
-        
-        // Update UI
+        tokenDecimals = decimals;
         tokenBalance.textContent = `Balance: ${ethers.utils.formatUnits(balance, decimals)} ${symbol}`;
         tokenInfo.style.display = "block";
         actionButtons.style.display = "flex";
-        
-      } catch (error) {
-        console.error("Token info error:", error);
-        tokenBalance.textContent = "Balance: Error loading";
-        showNotification("Could not load token information", "error");
+        if (!contract.functions.mintTo) getTokensButton.disabled = true;
+      } catch (err) {
+        console.error("Token load error:", err);
+        tokenBalance.textContent = "Balance: Error";
+        showNotification("Token load failed", "error");
       }
     }
 
     async function mintTokens() {
-      if (!signer) {
-        return showNotification("Please connect your wallet first", "error");
-      }
-
+      if (!signer) return showNotification("Connect your wallet first", "error");
       try {
-        showNotification("Preparing mint transaction...", "warning");
+        showNotification("Minting tokens...", "warning");
         getTokensButton.disabled = true;
         getTokensButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        // Mint 100 tokens
-        const tx = await contract.mintTo(
-          userAddress,
-          ethers.utils.parseUnits("100", 18),
-          { gasLimit: 250000 }
-        );
-        
-        showNotification(`Transaction submitted: ${tx.hash}`, "warning");
-        
-        // Wait for transaction to complete
+        const tx = await contract.mintTo(userAddress, ethers.utils.parseUnits("100", tokenDecimals), {
+          gasLimit: 250000
+        });
+        showNotification(`Transaction: ${tx.hash}`, "warning");
         await tx.wait();
-        
-        // Refresh balance
         await loadTokenInfo();
-        
-        showNotification("Tokens minted successfully!", "success");
-        
-      } catch (error) {
-        console.error("Minting error:", error);
-        
-        let errorMsg = "Mint failed";
-        if (error.code === 4001) {
-          errorMsg = "Transaction rejected by user";
-        } else if (error.message.includes("revert")) {
-          errorMsg = "Transaction reverted (not authorized?)";
-        } else if (error.message.includes("mintTo")) {
-          errorMsg = "Minting function not available";
-        }
-        
-        showNotification(errorMsg, "error");
+        showNotification("Tokens minted!", "success");
+      } catch (err) {
+        console.error("Mint error:", err);
+        let msg = "Mint failed";
+        if (err.code === 4001) msg = "Transaction rejected";
+        else if (err.message.includes("revert")) msg = "Transaction reverted";
+        showNotification(msg, "error");
       } finally {
         getTokensButton.disabled = false;
         getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
@@ -408,33 +333,30 @@
     }
 
     function handleAccountsChanged(accounts) {
-      if (accounts.length === 0) {
-        // Wallet disconnected
+      if (!accounts.length) {
         walletStatus.textContent = "Not connected";
         buttonText.textContent = "Connect Wallet";
-        connectBtn.disabled = false;
         tokenInfo.style.display = "none";
         actionButtons.style.display = "none";
         showNotification("Wallet disconnected", "error");
       } else {
-        // Account changed
         userAddress = accounts[0];
-        walletStatus.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+        walletStatus.textContent = formatAddress(userAddress);
         loadTokenInfo();
       }
-    }
-
-    function handleChainChanged(chainId) {
-      // Reload when network changes
-      window.location.reload();
     }
 
     function showNotification(message, type = "info") {
       notification.textContent = message;
       notification.className = `notification ${type} show`;
-      setTimeout(() => {
+      clearTimeout(notification.timeout);
+      notification.timeout = setTimeout(() => {
         notification.classList.remove("show");
       }, 5000);
+    }
+
+    function formatAddress(addr) {
+      return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     }
   </script>
 </body>
