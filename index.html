@@ -1721,3 +1721,32 @@ html, body {
   document.getElementById("connectWallet").addEventListener("click", connect);
   document.getElementById("refreshData").addEventListener("click", loadDashboardData);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<script>
+  const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5"; // Your contract address
+  const contractABI = [
+    "function mintTo(address to, string memory uri) public"
+  ];
+
+  async function mintNFT() {
+    try {
+      if (!window.ethereum) return alert("Please install MetaMask to continue.");
+      await ethereum.request({ method: 'eth_requestAccounts' });
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
+
+      const tx = await contract.mintTo(userAddress, tokenURI);
+      await tx.wait();
+
+      alert("🎉 NFT Minted Successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("Minting failed. Check console for details.");
+    }
+  }
+</script>
