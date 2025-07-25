@@ -91,7 +91,6 @@
 
 <body>
 <div class="container">
-
   <!-- Vault Door -->
   <section class="vault-door" id="vaultDoor">
     <div class="door-ring"></div>
@@ -101,7 +100,6 @@
 
   <!-- Vault Inner -->
   <section id="vaultInner" class="hidden">
-
     <!-- Oracle -->
     <h2 class="section-title">KLY ORACLE</h2>
     <div class="oracle-console">
@@ -123,15 +121,15 @@
     <!-- Relics -->
     <h2 class="section-title">DIGITAL RELICS</h2>
     <div class="relic-grid" id="relicGrid"></div>
-
   </section>
 </div>
 
+<!-- Ethers.js (v6) -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+
 <script>
 /* ================== CONFIG ================== */
 const KLY_TOKEN = {
-  const KLY_TOKEN = {
   address: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
   abi: [
     "function balanceOf(address owner) view returns (uint256)",
@@ -165,19 +163,25 @@ async function connectWallet() {
     return;
   }
 
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner();
-  const address = await signer.getAddress();
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
 
-  const contract = new ethers.Contract(KLY_TOKEN.address, KLY_TOKEN.abi, provider);
-  const rawBalance = await contract.balanceOf(address);
-  const balance = Number(ethers.formatUnits(rawBalance, KLY_TOKEN.decimals));
+    const contract = new ethers.Contract(KLY_TOKEN.address, KLY_TOKEN.abi, provider);
+    const rawBalance = await contract.balanceOf(address);
+    const balance = Number(ethers.formatUnits(rawBalance, KLY_TOKEN.decimals));
 
-  currentTier = getTier(balance);
-  openVault();
-  mountTracks();
-  mountRelics();
+    currentTier = getTier(balance);
+    document.getElementById("tierHint").innerText = `Access Level: Tier ${currentTier}`;
+    openVault();
+    mountTracks();
+    mountRelics();
+  } catch (err) {
+    console.error("Wallet connection failed:", err);
+    alert("Failed to connect wallet.");
+  }
 }
 
 function getTier(balance) {
@@ -190,7 +194,6 @@ function getTier(balance) {
 function openVault() {
   document.getElementById("vaultDoor").classList.add("hidden");
   document.getElementById("vaultInner").classList.remove("hidden");
-  document.getElementById("tierHint").innerText = `Tier ${currentTier}`;
 }
 
 /* ================== FREQUENCY ================== */
@@ -205,8 +208,9 @@ function mountTracks() {
       btn.classList.add("locked");
     } else {
       btn.addEventListener("click", () => {
-        document.getElementById("freqAudio").src = track.src;
-        document.getElementById("freqAudio").play();
+        const player = document.getElementById("freqAudio");
+        player.src = track.src;
+        player.play();
       });
     }
     container.appendChild(btn);
@@ -234,18 +238,19 @@ function mountRelics() {
 
 /* ================== ORACLE ================== */
 async function askOracle() {
-  const q = document.getElementById("oracleQuestion").value.trim();
+  const input = document.getElementById("oracleQuestion");
+  const q = input.value.trim();
   if (!q) return;
   appendOracle("user", q);
-  document.getElementById("oracleQuestion").value = "";
+  input.value = "";
 
   try {
-    const response = await fetch("/api/oracle", {
+    const res = await fetch("/api/oracle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: q, tier: currentTier })
     });
-    const data = await response.json();
+    const data = await res.json();
     appendOracle("oracle", data.answer || "Oracle is silent.");
   } catch (e) {
     appendOracle("oracle", "Error contacting Oracle.");
@@ -262,9 +267,13 @@ function appendOracle(role, text) {
 }
 
 /* ================== EVENTS ================== */
-document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
-document.getElementById("askOracleBtn").addEventListener("click", askOracle);
-document.getElementById("oracleQuestion").addEventListener("keydown", e => { if (e.key === "Enter") askOracle(); });
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+  document.getElementById("askOracleBtn").addEventListener("click", askOracle);
+  document.getElementById("oracleQuestion").addEventListener("keydown", e => {
+    if (e.key === "Enter") askOracle();
+  });
+});
 </script>
 </body>
 </html>
