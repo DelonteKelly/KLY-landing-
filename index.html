@@ -1603,150 +1603,137 @@ html, body {
   </script>
 
 
-<!-- Load Web3.js -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-
-</body>
-</html>
-
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 <script>
   const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 
-  const ABI = [
-    { "inputs": [{ "internalType": "uint256", "name": "_amount", "type": "uint256" }], "name": "stake", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+  const STAKE_ABI = [
+    "function stake(uint256 _amount) public",
+    "function claim() public",
+    "function withdraw() public"
   ];
 
   const TOKEN_ABI = [
-    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" },
-    { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+    "function balanceOf(address account) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function approve(address spender, uint256 amount) returns (bool)"
   ];
 
-  let web3, wallet, contract, token;
+  const NFT_ABI = [
+    "function mintTo(address to, string memory uri) public"
+  ];
 
-  async function connect() {
+  let provider, signer, userAddress, klyToken, stakeContract, nftContract;
+
+  async function connectWallet() {
     if (!window.ethereum) return alert("Please install MetaMask.");
     try {
-      web3 = new Web3(window.ethereum);
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      wallet = accounts[0];
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
 
-      document.getElementById("walletAddress").textContent = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      document.getElementById("walletAddress").textContent =
+        userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
       document.getElementById("walletAddress").style.display = "inline-block";
       document.getElementById("dashboardStats").style.display = "block";
-      document.getElementById("refreshData").style.display = "inline-block";
 
-      contract = new web3.eth.Contract(ABI, STAKE_CONTRACT);
-      token = new web3.eth.Contract(TOKEN_ABI, KLY_TOKEN);
+      klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
+      stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
+      nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
 
       loadDashboardData();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect wallet.");
+    } catch (e) {
+      console.error(e);
+      alert("Wallet connection failed.");
     }
   }
 
   async function loadDashboardData() {
     try {
-      const balanceRaw = await token.methods.balanceOf(wallet).call();
-      const decimals = await token.methods.decimals().call();
-      const balance = parseFloat(balanceRaw / (10 ** decimals)).toFixed(2);
-      document.getElementById("userBalance").textContent = balance;
+      const rawBalance = await klyToken.balanceOf(userAddress);
+      const decimals = await klyToken.decimals();
+      const balance = ethers.utils.formatUnits(rawBalance, decimals);
+      document.getElementById("userBalance").textContent = parseFloat(balance).toFixed(2);
 
-      // Placeholder: add logic to fetch staked and rewards if available
+      // Optional: Implement real staked/reward data if available in contract
       document.getElementById("userStaked").textContent = "--";
       document.getElementById("userRewards").textContent = "--";
       document.getElementById("votingPower").textContent = "--";
-    } catch (err) {
-      console.error("Error loading dashboard data", err);
+    } catch (e) {
+      console.error("Error loading data:", e);
     }
   }
 
   async function stakeKLY() {
     const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
     const amount = document.getElementById("stakeAmount").value;
-    if (!amount || parseFloat(amount) <= 0) {
-      return alert("Enter a valid amount to stake.");
-    }
+    if (!amount || parseFloat(amount) <= 0) return alert("Enter a valid amount.");
 
     try {
-      const amountWei = web3.utils.toWei(amount, "ether");
+      const amountWei = ethers.utils.parseEther(amount);
       status.textContent = "Approving KLY...";
-      await token.methods.approve(STAKE_CONTRACT, amountWei).send({ from: wallet });
+      const tx1 = await klyToken.approve(STAKE_CONTRACT, amountWei);
+      await tx1.wait();
 
       status.textContent = "Staking KLY...";
-      await contract.methods.stake(amountWei).send({ from: wallet });
+      const tx2 = await stakeContract.stake(amountWei);
+      await tx2.wait();
 
       status.textContent = "✅ Staked successfully!";
-    } catch (err) {
-      console.error(err);
+      loadDashboardData();
+    } catch (e) {
+      console.error(e);
       status.textContent = "❌ Transaction failed.";
     }
   }
 
   async function claimRewards() {
     const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
     try {
       status.textContent = "Claiming rewards...";
-      await contract.methods.claim().send({ from: wallet });
+      const tx = await stakeContract.claim();
+      await tx.wait();
       status.textContent = "✅ Rewards claimed!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to claim rewards.";
+    } catch (e) {
+      console.error(e);
+      status.textContent = "❌ Claim failed.";
     }
   }
 
   async function withdrawStake() {
     const status = document.getElementById("status");
-    if (!wallet) return alert("Please connect your wallet first.");
-
     try {
       status.textContent = "Withdrawing stake...";
-      await contract.methods.withdraw().send({ from: wallet });
-      status.textContent = "✅ Stake withdrawn!";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Failed to withdraw stake.";
+      const tx = await stakeContract.withdraw();
+      await tx.wait();
+      status.textContent = "✅ Withdraw successful!";
+    } catch (e) {
+      console.error(e);
+      status.textContent = "❌ Withdraw failed.";
     }
   }
-
-  document.getElementById("connectWallet").addEventListener("click", connect);
-  document.getElementById("refreshData").addEventListener("click", loadDashboardData);
-</script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-<script>
-  const contractAddress = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5"; // Your contract address
-  const contractABI = [
-    "function mintTo(address to, string memory uri) public"
-  ];
 
   async function mintNFT() {
     try {
-      if (!window.ethereum) return alert("Please install MetaMask to continue.");
-      await ethereum.request({ method: 'eth_requestAccounts' });
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const userAddress = await signer.getAddress();
-
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
-
-      const tx = await contract.mintTo(userAddress, tokenURI);
+      const tx = await nftContract.mintTo(userAddress, tokenURI);
       await tx.wait();
-
       alert("🎉 NFT Minted Successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Minting failed. Check console for details.");
+    } catch (e) {
+      console.error(e);
+      alert("❌ Minting failed.");
     }
   }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("refreshData").addEventListener("click", loadDashboardData);
+    document.getElementById("stakeButton").addEventListener("click", stakeKLY);
+    document.getElementById("claimButton").addEventListener("click", claimRewards);
+    document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
+    document.getElementById("mintButton").addEventListener("click", mintNFT);
+  });
 </script>
