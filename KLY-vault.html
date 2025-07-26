@@ -1,303 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
-  <title>THE VAULT | Wallet Access</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE VAULT | KLY</title>
   <style>
-    :root {{
+    :root {
       --gold-primary: #FFD700;
-      --gold-secondary: #D4AF37;
       --gold-dark: #996515;
-      --vault-bg: #121212;
-      --error-red: #ff4444;
-    }}
-    
-    body {{
+      --bg-dark: #0c0c0c;
+    }
+
+    body {
       margin: 0;
-      padding: 0;
-      background-color: var(--vault-bg);
+      background-color: var(--bg-dark);
+      font-family: 'Segoe UI', sans-serif;
       color: white;
-      font-family: 'Arial', sans-serif;
-      overflow-x: hidden;
-    }}
-    
-    .vault-door-container {{
+      overflow: hidden;
+    }
+
+    .vault-door-container {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100%; height: 100vh;
+      background: radial-gradient(circle at center, #000 20%, #111 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      flex-direction: column;
+      transition: transform 2s ease-in-out;
+    }
+
+    .vault-unlocked .vault-door-container {
+      transform: translateY(-100%);
+    }
+
+    .vault-door {
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle at center, var(--gold-dark), black);
+      border: 5px solid var(--gold-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 20px var(--gold-primary), inset 0 0 20px var(--gold-primary);
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      background: radial-gradient(circle at center, #000000 0%, #121212 100%);
-      z-index: 1000;
-      transition: transform 2.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    }}
-    
-    .vault-door {{
-      width: min(80vmin, 500px);
-      height: min(80vmin, 500px);
-      background: 
-        radial-gradient(circle at center, var(--gold-dark) 0%, #000000 70%),
-        repeating-radial-gradient(
-          circle at center,
-          var(--gold-primary),
-          var(--gold-primary) 1px,
-          transparent 1px,
-          transparent 5px
-        );
-      border: 1.5vmin solid var(--gold-primary);
-      border-radius: 50%;
-      display: flex;
       justify-content: center;
-      align-items: center;
-      box-shadow: 
-        0 0 10vmin var(--gold-primary),
-        inset 0 0 5vmin var(--gold-primary);
-      position: relative;
-      animation: pulse 4s infinite alternate;
-    }}
-    
-    @keyframes pulse {{
-      0% {{ box-shadow: 0 0 10vmin var(--gold-primary), inset 0 0 5vmin var(--gold-primary); }}
-      100% {{ box-shadow: 0 0 15vmin var(--gold-primary), inset 0 0 7vmin var(--gold-primary); }}
-    }}
-    
-    .vault-content {{
-      display: none;
-      padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      opacity: 0;
-    }}
-    
-    .gold-text {{
-      color: var(--gold-primary);
-      text-shadow: 0 0 0.5rem var(--gold-primary);
+      animation: pulse 2s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    #connectWallet {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 1rem;
       font-weight: bold;
-    }}
-    
-    .vault-unlocked .vault-door-container {{
-      transform: translateY(-100%);
-    }}
-    
-    .vault-unlocked .vault-content {{
-      display: block;
-      animation: fadeIn 1.5s forwards 0.5s;
-    }}
-    
-    @keyframes fadeIn {{
-      from {{ opacity: 0; transform: translateY(20px); }}
-      to {{ opacity: 1; transform: translateY(0); }}
-    }}
-    
-    .gold-button {{
-      background: linear-gradient(135deg, var(--gold-dark), var(--gold-secondary));
-      border: none;
       color: black;
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
-      font-weight: bold;
+      background: linear-gradient(45deg, var(--gold-dark), var(--gold-primary));
+      border: none;
       border-radius: 50px;
       cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 0 1rem var(--gold-primary);
-      position: relative;
-      overflow: hidden;
-    }}
-    
-    .gold-button:hover {{
-      box-shadow: 0 0 2rem var(--gold-primary);
-      transform: translateY(-3px) scale(1.05);
-    }}
-    
-    .gold-button:active {{
-      transform: translateY(1px);
-    }}
-    
-    .gold-button::after {{
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(
-        to bottom right,
-        rgba(255, 255, 255, 0.3),
-        rgba(255, 255, 255, 0)
-      );
-      transform: rotate(30deg);
-      transition: all 0.3s;
-    }}
-    
-    .gold-button:hover::after {{
-      left: 100%;
-    }}
-    
-    .connection-status {{
-      margin-top: 2rem;
-      text-align: center;
-      min-height: 1.5rem;
-    }}
-    
-    .error-message {{
-      color: var(--error-red);
-      margin-top: 1rem;
-      text-align: center;
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    #connectWallet:hover {
+      box-shadow: 0 0 20px var(--gold-primary);
+    }
+
+    .countdown {
+      font-size: 3rem;
+      color: var(--gold-primary);
+      margin-top: 1.5rem;
       display: none;
-    }}
-    
-    footer {{
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      text-align: center;
-      padding: 1rem;
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }}
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {{
-      .vault-door {{
-        width: 90vmin;
-        height: 90vmin;
-      }}
-    }}
+    }
+
+    .vault-content {
+      display: none;
+      padding: 2rem;
+      max-width: 960px;
+      margin: 80px auto;
+    }
+
+    .vault-unlocked .vault-content {
+      display: block;
+      animation: fadeIn 1.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .gold {
+      color: var(--gold-primary);
+    }
   </style>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
 </head>
 <body>
-  <!-- Vault Door Entrance -->
-  <div class="vault-door-container">
-    <div class="vault-door" id="vaultDoor">
-      <button class="gold-button" id="connectWallet">
-        <span class="button-text">CONNECT WALLET</span>
-      </button>
+  <!-- VAULT DOOR -->
+  <div class="vault-door-container" id="doorContainer">
+    <div class="vault-door">
+      <div style="text-align:center;">🔒</div>
+      <button id="connectWallet">CONNECT WALLET</button>
     </div>
-    <div class="connection-status" id="connectionStatus">
-      Wallet not connected
-    </div>
-    <div class="error-message" id="errorMessage"></div>
+    <div class="countdown" id="countdown">3</div>
   </div>
 
-  <!-- Vault Content (Hidden until unlocked) -->
+  <!-- VAULT CONTENT -->
   <div class="vault-content">
-    <header>
-      <h1 class="gold-text">THE VAULT</h1>
-      <p>Exclusive Access Granted</p>
-      <div style="margin: 1rem 0;">
-        <p>Connected Wallet: <span id="walletAddress" class="gold-text">Not connected</span></p>
-        <p>Network: <span id="networkInfo" class="gold-text">--</span></p>
-      </div>
-    </header>
-    
-    <section>
-      <h2 class="gold-text">Your Private Vault</h2>
-      <div style="border: 1px solid var(--gold-primary); padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
-        <h3 style="margin-top: 0;">Welcome to your secure space</h3>
-        <p>This content is exclusively available to connected wallet holders.</p>
-      </div>
-    </section>
+    <h1 class="gold">THE VAULT IS OPEN</h1>
+    <p>Connected Wallet: <span id="walletAddress">-</span></p>
+    <p>Network: <span id="networkName">-</span></p>
+    <hr>
+    <h2>🪙 Staking & Rewards Dashboard</h2>
+    <p>Insert your full vault dashboard here.</p>
   </div>
 
-  <footer>
-    &copy; {current_year} THE VAULT. All rights reserved.
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js" 
-          integrity="sha384-mBU3Qqa2bG31jsz+DE3z6s7C7S2k5/LWk0jVdR5N1dQLF1R6X3K8U8jAKKy6mQ3"
-          crossorigin="anonymous"></script>
-          
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {{
-      const connectBtn = document.getElementById('connectWallet');
-      const vaultDoor = document.getElementById('vaultDoor');
-      const walletAddress = document.getElementById('walletAddress');
-      const networkInfo = document.getElementById('networkInfo');
-      const connectionStatus = document.getElementById('connectionStatus');
-      const errorMessage = document.getElementById('errorMessage');
-      
-      // Check if Ethereum provider exists
-      if (!window.ethereum) {{
-        showError("Ethereum wallet not detected. Please install MetaMask or another Web3 wallet.");
-        connectBtn.disabled = true;
-        connectBtn.textContent = "WALLET REQUIRED";
+    const connectBtn = document.getElementById('connectWallet');
+    const countdownEl = document.getElementById('countdown');
+    const walletAddressEl = document.getElementById('walletAddress');
+    const networkNameEl = document.getElementById('networkName');
+
+    connectBtn.addEventListener('click', async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask.");
         return;
-      }}
-      
-      // Handle wallet connection
-      connectBtn.addEventListener('click', async () => {{
-        try {{
-          connectBtn.disabled = true;
-          connectBtn.innerHTML = '<span class="button-text">CONNECTING...</span>';
-          connectionStatus.textContent = "Initializing connection...";
-          
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          
-          // Get network info first
-          const network = await provider.getNetwork();
-          networkInfo.textContent = `${{network.name}} (Chain ID: ${{network.chainId}})`; 
-          
-          // Request account access
-          await provider.send("eth_requestAccounts", []);
-          const signer = await provider.getSigner();
-          const address = await signer.getAddress();
-          
-          // Update UI
-          walletAddress.textContent = `${{address.slice(0, 6)}}...${{address.slice(-4)}}`;
-          connectionStatus.textContent = "Connected successfully";
-          connectionStatus.style.color = "var(--gold-primary)";
-          
-          // Animate vault opening
-          document.body.classList.add('vault-unlocked');
-          vaultDoor.innerHTML = `
-            <div style="color: var(--gold-primary); font-size: 2rem; text-align: center;">
-              ACCESS GRANTED<br>
-              <span style="font-size: 1rem;">Welcome, ${{address.slice(0, 6)}}...${{address.slice(-4)}}</span>
-            </div>
-          `;
-          
-          // Listen for account changes
-          window.ethereum.on('accountsChanged', (accounts) => {{
-            if (accounts.length === 0) {{
-              // Wallet disconnected
-              location.reload();
-            }} else {{
-              walletAddress.textContent = `${{accounts[0].slice(0, 6)}}...${{accounts[0].slice(-4)}}`;
-            }}
-          }});
-          
-          // Listen for chain changes
-          window.ethereum.on('chainChanged', () => {{
-            location.reload();
-          }});
-          
-        }} catch (error) {{
-          console.error("Connection error:", error);
-          showError(error.message.includes("user rejected") 
-            ? "Connection rejected by user" 
-            : "Failed to connect wallet");
-          connectBtn.disabled = false;
-          connectBtn.innerHTML = '<span class="button-text">CONNECT WALLET</span>';
-          connectionStatus.textContent = "Connection failed";
-          connectionStatus.style.color = "var(--error-red)";
-        }}
-      }});
-      
-      function showError(message) {{
-        errorMessage.textContent = message;
-        errorMessage.style.display = "block";
-        setTimeout(() => {{
-          errorMessage.style.display = "none";
-        }}, 5000);
-      }}
-    }});
+      }
+
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+        networkNameEl.textContent = network.name + ' (ID: ' + network.chainId + ')';
+
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        walletAddressEl.textContent = address.slice(0, 6) + "..." + address.slice(-4);
+
+        // Countdown start
+        let count = 3;
+        countdownEl.style.display = 'block';
+        countdownEl.textContent = count;
+
+        const interval = setInterval(() => {
+          count--;
+          if (count > 0) {
+            countdownEl.textContent = count;
+          } else {
+            clearInterval(interval);
+            document.body.classList.add('vault-unlocked');
+          }
+        }, 1000);
+
+      } catch (err) {
+        alert("Wallet connection failed.");
+        console.error(err);
+      }
+    });
   </script>
 </body>
 </html>
