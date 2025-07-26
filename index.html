@@ -1873,143 +1873,155 @@ html, body {
 
   <!-- Web3 Integration -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-  <script>
-    const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
-    const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+<script>
+  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-    const STAKE_ABI = [
-      "function stake(uint256 _amount) public",
-      "function claim() public",
-      "function withdraw() public"
-    ];
+  const STAKE_ABI = [
+    "function stake(uint256 _amount) public",
+    "function claim() public",
+    "function withdraw() public"
+  ];
 
-    const TOKEN_ABI = [
-      "function balanceOf(address account) view returns (uint256)",
-      "function decimals() view returns (uint8)",
-      "function approve(address spender, uint256 amount) returns (bool)"
-    ];
+  const TOKEN_ABI = [
+    "function balanceOf(address account) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function approve(address spender, uint256 amount) returns (bool)"
+  ];
 
-    const NFT_ABI = [
-      "function mintTo(address to, string memory uri) public"
-    ];
+  const NFT_ABI = [
+    "function mintTo(address to, string memory uri) public"
+  ];
 
-    let provider, signer, userAddress, klyToken, stakeContract, nftContract;
+  let provider, signer, userAddress, klyToken, stakeContract, nftContract;
 
-    async function connectWallet() {
-      if (!window.ethereum) return alert("Please install MetaMask.");
-      try {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
+  async function connectWallet() {
+    if (!window.ethereum) return alert("Please install MetaMask.");
+    try {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
 
-        document.getElementById("walletAddress").textContent =
-          userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-        document.getElementById("walletAddress").style.display = "inline-block";
-        document.getElementById("dashboardStats").style.display = "block";
-
-        klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
-        stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
-        nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
-
-        loadDashboardData();
-      } catch (e) {
-        console.error(e);
-        alert("Wallet connection failed.");
+      // Optional wallet display logic (safe check)
+      const walletBox = document.getElementById("walletAddress");
+      if (walletBox) {
+        walletBox.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        walletBox.style.display = "inline-block";
       }
+
+      const statsBox = document.getElementById("dashboardStats");
+      if (statsBox) statsBox.style.display = "block";
+
+      klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
+      stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
+      nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
+
+      loadDashboardData();
+    } catch (e) {
+      console.error(e);
+      alert("Wallet connection failed.");
     }
+  }
 
-    async function loadDashboardData() {
-      try {
-        const rawBalance = await klyToken.balanceOf(userAddress);
-        const decimals = await klyToken.decimals();
-        const balance = ethers.utils.formatUnits(rawBalance, decimals);
-        document.getElementById("userBalance").textContent = parseFloat(balance).toFixed(2);
+  async function loadDashboardData() {
+    try {
+      const rawBalance = await klyToken.balanceOf(userAddress);
+      const decimals = await klyToken.decimals();
+      const balance = ethers.utils.formatUnits(rawBalance, decimals);
+      const balBox = document.getElementById("userBalance");
+      if (balBox) balBox.textContent = parseFloat(balance).toFixed(2);
 
-        document.getElementById("userStaked").textContent = "--";
-        document.getElementById("userRewards").textContent = "--";
-        document.getElementById("votingPower").textContent = "--";
-      } catch (e) {
-        console.error("Error loading data:", e);
+      // Optional dashboard placeholders
+      if (document.getElementById("userStaked")) document.getElementById("userStaked").textContent = "--";
+      if (document.getElementById("userRewards")) document.getElementById("userRewards").textContent = "--";
+      if (document.getElementById("votingPower")) document.getElementById("votingPower").textContent = "--";
+    } catch (e) {
+      console.error("Error loading data:", e);
+    }
+  }
+
+  async function stakeKLY() {
+    const status = document.getElementById("status");
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || parseFloat(amount) <= 0) return alert("Enter a valid amount.");
+    try {
+      const amountWei = ethers.utils.parseEther(amount);
+      status.textContent = "Approving KLY...";
+      const tx1 = await klyToken.approve(STAKE_CONTRACT, amountWei);
+      await tx1.wait();
+
+      status.textContent = "Staking KLY...";
+      const tx2 = await stakeContract.stake(amountWei);
+      await tx2.wait();
+
+      status.textContent = "✅ Staked successfully!";
+      loadDashboardData();
+    } catch (e) {
+      console.error(e);
+      status.textContent = "❌ Transaction failed.";
+    }
+  }
+
+  async function claimRewards() {
+    const status = document.getElementById("status");
+    try {
+      status.textContent = "Claiming rewards...";
+      const tx = await stakeContract.claim();
+      await tx.wait();
+      status.textContent = "✅ Rewards claimed!";
+    } catch (e) {
+      console.error(e);
+      status.textContent = "❌ Claim failed.";
+    }
+  }
+
+  async function withdrawStake() {
+    const status = document.getElementById("status");
+    try {
+      status.textContent = "Withdrawing stake...";
+      const tx = await stakeContract.withdraw();
+      await tx.wait();
+      status.textContent = "✅ Withdraw successful!";
+    } catch (e) {
+      console.error(e);
+      status.textContent = "❌ Withdraw failed.";
+    }
+  }
+
+  async function mintNFT() {
+    try {
+      if (!userAddress) {
+        await connectWallet();
+        if (!userAddress) return;
       }
+
+      document.getElementById("mintStatus").textContent = "Minting your KLY Key...";
+      const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
+      const tx = await nftContract.mintTo(userAddress, tokenURI);
+      await tx.wait();
+      document.getElementById("mintStatus").textContent = "🎉 NFT Minted Successfully!";
+    } catch (e) {
+      console.error(e);
+      document.getElementById("mintStatus").textContent = "❌ Minting failed. See console for details.";
     }
+  }
 
-    async function stakeKLY() {
-      const status = document.getElementById("status");
-      const amount = document.getElementById("stakeAmount").value;
-      if (!amount || parseFloat(amount) <= 0) return alert("Enter a valid amount.");
+  window.addEventListener("DOMContentLoaded", () => {
+    // No need to attach connectWallet to a removed button
+    const refresh = document.getElementById("refreshData");
+    if (refresh) refresh.addEventListener("click", loadDashboardData);
 
-      try {
-        const amountWei = ethers.utils.parseEther(amount);
-        status.textContent = "Approving KLY...";
-        const tx1 = await klyToken.approve(STAKE_CONTRACT, amountWei);
-        await tx1.wait();
+    const stakeBtn = document.getElementById("stakeButton");
+    if (stakeBtn) stakeBtn.addEventListener("click", stakeKLY);
 
-        status.textContent = "Staking KLY...";
-        const tx2 = await stakeContract.stake(amountWei);
-        await tx2.wait();
+    const claimBtn = document.getElementById("claimButton");
+    if (claimBtn) claimBtn.addEventListener("click", claimRewards);
 
-        status.textContent = "✅ Staked successfully!";
-        loadDashboardData();
-      } catch (e) {
-        console.error(e);
-        status.textContent = "❌ Transaction failed.";
-      }
-    }
-
-    async function claimRewards() {
-      const status = document.getElementById("status");
-      try {
-        status.textContent = "Claiming rewards...";
-        const tx = await stakeContract.claim();
-        await tx.wait();
-        status.textContent = "✅ Rewards claimed!";
-      } catch (e) {
-        console.error(e);
-        status.textContent = "❌ Claim failed.";
-      }
-    }
-
-    async function withdrawStake() {
-      const status = document.getElementById("status");
-      try {
-        status.textContent = "Withdrawing stake...";
-        const tx = await stakeContract.withdraw();
-        await tx.wait();
-        status.textContent = "✅ Withdraw successful!";
-      } catch (e) {
-        console.error(e);
-        status.textContent = "❌ Withdraw failed.";
-      }
-    }
-
-    async function mintNFT() {
-      try {
-        if (!userAddress) {
-          await connectWallet();
-          if (!userAddress) return;
-        }
-
-        document.getElementById("mintStatus").textContent = "Minting your KLY Key...";
-        const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
-        const tx = await nftContract.mintTo(userAddress, tokenURI);
-        await tx.wait();
-        document.getElementById("mintStatus").textContent = "🎉 NFT Minted Successfully!";
-      } catch (e) {
-        console.error(e);
-        document.getElementById("mintStatus").textContent = "❌ Minting failed. See console for details.";
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("connectWallet").addEventListener("click", connectWallet);
-      document.getElementById("connectWallet").addEventListener("click", connectWallet);
-      document.getElementById("refreshData").addEventListener("click", loadDashboardData);
-      document.getElementById("stakeButton").addEventListener("click", stakeKLY);
-      document.getElementById("claimButton").addEventListener("click", claimRewards);
-      document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
-    });
-  </script>
+    const withdrawBtn = document.getElementById("withdrawButton");
+    if (withdrawBtn) withdrawBtn.addEventListener("click", withdrawStake);
+  });
+</script>
 </body>
 </html>
