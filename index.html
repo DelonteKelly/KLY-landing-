@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1904,15 +1903,14 @@ html, body {
       signer = provider.getSigner();
       userAddress = await signer.getAddress();
 
-      // Optional wallet display logic (safe check)
-      const walletBox = document.getElementById("walletAddress");
-      if (walletBox) {
-        walletBox.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-        walletBox.style.display = "inline-block";
+      const addrEl = document.getElementById("walletAddress");
+      if (addrEl) {
+        addrEl.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        addrEl.style.display = "inline-block";
       }
 
-      const statsBox = document.getElementById("dashboardStats");
-      if (statsBox) statsBox.style.display = "block";
+      const statsEl = document.getElementById("dashboardStats");
+      if (statsEl) statsEl.style.display = "block";
 
       klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
       stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
@@ -1930,15 +1928,14 @@ html, body {
       const rawBalance = await klyToken.balanceOf(userAddress);
       const decimals = await klyToken.decimals();
       const balance = ethers.utils.formatUnits(rawBalance, decimals);
-      const balBox = document.getElementById("userBalance");
-      if (balBox) balBox.textContent = parseFloat(balance).toFixed(2);
+      const balEl = document.getElementById("userBalance");
+      if (balEl) balEl.textContent = parseFloat(balance).toFixed(2);
 
-      // Optional dashboard placeholders
       if (document.getElementById("userStaked")) document.getElementById("userStaked").textContent = "--";
       if (document.getElementById("userRewards")) document.getElementById("userRewards").textContent = "--";
       if (document.getElementById("votingPower")) document.getElementById("votingPower").textContent = "--";
     } catch (e) {
-      console.error("Error loading data:", e);
+      console.error("Error loading dashboard:", e);
     }
   }
 
@@ -1997,19 +1994,22 @@ html, body {
         if (!userAddress) return;
       }
 
-      document.getElementById("mintStatus").textContent = "Minting your KLY Key...";
+      const status = document.getElementById("mintStatus");
+      status.textContent = "Minting your KLY Key...";
       const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
       const tx = await nftContract.mintTo(userAddress, tokenURI);
       await tx.wait();
-      document.getElementById("mintStatus").textContent = "🎉 NFT Minted Successfully!";
+      status.textContent = "🎉 NFT Minted Successfully!";
     } catch (e) {
       console.error(e);
-      document.getElementById("mintStatus").textContent = "❌ Minting failed. See console for details.";
+      document.getElementById("mintStatus").textContent = "❌ Minting failed.";
     }
   }
 
   window.addEventListener("DOMContentLoaded", () => {
-    // No need to attach connectWallet to a removed button
+    const beginAscension = document.getElementById("beginAscension");
+    if (beginAscension) beginAscension.addEventListener("click", connectWallet);
+
     const refresh = document.getElementById("refreshData");
     if (refresh) refresh.addEventListener("click", loadDashboardData);
 
