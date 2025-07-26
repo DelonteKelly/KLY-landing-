@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>THE VAULT | KLY</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     :root {
       --gold-primary: #FFD700;
@@ -14,9 +16,9 @@
     body {
       margin: 0;
       background-color: var(--bg-dark);
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', sans-serif;
       color: white;
-      overflow: hidden;
+      overflow-x: hidden;
     }
 
     .vault-door-container {
@@ -96,74 +98,196 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .gold {
-      color: var(--gold-primary);
+    .gold { color: var(--gold-primary); }
+    .staking-section { margin-top: 3rem; display: grid; gap: 2rem; grid-template-columns: 1fr 1fr; }
+    .card {
+      background: #111;
+      border: 1px solid var(--gold-primary);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 1rem;
+      border: 1px solid var(--gold-primary);
+      background: #000;
+      color: white;
+      font-size: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(45deg, var(--gold-primary), var(--gold-dark));
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+
+    #status {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    @media(max-width: 768px) {
+      .staking-section {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- VAULT DOOR -->
-  <div class="vault-door-container" id="doorContainer">
-    <div class="vault-door">
-      <div style="text-align:center;">🔒</div>
-      <button id="connectWallet">CONNECT WALLET</button>
+
+<!-- VAULT DOOR -->
+<div class="vault-door-container" id="doorContainer">
+  <div class="vault-door">
+    <div style="text-align:center;">🔒</div>
+    <button id="connectWallet">CONNECT WALLET</button>
+  </div>
+  <div class="countdown" id="countdown">3</div>
+</div>
+
+<!-- VAULT CONTENT -->
+<div class="vault-content">
+  <h1 class="gold">THE VAULT IS OPEN</h1>
+  <p>Connected Wallet: <span id="walletAddress">-</span></p>
+  <p>Network: <span id="networkName">-</span></p>
+  <hr>
+
+  <div class="staking-section">
+    <div class="card">
+      <h2>🔐 Stake KLY</h2>
+      <input type="number" id="stakeAmount" placeholder="Amount to Stake"/>
+      <button class="btn" id="stakeButton">Stake</button>
+      <button class="btn" id="withdrawButton">Withdraw</button>
+      <button class="btn" id="claimButton">Claim Rewards</button>
+      <div id="status"></div>
     </div>
-    <div class="countdown" id="countdown">3</div>
+    <div class="card">
+      <h2>📊 Dashboard</h2>
+      <p><strong>KLY Balance:</strong> <span id="userKLY">-</span></p>
+      <p><strong>Staked:</strong> <span id="userStaked">-</span></p>
+      <p><strong>Rewards:</strong> <span id="userRewards">-</span></p>
+    </div>
   </div>
+</div>
 
-  <!-- VAULT CONTENT -->
-  <div class="vault-content">
-    <h1 class="gold">THE VAULT IS OPEN</h1>
-    <p>Connected Wallet: <span id="walletAddress">-</span></p>
-    <p>Network: <span id="networkName">-</span></p>
-    <hr>
-    <h2>🪙 Staking & Rewards Dashboard</h2>
-    <p>Insert your full vault dashboard here.</p>
-  </div>
+<script>
+  const TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKING_ADDRESS = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
-  <script>
-    const connectBtn = document.getElementById('connectWallet');
-    const countdownEl = document.getElementById('countdown');
-    const walletAddressEl = document.getElementById('walletAddress');
-    const networkNameEl = document.getElementById('networkName');
+  const ERC20_ABI = [
+    "function approve(address spender, uint256 amount) public returns (bool)",
+    "function allowance(address owner, address spender) public view returns (uint256)",
+    "function balanceOf(address owner) public view returns (uint256)",
+    "function decimals() public view returns (uint8)"
+  ];
 
-    connectBtn.addEventListener('click', async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask.");
-        return;
-      }
+  const STAKING_ABI = [
+    "function stake(uint256 _amount) payable",
+    "function claim()",
+    "function withdraw()",
+    "function getStake(address) view returns (uint256)",
+    "function getRewards(address) view returns (uint256)"
+  ];
 
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const network = await provider.getNetwork();
-        networkNameEl.textContent = network.name + ' (ID: ' + network.chainId + ')';
+  let provider, signer, userAddress, tokenContract, stakingContract;
 
-        await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
-        const address = await signer.getAddress();
-        walletAddressEl.textContent = address.slice(0, 6) + "..." + address.slice(-4);
+  async function connectWallet() {
+    if (!window.ethereum) return alert("Please install MetaMask!");
 
-        // Countdown start
-        let count = 3;
-        countdownEl.style.display = 'block';
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
+    stakingContract = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, signer);
+
+    document.getElementById("walletAddress").textContent = `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+
+    const network = await provider.getNetwork();
+    document.getElementById("networkName").textContent = network.name + " (ID: " + network.chainId + ")";
+
+    // Countdown
+    let count = 3;
+    const countdownEl = document.getElementById("countdown");
+    countdownEl.style.display = 'block';
+    countdownEl.textContent = count;
+
+    const interval = setInterval(() => {
+      count--;
+      if (count > 0) {
         countdownEl.textContent = count;
-
-        const interval = setInterval(() => {
-          count--;
-          if (count > 0) {
-            countdownEl.textContent = count;
-          } else {
-            clearInterval(interval);
-            document.body.classList.add('vault-unlocked');
-          }
-        }, 1000);
-
-      } catch (err) {
-        alert("Wallet connection failed.");
-        console.error(err);
+      } else {
+        clearInterval(interval);
+        document.body.classList.add('vault-unlocked');
+        loadUserData();
       }
-    });
-  </script>
+    }, 1000);
+  }
+
+  async function loadUserData() {
+    const balance = await tokenContract.balanceOf(userAddress);
+    const staked = await stakingContract.getStake(userAddress);
+    const rewards = await stakingContract.getRewards(userAddress);
+    const decimals = await tokenContract.decimals();
+
+    document.getElementById("userKLY").textContent = ethers.utils.formatUnits(balance, decimals);
+    document.getElementById("userStaked").textContent = ethers.utils.formatUnits(staked, decimals);
+    document.getElementById("userRewards").textContent = ethers.utils.formatUnits(rewards, decimals);
+  }
+
+  async function stakeTokens() {
+    const amount = document.getElementById("stakeAmount").value;
+    const status = document.getElementById("status");
+
+    if (!amount || amount <= 0) return alert("Enter valid amount");
+
+    status.textContent = "Approving...";
+    const decimals = await tokenContract.decimals();
+    const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+    const allowance = await tokenContract.allowance(userAddress, STAKING_ADDRESS);
+    if (allowance.lt(parsedAmount)) {
+      const approveTx = await tokenContract.approve(STAKING_ADDRESS, parsedAmount);
+      await approveTx.wait();
+    }
+
+    status.textContent = "Staking...";
+    const tx = await stakingContract.stake(parsedAmount);
+    await tx.wait();
+
+    status.textContent = "✅ Staked successfully!";
+    loadUserData();
+  }
+
+  async function withdrawStake() {
+    const tx = await stakingContract.withdraw();
+    await tx.wait();
+    document.getElementById("status").textContent = "✅ Withdrawn!";
+    loadUserData();
+  }
+
+  async function claimRewards() {
+    const tx = await stakingContract.claim();
+    await tx.wait();
+    document.getElementById("status").textContent = "✅ Rewards claimed!";
+    loadUserData();
+  }
+
+  document.getElementById("connectWallet").addEventListener("click", connectWallet);
+  document.getElementById("stakeButton").addEventListener("click", stakeTokens);
+  document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
+  document.getElementById("claimButton").addEventListener("click", claimRewards);
+</script>
+
 </body>
 </html>
