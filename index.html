@@ -1903,12 +1903,15 @@ async function initWeb3Modal() {
 }
 
 async function connectWallet() {
-  if (!web3Modal) {
-    alert("Web3Modal is not initialized yet.");
-    return;
-  }
+  const btn = document.querySelector(".hero-cta");
+  const textSpan = btn?.querySelector(".cta-text");
+
+  if (!web3Modal || !btn || !textSpan) return;
 
   try {
+    btn.disabled = true;
+    textSpan.textContent = "Connecting...";
+
     const instance = await web3Modal.connect();
     provider = new ethers.providers.Web3Provider(instance);
     const network = await provider.getNetwork();
@@ -1930,8 +1933,11 @@ async function connectWallet() {
     setupEventListeners();
   } catch (e) {
     console.error("Wallet connection failed:", e);
-    updateConnectionState(false);
     alert("❌ Wallet connection failed:\n" + (e?.message || e));
+    updateConnectionState(false);
+  } finally {
+    btn.disabled = false;
+    textSpan.textContent = userAddress ? "Connected" : "BEGIN YOUR ASCENSION";
   }
 }
 
@@ -1985,27 +1991,24 @@ async function connectWallet() {
     }
   }
 
-  function updateConnectionState(connected) {
-    const addrEl = document.getElementById("walletAddress");
-    const btn = document.querySelector(".wallet-button");
+function updateConnectionState(connected) {
+  const addrEl = document.getElementById("walletAddress");
+  const btn = document.querySelector(".hero-cta");
+  const textSpan = btn?.querySelector(".cta-text");
 
-    if (connected) {
-      if (addrEl) {
-        addrEl.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-        addrEl.style.display = "inline-block";
-      }
-      if (btn) {
-        btn.textContent = "Connected";
-        btn.classList.add("connected");
-      }
-    } else {
-      if (addrEl) addrEl.style.display = "none";
-      if (btn) {
-        btn.textContent = "Connect Wallet";
-        btn.classList.remove("connected");
-      }
+  if (connected) {
+    if (addrEl) {
+      addrEl.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+      addrEl.style.display = "inline-block";
     }
+    if (textSpan) textSpan.textContent = "Connected";
+    btn?.classList.add("connected");
+  } else {
+    if (addrEl) addrEl.style.display = "none";
+    if (textSpan) textSpan.textContent = "BEGIN YOUR ASCENSION";
+    btn?.classList.remove("connected");
   }
+}
 
   async function loadDashboardData() {
     try {
