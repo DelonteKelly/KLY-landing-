@@ -1873,50 +1873,67 @@ html, body {
   let web3Modal, provider, signer, userAddress;
   let klyToken, stakeContract, nftContract;
 
-  async function initWeb3Modal() {
-    const providerOptions = {
-      walletconnect: {
-        package: WalletConnectProvider,
-        options: {
-          rpc: { 56: "https://bsc-dataseed.binance.org/" }
-        }
+async function initWeb3Modal() {
+  const providerOptions = {
+    walletconnect: {
+      package: WalletConnectProvider,
+      options: {
+        rpc: { 56: "https://bsc-dataseed.binance.org/" }
       }
-    };
-
-    web3Modal = new Web3Modal({
-      cacheProvider: false,
-      providerOptions,
-      theme: "dark"
-    });
-  }
-
-  async function connectWallet() {
-    try {
-      const instance = await web3Modal.connect();
-      provider = new ethers.providers.Web3Provider(instance);
-      const network = await provider.getNetwork();
-
-      if (network.chainId !== 56) {
-        const switched = await switchToBSC();
-        if (!switched) throw new Error("Please switch to Binance Smart Chain.");
+    },
+    injected: {
+      package: null,
+      display: {
+        name: "MetaMask",
+        description: "Connect with MetaMask in your browser"
       }
-
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      updateConnectionState(true);
-      klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
-      stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
-      nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
-
-      loadDashboardData();
-      setupEventListeners();
-    } catch (e) {
-      console.error(e);
-      updateConnectionState(false);
-      alert("Wallet connection failed: " + (e.message || "Unknown error"));
+    },
+    binancechainwallet: {
+      package: true
     }
+  };
+
+  web3Modal = new Web3Modal({
+    cacheProvider: true, // ✅ allows auto-connect
+    providerOptions,
+    theme: "dark"
+  });
+
+  console.log("Web3Modal initialized:", web3Modal);
+}
+
+async function connectWallet() {
+  if (!web3Modal) {
+    alert("Web3Modal is not initialized yet.");
+    return;
   }
+
+  try {
+    const instance = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(instance);
+    const network = await provider.getNetwork();
+
+    if (network.chainId !== 56) {
+      const switched = await switchToBSC();
+      if (!switched) throw new Error("Please switch to Binance Smart Chain.");
+    }
+
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    updateConnectionState(true);
+    klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
+    stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
+    nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
+
+    loadDashboardData();
+    setupEventListeners();
+  } catch (e) {
+    console.error("Wallet connection failed:", e);
+    updateConnectionState(false);
+    alert("❌ Wallet connection failed:\n" + (e?.message || e));
+  }
+}
 
   async function switchToBSC() {
     try {
