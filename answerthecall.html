@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Answer the Call | KLY Ascension</title>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(ellipse at center, #0f0f1b 0%, #000 100%);
+      color: #00ffa3;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .portal-container {
+      text-align: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    .glow-circle {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(#00ffa3 10%, transparent 70%);
+      margin: 40px auto;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    h1 {
+      font-size: 32px;
+      text-shadow: 0 0 12px #00ffa3;
+    }
+
+    button {
+      padding: 14px 24px;
+      background: transparent;
+      border: 2px solid #00ffa3;
+      color: #00ffa3;
+      font-size: 16px;
+      margin: 12px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #00ffa3;
+      color: #000;
+    }
+
+    #walletAddress {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    #mintStatus {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.6; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-container">
+    <h1>Welcome, Chosen Architect</h1>
+    <div class="glow-circle"></div>
+
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <div id="walletAddress" style="display: none;"></div>
+
+    <button onclick="mintNFT()">Mint Key of Ascension</button>
+    <div id="mintStatus"></div>
+
+    <a href="/dashboard.html">
+      <button>Enter the Portal</button>
+    </a>
+  </div>
+
+  <script>
+    const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+    const NFT_ABI = [
+      "function mintTo(address to, string memory uri) public"
+    ];
+
+    const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
+
+    let web3Modal, provider, signer, userAddress, nftContract;
+
+    async function initWeb3Modal() {
+      const providerOptions = {
+        walletconnect: {
+          package: WalletConnectProvider,
+          options: {
+            rpc: { 56: "https://bsc-dataseed.binance.org/" }
+          }
+        }
+      };
+
+      web3Modal = new Web3Modal({
+        cacheProvider: true,
+        providerOptions,
+        theme: "dark"
+      });
+    }
+
+    async function connectWallet() {
+      try {
+        const instance = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(instance);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 56) {
+          alert("Please connect to Binance Smart Chain");
+          return;
+        }
+
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
+
+        const walletEl = document.getElementById("walletAddress");
+        walletEl.textContent = `Connected: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+        walletEl.style.display = "block";
+      } catch (e) {
+        console.error(e);
+        alert("Wallet connection failed.");
+      }
+    }
+
+    async function mintNFT() {
+      const status = document.getElementById("mintStatus");
+      if (!userAddress) {
+        status.textContent = "Please connect your wallet first.";
+        return;
+      }
+
+      try {
+        status.textContent = "Minting your Key...";
+        const tx = await nftContract.mintTo(userAddress, tokenURI);
+        await tx.wait();
+        status.textContent = "🎉 Key of Ascension minted!";
+      } catch (e) {
+        console.error(e);
+        status.textContent = "❌ Minting failed.";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", initWeb3Modal);
+  </script>
+</body>
+</html>
