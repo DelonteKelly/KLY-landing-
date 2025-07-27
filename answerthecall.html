@@ -295,34 +295,48 @@
   }
 
   // Mint NFT handler
-  async function mintNFT() {
-    if (!userAddress) {
-      showError("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      showLoading("Preparing your Key of Ascension...");
-      mintBtn.disabled = true;
-
-      const tx = await nftContract.mintTo(userAddress, tokenURI);
-      showLoading("Minting your Key... (Confirm in wallet)");
-
-      await tx.wait();
-
-      await checkNFTBalance();
-
-      showSuccess("🎉 Key of Ascension minted successfully!");
-      mintBtn.disabled = true;
-    } catch (error) {
-      console.error("Minting error:", error);
-      showError(error.message.includes("user rejected transaction")
-        ? "Transaction rejected"
-        : "Minting failed");
-      mintBtn.disabled = false;
-    }
+async function mintNFT() {
+  if (!userAddress) {
+    showError("Please connect your wallet first");
+    return;
   }
 
+  try {
+    showLoading("Claiming your Key...");
+    mintBtn.disabled = true;
+
+    const quantity = 1;
+    const currency = ethers.constants.AddressZero;
+    const pricePerToken = ethers.utils.parseEther("0");
+    const allowlistProof = {
+      proof: [],
+      quantityLimitPerWallet: 0,
+      pricePerToken: 0,
+      currency: ethers.constants.AddressZero
+    };
+    const data = "0x";
+
+    const tx = await nftContract.claim(
+      userAddress,
+      quantity,
+      currency,
+      pricePerToken,
+      allowlistProof,
+      data,
+      { value: ethers.utils.parseEther("0") } // update if needed
+    );
+
+    await tx.wait();
+
+    await checkNFTBalance();
+    showSuccess("🎉 Key of Ascension claimed successfully!");
+    mintBtn.disabled = true;
+  } catch (error) {
+    console.error("Claiming error:", error);
+    showError(error.message || "Minting failed");
+    mintBtn.disabled = false;
+  }
+}
   // Check if user already has the NFT
   async function checkNFTBalance() {
     try {
