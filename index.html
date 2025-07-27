@@ -1844,7 +1844,11 @@ html, body {
   </script>
 
   <!-- Web3 Integration -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<!-- WalletConnect + Web3Modal -->
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
 <script>
   const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
   const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
@@ -1866,33 +1870,123 @@ html, body {
     "function mintTo(address to, string memory uri) public"
   ];
 
-  let provider, signer, userAddress, klyToken, stakeContract, nftContract;
+  let web3Modal, provider, signer, userAddress;
+  let klyToken, stakeContract, nftContract;
+
+  async function initWeb3Modal() {
+    const providerOptions = {
+      walletconnect: {
+        package: WalletConnectProvider,
+        options: {
+          rpc: { 56: "https://bsc-dataseed.binance.org/" }
+        }
+      }
+    };
+
+    web3Modal = new Web3Modal({
+      cacheProvider: false,
+      providerOptions,
+      theme: "dark"
+    });
+  }
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("Please install MetaMask.");
     try {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
+      const instance = await web3Modal.connect();
+      provider = new ethers.providers.Web3Provider(instance);
+      const network = await provider.getNetwork();
+
+      if (network.chainId !== 56) {
+        const switched = await switchToBSC();
+        if (!switched) throw new Error("Please switch to Binance Smart Chain.");
+      }
+
       signer = provider.getSigner();
       userAddress = await signer.getAddress();
 
-      const addrEl = document.getElementById("walletAddress");
-      if (addrEl) {
-        addrEl.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-        addrEl.style.display = "inline-block";
-      }
-
-      const statsEl = document.getElementById("dashboardStats");
-      if (statsEl) statsEl.style.display = "block";
-
+      updateConnectionState(true);
       klyToken = new ethers.Contract(KLY_TOKEN, TOKEN_ABI, signer);
       stakeContract = new ethers.Contract(STAKE_CONTRACT, STAKE_ABI, signer);
       nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
 
       loadDashboardData();
+      setupEventListeners();
     } catch (e) {
       console.error(e);
-      alert("Wallet connection failed.");
+      updateConnectionState(false);
+      alert("Wallet connection failed: " + (e.message || "Unknown error"));
+    }
+  }
+
+  async function switchToBSC() {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x38' }]
+      });
+      return true;
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0x38',
+              chainName: 'Binance Smart Chain',
+              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+              rpcUrls: ['https://bsc-dataseed.binance.org/'],
+              blockExplorerUrls: ['https://bscscan.com']
+            }]
+          });
+          return true;
+        } catch (addError) {
+          console.error("Add BSC error:", addError);
+          return false;
+        }
+      }
+      return false;
+    }
+  }
+
+  function setupEventListeners() {
+    if (provider.provider.on) {
+      provider.provider.on("accountsChanged", (accounts) => {
+        if (accounts.length === 0) {
+          web3Modal.clearCachedProvider();
+          updateConnectionState(false);
+        } else {
+          userAddress = accounts[0];
+          updateConnectionState(true);
+        }
+      });
+
+      provider.provider.on("chainChanged", () => window.location.reload());
+      provider.provider.on("disconnect", () => {
+        web3Modal.clearCachedProvider();
+        updateConnectionState(false);
+      });
+    }
+  }
+
+  function updateConnectionState(connected) {
+    const addrEl = document.getElementById("walletAddress");
+    const btn = document.querySelector(".wallet-button");
+
+    if (connected) {
+      if (addrEl) {
+        addrEl.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        addrEl.style.display = "inline-block";
+      }
+      if (btn) {
+        btn.textContent = "Connected";
+        btn.classList.add("connected");
+      }
+    } else {
+      if (addrEl) addrEl.style.display = "none";
+      if (btn) {
+        btn.textContent = "Connect Wallet";
+        btn.classList.remove("connected");
+      }
     }
   }
 
@@ -1979,7 +2073,9 @@ html, body {
     }
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  window.addEventListener("DOMContentLoaded", async () => {
+    await initWeb3Modal();
+
     const beginAscension = document.getElementById("beginAscension");
     if (beginAscension) beginAscension.addEventListener("click", connectWallet);
 
@@ -1994,6 +2090,10 @@ html, body {
 
     const withdrawBtn = document.getElementById("withdrawButton");
     if (withdrawBtn) withdrawBtn.addEventListener("click", withdrawStake);
+
+    if (web3Modal.cachedProvider) {
+      await connectWallet();
+    }
   });
 </script>
 </body>
