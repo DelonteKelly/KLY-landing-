@@ -233,11 +233,10 @@
 
   <div class="particles" id="particles"></div>
 
-<!-- Load Ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
-  // Configuration
+  // CONFIGURATION
   const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const NFT_ABI = [
     "function mintTo(address to, string memory uri) public",
@@ -246,17 +245,17 @@
   const tokenURI = "https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
   const BSC_CHAIN_ID = 56;
 
-  // State variables
+  // STATE
   let provider, signer, userAddress, nftContract;
   let hasNFT = false;
 
-  // DOM elements
+  // DOM ELEMENTS
   const walletAddressEl = document.getElementById("walletAddress");
   const mintStatusEl = document.getElementById("mintStatus");
   const mintBtn = document.getElementById("mintBtn");
   const enterBtn = document.getElementById("enterBtn");
 
-  // Connect wallet handler using pure Ethers
+  // CONNECT WALLET
   async function connectWallet() {
     try {
       showLoading("Connecting wallet...");
@@ -280,12 +279,10 @@
 
       nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
 
-      // Display wallet address
-      walletAddressEl.textContent = `Connected: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+      walletAddressEl.textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
       walletAddressEl.style.display = "block";
 
       mintBtn.disabled = false;
-
       await checkNFTBalance();
       hideLoading();
     } catch (error) {
@@ -294,50 +291,31 @@
     }
   }
 
-  // Mint NFT handler
-async function mintNFT() {
-  if (!userAddress) {
-    showError("Please connect your wallet first");
-    return;
+  // MINT NFT
+  async function mintNFT() {
+    if (!userAddress) {
+      showError("Please connect your wallet first");
+      return;
+    }
+
+    try {
+      showLoading("Minting your Key...");
+      mintBtn.disabled = true;
+
+      const tx = await nftContract.mintTo(userAddress, tokenURI);
+      await tx.wait();
+
+      await checkNFTBalance();
+      showSuccess("🎉 Key of Ascension minted successfully!");
+      mintBtn.disabled = true;
+    } catch (error) {
+      console.error("Minting error:", error);
+      showError(error.message || "Minting failed");
+      mintBtn.disabled = false;
+    }
   }
 
-  try {
-    showLoading("Claiming your Key...");
-    mintBtn.disabled = true;
-
-    const quantity = 1;
-    const currency = ethers.constants.AddressZero;
-    const pricePerToken = ethers.utils.parseEther("0");
-    const allowlistProof = {
-      proof: [],
-      quantityLimitPerWallet: 0,
-      pricePerToken: 0,
-      currency: ethers.constants.AddressZero
-    };
-    const data = "0x";
-
-    const tx = await nftContract.claim(
-      userAddress,
-      quantity,
-      currency,
-      pricePerToken,
-      allowlistProof,
-      data,
-      { value: ethers.utils.parseEther("0") } // update if needed
-    );
-
-    await tx.wait();
-
-    await checkNFTBalance();
-    showSuccess("🎉 Key of Ascension claimed successfully!");
-    mintBtn.disabled = true;
-  } catch (error) {
-    console.error("Claiming error:", error);
-    showError(error.message || "Minting failed");
-    mintBtn.disabled = false;
-  }
-}
-  // Check if user already has the NFT
+  // CHECK BALANCE
   async function checkNFTBalance() {
     try {
       const balance = await nftContract.balanceOf(userAddress);
@@ -353,7 +331,7 @@ async function mintNFT() {
     }
   }
 
-  // UI helper functions
+  // UI HELPERS
   function showLoading(message) {
     mintStatusEl.textContent = message;
     mintStatusEl.className = "";
@@ -375,7 +353,7 @@ async function mintNFT() {
     }
   }
 
-  // Create background particles
+  // PARTICLE BACKGROUND
   function createParticles() {
     const particlesEl = document.getElementById('particles');
     const particleCount = 50;
@@ -400,7 +378,7 @@ async function mintNFT() {
     }
   }
 
-  // Add floating animation for particles
+  // PARTICLE ANIMATION STYLE
   const style = document.createElement('style');
   style.textContent = `
     @keyframes float {
@@ -410,13 +388,17 @@ async function mintNFT() {
   `;
   document.head.appendChild(style);
 
-  // Initialize app
+  // INIT
   window.addEventListener("DOMContentLoaded", () => {
     createParticles();
 
     const connectBtn = document.getElementById("connectBtn");
     if (connectBtn) {
       connectBtn.addEventListener("click", connectWallet);
+    }
+
+    if (mintBtn) {
+      mintBtn.addEventListener("click", mintNFT);
     }
   });
 </script>
