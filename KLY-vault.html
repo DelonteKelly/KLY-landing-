@@ -20,6 +20,7 @@
       --warning: #FF9800;
       --error: #F44336;
       --text-muted: #888;
+      --text-light: #e0e0e0;
     }
 
     body {
@@ -30,6 +31,7 @@
       color: white;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
     }
@@ -56,6 +58,7 @@
       height: 200%;
       background: radial-gradient(circle, rgba(255, 215, 0, 0.05) 0%, transparent 70%);
       pointer-events: none;
+      animation: rotateGlow 60s linear infinite;
     }
   
     h1, h2, h3 {
@@ -85,19 +88,45 @@
     p {
       margin: 0.5rem 0;
       line-height: 1.5;
+      color: var(--text-light);
     }
 
     .wallet-info {
       background: rgba(0, 0, 0, 0.3);
-      padding: 0.8rem;
+      padding: 1rem;
       border-radius: 8px;
       margin-bottom: 1.5rem;
       border-left: 3px solid var(--gold-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wallet-info::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.05), transparent);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .wallet-info:hover::after {
+      opacity: 1;
     }
 
     .wallet-info p {
       display: flex;
       justify-content: space-between;
+      margin: 0.75rem 0;
+    }
+
+    .wallet-info span:first-child {
+      color: var(--gold-secondary);
+      font-weight: 600;
     }
 
     hr {
@@ -132,7 +161,7 @@
 
     .input-group {
       position: relative;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     .input-group label {
@@ -143,6 +172,7 @@
       padding: 0 5px;
       font-size: 0.8rem;
       color: var(--gold-secondary);
+      z-index: 1;
     }
 
     .button-group {
@@ -167,6 +197,21 @@
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+      transform: scale(0);
+      opacity: 0;
+      transition: transform 0.5s, opacity 1s;
     }
 
     button:hover {
@@ -176,6 +221,12 @@
 
     button:active {
       transform: translateY(0);
+    }
+
+    button:active::after {
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 0s, opacity 0s;
     }
 
     button:disabled {
@@ -196,6 +247,17 @@
       border: 1px solid var(--gold-dark);
       border-radius: 12px;
       margin-top: 2rem;
+      position: relative;
+    }
+
+    .dashboard-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
     }
 
     .dashboard-row {
@@ -211,6 +273,11 @@
 
     .dashboard-label {
       color: var(--gold-secondary);
+      font-weight: 600;
+    }
+
+    .dashboard-value {
+      font-weight: 600;
     }
 
     .status {
@@ -221,6 +288,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      transition: all 0.3s ease;
     }
 
     .status-processing {
@@ -241,10 +309,21 @@
       color: var(--error);
     }
 
-    /* Coin Animation */
+    /* Animations */
+    @keyframes rotateGlow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     @keyframes vaultGlow {
       0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
       100% { transform: translate(-50%, -100px) scale(1.5); opacity: 0; }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
     }
 
     .kly-coin {
@@ -259,6 +338,10 @@
       box-shadow: 0 0 20px var(--gold-primary);
       animation: vaultGlow 1s ease-out forwards;
       z-index: 9999;
+    }
+
+    .pulse-effect {
+      animation: pulse 1.5s infinite;
     }
 
     /* Responsive adjustments */
@@ -289,34 +372,99 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Connect Wallet Button */
+    .connect-container {
+      text-align: center;
+      margin: 2rem 0;
+      position: relative;
+    }
+
+    #connectWallet {
+      padding: 14px 24px;
+      font-weight: 600;
+      font-size: 1rem;
+      color: black;
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold-primary));
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Montserrat', sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #connectWallet:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: var(--bg-light);
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      border: 1px solid var(--gold-dark);
+      font-size: 0.8rem;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Max button */
+    .input-with-button {
+      position: relative;
+    }
+
+    #maxButton {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      background: rgba(255, 215, 0, 0.2);
+      color: var(--gold-primary);
+      border: 1px solid var(--gold-dark);
+    }
+
+    #maxButton:hover {
+      background: rgba(255, 215, 0, 0.3);
+    }
   </style>
-  <!-- 🔌 Connect Wallet Button -->
-<div style="text-align: center; margin-top: 2rem;">
-  <button id="connectWallet" style="
-    padding: 14px 24px;
-    font-weight: 600;
-    font-size: 1rem;
-    color: black;
-    background: linear-gradient(135deg, #996515, #FFD700);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: 'Montserrat', sans-serif;
-    margin-bottom: 2rem;
-  ">
-    🔌 Connect Wallet
-  </button>
-  
-</div>
 </head>
 <body>
+  <div class="connect-container">
+    <button id="connectWallet" class="pulse-effect">
+      🔌 Connect Wallet
+    </button>
+  </div>
+
   <div class="vault-content">
     <h1>🔐 THE KLY VAULT</h1>
     
     <div class="wallet-info">
       <p><span>Connected Wallet:</span> <span id="walletAddress">-</span></p>
       <p><span>Network:</span> <span id="networkName">-</span></p>
+      <p><span>Chain ID:</span> <span id="chainId">-</span></p>
     </div>
 
     <hr>
@@ -324,7 +472,10 @@
     <h2>🪙 Stake KLY Tokens</h2>
     <div class="input-group">
       <label for="stakeAmount">Amount to Stake</label>
-      <input id="stakeAmount" placeholder="Enter KLY amount" type="number" />
+      <div class="input-with-button">
+        <input id="stakeAmount" placeholder="Enter KLY amount" type="number" />
+        <button id="maxButton">MAX</button>
+      </div>
     </div>
     
     <div class="button-group">
@@ -345,144 +496,276 @@
       <h3>📊 Staking Dashboard</h3>
       <div class="dashboard-row">
         <span class="dashboard-label">KLY Balance:</span>
-        <span id="userKLY">-</span>
+        <span id="userKLY" class="dashboard-value">-</span>
       </div>
       <div class="dashboard-row">
         <span class="dashboard-label">Staked Amount:</span>
-        <span id="userStaked">-</span>
+        <span id="userStaked" class="dashboard-value">-</span>
       </div>
       <div class="dashboard-row">
         <span class="dashboard-label">Pending Rewards:</span>
-        <span id="userRewards">-</span>
+        <span id="userRewards" class="dashboard-value">-</span>
+      </div>
+      <div class="dashboard-row">
+        <span class="dashboard-label">APY:</span>
+        <span id="apyValue" class="dashboard-value">15%</span>
       </div>
     </div>
+
+    <div class="tooltip" style="margin-top: 1rem; text-align: center;">
+      ℹ️ Need help?
+      <span class="tooltiptext">
+        Stake KLY tokens to earn rewards. You can withdraw your stake and claim rewards at any time.
+        Minimum stake: 1 KLY. Rewards are calculated based on your staked amount and time staked.
+      </span>
+    </div>
   </div>
-<!-- Load ethers.js and staking logic -->
-<script type="module">
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const STAKE_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
+  <script type="module">
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-const ERC20_ABI = [
-  "function approve(address spender, uint256 amount) public returns (bool)",
-  "function allowance(address owner, address spender) public view returns (uint256)",
-  "function balanceOf(address owner) public view returns (uint256)",
-  "function decimals() public view returns (uint8)"
-];
+    const TOKEN_CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const STAKE_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
-const STAKING_ABI = [
-  "function stake(uint256 _amount) payable",
-  "function claim()",
-  "function withdraw()"
-];
+    const ERC20_ABI = [
+      "function approve(address spender, uint256 amount) public returns (bool)",
+      "function allowance(address owner, address spender) public view returns (uint256)",
+      "function balanceOf(address owner) public view returns (uint256)",
+      "function decimals() public view returns (uint8)",
+      "function symbol() public view returns (string)"
+    ];
 
-let provider, signer, walletAddress, tokenContract, stakingContract;
+    const STAKING_ABI = [
+      "function stake(uint256 _amount) payable",
+      "function claim()",
+      "function withdraw()",
+      "function getStakedAmount(address _user) external view returns (uint256)",
+      "function getPendingRewards(address _user) external view returns (uint256)"
+    ];
 
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("Please install MetaMask!");
-    return;
-  }
+    let provider, signer, walletAddress, tokenContract, stakingContract;
+    let tokenDecimals = 18;
+    let tokenSymbol = "KLY";
 
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  walletAddress = await signer.getAddress();
-
-  tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
-  stakingContract = new ethers.Contract(STAKE_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
-  document.getElementById("walletAddress").textContent = walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4);
-  document.getElementById("stakeButton").disabled = false;
-  document.getElementById("withdrawButton").disabled = false;
-  document.getElementById("claimButton").disabled = false;
-
-  await loadUserData();
-}
-
-async function loadUserData() {
-  const balance = await tokenContract.balanceOf(walletAddress);
-  const decimals = await tokenContract.decimals();
-  const balanceFormatted = ethers.utils.formatUnits(balance, decimals);
-  document.getElementById("userKLY").textContent = balanceFormatted;
-}
-
-async function stakeKLY() {
-  const amount = document.getElementById("stakeAmount").value;
-  if (!amount || isNaN(amount) || Number(amount) <= 0) {
-    alert("Enter a valid amount to stake.");
-    return;
-  }
-
-  const status = document.getElementById("status");
-  status.className = "status-processing";
-  status.textContent = "Approving KLY...";
-
-  const decimals = await tokenContract.decimals();
-  const parsedAmount = ethers.utils.parseUnits(amount, decimals);
-
-  try {
-    const allowance = await tokenContract.allowance(walletAddress, STAKE_CONTRACT_ADDRESS);
-    if (allowance.lt(parsedAmount)) {
-      const approveTx = await tokenContract.approve(STAKE_CONTRACT_ADDRESS, parsedAmount);
-      await approveTx.wait();
+    // Format number with commas
+    function formatNumber(num, decimals = 4) {
+      return parseFloat(num).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: decimals
+      });
     }
 
-    status.textContent = "Staking KLY...";
-    const stakeTx = await stakingContract.stake(parsedAmount);
-    await stakeTx.wait();
+    async function connectWallet() {
+      if (!window.ethereum) {
+        showStatus("Please install MetaMask!", "error");
+        return;
+      }
 
-    status.className = "status-success";
-    status.textContent = "✅ Staked successfully!";
-    await loadUserData();
-  } catch (err) {
-    console.error(err);
-    status.className = "status-error";
-    status.textContent = "❌ Transaction failed.";
-  }
-}
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Check if already connected
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          walletAddress = accounts[0];
+        } else {
+          await provider.send("eth_requestAccounts", []);
+          walletAddress = await provider.getSigner().getAddress();
+        }
+        
+        signer = provider.getSigner();
+        
+        // Initialize contracts
+        tokenContract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, signer);
+        stakingContract = new ethers.Contract(STAKE_CONTRACT_ADDRESS, STAKING_ABI, signer);
+        
+        // Get token details
+        tokenSymbol = await tokenContract.symbol();
+        tokenDecimals = await tokenContract.decimals();
+        
+        // Update UI
+        document.getElementById("walletAddress").textContent = 
+          `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+        
+        // Get network info
+        const network = await provider.getNetwork();
+        document.getElementById("networkName").textContent = network.name;
+        document.getElementById("chainId").textContent = network.chainId;
+        
+        // Enable buttons
+        document.getElementById("stakeButton").disabled = false;
+        document.getElementById("withdrawButton").disabled = false;
+        document.getElementById("claimButton").disabled = false;
+        
+        // Update connect button
+        document.getElementById("connectWallet").textContent = `✔️ ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+        document.getElementById("connectWallet").classList.remove("pulse-effect");
+        
+        // Load user data
+        await loadUserData();
+        
+        // Set up event listeners
+        setupEventListeners();
+        
+        showStatus("Wallet connected successfully!", "success");
+        
+      } catch (err) {
+        console.error("Wallet connection error:", err);
+        showStatus("Failed to connect wallet", "error");
+      }
+    }
 
-async function claimRewards() {
-  const status = document.getElementById("status");
-  status.className = "status-processing";
-  status.textContent = "Claiming rewards...";
-  
-  try {
-    const claimTx = await stakingContract.claim();
-    await claimTx.wait();
-    status.className = "status-success";
-    status.textContent = "✅ Rewards claimed!";
-    await loadUserData();
-  } catch (err) {
-    console.error(err);
-    status.className = "status-error";
-    status.textContent = "❌ Failed to claim rewards.";
-  }
-}
+    async function loadUserData() {
+      try {
+        // Get token balance
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const balanceFormatted = ethers.utils.formatUnits(balance, tokenDecimals);
+        document.getElementById("userKLY").textContent = formatNumber(balanceFormatted);
+        
+        // Get staked amount
+        const stakedAmount = await stakingContract.getStakedAmount(walletAddress);
+        const stakedFormatted = ethers.utils.formatUnits(stakedAmount, tokenDecimals);
+        document.getElementById("userStaked").textContent = formatNumber(stakedFormatted);
+        
+        // Get pending rewards
+        const pendingRewards = await stakingContract.getPendingRewards(walletAddress);
+        const rewardsFormatted = ethers.utils.formatUnits(pendingRewards, tokenDecimals);
+        document.getElementById("userRewards").textContent = formatNumber(rewardsFormatted);
+        
+      } catch (err) {
+        console.error("Error loading user data:", err);
+        showStatus("Failed to load user data", "error");
+      }
+    }
 
-async function withdrawStake() {
-  const status = document.getElementById("status");
-  status.className = "status-processing";
-  status.textContent = "Withdrawing stake...";
+    async function stakeKLY() {
+      const amount = document.getElementById("stakeAmount").value;
+      if (!amount || isNaN(amount) || Number(amount) <= 0) {
+        showStatus("Please enter a valid amount to stake", "error");
+        return;
+      }
 
-  try {
-    const withdrawTx = await stakingContract.withdraw();
-    await withdrawTx.wait();
-    status.className = "status-success";
-    status.textContent = "✅ Stake withdrawn!";
-    await loadUserData();
-  } catch (err) {
-    console.error(err);
-    status.className = "status-error";
-    status.textContent = "❌ Failed to withdraw stake.";
-  }
-}
+      showStatus("Approving KLY tokens...", "processing");
 
-document.getElementById("connectWallet").addEventListener("click", connectWallet);
-document.getElementById("stakeButton").addEventListener("click", stakeKLY);
-document.getElementById("claimButton").addEventListener("click", claimRewards);
-document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
-</script>
+      try {
+        const parsedAmount = ethers.utils.parseUnits(amount, tokenDecimals);
+        
+        // Check allowance
+        const allowance = await tokenContract.allowance(walletAddress, STAKE_CONTRACT_ADDRESS);
+        if (allowance.lt(parsedAmount)) {
+          const approveTx = await tokenContract.approve(STAKE_CONTRACT_ADDRESS, parsedAmount);
+          await approveTx.wait();
+          showStatus("Approval successful. Staking KLY...", "processing");
+        }
+        
+        // Execute stake
+        const stakeTx = await stakingContract.stake(parsedAmount);
+        await stakeTx.wait();
+        
+        showStatus(`✅ Successfully staked ${amount} ${tokenSymbol}!`, "success");
+        createCoinAnimation();
+        await loadUserData();
+        
+      } catch (err) {
+        console.error("Staking error:", err);
+        showStatus("❌ Failed to stake tokens", "error");
+      }
+    }
+
+    async function claimRewards() {
+      showStatus("Claiming rewards...", "processing");
+      
+      try {
+        const claimTx = await stakingContract.claim();
+        await claimTx.wait();
+        
+        showStatus("✅ Rewards claimed successfully!", "success");
+        createCoinAnimation();
+        await loadUserData();
+        
+      } catch (err) {
+        console.error("Claim error:", err);
+        showStatus("❌ Failed to claim rewards", "error");
+      }
+    }
+
+    async function withdrawStake() {
+      showStatus("Withdrawing stake...", "processing");
+
+      try {
+        const withdrawTx = await stakingContract.withdraw();
+        await withdrawTx.wait();
+        
+        showStatus("✅ Stake withdrawn successfully!", "success");
+        createCoinAnimation();
+        await loadUserData();
+        
+      } catch (err) {
+        console.error("Withdraw error:", err);
+        showStatus("❌ Failed to withdraw stake", "error");
+      }
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById("status");
+      status.style.display = "flex";
+      status.className = `status-${type}`;
+      status.textContent = message;
+      
+      // Auto-hide success messages after 5 seconds
+      if (type === "success") {
+        setTimeout(() => {
+          status.style.display = "none";
+        }, 5000);
+      }
+    }
+
+    function createCoinAnimation() {
+      const coin = document.createElement("div");
+      coin.className = "kly-coin";
+      document.body.appendChild(coin);
+      
+      // Remove after animation completes
+      setTimeout(() => {
+        coin.remove();
+      }, 1000);
+    }
+
+    function setupEventListeners() {
+      // Max button
+      document.getElementById("maxButton").addEventListener("click", async () => {
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const balanceFormatted = ethers.utils.formatUnits(balance, tokenDecimals);
+        document.getElementById("stakeAmount").value = balanceFormatted;
+      });
+      
+      // Network change detection
+      window.ethereum.on("chainChanged", (chainId) => {
+        window.location.reload();
+      });
+      
+      // Account change detection
+      window.ethereum.on("accountsChanged", (accounts) => {
+        if (accounts.length === 0) {
+          // Wallet disconnected
+          window.location.reload();
+        } else {
+          // Account changed
+          walletAddress = accounts[0];
+          document.getElementById("walletAddress").textContent = 
+            `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+          document.getElementById("connectWallet").textContent = 
+            `✔️ ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+          loadUserData();
+        }
+      });
+    }
+
+    // Initialize
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("stakeButton").addEventListener("click", stakeKLY);
+    document.getElementById("claimButton").addEventListener("click", claimRewards);
+    document.getElementById("withdrawButton").addEventListener("click", withdrawStake);
+  </script>
 </body>
 </html>
