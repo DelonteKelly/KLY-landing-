@@ -4,55 +4,492 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KLY Portal</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;500&display=swap" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
 </head>
 <body class="portal-body">
+  <div class="particles-container" id="particles"></div>
+  
+  <div class="portal-overlay"></div>
+  
   <div class="portal-container">
-    <h1>🔓 Welcome to the KLY Portal</h1>
-    <p class="subtext">You’ve unlocked access with the Key of Ascension.</p>
-
-    <div class="portal-actions">
-      <a href="/vault.html" class="btn">Go to The Vault</a>
-      <a href="/academy.html" class="btn">Access KLY Academy</a>
-      <a href="/oracle.html" class="btn">Consult the Oracle</a>
+    <div class="portal-header">
+      <div class="holographic-logo"></div>
+      <h1 class="neon-text glitch" data-text="🔓 Welcome to the KLY Portal">🔓 Welcome to the KLY Portal</h1>
+      <p class="subtext typing-animation">You've unlocked access with the Key of Ascension.</p>
+      <div class="access-indicator">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring delay-1"></div>
+        <div class="pulse-ring delay-2"></div>
+        <div class="status-dot"></div>
+      </div>
     </div>
 
-    <footer>
-      <p style="color:gray;">© 2025 Kelly Legacy Estates — Tamaquah Nation</p>
+    <div class="portal-actions">
+      <a href="/vault.html" class="btn holographic-btn">
+        <span class="btn-bg"></span>
+        <span class="btn-text">Go to The Vault</span>
+        <span class="btn-hover"></span>
+      </a>
+      
+      <a href="/academy.html" class="btn holographic-btn">
+        <span class="btn-bg"></span>
+        <span class="btn-text">Access KLY Academy</span>
+        <span class="btn-hover"></span>
+      </a>
+      
+      <a href="/oracle.html" class="btn holographic-btn">
+        <span class="btn-bg"></span>
+        <span class="btn-text">Consult the Oracle</span>
+        <span class="btn-hover"></span>
+      </a>
+    </div>
+
+    <div class="terminal-window">
+      <div class="terminal-header">
+        <div class="terminal-buttons">
+          <span class="terminal-btn red"></span>
+          <span class="terminal-btn yellow"></span>
+          <span class="terminal-btn green"></span>
+        </div>
+        <span class="terminal-title">system_status.exe</span>
+      </div>
+      <div class="terminal-content">
+        <p>> Initializing KLY protocols...</p>
+        <p>> Verifying quantum signatures...</p>
+        <p>> Access granted: Security clearance level 9</p>
+        <p>> Welcome, authorized user</p>
+      </div>
+    </div>
+
+    <footer class="portal-footer">
+      <p class="copyright">© 2025 Kelly Legacy Estates — Tamaquah Nation</p>
+      <div class="cyber-line"></div>
     </footer>
   </div>
 
+  <audio id="hoverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-positive-interface-902.mp3" preload="auto"></audio>
+  <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+
   <style>
+    :root {
+      --primary: #0fffc3;
+      --primary-dark: #00a37d;
+      --secondary: #7b2dff;
+      --bg-dark: #0a0a0a;
+      --bg-darker: #050505;
+      --text-glow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
-      background-color: #0a0a0a;
-      color: #0fffc3;
+      background-color: var(--bg-dark);
+      color: var(--primary);
       font-family: 'Orbitron', sans-serif;
       text-align: center;
-      padding: 40px 20px;
+      padding: 0;
+      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
-
-    .btn {
-      display: block;
+    
+    .particles-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    
+    .portal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, transparent 0%, var(--bg-darker) 70%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .portal-container {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      padding: 40px;
+      background-color: rgba(10, 10, 10, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 255, 204, 0.1);
+      animation: fadeIn 1.5s ease-out, float 6s ease-in-out infinite;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .portal-header {
+      margin-bottom: 40px;
+      position: relative;
+    }
+    
+    .holographic-logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+      background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+      border-radius: 50%;
+      position: relative;
+      animation: pulse 4s infinite alternate;
+    }
+    
+    .holographic-logo::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      animation: rotate 20s linear infinite;
+      opacity: 0.5;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary); }
+      100% { box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary); }
+    }
+    
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .neon-text {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      text-shadow: var(--text-glow);
+      position: relative;
+      letter-spacing: 2px;
+    }
+    
+    .glitch {
+      animation: glitch 5s infinite linear;
+    }
+    
+    @keyframes glitch {
+      0% { text-shadow: var(--text-glow); }
+      1% { text-shadow: 3px 0 var(--secondary), -3px 0 var(--primary-dark); }
+      2% { text-shadow: var(--text-glow); }
+      50% { text-shadow: var(--text-glow); }
+      51% { text-shadow: -3px 0 var(--secondary), 3px 0 var(--primary-dark); }
+      52% { text-shadow: var(--text-glow); }
+    }
+    
+    .typing-animation {
+      overflow: hidden;
+      white-space: nowrap;
+      margin: 0 auto;
+      letter-spacing: 1px;
+      animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+      border-right: 2px solid var(--primary);
+    }
+    
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 100% }
+    }
+    
+    @keyframes blink-caret {
+      from, to { border-color: transparent }
+      50% { border-color: var(--primary); }
+    }
+    
+    .access-indicator {
+      width: 120px;
+      height: 120px;
       margin: 20px auto;
-      padding: 12px 24px;
-      background-color: #00ffcc;
-      color: #000;
-      text-decoration: none;
-      border-radius: 6px;
+      position: relative;
+    }
+    
+    .status-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      background-color: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+      animation: pulse 2s infinite;
+    }
+    
+    .pulse-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      animation: pulsate 3s ease-out infinite;
+    }
+    
+    .delay-1 {
+      animation-delay: 1s;
+    }
+    
+    .delay-2 {
+      animation-delay: 2s;
+    }
+    
+    @keyframes pulsate {
+      0% { transform: scale(0.1); opacity: 0; }
+      50% { opacity: 0.5; }
+      100% { transform: scale(1.2); opacity: 0; }
+    }
+    
+    .portal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .holographic-btn {
+      position: relative;
+      display: block;
+      margin: 0 auto;
+      padding: 0;
+      width: 280px;
+      height: 60px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.3s ease;
+    }
+    
+    .btn-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-dark), var(--primary));
+      clip-path: polygon(
+        0% 15px, 15px 0%, calc(100% - 15px) 0%, 100% 15px,
+        100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px)
+      );
+      transition: all 0.3s ease;
+    }
+    
+    .btn-text {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      color: var(--bg-dark);
+      font-family: 'Orbitron', sans-serif;
       font-weight: bold;
-      transition: all 0.2s ease-in-out;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      z-index: 1;
     }
-
-    .btn:hover {
-      background-color: #0fffc3;
-      transform: scale(1.05);
+    
+    .btn-hover {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: none;
     }
-
-    .subtext {
-      color: #aaa;
-      margin-bottom: 30px;
+    
+    .holographic-btn:hover {
+      transform: translateY(-5px);
+    }
+    
+    .holographic-btn:hover .btn-bg {
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      box-shadow: 0 0 15px var(--primary);
+    }
+    
+    .holographic-btn:hover .btn-hover {
+      left: 100%;
+      transition: left 0.7s ease-in-out;
+    }
+    
+    .terminal-window {
+      background-color: rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      margin: 30px 0;
+      text-align: left;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+    }
+    
+    .terminal-header {
+      background: linear-gradient(90deg, var(--bg-dark), #111);
+      padding: 8px 15px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--primary);
+    }
+    
+    .terminal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-right: 15px;
+    }
+    
+    .terminal-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .terminal-btn.red { background-color: #ff5f56; }
+    .terminal-btn.yellow { background-color: #ffbd2e; }
+    .terminal-btn.green { background-color: #27c93f; }
+    
+    .terminal-title {
+      color: var(--primary);
+      font-size: 0.9rem;
+      font-family: 'Exo 2', sans-serif;
+    }
+    
+    .terminal-content {
+      padding: 15px;
+      font-family: 'Exo 2', monospace;
+      color: var(--primary);
+      line-height: 1.6;
+      min-height: 120px;
+    }
+    
+    .terminal-content p {
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeInTerminal 0.5s forwards;
+    }
+    
+    .terminal-content p:nth-child(1) { animation-delay: 0.5s; }
+    .terminal-content p:nth-child(2) { animation-delay: 1.5s; }
+    .terminal-content p:nth-child(3) { animation-delay: 2.5s; }
+    .terminal-content p:nth-child(4) { animation-delay: 3.5s; }
+    
+    @keyframes fadeInTerminal {
+      to { opacity: 1; }
+    }
+    
+    .portal-footer {
+      margin-top: 40px;
+    }
+    
+    .cyber-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      margin: 15px auto;
+      width: 60%;
+      opacity: 0.5;
+    }
+    
+    .copyright {
+      color: #666;
+      font-size: 0.8rem;
+      font-family: 'Exo 2', sans-serif;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .portal-container {
+        padding: 20px;
+        width: 90%;
+      }
+      
+      .neon-text {
+        font-size: 1.8rem;
+      }
+      
+      .holographic-btn {
+        width: 100%;
+      }
+      
+      .terminal-content {
+        min-height: 150px;
+      }
     }
   </style>
+
+  <script>
+    // Initialize Vanta.js particles background
+    document.addEventListener('DOMContentLoaded', function() {
+      VANTA.NET({
+        el: "#particles",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.00,
+        minWidth: 200.00,
+        scale: 1.00,
+        scaleMobile: 1.00,
+        color: 0x0fffc3,
+        backgroundColor: 0x0a0a0a,
+        points: 12.00,
+        maxDistance: 22.00,
+        spacing: 18.00
+      });
+      
+      // Button sound effects
+      const buttons = document.querySelectorAll('.holographic-btn');
+      const hoverSound = document.getElementById('hoverSound');
+      const clickSound = document.getElementById('clickSound');
+      
+      buttons.forEach(button => {
+        button.addEventListener('mouseenter', () => {
+          hoverSound.currentTime = 0;
+          hoverSound.volume = 0.3;
+          hoverSound.play();
+        });
+        
+        button.addEventListener('click', () => {
+          clickSound.currentTime = 0;
+          clickSound.volume = 0.5;
+          clickSound.play();
+        });
+      });
+      
+      // Add dynamic connection status
+      const statusDot = document.querySelector('.status-dot');
+      setInterval(() => {
+        statusDot.style.backgroundColor = `hsl(${Math.random() * 60 + 160}, 100%, 50%)`;
+      }, 3000);
+    });
+  </script>
 </body>
 </html>
