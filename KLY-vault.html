@@ -1,27 +1,566 @@
-<body class="vault-body">
-  <div class="vault-door-screen" id="vaultDoor">
-    <div class="vault-circle"></div>
-    <h1>ACCESSING THE KLY VAULT</h1>
-    <button id="connectWalletBtn">🔑 Unlock Vault</button>
+# Exquisite Vault Interface
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The KLY Vault</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --gold-primary: #FFD700;
+      --gold-secondary: #C5A042;
+      --gold-tertiary: #D4AF37;
+      --bg-dark: #0A0A0A;
+      --bg-darker: #050505;
+      --text-light: #F5F5F5;
+      --text-dim: #AAAAAA;
+      --accent-glow: 0 0 15px rgba(255, 215, 0, 0.7);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .vault-header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: linear-gradient(to bottom, rgba(10, 10, 10, 0.9), transparent);
+    }
+
+    .vault-logo {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.8rem;
+      color: var(--gold-primary);
+      text-shadow: var(--accent-glow);
+      letter-spacing: 2px;
+    }
+
+    .vault-nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      margin-left: 25px;
+      font-size: 0.9rem;
+      transition: color 0.3s ease;
+      position: relative;
+    }
+
+    .vault-nav a:hover {
+      color: var(--gold-primary);
+    }
+
+    .vault-nav a::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--gold-primary);
+      transition: width 0.3s ease;
+    }
+
+    .vault-nav a:hover::after {
+      width: 100%;
+    }
+
+    #vault-container {
+      position: relative;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #threejs-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .vault-content {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      max-width: 800px;
+      padding: 0 20px;
+    }
+
+    .vault-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 4rem;
+      color: var(--gold-primary);
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+      letter-spacing: 3px;
+    }
+
+    .vault-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    .vault-door {
+      position: relative;
+      width: 300px;
+      height: 450px;
+      margin: 0 auto 40px;
+      perspective: 1000px;
+    }
+
+    .door-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 1.5s ease-in-out;
+    }
+
+    .door {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+      border: 3px solid var(--gold-secondary);
+      border-radius: 5px;
+      box-shadow: 0 0 30px rgba(197, 160, 66, 0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      backface-visibility: hidden;
+    }
+
+    .door-front {
+      transform: rotateY(0deg);
+      z-index: 2;
+    }
+
+    .door-back {
+      transform: rotateY(180deg);
+      background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+    }
+
+    .door.open {
+      transform: rotateY(180deg);
+    }
+
+    .door-pattern {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20,20 L80,20 L80,80 L20,80 Z" fill="none" stroke="%23C5A042" stroke-width="0.5"/></svg>');
+      opacity: 0.3;
+    }
+
+    .door-knob {
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle at 30% 30%, var(--gold-primary), var(--gold-secondary));
+      border-radius: 50%;
+      position: absolute;
+      right: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .door-knob:hover {
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
+    }
+
+    .door-inscription {
+      font-family: 'Cinzel Decorative', serif;
+      color: var(--gold-primary);
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .vault-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 30px;
+      margin-top: 50px;
+      padding: 0 20px;
+    }
+
+    .vault-item {
+      background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+      border: 1px solid rgba(197, 160, 66, 0.3);
+      border-radius: 8px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .vault-item:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 10px 30px rgba(197, 160, 66, 0.2);
+      border-color: var(--gold-secondary);
+    }
+
+    .vault-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(to right, transparent, var(--gold-primary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .vault-item:hover::before {
+      opacity: 1;
+    }
+
+    .item-icon {
+      font-size: 2.5rem;
+      color: var(--gold-primary);
+      margin-bottom: 15px;
+    }
+
+    .item-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      color: var(--gold-primary);
+    }
+
+    .item-desc {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .vault-footer {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 30px;
+      margin-top: 50px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .unlock-btn {
+      background: transparent;
+      color: var(--gold-primary);
+      border: 1px solid var(--gold-secondary);
+      padding: 12px 30px;
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .unlock-btn:hover {
+      background: rgba(197, 160, 66, 0.1);
+      box-shadow: 0 0 15px rgba(197, 160, 66, 0.3);
+    }
+
+    .unlock-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+      transition: all 0.5s ease;
+    }
+
+    .unlock-btn:hover::before {
+      left: 100%;
+    }
+
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      background: var(--gold-primary);
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    @media (max-width: 768px) {
+      .vault-title {
+        font-size: 2.5rem;
+      }
+
+      .vault-subtitle {
+        font-size: 1rem;
+      }
+
+      .vault-door {
+        width: 250px;
+        height: 400px;
+      }
+
+      .vault-items {
+        grid-template-columns: 1fr;
+      }
+
+      .vault-header {
+        flex-direction: column;
+        padding: 15px;
+      }
+
+      .vault-nav {
+        margin-top: 15px;
+      }
+
+      .vault-nav a {
+        margin: 0 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="vault-header">
+    <div class="vault-logo">THE KLY VAULT</div>
+    <nav class="vault-nav">
+      <a href="/portal.html">Portal</a>
+      <a href="/academy.html">Academy</a>
+      <a href="/oracle.html">Oracle</a>
+      <a href="#" id="connectWalletBtn">Connect Wallet</a>
+      <span id="walletAddress" class="hidden"></span>
+    </nav>
+  </header>
+
+  <div id="vault-container">
+    <canvas id="threejs-canvas"></canvas>
+    <div class="particles" id="particles"></div>
+    
+    <div class="vault-content">
+      <h1 class="vault-title">Chamber of Secrets</h1>
+      <p class="vault-subtitle">Within these hallowed digital walls lie the most sacred artifacts of the Kelly Legacy. <br>Only those bearing the Key of Ascension may access these treasures.</p>
+      
+      <div class="vault-door">
+        <div class="door-container" id="doorContainer">
+          <div class="door door-front">
+            <div class="door-pattern"></div>
+            <div class="door-knob" id="doorKnob"></div>
+            <div class="door-inscription">What is sought is found within</div>
+          </div>
+          <div class="door door-back">
+            <div class="door-pattern"></div>
+            <div class="door-inscription">Welcome, Initiate</div>
+            <button class="unlock-btn" id="unlockBtn">Enter the Vault</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <main class="vault-dashboard hidden" id="vaultContent">
-    <section class="stats-grid">
-      <div class="stat-card glow"><h3>KLY Balance</h3><p id="userKLY">0</p></div>
-      <div class="stat-card glow"><h3>Staked</h3><p id="userStaked">0</p></div>
-      <div class="stat-card glow"><h3>Rewards</h3><p id="userRewards">0</p></div>
-    </section>
+  <div class="vault-items" id="vaultItems" style="display: none;">
+    <div class="vault-item">
+      <div class="item-icon">🗝️</div>
+      <h3 class="item-title">Keys of Sovereignty</h3>
+      <p class="item-desc">Ancient digital keys that unlock governance rights within the Tamaquah Nation's blockchain protocols.</p>
+    </div>
+    
+    <div class="vault-item">
+      <div class="item-icon">📜</div>
+      <h3 class="item-title">Scrolls of Creation</h3>
+      <p class="item-desc">The original smart contracts that birthed the Kelly Legacy ecosystem, etched permanently on-chain.</p>
+    </div>
+    
+    <div class="vault-item">
+      <div class="item-icon">💎</div>
+      <h3 class="item-title">Diamond Sigils</h3>
+      <p class="item-desc">Rare NFTs representing ownership stakes in the physical Kelly Legacy estates and artifacts.</p>
+    </div>
+    
+    <div class="vault-item">
+      <div class="item-icon">🔮</div>
+      <h3 class="item-title">Oracle Crystals</h3>
+      <p class="item-desc">Predictive algorithms and AI models passed down through generations of digital seers.</p>
+    </div>
+    
+    <div class="vault-item">
+      <div class="item-icon">⚔️</div>
+      <h3 class="item-title">Weapons of Light</h3>
+      <p class="item-desc">Cryptographic tools for defending the network against malicious actors and bad faith intrusions.</p>
+    </div>
+    
+    <div class="vault-item">
+      <div class="item-icon">🏺</div>
+      <h3 class="item-title">Vessels of Memory</h3>
+      <p class="item-desc">Immutable storage containing the complete history and lore of the Kelly bloodline.</p>
+    </div>
+  </div>
 
-    <section class="nft-carousel">
-      <h2>Mint Your Ascension Key</h2>
-      <!-- Rotating NFT cards -->
-    </section>
+  <footer class="vault-footer">
+    © 2025 Kelly Legacy Estates — Tamaquah Nation • Cycle 42 of the Great Alignment
+  </footer>
 
-    <section class="wealth-panel">
-      <h2>Wealth Codes</h2>
-      <div class="wealth-scroll locked">Scroll 1</div>
-      <div class="wealth-scroll locked">Scroll 2</div>
-      <div class="wealth-scroll locked">Scroll 3</div>
-    </section>
-  </main>
+  <script>
+    // Wallet connection
+    document.getElementById('connectWalletBtn').addEventListener('click', async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const walletAddress = accounts[0];
+          const shortenedAddress = `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`;
+          
+          document.getElementById('connectWalletBtn').classList.add('hidden');
+          document.getElementById('walletAddress').textContent = shortenedAddress;
+          document.getElementById('walletAddress').classList.remove('hidden');
+        } catch (error) {
+          console.error("Error connecting wallet:", error);
+        }
+      } else {
+        alert("Please install MetaMask or another Ethereum wallet to connect.");
+      }
+    });
+
+    // Door animation
+    const doorKnob = document.getElementById('doorKnob');
+    const doorContainer = document.getElementById('doorContainer');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const vaultItems = document.getElementById('vaultItems');
+
+    doorKnob.addEventListener('click', () => {
+      doorContainer.classList.toggle('open');
+    });
+
+    unlockBtn.addEventListener('click', () => {
+      // Check wallet connection first
+      if (!document.getElementById('walletAddress').classList.contains('hidden')) {
+        vaultItems.style.display = 'grid';
+        document.querySelector('.vault-content').style.paddingBottom = '100px';
+        
+        // Scroll to items
+        setTimeout(() => {
+          vaultItems.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
+      } else {
+        alert("You must connect your wallet to enter the vault.");
+      }
+    });
+
+    // Create golden particles
+    const particlesContainer = document.getElementById('particles');
+    const particleCount = 50;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.classList.add('particle');
+      
+      // Random properties
+      const size = Math.random() * 5 + 1;
+      const posX = Math.random() * 100;
+      const posY = Math.random() * 100;
+      const delay = Math.random() * 5;
+      const duration = Math.random() * 10 + 10;
+      
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left = `${posX}%`;
+      particle.style.top = `${posY}%`;
+      particle.style.animationDelay = `${delay}s`;
+      particle.style.animationDuration = `${duration}s`;
+      
+      particlesContainer.appendChild(particle);
+    }
+
+    // Three.js background scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({
+      canvas: document.getElementById('threejs-canvas'),
+      alpha: true
+    });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Create golden geometry
+    const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+    const material = new THREE.MeshBasicMaterial({ 
+      color: 0xD4AF37,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.3
+    });
+    
+    const knot = new THREE.Mesh(geometry, material);
+    scene.add(knot);
+    
+    camera.position.z = 30;
+    
+    // Animation
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      knot.rotation.x += 0.001;
+      knot.rotation.y += 0.002;
+      
+      renderer.render(scene, camera);
+    }
+    
+    animate();
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Particle animation
+    const particles = document.querySelectorAll('.particle');
+    particles.forEach(particle => {
+      // Animate each particle with random movement
+      setInterval(() => {
+        const moveX = (Math.random() - 0.5) * 20;
+        const moveY = (Math.random() - 0.5) * 20;
+        
+        particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        particle.style.opacity = Math.random() * 0.5 + 0.3;
+      }, 2000);
+    });
+  </script>
 </body>
+</html>
