@@ -9,14 +9,16 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 </head>
 <body class="portal-body">
+  <!-- Sound toggle -->
+  <div class="sound-toggle" id="soundToggle">
+    <i class="fas fa-volume-up"></i>
+  </div>
+  
   <div class="particles-container" id="particles"></div>
-  
-  <!-- Holographic grid overlay -->
   <div class="grid-overlay"></div>
-  
-  <!-- Scanlines effect -->
   <div class="scanlines"></div>
   
   <!-- Floating particles -->
@@ -26,11 +28,13 @@
     <div class="particle particle-3"></div>
   </div>
   
-  <!-- Main portal container -->
+  <!-- Click particles container -->
+  <div id="clickParticles"></div>
+  
   <div class="portal-container">
     <!-- Header with animated logo -->
     <div class="portal-header">
-      <div class="logo-container">
+      <div class="logo-container" id="logo">
         <div class="logo-grid">
           <div class="logo-cell"></div>
           <div class="logo-cell"></div>
@@ -74,21 +78,21 @@
           <i class="fas fa-list-check"></i>
           <h3>System Verification</h3>
         </div>
-        <div class="checklist-item">
+        <div class="checklist-item" id="checklistItem1">
           <div class="checkbox">
             <div class="checkmark"></div>
           </div>
           <span class="item-text">kellylegacyestates.com</span>
           <span class="item-status">Verified</span>
         </div>
-        <div class="checklist-item">
+        <div class="checklist-item" id="checklistItem2">
           <div class="checkbox">
             <div class="checkmark"></div>
           </div>
           <span class="item-text">system_status.exe</span>
           <span class="item-status">Running</span>
         </div>
-        <div class="checklist-item">
+        <div class="checklist-item" id="checklistItem3">
           <div class="checkbox">
             <div class="checkmark"></div>
           </div>
@@ -117,17 +121,17 @@
       
       <!-- Portal actions with hover effects -->
       <div class="portal-actions">
-        <a href="/vault.html" class="btn">
+        <a href="/vault.html" class="btn" id="vaultBtn">
           <span class="btn-icon"><i class="fas fa-lock"></i></span>
           <span class="btn-text">Go to The Vault</span>
           <span class="btn-badge">SECURE</span>
         </a>
-        <a href="/academy.html" class="btn">
+        <a href="/academy.html" class="btn" id="academyBtn">
           <span class="btn-icon"><i class="fas fa-graduation-cap"></i></span>
           <span class="btn-text">Access KLY Academy</span>
           <span class="btn-badge">NEW</span>
         </a>
-        <a href="/oracle.html" class="btn">
+        <a href="/oracle.html" class="btn" id="oracleBtn">
           <span class="btn-icon"><i class="fas fa-eye"></i></span>
           <span class="btn-text">Consult the Oracle</span>
           <span class="btn-badge">LIVE</span>
@@ -135,7 +139,7 @@
       </div>
       
       <!-- Interactive terminal window -->
-      <div class="terminal-window">
+      <div class="terminal-window" id="terminalWindow">
         <div class="terminal-header">
           <div class="terminal-controls">
             <span class="control close"></span>
@@ -184,656 +188,147 @@
     </div>
   </div>
 
+  <!-- Hidden audio elements -->
+  <audio id="hoverSound" preload="auto">
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-positive-interface-hover-931.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="clickSound" preload="auto">
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="confirmSound" preload="auto">
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="typingSound" preload="auto" loop>
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-male-voice-counting-down-903.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="ambientSound" preload="auto" loop>
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-ambient-sci-fi-lab-92.mp3" type="audio/mpeg">
+  </audio>
+
   <style>
-    :root {
-      --primary: #0fffc3;
-      --primary-dark: #00a37d;
-      --primary-light: #7dffdb;
-      --secondary: #ff00aa;
-      --bg-dark: #0a0a0a;
-      --bg-darker: #050505;
-      --bg-light: rgba(15, 255, 195, 0.05);
-      --text-glow: 0 0 10px var(--primary), 0 0 20px var(--primary);
-      --text-secondary-glow: 0 0 10px var(--secondary), 0 0 20px var(--secondary);
-      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    }
+    /* Previous CSS remains the same, adding new styles below */
     
-    * {
-      box-sizing: border-box;
-    }
-    
-    body {
-      background-color: var(--bg-dark);
-      color: var(--primary);
-      font-family: 'Roboto Mono', monospace;
-      padding: 0;
-      margin: 0;
-      overflow-x: hidden;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    
-    /* Background effects */
-    .particles-container {
+    /* Sound toggle */
+    .sound-toggle {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-    }
-    
-    .grid-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-image: 
-        linear-gradient(rgba(15, 255, 195, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(15, 255, 195, 0.03) 1px, transparent 1px);
-      background-size: 20px 20px;
-      z-index: 1;
-      pointer-events: none;
-    }
-    
-    .scanlines {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        linear-gradient(
-          rgba(0, 0, 0, 0) 50%, 
-          rgba(0, 0, 0, 0.25) 50%
-        );
-      background-size: 100% 2px;
-      z-index: 2;
-      pointer-events: none;
-      animation: scanline 8s linear infinite;
-    }
-    
-    @keyframes scanline {
-      0% { background-position: 0 0; }
-      100% { background-position: 0 100%; }
-    }
-    
-    .floating-particles {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    }
-    
-    .particle {
-      position: absolute;
-      border-radius: 50%;
-      background-color: var(--primary);
-      opacity: 0.5;
-      filter: blur(1px);
-    }
-    
-    .particle-1 {
-      width: 3px;
-      height: 3px;
-      top: 20%;
-      left: 15%;
-      animation: float 15s infinite ease-in-out;
-    }
-    
-    .particle-2 {
-      width: 2px;
-      height: 2px;
-      top: 60%;
-      left: 80%;
-      animation: float 20s infinite ease-in-out;
-      animation-delay: 5s;
-    }
-    
-    .particle-3 {
-      width: 4px;
-      height: 4px;
-      top: 80%;
-      left: 30%;
-      animation: float 25s infinite ease-in-out;
-      animation-delay: 10s;
-    }
-    
-    @keyframes float {
-      0% { transform: translate(0, 0); }
-      25% { transform: translate(50px, 50px); }
-      50% { transform: translate(100px, 0); }
-      75% { transform: translate(50px, -50px); }
-      100% { transform: translate(0, 0); }
-    }
-    
-    /* Main container */
-    .portal-container {
-      position: relative;
-      z-index: 3;
-      width: 90%;
-      max-width: 600px;
-      padding: 30px;
-      background-color: rgba(10, 10, 10, 0.85);
-      border: 1px solid rgba(0, 255, 204, 0.2);
-      box-shadow: 
-        0 0 20px rgba(0, 255, 204, 0.1),
-        inset 0 0 20px rgba(0, 255, 204, 0.05);
-      animation: fadeIn 1s ease-out;
-      backdrop-filter: blur(5px);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    
-    .portal-container::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--primary), transparent);
-      animation: borderGlow 3s infinite;
-    }
-    
-    @keyframes borderGlow {
-      0% { opacity: 0.2; }
-      50% { opacity: 1; }
-      100% { opacity: 0.2; }
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* Header section */
-    .portal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid rgba(15, 255, 195, 0.1);
-    }
-    
-    .logo-container {
-      display: flex;
-      align-items: center;
-    }
-    
-    .logo-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 8px);
-      grid-template-rows: repeat(3, 8px);
-      gap: 2px;
-      margin-right: 15px;
-    }
-    
-    .logo-cell {
-      background-color: var(--primary);
-      opacity: 0;
-      animation: logoCellFade 1s forwards;
-    }
-    
-    .logo-cell:nth-child(1) { animation-delay: 0.1s; }
-    .logo-cell:nth-child(2) { animation-delay: 0.2s; }
-    .logo-cell:nth-child(3) { animation-delay: 0.3s; }
-    .logo-cell:nth-child(4) { animation-delay: 0.4s; }
-    .logo-cell:nth-child(5) { animation-delay: 0.5s; }
-    .logo-cell:nth-child(6) { animation-delay: 0.6s; }
-    .logo-cell:nth-child(7) { animation-delay: 0.7s; }
-    .logo-cell:nth-child(8) { animation-delay: 0.8s; }
-    .logo-cell:nth-child(9) { animation-delay: 0.9s; }
-    
-    @keyframes logoCellFade {
-      0% { opacity: 0; transform: scale(0.5); }
-      50% { opacity: 1; transform: scale(1.2); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-    
-    .logo-text {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 900;
-      font-size: 1.8rem;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      background: linear-gradient(135deg, var(--primary), var(--primary-light));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: var(--text-glow);
-    }
-    
-    .time-display {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      font-family: 'Orbitron', sans-serif;
-    }
-    
-    .time-display .time {
-      font-size: 1.8rem;
-      font-weight: 500;
-      letter-spacing: 1px;
-    }
-    
-    .time-display .date {
-      font-size: 0.8rem;
-      color: rgba(15, 255, 195, 0.7);
-      letter-spacing: 1px;
-    }
-    
-    /* Status indicators */
-    .status-indicators {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 25px;
-    }
-    
-    .indicator {
-      display: flex;
-      align-items: center;
-      font-size: 0.75rem;
-    }
-    
-    .indicator-light {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 8px;
-      background-color: var(--primary);
-      box-shadow: 0 0 5px var(--primary);
-    }
-    
-    .indicator-light.active {
-      animation: pulse 2s infinite;
-    }
-    
-    .indicator-light.pulse {
-      animation: pulse 1s infinite;
-    }
-    
-    @keyframes pulse {
-      0% { opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { opacity: 0.3; }
-    }
-    
-    /* Checklist */
-    .checklist {
-      margin-bottom: 25px;
-      background-color: rgba(0, 0, 0, 0.3);
-      padding: 15px;
-      border-radius: 4px;
-      border-left: 2px solid var(--primary);
-    }
-    
-    .checklist-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-    
-    .checklist-header i {
-      margin-right: 10px;
-      color: var(--primary);
-    }
-    
-    .checklist-header h3 {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    
-    .checklist-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(15, 255, 195, 0.1);
-    }
-    
-    .checklist-item:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-    }
-    
-    .checkbox {
-      width: 16px;
-      height: 16px;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(10, 10, 10, 0.7);
       border: 1px solid var(--primary);
-      margin-right: 12px;
-      position: relative;
+      border-radius: 50%;
       display: flex;
       justify-content: center;
       align-items: center;
-    }
-    
-    .checkmark {
-      width: 8px;
-      height: 8px;
-      background-color: var(--primary);
-      opacity: 0;
+      cursor: pointer;
+      z-index: 10;
+      color: var(--primary);
       transition: var(--transition);
     }
     
-    .checklist-item .item-text {
-      flex-grow: 1;
-      font-size: 0.9rem;
+    .sound-toggle:hover {
+      background: rgba(15, 255, 195, 0.2);
+      transform: scale(1.1);
     }
     
-    .checklist-item .item-status {
-      font-size: 0.75rem;
-      color: rgba(15, 255, 195, 0.7);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .sound-toggle.muted {
+      color: #666;
+      border-color: #666;
     }
     
-    /* Access message */
-    .access-message {
-      margin: 25px 0;
-      display: flex;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 15px;
-      border-radius: 4px;
-      border-left: 2px solid var(--secondary);
+    /* Click particles */
+    #clickParticles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
     }
     
-    .message-text {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .text-part {
-      font-size: 0.9rem;
-      line-height: 1.4;
-      opacity: 0;
-      animation: fadeInUp 0.5s forwards;
-    }
-    
-    .text-part:nth-child(1) { animation-delay: 0.5s; }
-    .text-part:nth-child(2) { animation-delay: 1s; }
-    .text-part:nth-child(3) { animation-delay: 1.5s; }
-    
-    .highlight {
-      color: var(--secondary);
-      text-shadow: var(--text-secondary-glow);
-      font-weight: 700;
-    }
-    
-    .message-icon {
-      font-size: 1.5rem;
-      margin-left: 15px;
-      color: var(--secondary);
-      text-shadow: var(--text-secondary-glow);
-      animation: pulse 2s infinite;
-    }
-    
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* Divider */
-    .divider {
-      margin: 25px 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .divider-line {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--primary), transparent);
-      flex-grow: 1;
-      opacity: 0.3;
-    }
-    
-    .divider-dot {
+    .click-particle {
+      position: absolute;
       width: 6px;
       height: 6px;
       border-radius: 50%;
       background-color: var(--primary);
-      margin: 0 10px;
-      box-shadow: 0 0 5px var(--primary);
-      animation: pulse 2s infinite;
+      pointer-events: none;
+      opacity: 0.8;
+      transform: translate(-50%, -50%);
+      animation: particleFade 1s forwards;
     }
     
-    /* Portal actions */
-    .portal-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      margin-bottom: 30px;
-    }
-    
-    .btn {
-      display: flex;
-      align-items: center;
-      padding: 12px 15px;
-      background-color: transparent;
-      color: var(--primary);
-      text-decoration: none;
-      border: 1px solid var(--primary);
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-      border-radius: 2px;
-    }
-    
-    .btn:hover {
-      background-color: rgba(0, 255, 204, 0.1);
-      box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
-      transform: translateY(-2px);
-    }
-    
-    .btn::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.2), transparent);
-      transition: 0.5s;
-    }
-    
-    .btn:hover::before {
-      left: 100%;
-    }
-    
-    .btn-icon {
-      margin-right: 10px;
-      font-size: 1rem;
-      width: 20px;
-      text-align: center;
-    }
-    
-    .btn-text {
-      flex-grow: 1;
-      font-size: 0.9rem;
-      text-align: left;
-    }
-    
-    .btn-badge {
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      background-color: var(--primary);
-      color: var(--bg-dark);
-      border-radius: 10px;
-      margin-left: 10px;
-      font-weight: 700;
-    }
-    
-    /* Terminal window */
-    .terminal-window {
-      background-color: rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--primary);
-      margin-bottom: 20px;
-      font-size: 0.9rem;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    
-    .terminal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background-color: rgba(0, 0, 0, 0.3);
-      border-bottom: 1px solid rgba(15, 255, 195, 0.2);
-    }
-    
-    .terminal-controls {
-      display: flex;
-      gap: 6px;
-    }
-    
-    .control {
-      display: block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-    
-    .control.close {
-      background-color: #ff5f56;
-    }
-    
-    .control.minimize {
-      background-color: #ffbd2e;
-    }
-    
-    .control.expand {
-      background-color: #27c93f;
-    }
-    
-    .terminal-title {
-      font-size: 0.7rem;
-      color: rgba(15, 255, 195, 0.7);
-      letter-spacing: 1px;
-    }
-    
-    .terminal-content {
-      padding: 12px 15px;
-      min-height: 120px;
-    }
-    
-    .terminal-content p {
-      margin-bottom: 8px;
-      opacity: 0;
-      animation: fadeInTerminal 0.5s forwards;
-      line-height: 1.4;
-    }
-    
-    .terminal-content p:nth-child(1) { animation-delay: 0.5s; }
-    .terminal-content p:nth-child(2) { animation-delay: 1.5s; }
-    .terminal-content p:nth-child(3) { animation-delay: 2.5s; }
-    .terminal-content p:nth-child(4) { animation-delay: 3.5s; }
-    .terminal-content p:nth-child(5) { animation-delay: 4.5s; }
-    
-    .blinking-cursor {
-      animation: blink 1s infinite;
-      opacity: 1 !important;
-    }
-    
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0; }
-      100% { opacity: 1; }
-    }
-    
-    @keyframes fadeInTerminal {
-      to { opacity: 1; }
-    }
-    
-    /* Status bar */
-    .status-bar {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.7rem;
-      color: #666;
-      border-top: 1px solid rgba(0, 255, 204, 0.1);
-      padding-top: 10px;
-      flex-wrap: wrap;
-    }
-    
-    .status-item {
-      display: flex;
-      align-items: center;
-      margin-right: 15px;
-      margin-bottom: 5px;
-    }
-    
-    .status-item:last-child {
-      margin-right: 0;
-    }
-    
-    .status-label {
-      color: rgba(15, 255, 195, 0.5);
-      margin-right: 5px;
-    }
-    
-    .status-value {
-      color: rgba(15, 255, 195, 0.8);
-    }
-    
-    .connection-strength {
-      display: flex;
-      align-items: center;
-    }
-    
-    .strength-dot {
-      display: block;
-      width: 4px;
-      height: 4px;
-      background-color: var(--primary);
-      margin-right: 2px;
-      opacity: 0.3;
-    }
-    
-    .strength-dot:nth-child(1) { opacity: 1; }
-    .strength-dot:nth-child(2) { opacity: 0.8; }
-    .strength-dot:nth-child(3) { opacity: 0.6; }
-    .strength-dot:nth-child(4) { opacity: 0.4; }
-    .strength-dot:nth-child(5) { opacity: 0.2; }
-    
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      .portal-container {
-        padding: 20px;
+    @keyframes particleFade {
+      0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0;
       }
-      
-      .time-display .time {
-        font-size: 1.5rem;
+      50% {
+        opacity: 0.8;
       }
-      
-      .status-bar {
-        flex-direction: column;
-        align-items: flex-start;
+      100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
       }
-      
-      .status-item {
-        margin-bottom: 8px;
-      }
+    }
+    
+    /* Enhanced button effects */
+    .btn.clicked {
+      animation: buttonClick 0.3s ease;
+    }
+    
+    @keyframes buttonClick {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    
+    /* Terminal window shake */
+    .terminal-window.shake {
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    
+    @keyframes shake {
+      10%, 90% { transform: translateX(-1px); }
+      20%, 80% { transform: translateX(2px); }
+      30%, 50%, 70% { transform: translateX(-3px); }
+      40%, 60% { transform: translateX(3px); }
+    }
+    
+    /* Logo hover effect */
+    .logo-container:hover .logo-text {
+      animation: textGlow 1s infinite alternate;
+    }
+    
+    @keyframes textGlow {
+      from { text-shadow: 0 0 5px var(--primary); }
+      to { text-shadow: 0 0 15px var(--primary), 0 0 30px var(--primary-light); }
     }
   </style>
 
   <script>
+    // Sound effects
+    const sounds = {
+      hover: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-positive-interface-hover-931.mp3'], volume: 0.3 }),
+      click: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'], volume: 0.4 }),
+      confirm: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3'], volume: 0.5 }),
+      typing: new Howl({ 
+        src: ['https://assets.mixkit.co/sfx/preview/mixkit-male-voice-counting-down-903.mp3'], 
+        volume: 0.2,
+        loop: true
+      }),
+      ambient: new Howl({ 
+        src: ['https://assets.mixkit.co/sfx/preview/mixkit-ambient-sci-fi-lab-92.mp3'], 
+        volume: 0.1,
+        loop: true
+      })
+    };
+    
     // Initialize Vanta.js particles background
     document.addEventListener('DOMContentLoaded', function() {
-      VANTA.NET({
+      const vantaEffect = VANTA.NET({
         el: "#particles",
         mouseControls: true,
         touchControls: true,
@@ -847,6 +342,27 @@
         points: 12.00,
         maxDistance: 22.00,
         spacing: 18.00
+      });
+      
+      // Start ambient sound
+      sounds.ambient.play();
+      
+      // Sound toggle functionality
+      const soundToggle = document.getElementById('soundToggle');
+      let soundEnabled = true;
+      
+      soundToggle.addEventListener('click', function() {
+        soundEnabled = !soundEnabled;
+        
+        if (soundEnabled) {
+          Howler.mute(false);
+          soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+          soundToggle.classList.remove('muted');
+        } else {
+          Howler.mute(true);
+          soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+          soundToggle.classList.add('muted');
+        }
       });
       
       // Update time display
@@ -865,31 +381,61 @@
       updateTime();
       setInterval(updateTime, 60000);
       
-      // Animate checklist items
-      const checklistItems = document.querySelectorAll('.checklist-item');
+      // Animate checklist items with sound
+      const checklistItems = [
+        document.getElementById('checklistItem1'),
+        document.getElementById('checklistItem2'),
+        document.getElementById('checklistItem3')
+      ];
+      
       checklistItems.forEach((item, index) => {
         setTimeout(() => {
           item.querySelector('.checkmark').style.opacity = '1';
           item.style.backgroundColor = 'rgba(15, 255, 195, 0.05)';
+          
+          // Play confirm sound for each item
+          setTimeout(() => {
+            sounds.confirm.play();
+          }, 200);
+          
           setTimeout(() => {
             item.style.backgroundColor = 'transparent';
           }, 500);
         }, index * 500 + 1000);
       });
       
-      // Add hover effect to buttons
-      const buttons = document.querySelectorAll('.btn');
+      // Button hover effects with sound
+      const buttons = [
+        document.getElementById('vaultBtn'),
+        document.getElementById('academyBtn'),
+        document.getElementById('oracleBtn')
+      ];
+      
       buttons.forEach(button => {
         button.addEventListener('mouseenter', () => {
           button.style.boxShadow = '0 0 15px rgba(15, 255, 195, 0.5)';
+          sounds.hover.play();
         });
+        
         button.addEventListener('mouseleave', () => {
           button.style.boxShadow = '';
         });
+        
+        button.addEventListener('mousedown', () => {
+          button.classList.add('clicked');
+          sounds.click.play();
+          createClickParticles(event);
+        });
+        
+        button.addEventListener('mouseup', () => {
+          button.classList.remove('clicked');
+        });
       });
       
-      // Terminal typing effect
+      // Terminal typing effect with sound
       const terminalLines = document.querySelectorAll('.terminal-content p');
+      sounds.typing.play();
+      
       terminalLines.forEach((line, index) => {
         const text = line.textContent;
         line.textContent = '';
@@ -902,9 +448,79 @@
               i++;
             } else {
               clearInterval(typing);
+              if (index === terminalLines.length - 2) {
+                sounds.typing.stop();
+              }
             }
           }, 30);
         }, index * 1000 + 500);
+      });
+      
+      // Terminal window shake on click
+      const terminalWindow = document.getElementById('terminalWindow');
+      terminalWindow.addEventListener('click', function() {
+        this.classList.add('shake');
+        sounds.click.play();
+        setTimeout(() => {
+          this.classList.remove('shake');
+        }, 500);
+      });
+      
+      // Logo hover effect
+      const logo = document.getElementById('logo');
+      logo.addEventListener('mouseenter', function() {
+        sounds.hover.play();
+      });
+      
+      // Create click particles
+      function createClickParticles(event) {
+        const clickParticles = document.getElementById('clickParticles');
+        const particleCount = 8;
+        
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.classList.add('click-particle');
+          
+          // Position particles around click point
+          const x = event.clientX + (Math.random() - 0.5) * 30;
+          const y = event.clientY + (Math.random() - 0.5) * 30;
+          
+          particle.style.left = `${x}px`;
+          particle.style.top = `${y}px`;
+          
+          // Randomize size and color slightly
+          const size = 4 + Math.random() * 4;
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          
+          // Random slight color variation
+          const hue = 170 + (Math.random() - 0.5) * 20; // 170 is base hue for teal
+          particle.style.backgroundColor = `hsl(${hue}, 100%, 60%)`;
+          
+          clickParticles.appendChild(particle);
+          
+          // Remove particle after animation
+          setTimeout(() => {
+            particle.remove();
+          }, 1000);
+        }
+      }
+      
+      // Add parallax effect to particles on mouse move
+      document.addEventListener('mousemove', function(e) {
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        
+        // Update Vanta.js mouse position
+        vantaEffect.setMouseMovement(x, y);
+        
+        // Move floating particles slightly opposite to mouse
+        const particles = document.querySelectorAll('.floating-particles .particle');
+        particles.forEach((particle, index) => {
+          const moveX = (x - 0.5) * 20 * (index + 1);
+          const moveY = (y - 0.5) * 20 * (index + 1);
+          particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        });
       });
     });
   </script>
