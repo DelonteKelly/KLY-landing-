@@ -290,25 +290,44 @@
   }
 
   // === MINT FUNCTION ===
-  async function mintNFT() {
-    try {
-      mintBtn.disabled = true;
-      mintBtn.innerHTML = `<span class="loading"></span> Minting...`;
+async function mintNFT() {
+  try {
+    mintBtn.disabled = true;
+    mintBtn.innerHTML = `<span class="loading"></span> Minting...`;
 
-      const tx = await nftContract.mintTo(userAddress, NFT_URI);
-      await tx.wait();
+    const quantity = 1;
+    const currencyAddress = ethers.constants.AddressZero; // for native token (BNB)
+    const pricePerToken = ethers.utils.parseEther("0"); // free mint
+    const allowlistProof = {
+      proof: [],
+      quantityLimitPerWallet: 0,
+      pricePerToken: 0,
+      currency: ethers.constants.AddressZero
+    };
+    const data = "0x"; // no extra data
 
-      alert("✅ Minted Key of Ascension!");
-      await checkNFTBalance();
-    } catch (err) {
-      console.error("Mint error:", err);
-      alert("Mint failed: " + (err?.reason || err?.message || "Unknown error"));
-    } finally {
-      mintBtn.innerHTML = `<i class="fas fa-key"></i> Mint Key of Ascension`;
-      mintBtn.disabled = false;
-    }
+    const tx = await nftContract.claim(
+      userAddress,
+      quantity,
+      currencyAddress,
+      pricePerToken,
+      allowlistProof,
+      data,
+      { value: pricePerToken.mul(quantity) } // in case you charge
+    );
+
+    await tx.wait();
+
+    alert("✅ Minted Key of Ascension!");
+    await checkNFTBalance();
+  } catch (err) {
+    console.error("Mint error:", err);
+    alert("Mint failed: " + (err?.reason || err?.message || "Unknown error"));
+  } finally {
+    mintBtn.innerHTML = `<i class="fas fa-key"></i> Mint Key of Ascension`;
+    mintBtn.disabled = false;
   }
-
+}
   // === CHECK NFT BALANCE ===
   async function checkNFTBalance() {
     try {
