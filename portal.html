@@ -9,8 +9,15 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
+  <!-- Adding Howler.js for sound management -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 </head>
 <body class="portal-body">
+  <!-- Sound Toggle Button -->
+  <div class="sound-toggle" id="soundToggle">
+    <i class="fas fa-volume-up"></i>
+  </div>
+
   <div class="particles-container" id="particles"></div>
   
   <!-- Holographic grid overlay -->
@@ -117,17 +124,17 @@
       
       <!-- Portal actions with hover effects -->
       <div class="portal-actions">
-        <a href="/vault.html" class="btn">
+        <a href="/vault.html" class="btn" id="vaultBtn">
           <span class="btn-icon"><i class="fas fa-lock"></i></span>
           <span class="btn-text">Go to The Vault</span>
           <span class="btn-badge">SECURE</span>
         </a>
-        <a href="/academy.html" class="btn">
+        <a href="/academy.html" class="btn" id="academyBtn">
           <span class="btn-icon"><i class="fas fa-graduation-cap"></i></span>
           <span class="btn-text">Access KLY Academy</span>
           <span class="btn-badge">NEW</span>
         </a>
-        <a href="/oracle.html" class="btn">
+        <a href="/oracle.html" class="btn" id="oracleBtn">
           <span class="btn-icon"><i class="fas fa-eye"></i></span>
           <span class="btn-text">Consult the Oracle</span>
           <span class="btn-badge">LIVE</span>
@@ -183,6 +190,13 @@
       </div>
     </div>
   </div>
+
+  <!-- Audio Elements -->
+  <audio id="hoverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-positive-interface-hover-931.mp3" preload="auto"></audio>
+  <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+  <audio id="confirmSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+  <audio id="typingSound" src="https://assets.mixkit.co/sfx/preview/mixkit-typing-with-mechanical-keyboard-1386.mp3" preload="auto" loop></audio>
+  <audio id="ambientSound" src="https://assets.mixkit.co/sfx/preview/mixkit-ambient-sci-fi-lab-92.mp3" preload="auto" loop></audio>
 
   <style>
     :root {
@@ -829,6 +843,39 @@
       }
     }
   </style>
+   /* Sound Toggle */
+    .sound-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(10, 10, 10, 0.7);
+      border: 1px solid var(--primary);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 10;
+      color: var(--primary);
+      transition: var(--transition);
+    }
+    
+    .sound-toggle:hover {
+      background: rgba(15, 255, 195, 0.2);
+      transform: scale(1.1);
+    }
+    
+    .sound-toggle.muted {
+      color: #666;
+      border-color: #666;
+    }
+    
+    .sound-toggle.muted i {
+      color: #666;
+    }
+  </style>
 
   <script>
     // Initialize Vanta.js particles background
@@ -849,6 +896,48 @@
         spacing: 18.00
       });
       
+      // Sound Management
+      const soundToggle = document.getElementById('soundToggle');
+      let soundsEnabled = true;
+      
+      // Initialize sounds
+      const sounds = {
+        hover: document.getElementById('hoverSound'),
+        click: document.getElementById('clickSound'),
+        confirm: document.getElementById('confirmSound'),
+        typing: document.getElementById('typingSound'),
+        ambient: document.getElementById('ambientSound')
+      };
+      
+      // Set initial volumes
+      Object.values(sounds).forEach(sound => {
+        sound.volume = 0.3; // Default volume
+      });
+      sounds.ambient.volume = 0.1; // Quieter ambient sound
+      
+      // Start ambient sound
+      sounds.ambient.play().catch(e => {
+        console.log("Audio playback prevented:", e);
+        // Will work after user interaction
+      });
+      
+      // Sound toggle functionality
+      soundToggle.addEventListener('click', function() {
+        soundsEnabled = !soundsEnabled;
+        
+        if (soundsEnabled) {
+          soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+          soundToggle.classList.remove('muted');
+          Howler.mute(false);
+          sounds.ambient.play();
+        } else {
+          soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+          soundToggle.classList.add('muted');
+          Howler.mute(true);
+          sounds.ambient.pause();
+        }
+      });
+      
       // Update time display
       function updateTime() {
         const now = new Date();
@@ -865,31 +954,58 @@
       updateTime();
       setInterval(updateTime, 60000);
       
-      // Animate checklist items
+      // Animate checklist items with sound
       const checklistItems = document.querySelectorAll('.checklist-item');
       checklistItems.forEach((item, index) => {
         setTimeout(() => {
           item.querySelector('.checkmark').style.opacity = '1';
           item.style.backgroundColor = 'rgba(15, 255, 195, 0.05)';
+          
+          // Play confirm sound
+          if (soundsEnabled) {
+            sounds.confirm.currentTime = 0;
+            sounds.confirm.play().catch(e => console.log("Audio error:", e));
+          }
+          
           setTimeout(() => {
             item.style.backgroundColor = 'transparent';
           }, 500);
         }, index * 500 + 1000);
       });
       
-      // Add hover effect to buttons
+      // Add hover and click effects with sound to buttons
       const buttons = document.querySelectorAll('.btn');
       buttons.forEach(button => {
         button.addEventListener('mouseenter', () => {
           button.style.boxShadow = '0 0 15px rgba(15, 255, 195, 0.5)';
+          if (soundsEnabled) {
+            sounds.hover.currentTime = 0;
+            sounds.hover.play().catch(e => console.log("Audio error:", e));
+          }
         });
+        
         button.addEventListener('mouseleave', () => {
           button.style.boxShadow = '';
         });
+        
+        button.addEventListener('click', (e) => {
+          if (soundsEnabled) {
+            sounds.click.currentTime = 0;
+            sounds.click.play().catch(e => console.log("Audio error:", e));
+          }
+        });
       });
       
-      // Terminal typing effect
+      // Terminal typing effect with sound
       const terminalLines = document.querySelectorAll('.terminal-content p');
+      
+      // Start typing sound
+      setTimeout(() => {
+        if (soundsEnabled) {
+          sounds.typing.play().catch(e => console.log("Audio error:", e));
+        }
+      }, 500);
+      
       terminalLines.forEach((line, index) => {
         const text = line.textContent;
         line.textContent = '';
@@ -902,10 +1018,20 @@
               i++;
             } else {
               clearInterval(typing);
+              if (index === terminalLines.length - 2) {
+                sounds.typing.pause();
+              }
             }
           }, 30);
         }, index * 1000 + 500);
       });
+      
+      // Enable audio after first user interaction
+      document.body.addEventListener('click', function enableAudio() {
+        sounds.ambient.play().then(() => {
+          document.body.removeEventListener('click', enableAudio);
+        }).catch(e => console.log("Audio error:", e));
+      }, { once: true });
     });
   </script>
 </body>
