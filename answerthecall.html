@@ -235,32 +235,35 @@
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
 <script>
+  // === CONFIGURATION ===
   const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const NFT_ABI = [
     "function mintTo(address to, string uri) public",
-    "function balanceOf(address owner) public view returns (uint256)"
+    "function balanceOf(address owner) view returns (uint256)"
   ];
   const BSC_CHAIN_ID = 56;
+  const NFT_URI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by"; // Key of Ascension
 
-  // NFT Collection (Update with your IPFS URIs)
-  const nftCollection = [
-    { name: "Legacy Builders", uri: "ipfs://your-uri-1" },
-    { name: "Frequency Alchemist", uri: "ipfs://your-uri-2" },
-    { name: "Key of Ascension", uri: "ipfs://your-uri-3" }
-  ];
-
+  // === STATE ===
   let provider, signer, userAddress, nftContract;
 
-  const walletAddressEl = document.getElementById("walletAddress");
-  const mintStatusEl = document.getElementById("status");
-  const mintBtn = document.getElementById("mintBtn");
+  // === DOM ELEMENTS ===
   const connectBtn = document.getElementById("connectBtn");
-  const walletInfoEl = document.getElementById("walletInfo");
+  const mintBtn = document.getElementById("mintBtn");
+  const enterBtn = document.getElementById("enterBtn");
 
+  // === WALLET CONNECT ===
   async function connectWallet() {
     try {
-      if (!window.ethereum) return showError("Install MetaMask.");
+      if (!window.ethereum) {
+        alert("Please install MetaMask to continue.");
+        return;
+      }
+
+      // Request wallet access
       await window.ethereum.request({ method: "eth_requestAccounts" });
 
       provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -269,79 +272,59 @@
 
       const network = await provider.getNetwork();
       if (network.chainId !== BSC_CHAIN_ID) {
-        return showError("Switch to Binance Smart Chain.");
+        alert("Please switch to Binance Smart Chain (Mainnet)");
+        return;
       }
 
       nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
 
-      walletAddressEl.textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-      walletAddressEl.style.display = "block";
-      walletInfoEl.style.display = "block";
-      connectBtn.innerHTML = "Wallet Connected ✅";
+      connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> Connected`;
+      connectBtn.disabled = true;
       mintBtn.disabled = false;
-      setStatus("Wallet connected", "success");
+
+      await checkNFTBalance();
     } catch (err) {
-      showError("Wallet connection failed");
-      console.error(err);
+      console.error("Connection error:", err);
+      alert("Wallet connection failed.");
     }
   }
 
+  // === MINT FUNCTION ===
   async function mintNFT() {
-    const amount = parseInt(document.getElementById("mintAmount").value);
-    const selectedIndex = document.getElementById("nftSelect").value;
-    const selectedNFT = nftCollection[selectedIndex];
-
-    if (!selectedNFT || amount < 1 || amount > 5) {
-      return setStatus("Invalid selection or amount. Mint 1–5 only.", "error");
-    }
-
     try {
       mintBtn.disabled = true;
-      mintBtn.innerText = "Minting...";
-      let successCount = 0;
+      mintBtn.innerHTML = `<span class="loading"></span> Minting...`;
 
-      for (let i = 0; i < amount; i++) {
-        const tx = await nftContract.mintTo(userAddress, selectedNFT.uri);
-        setStatus(`Minting NFT ${i + 1}/${amount}...`, "loading");
-        await tx.wait();
-        successCount++;
-      }
+      const tx = await nftContract.mintTo(userAddress, NFT_URI);
+      await tx.wait();
 
-      setStatus(`✅ Minted ${successCount} NFT(s)!`, "success");
+      alert("✅ Minted Key of Ascension!");
+      await checkNFTBalance();
     } catch (err) {
-      console.error("Mint failed", err);
-      setStatus("Minting failed: " + err.message, "error");
+      console.error("Mint error:", err);
+      alert("Mint failed: " + (err?.reason || err?.message || "Unknown error"));
     } finally {
-      mintBtn.innerText = "Mint NFT";
+      mintBtn.innerHTML = `<i class="fas fa-key"></i> Mint Key of Ascension`;
       mintBtn.disabled = false;
     }
   }
 
-  function populateNFTDropdown() {
-    const dropdown = document.getElementById("nftSelect");
-    nftCollection.forEach((nft, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.text = nft.name;
-      dropdown.appendChild(option);
-    });
+  // === CHECK NFT BALANCE ===
+  async function checkNFTBalance() {
+    try {
+      const balance = await nftContract.balanceOf(userAddress);
+      if (balance.gt(0)) {
+        enterBtn.disabled = false;
+        mintBtn.disabled = true;
+        alert("🔓 Access granted. You already hold the Key.");
+      }
+    } catch (err) {
+      console.error("Balance check error:", err);
+    }
   }
 
-  function setStatus(message, type) {
-    mintStatusEl.textContent = message;
-    mintStatusEl.className = "";
-
-    if (type === "success") mintStatusEl.classList.add("success-message");
-    if (type === "error") mintStatusEl.classList.add("error-message");
-    if (type === "loading") mintStatusEl.innerHTML = `<span class="loading"></span> ${message}`;
-  }
-
-  function showError(msg) {
-    setStatus(msg, "error");
-  }
-
+  // === INITIALIZE ===
   window.addEventListener("DOMContentLoaded", () => {
-    populateNFTDropdown();
     connectBtn.addEventListener("click", connectWallet);
     mintBtn.addEventListener("click", mintNFT);
   });
