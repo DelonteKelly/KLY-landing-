@@ -431,50 +431,51 @@
                 "retina_detect": true
             });
             
-            // Countdown timer (set to 7 days from now)
-            const countdownDate = new Date();
-            countdownDate.setDate(countdownDate.getDate() + 7);
-            
-            const countdown = setInterval(function() {
-                const now = new Date().getTime();
-                const distance = countdownDate - now;
-                
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                document.getElementById('days').innerHTML = days.toString().padStart(2, '0');
-                document.getElementById('hours').innerHTML = hours.toString().padStart(2, '0');
-                document.getElementById('minutes').innerHTML = minutes.toString().padStart(2, '0');
-                document.getElementById('seconds').innerHTML = seconds.toString().padStart(2, '0');
-                
-                if (distance < 0) {
-                    clearInterval(countdown);
-                    document.getElementById('days').innerHTML = '00';
-                    document.getElementById('hours').innerHTML = '00';
-                    document.getElementById('minutes').innerHTML = '00';
-                    document.getElementById('seconds').innerHTML = '00';
-                    document.getElementById('mintButton').innerHTML = 'MINTING LIVE!';
-                    document.getElementById('mintButton').style.background = 'linear-gradient(45deg, #4CAF50, #8BC34A)';
-                }
-            }, 1000);
-            
-       <script>
+        <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+<script>
   let provider;
   let signer;
   let contract;
 
-  // ✅ Your contract details
-  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Replace if needed
+  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const contractABI = [
     "function mintTo(address to, string memory uri) public"
   ];
-
-  // 📦 Optional: Replace with a unique metadata URI for each mint
   const metadataURI = "ipfs://Qm...yourMetadataHash";
 
   document.addEventListener("DOMContentLoaded", () => {
+    // ⏳ Countdown Timer (7 days from now)
+    const countdownDate = new Date();
+    countdownDate.setDate(countdownDate.getDate() + 7);
+
+    const countdown = setInterval(function () {
+      const now = new Date().getTime();
+      const distance = countdownDate - now;
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      if (document.getElementById("days")) {
+        document.getElementById("days").innerHTML = days.toString().padStart(2, "0");
+        document.getElementById("hours").innerHTML = hours.toString().padStart(2, "0");
+        document.getElementById("minutes").innerHTML = minutes.toString().padStart(2, "0");
+        document.getElementById("seconds").innerHTML = seconds.toString().padStart(2, "0");
+      }
+
+      if (distance < 0) {
+        clearInterval(countdown);
+        document.getElementById("days").innerHTML = "00";
+        document.getElementById("hours").innerHTML = "00";
+        document.getElementById("minutes").innerHTML = "00";
+        document.getElementById("seconds").innerHTML = "00";
+        document.getElementById("mintButton").innerHTML = "MINTING LIVE!";
+        document.getElementById("mintButton").style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+      }
+    }, 1000);
+
+    // 🦊 Connect Wallet
     const connectBtn = document.getElementById("connectWallet");
     const mintBtn = document.getElementById("mintButton");
 
@@ -491,7 +492,7 @@
 
         const address = await signer.getAddress();
         connectBtn.innerHTML = `${address.substring(0, 6)}...${address.slice(-4)}`;
-        connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+        connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)`;
 
         contract = new ethers.Contract(contractAddress, contractABI, signer);
       } catch (err) {
@@ -499,6 +500,7 @@
       }
     });
 
+    // 🧪 Mint NFT
     mintBtn.addEventListener("click", async () => {
       if (!signer || !contract) {
         alert("Please connect your wallet first.");
