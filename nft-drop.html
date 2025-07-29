@@ -469,21 +469,17 @@
 
 <!-- ✅ Wallet Connect + Mint Script -->
 <script>
-  // First verify critical dependencies are loaded
   function checkDependencies() {
     const errors = [];
-
     if (typeof ethers === 'undefined') {
       errors.push('Ethers.js library failed to load');
     }
-
     if (errors.length > 0) {
       const errorMsg = `Critical errors detected:\n${errors.join('\n')}\n\nPlease refresh the page.`;
       console.error(errorMsg);
       alert(errorMsg);
       return false;
     }
-
     return true;
   }
 
@@ -529,7 +525,6 @@
   function setupCountdown() {
     const countdownDate = new Date();
     countdownDate.setDate(countdownDate.getDate() + 7);
-
     const updateCountdown = () => {
       const now = new Date().getTime();
       const distance = countdownDate - now;
@@ -553,49 +548,44 @@
         document.getElementById("mintStatus").textContent = "Minting is now live!";
       }
     };
-
     const countdownInterval = setInterval(updateCountdown, 1000);
     updateCountdown();
   }
 
   async function initializeWeb3() {
     const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const contractABI = [
-  // Required for checking NFT ownership
-  {
-    "constant": true,
-    "inputs": [{"name": "owner", "type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"name": "balance", "type": "uint256"}],
-    "type": "function"
-  },
-  // Optional: Add other methods like mintTo if needed
-  {
-    "inputs": [{"name": "to", "type": "address"}, {"name": "uri", "type": "string"}],
-    "name": "mintTo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
+    const contractABI = [
+      {
+        "constant": true,
+        "inputs": [{"name": "owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "type": "function"
+      },
+      {
+        "inputs": [{"name": "to", "type": "address"}, {"name": "uri", "type": "string"}],
+        "name": "mintTo",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
     const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
 
     let provider, signer, contract;
     const connectBtn = document.getElementById("connectWallet");
     const mintBtn = document.getElementById("mintButton");
-    const mintStatus = document.getElementById("mintStatus");
 
     await checkWalletConnection();
 
-    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
-    if (mintBtn) mintBtn.addEventListener("click", mintNFT);
+    connectBtn?.addEventListener("click", connectWallet);
+    mintBtn?.addEventListener("click", mintNFT);
 
     async function checkWalletConnection() {
       if (!window.ethereum) {
         updateMintStatus("MetaMask or other Web3 wallet is required to mint.");
         return;
       }
-
       provider = new ethers.providers.Web3Provider(window.ethereum);
       const accounts = await provider.listAccounts();
       if (accounts.length > 0) await connectWallet();
@@ -633,7 +623,6 @@
           mintBtn.classList.add("minted");
           updateMintStatus("You already own a Frequency Key!");
         }
-
       } catch (err) {
         console.error("Wallet connection failed:", err);
         updateMintStatus("Failed to connect wallet: " + err.message);
@@ -652,7 +641,6 @@
         mintBtn.disabled = true;
 
         updateMintStatus("Processing your transaction...");
-
         const userAddress = await signer.getAddress();
         const tx = await contract.mintTo(userAddress, metadataURI);
 
