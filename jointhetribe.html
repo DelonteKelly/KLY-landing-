@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -341,7 +342,7 @@
         </div>
         <h3>Begin Your Awakening</h3>
         <p>Access our private course: <em>The Path of Awakening</em> - ancient wisdom for modern seekers.</p>
-        <a href="/kly-course.html">Begin Your Path <span class="arrow-icon">→</span></a>
+      <button class="cta-button" onclick="checkKLYAccess()">Begin Your Path <span class='arrow-icon'>→</span></button>
       </div>
       <div class="pathway">
         <div class="pathway-icon">
@@ -378,7 +379,43 @@
   </footer>
 
   <script>
-    function scrollToSection() {
+  const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52'; // ✅ Your actual KLY token
+  const KLY_MIN_REQUIRED = 100;
+
+  async function checkKLYAccess() {
+    if (typeof window.ethereum === 'undefined') {
+      alert('Please install MetaMask or a Web3 wallet.');
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const abi = [
+        "function balanceOf(address account) external view returns (uint256)",
+        "function decimals() view returns (uint8)"
+      ];
+
+      const contract = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
+      const balance = await contract.balanceOf(userAddress);
+      const decimals = await contract.decimals();
+      const formattedBalance = parseFloat(ethers.formatUnits(balance, decimals));
+
+      if (formattedBalance >= KLY_MIN_REQUIRED) {
+        window.location.href = "/kly-course.html";
+      } else {
+        alert(`You need at least ${KLY_MIN_REQUIRED} KLY to access this course.`);
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Could not check your KLY balance. Please make sure your wallet is connected.");
+    }
+  }
+
+        function scrollToSection() {
       document.getElementById('join-section').scrollIntoView({ 
         behavior: 'smooth' 
       });
@@ -393,13 +430,6 @@
           }
         });
       }, { threshold: 0.1 });
-      
-      document.querySelectorAll('.section, .pathway').forEach(section => {
-        section.style.opacity = '0';
-        section.style.transition = 'opacity 0.6s ease-out';
-        observer.observe(section);
-      });
-    });
       </script>
 </body>
 </html>
