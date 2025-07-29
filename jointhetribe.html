@@ -380,19 +380,33 @@
 <script>
   const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
   const KLY_MIN_REQUIRED = 100;
-  const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // NFT contract
-  const NFT_TOKEN_ID = 2; // Key of Ascension ID (update if needed)
+  const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950';
+  const NFT_TOKEN_ID = 2; // Key of Ascension
+  const BNB_CHAIN_ID = '0x38'; // BNB Smart Chain Mainnet
+
+  // Helper: connect wallet + ensure BNB network
+  async function connectWalletAndVerifyNetwork() {
+    if (typeof window.ethereum === 'undefined') {
+      alert('Please install MetaMask or a Web3 wallet.');
+      throw new Error('No wallet found');
+    }
+
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+    const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (currentChainId !== BNB_CHAIN_ID) {
+      alert("Please switch your wallet to BNB Smart Chain.");
+      throw new Error('Wrong network');
+    }
+
+    return new ethers.providers.Web3Provider(window.ethereum);
+  }
 
   // KLY Token Gating (100 KLY)
   async function checkKLYAccess() {
-    if (typeof window.ethereum === 'undefined') {
-      alert('Please install MetaMask or a Web3 wallet.');
-      return;
-    }
-
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const provider = await connectWalletAndVerifyNetwork();
+      const signer = provider.getSigner();
       const userAddress = await signer.getAddress();
 
       const abi = [
@@ -403,7 +417,7 @@
       const contract = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
       const balance = await contract.balanceOf(userAddress);
       const decimals = await contract.decimals();
-      const formattedBalance = parseFloat(ethers.formatUnits(balance, decimals));
+      const formattedBalance = parseFloat(ethers.utils.formatUnits(balance, decimals));
 
       if (formattedBalance >= KLY_MIN_REQUIRED) {
         window.location.href = "/kly-course.html";
@@ -413,20 +427,15 @@
 
     } catch (err) {
       console.error(err);
-      alert("Could not check your KLY balance. Please make sure your wallet is connected.");
+      alert("Could not check your KLY balance. Please make sure your wallet is connected and you're on the BNB network.");
     }
   }
 
   // NFT Gating (Key of Ascension)
   async function checkNFTAccess() {
-    if (typeof window.ethereum === 'undefined') {
-      alert('Please install MetaMask or a Web3 wallet.');
-      return;
-    }
-
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const provider = await connectWalletAndVerifyNetwork();
+      const signer = provider.getSigner();
       const address = await signer.getAddress();
 
       const abi = [
@@ -444,7 +453,7 @@
 
     } catch (err) {
       console.error(err);
-      alert("Could not verify your NFT. Please check your wallet and try again.");
+      alert("Could not verify your NFT. Please make sure your wallet is connected and you're on the BNB network.");
     }
   }
 
