@@ -113,37 +113,29 @@
       box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
     }
     
-    .status-message {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      background: rgba(15, 15, 15, 0.95);
-      color: #FFD700;
-      border: 1px solid #FFD700;
-      padding: 14px 22px;
-      border-radius: 8px;
-      font-family: 'Cinzel', serif;
-      font-size: 14px;
-      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-      text-align: center;
-      max-width: 90%;
-      width: fit-content;
-      opacity: 0;
-      transition: opacity 0.4s ease-in-out;
-      pointer-events: none;
-    }
-
-    .status-message.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .status-message.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
+.status-message {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #FFD700;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  border: 1px solid gold;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+}
+.status-message.visible {
+  opacity: 1;
+}
+.status-message.hidden {
+  opacity: 0;
+}
     
     .section {
       padding: 100px 20px;
@@ -421,16 +413,21 @@
   const NFT_TOKEN_ID = 2; // Key of Ascension
   const BNB_CHAIN_ID = '0x38'; // BNB Smart Chain Mainnet
 
-  // Utility: Show inline status message
+  // Utility: Elegant Status Message Display
   function showStatus(msg, type = 'info') {
     let statusBox = document.getElementById('status-message');
-    if (!statusBox) return;
 
-    statusBox.innerText = msg;
+    if (!statusBox) {
+      statusBox = document.createElement('div');
+      statusBox.id = 'status-message';
+      statusBox.className = 'status-message';
+      document.body.appendChild(statusBox);
+    }
+
+    statusBox.innerHTML = msg;
     statusBox.classList.remove('hidden');
     statusBox.classList.add('visible');
 
-    // Auto-hide after 5 seconds
     setTimeout(() => {
       statusBox.classList.remove('visible');
       statusBox.classList.add('hidden');
@@ -441,7 +438,10 @@
   async function connectWalletAndVerifyNetwork() {
     try {
       if (typeof window.ethereum === 'undefined') {
-        showStatus('🦊 Please install MetaMask or a Web3 wallet.');
+        showStatus('🦊 MetaMask not found. Redirecting to MetaMask browser...');
+        setTimeout(() => {
+          window.location.href = 'https://metamask.app.link/dapp/kellylegacyestates.com';
+        }, 2000);
         throw new Error('No wallet found');
       }
 
@@ -449,7 +449,6 @@
       await window.ethereum.request({ method: 'eth_requestAccounts' })
         .catch(err => {
           if (err.code === 4001) {
-            // User rejected request
             showStatus('⚠️ You need to connect your wallet to continue.');
             throw new Error('User rejected connection');
           }
@@ -476,7 +475,7 @@
       return new ethers.providers.Web3Provider(window.ethereum);
     } catch (err) {
       console.error('Wallet connection error:', err);
-      throw err; // Re-throw for calling functions to handle
+      throw err;
     }
   }
 
@@ -503,7 +502,7 @@
           window.location.href = "/kly-course.html";
         }, 1000);
       } else {
-        showStatus(`⚠️ You need at least ${KLY_MIN_REQUIRED} KLY to access this course. Your balance: ${formattedBalance.toFixed(2)} KLY.`);
+        showStatus(`⚠️ You need at least ${KLY_MIN_REQUIRED} KLY. Your balance: ${formattedBalance.toFixed(2)} KLY.`);
       }
 
     } catch (err) {
