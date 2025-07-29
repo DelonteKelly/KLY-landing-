@@ -431,159 +431,125 @@
                 "retina_detect": true
             });
             
-      <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
-<script>
-  let provider;
-  let signer;
-  let contract;
+ <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // 🎇 Background particles
+      particlesJS('particles-js', {
+        "particles": {
+          "number": { "value": 80, "density": { "enable": true, "value_area": 800 }},
+          "color": { "value": ["#6e45e2", "#88d3ce"] },
+          "shape": { "type": "circle" },
+          "opacity": { "value": 0.3 },
+          "size": { "value": 3, "random": true },
+          "line_linked": { "enable": true, "distance": 150, "color": "#6e45e2", "opacity": 0.2, "width": 1 },
+          "move": { "enable": true, "speed": 2 }
+        },
+        "interactivity": {
+          "events": {
+            "onhover": { "enable": true, "mode": "grab" },
+            "onclick": { "enable": true, "mode": "push" }
+          },
+          "modes": { "grab": { "distance": 140, "line_linked": { "opacity": 1 } } }
+        },
+        "retina_detect": true
+      });
 
-  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const contractABI = [
-    {
-      "inputs": [
-        {"internalType": "address", "name": "to", "type": "address"},
-        {"internalType": "string", "name": "uri", "type": "string"}
-      ],
-      "name": "mintTo",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ];
- const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by"; //
-  document.addEventListener("DOMContentLoaded", () => {
-    // ⏳ Countdown Timer (7 days from now)
-    const countdownDate = new Date();
-    countdownDate.setDate(countdownDate.getDate() + 7);
+      // ⏳ Countdown Timer
+      const countdownDate = new Date();
+      countdownDate.setDate(countdownDate.getDate() + 7);
+      const updateCountdown = () => {
+        const now = new Date().getTime();
+        const distance = countdownDate - now;
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-    const countdown = setInterval(function () {
-      const now = new Date().getTime();
-      const distance = countdownDate - now;
+        document.getElementById("days").innerHTML = String(days).padStart(2, "0");
+        document.getElementById("hours").innerHTML = String(hours).padStart(2, "0");
+        document.getElementById("minutes").innerHTML = String(minutes).padStart(2, "0");
+        document.getElementById("seconds").innerHTML = String(seconds).padStart(2, "0");
 
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        if (distance < 0) {
+          clearInterval(countdownInterval);
+          document.getElementById("mintButton").innerHTML = "MINTING LIVE!";
+          document.getElementById("mintButton").disabled = false;
+        }
+      };
+      const countdownInterval = setInterval(updateCountdown, 1000);
+      updateCountdown();
 
-      if (document.getElementById("days")) {
-        document.getElementById("days").innerHTML = days.toString().padStart(2, "0");
-        document.getElementById("hours").innerHTML = hours.toString().padStart(2, "0");
-        document.getElementById("minutes").innerHTML = minutes.toString().padStart(2, "0");
-        document.getElementById("seconds").innerHTML = seconds.toString().padStart(2, "0");
-      }
+      // 🦊 Web3 Wallet + Mint
+      const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+      const contractABI = [{
+        "inputs": [
+          {"internalType": "address", "name": "to", "type": "address"},
+          {"internalType": "string", "name": "uri", "type": "string"}
+        ],
+        "name": "mintTo",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }];
+      const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
 
-      if (distance < 0) {
-        clearInterval(countdown);
-        document.getElementById("days").innerHTML = "00";
-        document.getElementById("hours").innerHTML = "00";
-        document.getElementById("minutes").innerHTML = "00";
-        document.getElementById("seconds").innerHTML = "00";
-        document.getElementById("mintButton").innerHTML = "MINTING LIVE!";
-        document.getElementById("mintButton").style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
-        document.getElementById("mintButton").disabled = false;
-      }
-    }, 1000);
+      let provider, signer, contract;
+      const connectBtn = document.getElementById("connectWallet");
+      const mintBtn = document.getElementById("mintButton");
 
-    // 🦊 Connect Wallet
-    const connectBtn = document.getElementById("connectWallet");
-    const mintBtn = document.getElementById("mintButton");
-
-    // Check if wallet is already connected
-    async function checkWalletConnection() {
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        await connectWallet();
-      }
-    }
-
-    async function connectWallet() {
-      try {
+      async function connectWallet() {
         if (!window.ethereum) {
-          alert("Please install MetaMask or another Ethereum wallet to continue.");
+          alert("Install MetaMask to continue.");
           return;
         }
 
         provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Request account access if needed
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
-
         const address = await signer.getAddress();
-        connectBtn.innerHTML = `${address.substring(0, 6)}...${address.slice(-4)}`;
+        connectBtn.innerText = `${address.substring(0,6)}...${address.slice(-4)}`;
         connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
-
-        // Initialize contract
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        
-        // Enable mint button
         mintBtn.disabled = false;
-        
-        console.log("Wallet connected successfully");
-      } catch (err) {
-        console.error("Wallet connection failed:", err);
-        alert("Failed to connect wallet: " + (err.message || err));
-      }
-    }
-
-    connectBtn.addEventListener("click", connectWallet);
-
-    // 🧪 Mint NFT
-    mintBtn.addEventListener("click", async () => {
-      if (!signer || !contract) {
-        alert("Please connect your wallet first.");
-        return;
       }
 
-      try {
-        mintBtn.innerHTML = "MINTING...";
-        mintBtn.disabled = true;
+      async function mintNFT() {
+        if (!signer || !contract) {
+          alert("Please connect your wallet first.");
+          return;
+        }
 
-        const address = await signer.getAddress();
-    const tx = await contract.mintTo(address, metadataURI);
-        
-        console.log("Transaction sent:", tx.hash);
-        
-        // Wait for transaction to be mined
-        const receipt = await tx.wait();
-        console.log("Transaction mined:", receipt.transactionHash);
+        try {
+          mintBtn.innerText = "MINTING...";
+          mintBtn.disabled = true;
+          const address = await signer.getAddress();
+          const tx = await contract.mintTo(address, metadataURI);
+          await tx.wait();
+          mintBtn.innerText = "MINTED!";
+          mintBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+          alert("NFT minted successfully!");
+        } catch (err) {
+          console.error("Mint failed:", err);
+          alert("Mint failed: " + err.message);
+          mintBtn.innerText = "MINT NOW";
+          mintBtn.disabled = false;
+        }
+      }
 
-        mintBtn.innerHTML = "MINTED!";
-        mintBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+      connectBtn.addEventListener("click", connectWallet);
+      mintBtn.addEventListener("click", mintNFT);
 
-        alert("NFT minted successfully! Transaction hash: " + tx.hash);
-      } catch (err) {
-        console.error("Minting failed:", err);
-        mintBtn.innerHTML = "MINT NFT";
-        mintBtn.disabled = false;
-        alert("Minting failed: " + (err.message || err));
+      // Auto-check wallet connection
+      if (window.ethereum && window.ethereum.selectedAddress) connectWallet();
+
+      // Listen for account changes
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', connectWallet);
+        window.ethereum.on('chainChanged', () => window.location.reload());
       }
     });
-
-    // Check for wallet connection on page load
-    checkWalletConnection();
-    
-    // Listen for account changes
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          // Wallet disconnected
-          connectBtn.innerHTML = "CONNECT WALLET";
-          connectBtn.style.background = "";
-          mintBtn.disabled = true;
-          signer = null;
-          contract = null;
-        } else {
-          // Account changed, reconnect
-          connectWallet();
-        }
-      });
-      
-      // Listen for chain changes
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
-    }
-  });
-</script>
+  </script>
 </body>
 </html>
