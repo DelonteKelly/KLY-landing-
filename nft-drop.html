@@ -460,34 +460,72 @@
                 }
             }, 1000);
             
-            // Wallet connection simulation
-            document.getElementById('connectWallet').addEventListener('click', function() {
-                this.innerHTML = '0x1a2...3b4c';
-                this.style.background = 'linear-gradient(45deg, #4CAF50, #8BC34A)';
-            });
-            
-            // Mint button interaction
-            document.getElementById('mintButton').addEventListener('click', function() {
-                if (document.getElementById('connectWallet').textContent === 'Connect Wallet') {
-                    alert('Please connect your wallet first');
-                    return;
-                }
-                
-                this.innerHTML = 'MINTING...';
-                this.disabled = true;
-                
-                // Simulate minting process
-                setTimeout(() => {
-                    this.innerHTML = 'MINTED!';
-                    this.style.background = 'linear-gradient(45deg, #4CAF50, #8BC34A)';
-                    
-                    // Show confirmation
-                    setTimeout(() => {
-                        alert('Frequency Key minted successfully! Check your wallet.');
-                    }, 500);
-                }, 2000);
-            });
-        });
-    </script>
+       <script>
+  let provider;
+  let signer;
+  let contract;
+
+  // ✅ Your contract details
+  const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Replace if needed
+  const contractABI = [
+    "function mintTo(address to, string memory uri) public"
+  ];
+
+  // 📦 Optional: Replace with a unique metadata URI for each mint
+  const metadataURI = "ipfs://Qm...yourMetadataHash";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const connectBtn = document.getElementById("connectWallet");
+    const mintBtn = document.getElementById("mintButton");
+
+    connectBtn.addEventListener("click", async () => {
+      try {
+        if (!window.ethereum) {
+          alert("Please install MetaMask to continue.");
+          return;
+        }
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+
+        const address = await signer.getAddress();
+        connectBtn.innerHTML = `${address.substring(0, 6)}...${address.slice(-4)}`;
+        connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+      } catch (err) {
+        console.error("Wallet connection failed:", err);
+      }
+    });
+
+    mintBtn.addEventListener("click", async () => {
+      if (!signer || !contract) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      try {
+        mintBtn.innerHTML = "MINTING...";
+        mintBtn.disabled = true;
+
+        const address = await signer.getAddress();
+        const tx = await contract.mintTo(address, metadataURI);
+        await tx.wait();
+
+        mintBtn.innerHTML = "MINTED!";
+        mintBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+
+        setTimeout(() => {
+          alert("Frequency Key minted successfully! Check your wallet.");
+        }, 500);
+      } catch (err) {
+        console.error("Minting failed:", err);
+        mintBtn.innerHTML = "Mint Failed";
+        alert("Minting failed. Check the console or try again.");
+      }
+    });
+  });
+</script>
 </body>
 </html>
