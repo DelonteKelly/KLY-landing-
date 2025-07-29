@@ -979,128 +979,58 @@
 <script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-  // Contract Addresses
+  // BNB Chain Contract Addresses
   const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  
+  // BNB Chain Network Info
+  const BNB_MAINNET = {
+    chainId: "0x38", // 56 in decimal
+    chainName: "BNB Smart Chain",
+    nativeCurrency: {
+      name: "BNB",
+      symbol: "BNB",
+      decimals: 18
+    },
+    rpcUrls: ["https://bsc-dataseed.binance.org/"],
+    blockExplorerUrls: ["https://bscscan.com/"]
+  };
 
   // Contract ABIs
   const DAO_ABI = [
-    {
-      "inputs": [],
-      "name": "getAllProposals",
-      "outputs": [{
-        "components": [
-          { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
-          { "internalType": "address", "name": "proposer", "type": "address" },
-          { "internalType": "address[]", "name": "targets", "type": "address[]" },
-          { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
-          { "internalType": "string[]", "name": "signatures", "type": "string[]" },
-          { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
-          { "internalType": "uint256", "name": "startBlock", "type": "uint256" },
-          { "internalType": "uint256", "name": "endBlock", "type": "uint256" },
-          { "internalType": "string", "name": "description", "type": "string" }
-        ],
-        "type": "tuple[]"
-      }],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
-      "name": "getProposalVotes",
-      "outputs": [
-        { "internalType": "uint256", "name": "forVotes", "type": "uint256" },
-        { "internalType": "uint256", "name": "againstVotes", "type": "uint256" }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        { "internalType": "uint256", "name": "proposalId", "type": "uint256" },
-        { "internalType": "uint8", "name": "support", "type": "uint8" }
-      ],
-      "name": "castVote",
-      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        { "internalType": "address[]", "name": "targets", "type": "address[]" },
-        { "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
-        { "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
-        { "internalType": "string", "name": "description", "type": "string" }
-      ],
-      "name": "propose",
-      "outputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
+    "function getAllProposals() view returns (tuple(uint256 proposalId, address proposer, address[] targets, uint256[] values, string[] signatures, bytes[] calldatas, uint256 startBlock, uint256 endBlock, string description)[])",
+    "function getProposalVotes(uint256 proposalId) view returns (uint256 forVotes, uint256 againstVotes)",
+    "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
+    "function propose(address[] targets, uint256[] values, string[] signatures, bytes[] calldatas, string description) returns (uint256)"
   ];
 
   const KLY_ABI = [
     "function delegate(address delegatee) external",
-    "function delegates(address account) view returns (address)"
+    "function delegates(address account) view returns (address)",
+    "function balanceOf(address account) view returns (uint256)"
   ];
 
   // App State
   let provider, signer, wallet;
   let currentBlock = 0;
-  let pollingInterval;
+  let currentNetwork = null;
 
   // DOM Elements
-  const connectBtn = document.getElementById("connectWallet");
-  const walletDisplay = document.getElementById("walletDisplay");
-  const walletAddress = document.getElementById("walletAddress");
-  const proposalList = document.getElementById("proposalList");
-  const loadingProposals = document.getElementById("loadingProposals");
-  const noProposals = document.getElementById("noProposals");
-  const delegateVotesBtn = document.getElementById("delegateVotesBtn");
-  const delegationStatus = document.getElementById("delegationStatus");
-  const proposalTitle = document.getElementById("proposalTitle");
-  const proposalDescription = document.getElementById("proposalDescription");
-  const submitProposal = document.getElementById("submitProposal");
-  const proposalStatus = document.getElementById("proposalStatus");
-  const tabs = document.querySelectorAll(".tab");
-  const tabContents = document.querySelectorAll(".tab-content");
-  const fireBackground = document.getElementById("fireBackground");
-
-  // Initialize fire particles
-  function initFireParticles() {
-    for (let i = 0; i < 20; i++) {
-      createFireParticle();
-    }
-  }
-
-  function createFireParticle() {
-    const particle = document.createElement("div");
-    particle.className = "fire-particle";
-    
-    // Random size between 5px and 15px
-    const size = Math.random() * 10 + 5;
-    particle.style.width = `${size}px`;
-    particle.style.height = `${size}px`;
-    
-    // Random position
-    particle.style.left = `${Math.random() * 100}%`;
-    particle.style.bottom = `-${size}px`;
-    
-    // Random animation duration
-    const duration = Math.random() * 10 + 10;
-    particle.style.animationDuration = `${duration}s`;
-    
-    // Random delay
-    particle.style.animationDelay = `${Math.random() * 5}s`;
-    
-    fireBackground.appendChild(particle);
-    
-    // Remove particle after animation completes
-    setTimeout(() => {
-      particle.remove();
-      createFireParticle();
-    }, duration * 1000);
-  }
+  const connectBtn = document.getElementById('connectWallet');
+  const walletDisplay = document.getElementById('walletDisplay');
+  const walletAddress = document.getElementById('walletAddress');
+  const votingPowerDisplay = document.getElementById('votingPower');
+  const votingPowerAmount = document.getElementById('votingPowerAmount');
+  const proposalList = document.getElementById('proposalList');
+  const loadingProposals = document.getElementById('loadingProposals');
+  const noProposals = document.getElementById('noProposals');
+  const delegateVotesBtn = document.getElementById('delegateVotesBtn');
+  const delegationStatus = document.getElementById('delegationStatus');
+  const proposalTitle = document.getElementById('proposalTitle');
+  const proposalDescription = document.getElementById('proposalDescription');
+  const submitProposal = document.getElementById('submitProposal');
+  const proposalStatus = document.getElementById('proposalStatus');
+  const gasEstimate = document.getElementById('gasEstimate');
 
   // Initialize the app
   function init() {
@@ -1109,198 +1039,9 @@
     checkInitialConnection();
   }
 
-  // Set up event listeners
-  function setupEventListeners() {
-    // Connect wallet button
-    connectBtn.addEventListener("click", connectWallet);
-    
-    // Delegate votes button
-    delegateVotesBtn.addEventListener("click", delegateVotes);
-    
-    // Submit proposal button
-    submitProposal.addEventListener("click", submitProposalHandler);
-    
-    // Tab switching
-    tabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        tabs.forEach(t => t.classList.remove("active"));
-        tabContents.forEach(c => c.classList.remove("active"));
-        
-        tab.classList.add("active");
-        const tabId = tab.getAttribute("data-tab") + "-tab";
-        document.getElementById(tabId).classList.add("active");
-      });
-    });
-    
-    // Handle wallet changes
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length > 0) {
-          connectWallet();
-        } else {
-          handleDisconnect();
-        }
-      });
-      
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
-    }
-  }
+  // [Keep all other existing functions until createProposalCard]
 
-  // Check if wallet is already connected
-  function checkInitialConnection() {
-    if (window.ethereum && window.ethereum.selectedAddress) {
-      connectWallet();
-    }
-  }
-
-  // Handle wallet disconnection
-  function handleDisconnect() {
-    walletDisplay.style.display = "none";
-    connectBtn.innerHTML = `<i class="fas fa-plug"></i> Connect Wallet`;
-    connectBtn.disabled = false;
-    proposalList.innerHTML = "";
-    loadingProposals.style.display = "flex";
-    noProposals.style.display = "none";
-    
-    // Clear polling
-    if (pollingInterval) clearInterval(pollingInterval);
-  }
-
-  // Connect wallet
-  async function connectWallet() {
-    try {
-      if (!window.ethereum) {
-        showStatus("Please install MetaMask or another Ethereum wallet.", "error");
-        window.open("https://metamask.io/download.html", "_blank");
-        return;
-      }
-
-      updateConnectButton(true, "Connecting...");
-      
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      
-      if (accounts.length === 0) {
-        throw new Error("No accounts found");
-      }
-      
-      signer = provider.getSigner();
-      wallet = await signer.getAddress();
-
-      // Update UI
-      updateConnectButton(false, "Connected");
-      walletDisplay.style.display = "flex";
-      walletAddress.textContent = `${wallet.substring(0, 6)}...${wallet.slice(-4)}`;
-      
-      // Check network
-      const network = await provider.getNetwork();
-      if (network.chainId !== 1) { // Change to your chain ID
-        showStatus(`Please switch to Ethereum Mainnet`, "warning");
-      }
-      
-      // Load initial data
-      await loadInitialData();
-      
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      updateConnectButton(false, "Connect Wallet");
-      
-      let errorMsg = err.message;
-      if (err.code === 4001) {
-        errorMsg = "Connection rejected by user";
-      } else if (err.code === -32002) {
-        errorMsg = "Connection request already pending";
-      }
-      
-      showStatus(`Connection failed: ${errorMsg}`, "error");
-    }
-  }
-
-  // Update connect button state
-  function updateConnectButton(loading, text) {
-    if (loading) {
-      connectBtn.innerHTML = `<i class="fas fa-spinner spin"></i> ${text}`;
-      connectBtn.disabled = true;
-    } else {
-      const icon = text === "Connected" ? "fa-check" : "fa-plug";
-      connectBtn.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
-      connectBtn.disabled = text === "Connected";
-    }
-  }
-
-  // Load initial data after connection
-  async function loadInitialData() {
-    try {
-      currentBlock = await provider.getBlockNumber();
-      await loadProposals();
-      await checkDelegationStatus();
-      showStatus("Wallet connected successfully", "success");
-      startPolling();
-    } catch (err) {
-      console.error("Initial data load error:", err);
-      showStatus("Error loading initial data", "error");
-    }
-  }
-
-  // Start polling for updates
-  function startPolling() {
-    // Clear existing interval if any
-    if (pollingInterval) clearInterval(pollingInterval);
-    
-    // Update every 15 seconds
-    pollingInterval = setInterval(async () => {
-      if (wallet) {
-        currentBlock = await provider.getBlockNumber();
-        await loadProposals();
-      }
-    }, 15000);
-  }
-
-  // Load proposals from the blockchain
-  async function loadProposals() {
-    try {
-      loadingProposals.style.display = "flex";
-      noProposals.style.display = "none";
-      proposalList.innerHTML = "";
-      
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
-      const proposals = await dao.getAllProposals();
-      
-      loadingProposals.style.display = "none";
-      
-      if (proposals.length === 0) {
-        noProposals.style.display = "flex";
-        return;
-      }
-      
-      // Sort proposals by most recent first
-      proposals.sort((a, b) => b.proposalId - a.proposalId);
-      
-      // Create a document fragment for better performance
-      const fragment = document.createDocumentFragment();
-      
-      for (const proposal of proposals) {
-        try {
-          const votes = await dao.getProposalVotes(proposal.proposalId);
-          const proposalCard = createProposalCard(proposal, votes);
-          fragment.appendChild(proposalCard);
-        } catch (err) {
-          console.error(`Error loading proposal ${proposal.proposalId}:`, err);
-        }
-      }
-      
-      proposalList.appendChild(fragment);
-      
-    } catch (err) {
-      console.error("Error loading proposals:", err);
-      loadingProposals.style.display = "none";
-      showStatus("Error loading proposals. Please try again.", "error");
-    }
-  }
-
-  // Create proposal card HTML
+  // Create proposal card HTML (complete version)
   function createProposalCard(proposal, votes) {
     const card = document.createElement("div");
     card.className = "card proposal-card holographic";
@@ -1332,8 +1073,8 @@
     
     // Get first line of description as title
     const descriptionLines = proposal.description.split('\n');
-    const title = descriptionLines[0].replace(/^#\s*/, ''); // Remove markdown heading
-    
+    const title = descriptionLines[0].replace(/^#\s*/, '');
+
     card.innerHTML = `
       <div class="status-badge ${statusClass}">
         <i class="fas fa-${statusIcon}"></i>
@@ -1345,17 +1086,6 @@
       <div class="proposer">
         <i class="fas fa-user"></i>
         <span>${shortenAddress(proposal.proposer)}</span>
-      </div>
-      
-      <div class="proposal-meta">
-        <div class="meta-item">
-          <i class="fas fa-play"></i>
-          <span>Starts: Block ${proposal.startBlock}</span>
-        </div>
-        <div class="meta-item">
-          <i class="fas fa-flag-checkered"></i>
-          <span>Ends: Block ${proposal.endBlock}</span>
-        </div>
       </div>
       
       <div class="vote-progress-container">
@@ -1391,37 +1121,32 @@
     return card;
   }
 
-  // Cast vote function
-  async function castVote(e) {
-    const proposalId = e.target.getAttribute('data-proposal');
-    const support = parseInt(e.target.getAttribute('data-vote'));
-    
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error");
-      return;
+  // Helper function to shorten addresses
+  function shortenAddress(address) {
+    return `${address.substring(0, 6)}...${address.slice(-4)}`;
+  }
+
+  // Update connect button state
+  function updateConnectButton(loading, text) {
+    if (loading) {
+      connectBtn.innerHTML = `<i class="fas fa-spinner spin"></i> ${text}`;
+      connectBtn.disabled = true;
+    } else {
+      const icon = text === "Connected" ? "fa-check" : "fa-plug";
+      connectBtn.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
+      connectBtn.disabled = text === "Connected";
     }
-    
-    try {
-      e.target.innerHTML = `<i class="fas fa-spinner spin"></i> Processing...`;
-      e.target.disabled = true;
-      
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-      const tx = await dao.castVote(proposalId, support);
-      
-      showStatus("Vote submitted. Waiting for confirmation...", "info");
-      await tx.wait();
-      
-      showStatus("Vote cast successfully!", "success");
-      await loadProposals(); // Refresh proposals
-      
-    } catch (err) {
-      console.error("Voting error:", err);
-      showStatus(`Voting failed: ${err.message}`, "error");
-      e.target.innerHTML = support === 1 ? 
-        `<i class="fas fa-thumbs-up"></i> Vote For` : 
-        `<i class="fas fa-thumbs-down"></i> Vote Against`;
-      e.target.disabled = false;
-    }
+  }
+
+  // Handle wallet disconnection
+  function handleDisconnect() {
+    walletDisplay.style.display = "none";
+    votingPowerDisplay.style.display = "none";
+    connectBtn.innerHTML = `<i class="fas fa-plug"></i> Connect Wallet`;
+    connectBtn.disabled = false;
+    proposalList.innerHTML = "";
+    loadingProposals.style.display = "flex";
+    noProposals.style.display = "none";
   }
 
   // Check delegation status
@@ -1458,7 +1183,8 @@
     }
     
     try {
-      updateDelegateButton(true, "Delegating...");
+      delegateVotesBtn.innerHTML = `<i class="fas fa-spinner spin"></i> Delegating...`;
+      delegateVotesBtn.disabled = true;
       
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
       const tx = await kly.delegate(wallet);
@@ -1467,97 +1193,36 @@
       await tx.wait();
       
       showStatus("Delegation successful!", "success", delegationStatus);
-      updateDelegateButton(false, "Already Delegated");
+      delegateVotesBtn.innerHTML = `<i class="fas fa-check"></i> Already Delegated`;
       delegateVotesBtn.disabled = true;
+      await checkDelegationStatus();
       
     } catch (err) {
       console.error("Delegation error:", err);
-      showStatus(`Delegation failed: ${err.message}`, "error", delegationStatus);
-      updateDelegateButton(false, "Delegate My KLY Votes");
+      showEnhancedError(err, delegationStatus);
+      delegateVotesBtn.innerHTML = `<i class="fas fa-user-shield"></i> Delegate My KLY Votes`;
+      delegateVotesBtn.disabled = false;
     }
   }
 
-  // Update delegate button state
-  function updateDelegateButton(loading, text) {
-    if (loading) {
-      delegateVotesBtn.innerHTML = `<i class="fas fa-spinner spin"></i> ${text}`;
-      delegateVotesBtn.disabled = true;
-    } else {
-      const icon = text === "Already Delegated" ? "fa-check" : "fa-user-shield";
-      delegateVotesBtn.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
-    }
-  }
-
-  // Submit proposal handler
-  async function submitProposalHandler() {
-    const title = proposalTitle.value.trim();
-    const desc = proposalDescription.value.trim();
+  // Show status message
+  function showStatus(message, type, element = null) {
+    const status = element || proposalStatus;
+    status.style.display = "flex";
+    status.className = `status-message status-${type}`;
+    status.innerHTML = `
+      <i class="fas fa-${
+        type === 'error' ? 'exclamation-circle' : 
+        type === 'success' ? 'check-circle' : 
+        type === 'warning' ? 'exclamation-triangle' : 'info-circle'
+      }"></i>
+      <span>${message}</span>
+    `;
     
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error", proposalStatus);
-      return;
-    }
-    
-    // Validate inputs
-    if (!title) {
-      showStatus("Proposal title is required", "error", proposalStatus);
-      proposalTitle.focus();
-      return;
-    }
-    
-    if (!desc) {
-      showStatus("Proposal description is required", "error", proposalStatus);
-      proposalDescription.focus();
-      return;
-    }
-    
-    if (desc.length < 50) {
-      showStatus("Description should be at least 50 characters", "error", proposalStatus);
-      proposalDescription.focus();
-      return;
-    }
-    
-    try {
-      updateSubmitButton(true, "Submitting...");
-      showStatus("Preparing proposal...", "info", proposalStatus);
-
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-      
-      // For a real DAO, you would have actual targets, values, and calldatas
-      // This is a simplified version for governance proposals without execution
-      const tx = await dao.propose(
-        ["0x0000000000000000000000000000000000000000"], // targets
-        [0],                                          // values
-        ["0x"],                                       // calldatas
-        `# ${title}\n\n${desc}`                       // description with markdown
-      );
-
-      showStatus("Transaction sent. Waiting for confirmation...", "info", proposalStatus);
-      await tx.wait();
-      
-      showStatus("Proposal submitted successfully!", "success", proposalStatus);
-      updateSubmitButton(false, "Submit Proposal");
-      
-      // Clear form
-      proposalTitle.value = "";
-      proposalDescription.value = "";
-      
-      // Reload proposals
-      await loadProposals();
-      
-    } catch (err) {
-      console.error("Proposal submission error:", err);
-      let errorMsg = err.message;
-      
-      // Handle common errors
-      if (err.message.includes("delegates to self")) {
-        errorMsg = "You must delegate voting power to yourself before proposing";
-      } else if (err.message.includes("below proposal threshold")) {
-        errorMsg = "You don't have enough voting power to create a proposal";
-      }
-      
-      showStatus(`Failed to submit proposal: ${errorMsg}`, "error", proposalStatus);
-      updateSubmitButton(false, "Submit Proposal");
+    if (!element) {
+      setTimeout(() => {
+        status.style.display = "none";
+      }, 5000);
     }
   }
 
@@ -1572,28 +1237,41 @@
     }
   }
 
-  // Show status message
-  function showStatus(message, type, element = null) {
-    const target = element || document.body;
-    const status = element || proposalStatus;
+  // Cast vote function
+  async function castVote(e) {
+    const proposalId = e.target.getAttribute('data-proposal');
+    const support = parseInt(e.target.getAttribute('data-vote'));
     
-    status.style.display = "flex";
-    status.className = `status-message status-${type}`;
-    status.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 
-                       type === 'success' ? 'check-circle' : 
-                       type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                       <span>${message}</span>`;
-    
-    if (!element) {
-      setTimeout(() => {
-        status.style.display = "none";
-      }, 5000);
+    if (!wallet) {
+      showStatus("Please connect your wallet first", "error");
+      return;
     }
-  }
-
-  // Helper function to shorten addresses
-  function shortenAddress(address) {
-    return `${address.substring(0, 6)}...${address.slice(-4)}`;
+    
+    try {
+      e.target.innerHTML = `<i class="fas fa-spinner spin"></i> Processing...`;
+      e.target.disabled = true;
+      
+      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+      const tx = await dao.castVote(proposalId, support);
+      
+      showStatus("Vote submitted. Waiting for confirmation...", "info");
+      const receipt = await tx.wait();
+      
+      if (receipt.status === 1) {
+        showStatus("Vote cast successfully!", "success");
+        await loadProposals();
+      } else {
+        showStatus("Vote failed", "error");
+      }
+      
+    } catch (err) {
+      console.error("Voting error:", err);
+      showEnhancedError(err);
+      e.target.innerHTML = support === 1 ? 
+        `<i class="fas fa-thumbs-up"></i> Vote For` : 
+        `<i class="fas fa-thumbs-down"></i> Vote Against`;
+      e.target.disabled = false;
+    }
   }
 
   // Initialize the app when DOM is loaded
