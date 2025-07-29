@@ -431,7 +431,7 @@
                 "retina_detect": true
             });
             
-        <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+      <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
 <script>
   let provider;
   let signer;
@@ -439,10 +439,18 @@
 
   const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const contractABI = [
-    "function mintTo(address to, string memory uri) public"
+    {
+      "inputs": [
+        {"internalType": "address", "name": "to", "type": "address"},
+        {"internalType": "string", "name": "uri", "type": "string"}
+      ],
+      "name": "mintTo",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
   ];
-  const metadataURI = "ipfs://Qm...yourMetadataHash";
-
+ const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by"; //
   document.addEventListener("DOMContentLoaded", () => {
     // ⏳ Countdown Timer (7 days from now)
     const countdownDate = new Date();
@@ -472,6 +480,7 @@
         document.getElementById("seconds").innerHTML = "00";
         document.getElementById("mintButton").innerHTML = "MINTING LIVE!";
         document.getElementById("mintButton").style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
+        document.getElementById("mintButton").disabled = false;
       }
     }, 1000);
 
@@ -479,26 +488,44 @@
     const connectBtn = document.getElementById("connectWallet");
     const mintBtn = document.getElementById("mintButton");
 
-    connectBtn.addEventListener("click", async () => {
+    // Check if wallet is already connected
+    async function checkWalletConnection() {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        await connectWallet();
+      }
+    }
+
+    async function connectWallet() {
       try {
         if (!window.ethereum) {
-          alert("Please install MetaMask to continue.");
+          alert("Please install MetaMask or another Ethereum wallet to continue.");
           return;
         }
 
         provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Request account access if needed
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
 
         const address = await signer.getAddress();
         connectBtn.innerHTML = `${address.substring(0, 6)}...${address.slice(-4)}`;
-        connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)`;
+        connectBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
 
+        // Initialize contract
         contract = new ethers.Contract(contractAddress, contractABI, signer);
+        
+        // Enable mint button
+        mintBtn.disabled = false;
+        
+        console.log("Wallet connected successfully");
       } catch (err) {
         console.error("Wallet connection failed:", err);
+        alert("Failed to connect wallet: " + (err.message || err));
       }
-    });
+    }
+
+    connectBtn.addEventListener("click", connectWallet);
 
     // 🧪 Mint NFT
     mintBtn.addEventListener("click", async () => {
@@ -512,21 +539,50 @@
         mintBtn.disabled = true;
 
         const address = await signer.getAddress();
-        const tx = await contract.mintTo(address, metadataURI);
-        await tx.wait();
+    const tx = await contract.mintTo(address, metadataURI);
+        
+        console.log("Transaction sent:", tx.hash);
+        
+        // Wait for transaction to be mined
+        const receipt = await tx.wait();
+        console.log("Transaction mined:", receipt.transactionHash);
 
         mintBtn.innerHTML = "MINTED!";
         mintBtn.style.background = "linear-gradient(45deg, #4CAF50, #8BC34A)";
 
-        setTimeout(() => {
-          alert("Frequency Key minted successfully! Check your wallet.");
-        }, 500);
+        alert("NFT minted successfully! Transaction hash: " + tx.hash);
       } catch (err) {
         console.error("Minting failed:", err);
-        mintBtn.innerHTML = "Mint Failed";
-        alert("Minting failed. Check the console or try again.");
+        mintBtn.innerHTML = "MINT NFT";
+        mintBtn.disabled = false;
+        alert("Minting failed: " + (err.message || err));
       }
     });
+
+    // Check for wallet connection on page load
+    checkWalletConnection();
+    
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          // Wallet disconnected
+          connectBtn.innerHTML = "CONNECT WALLET";
+          connectBtn.style.background = "";
+          mintBtn.disabled = true;
+          signer = null;
+          contract = null;
+        } else {
+          // Account changed, reconnect
+          connectWallet();
+        }
+      });
+      
+      // Listen for chain changes
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
+    }
   });
 </script>
 </body>
