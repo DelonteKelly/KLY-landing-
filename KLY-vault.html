@@ -7,392 +7,312 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <style>
-    :root {
-      --gold-primary: #FFD700;
-      --gold-secondary: #C5A042;
-      --gold-tertiary: #D4AF37;
-      --bg-dark: #0A0A0A;
-      --bg-darker: #050505;
-      --text-light: #F5F5F5;
-      --text-dim: #AAAAAA;
-      --accent-glow: 0 0 15px rgba(255, 215, 0, 0.7);
-    }
+ <!-- PLACE THIS IN <head> OR REPLACE YOUR CURRENT <style> -->
+<style>
+  :root {
+    --gold-primary: #FFD700;
+    --gold-secondary: #C5A042;
+    --gold-tertiary: #D4AF37;
+    --bg-dark: #0A0A0A;
+    --bg-darker: #050505;
+    --text-light: #F5F5F5;
+    --text-dim: #AAAAAA;
+    --accent-glow: 0 0 15px rgba(255, 215, 0, 0.7);
+  }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-light);
-      font-family: 'Montserrat', sans-serif;
-      overflow-x: hidden;
-    }
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    font-family: 'Montserrat', sans-serif;
+    overflow-x: hidden;
+  }
 
-    .vault-header {
-      position: relative;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 40px;
-      background: linear-gradient(to bottom, rgba(10, 10, 10, 0.9), transparent);
-    }
+  .vault-header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: linear-gradient(to bottom, rgba(10, 10, 10, 0.9), transparent);
+  }
 
-    .vault-logo {
-      font-family: 'Cinzel Decorative', serif;
-      font-size: 1.8rem;
-      color: var(--gold-primary);
-      text-shadow: var(--accent-glow);
-      letter-spacing: 2px;
-    }
+  .vault-logo {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.8rem;
+    color: var(--gold-primary);
+    text-shadow: var(--accent-glow);
+    letter-spacing: 2px;
+  }
 
-    .vault-nav a {
-      color: var(--text-dim);
-      text-decoration: none;
-      margin-left: 25px;
-      font-size: 0.9rem;
-      transition: color 0.3s ease;
-      position: relative;
-    }
+  .vault-nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    margin-left: 25px;
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+    position: relative;
+  }
 
-    .vault-nav a:hover {
-      color: var(--gold-primary);
-    }
+  .vault-nav a:hover {
+    color: var(--gold-primary);
+  }
 
-    .vault-nav a::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 0;
-      height: 1px;
-      background: var(--gold-primary);
-      transition: width 0.3s ease;
-    }
+  .vault-nav a::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--gold-primary);
+    transition: width 0.3s ease;
+  }
 
-    .vault-nav a:hover::after {
-      width: 100%;
-    }
+  .vault-nav a:hover::after {
+    width: 100%;
+  }
 
-    #vault-container {
-      position: relative;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
+  #vault-container {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
 
-    #threejs-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
+  #threejs-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
 
-    .vault-content {
-      position: relative;
-      z-index: 5;
-      text-align: center;
-      max-width: 800px;
-      padding: 0 20px;
-    }
+  .vault-content {
+    position: relative;
+    z-index: 5;
+    text-align: center;
+    max-width: 800px;
+    padding: 0 20px;
+  }
 
+  .vault-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 4rem;
+    color: var(--gold-primary);
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    letter-spacing: 3px;
+  }
+
+  .vault-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+
+  /* 🔥 ENHANCED VAULT IMAGE STYLING */
+  .enhanced-door {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 40px auto;
+    z-index: 3;
+  }
+
+  .vault-image {
+    width: 100%;
+    border: 2px solid var(--gold-secondary);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+  }
+
+  .door-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(3px);
+    background: rgba(0, 0, 0, 0.4);
+    text-align: center;
+  }
+
+  .vault-door-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.8rem;
+    color: var(--gold-primary);
+    margin-bottom: 20px;
+    text-shadow: var(--accent-glow);
+  }
+
+  .vault-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+    padding: 0 20px;
+  }
+
+  .vault-item {
+    background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+    border: 1px solid rgba(197, 160, 66, 0.3);
+    border-radius: 8px;
+    padding: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .vault-item:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 30px rgba(197, 160, 66, 0.2);
+    border-color: var(--gold-secondary);
+  }
+
+  .vault-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right, transparent, var(--gold-primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .vault-item:hover::before {
+    opacity: 1;
+  }
+
+  .item-icon {
+    font-size: 2.5rem;
+    color: var(--gold-primary);
+    margin-bottom: 15px;
+  }
+
+  .item-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: var(--gold-primary);
+  }
+
+  .item-desc {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .vault-footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 30px;
+    margin-top: 50px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .unlock-btn {
+    background: transparent;
+    color: var(--gold-primary);
+    border: 1px solid var(--gold-secondary);
+    padding: 12px 30px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .unlock-btn:hover {
+    background: rgba(197, 160, 66, 0.1);
+    box-shadow: 0 0 15px rgba(197, 160, 66, 0.3);
+  }
+
+  .unlock-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+    transition: all 0.5s ease;
+  }
+
+  .unlock-btn:hover::before {
+    left: 100%;
+  }
+
+  .particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .particle {
+    position: absolute;
+    background: var(--gold-primary);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 768px) {
     .vault-title {
-      font-family: 'Cinzel Decorative', serif;
-      font-size: 4rem;
-      color: var(--gold-primary);
-      margin-bottom: 20px;
-      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-      letter-spacing: 3px;
+      font-size: 2.5rem;
     }
 
     .vault-subtitle {
-      font-size: 1.2rem;
-      color: var(--text-dim);
-      margin-bottom: 40px;
-      line-height: 1.6;
-    }
-
-    .vault-door {
-      position: relative;
-      width: 300px;
-      height: 450px;
-      margin: 0 auto 40px;
-      perspective: 1000px;
-    }
-
-    .door-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      transform-style: preserve-3d;
-      transition: transform 1.5s ease-in-out;
-    }
-
-    .door {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-      border: 3px solid var(--gold-secondary);
-      border-radius: 5px;
-      box-shadow: 0 0 30px rgba(197, 160, 66, 0.3);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      backface-visibility: hidden;
-    }
-
-    .door-front {
-      transform: rotateY(0deg);
-      z-index: 2;
-    }
-
-    .door-back {
-      transform: rotateY(180deg);
-      background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
-    }
-
-    .door.open {
-      transform: rotateY(180deg);
-    }
-
-    .door-pattern {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20,20 L80,20 L80,80 L20,80 Z" fill="none" stroke="%23C5A042" stroke-width="0.5"/></svg>');
-      opacity: 0.3;
-    }
-
-    .door-knob {
-      width: 30px;
-      height: 30px;
-      background: radial-gradient(circle at 30% 30%, var(--gold-primary), var(--gold-secondary));
-      border-radius: 50%;
-      position: absolute;
-      right: 30px;
-      top: 50%;
-      transform: translateY(-50%);
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .door-knob:hover {
-      transform: translateY(-50%) scale(1.1);
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
-    }
-
-    .door-inscription {
-      font-family: 'Cinzel Decorative', serif;
-      color: var(--gold-primary);
-      font-size: 1.5rem;
-      margin-bottom: 30px;
-      text-align: center;
-      padding: 0 20px;
+      font-size: 1rem;
     }
 
     .enhanced-door {
-  position: relative;
-  width: 100%;
-  max-width: 800px;
-  margin: 40px auto;
-  z-index: 3;
-}
-
-.vault-image {
-  width: 100%;
-  border: 2px solid var(--gold-secondary);
-  box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
-  border-radius: 10px;
-}
-
-.door-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(3px);
-  background: rgba(0, 0, 0, 0.4);
-  text-align: center;
-}
-
-.vault-door-title {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: 1.8rem;
-  color: var(--gold-primary);
-  margin-bottom: 20px;
-  text-shadow: var(--accent-glow);
-}
+      padding: 0 10px;
+    }
 
     .vault-items {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 30px;
-      margin-top: 50px;
-      padding: 0 20px;
+      grid-template-columns: 1fr;
     }
 
-    .vault-item {
-      background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-      border: 1px solid rgba(197, 160, 66, 0.3);
-      border-radius: 8px;
-      padding: 25px;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
+    .vault-header {
+      flex-direction: column;
+      padding: 15px;
     }
 
-    .vault-item:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 10px 30px rgba(197, 160, 66, 0.2);
-      border-color: var(--gold-secondary);
+    .vault-nav {
+      margin-top: 15px;
     }
 
-    .vault-item::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: linear-gradient(to right, transparent, var(--gold-primary), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
+    .vault-nav a {
+      margin: 0 10px;
     }
-
-    .vault-item:hover::before {
-      opacity: 1;
-    }
-
-    .item-icon {
-      font-size: 2.5rem;
-      color: var(--gold-primary);
-      margin-bottom: 15px;
-    }
-
-    .item-title {
-      font-family: 'Cinzel Decorative', serif;
-      font-size: 1.3rem;
-      margin-bottom: 10px;
-      color: var(--gold-primary);
-    }
-
-    .item-desc {
-      font-size: 0.9rem;
-      color: var(--text-dim);
-      line-height: 1.6;
-    }
-
-    .vault-footer {
-      position: relative;
-      z-index: 10;
-      text-align: center;
-      padding: 30px;
-      margin-top: 50px;
-      color: var(--text-dim);
-      font-size: 0.8rem;
-    }
-
-    .unlock-btn {
-      background: transparent;
-      color: var(--gold-primary);
-      border: 1px solid var(--gold-secondary);
-      padding: 12px 30px;
-      font-family: 'Cinzel Decorative', serif;
-      font-size: 1.1rem;
-      letter-spacing: 1px;
-      border-radius: 30px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      margin-top: 20px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .unlock-btn:hover {
-      background: rgba(197, 160, 66, 0.1);
-      box-shadow: 0 0 15px rgba(197, 160, 66, 0.3);
-    }
-
-    .unlock-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
-      transition: all 0.5s ease;
-    }
-
-    .unlock-btn:hover::before {
-      left: 100%;
-    }
-
-    .particles {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .particle {
-      position: absolute;
-      background: var(--gold-primary);
-      border-radius: 50%;
-      opacity: 0.6;
-    }
-
-    @media (max-width: 768px) {
-      .vault-title {
-        font-size: 2.5rem;
-      }
-
-      .vault-subtitle {
-        font-size: 1rem;
-      }
-
-      .vault-door {
-        width: 250px;
-        height: 400px;
-      }
-
-      .vault-items {
-        grid-template-columns: 1fr;
-      }
-
-      .vault-header {
-        flex-direction: column;
-        padding: 15px;
-      }
-
-      .vault-nav {
-        margin-top: 15px;
-      }
-
-      .vault-nav a {
-        margin: 0 10px;
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
   <header class="vault-header">
@@ -414,8 +334,8 @@
       <h1 class="vault-title">Chamber of Secrets</h1>
       <p class="vault-subtitle">Within these hallowed digital walls lie the most sacred artifacts of the Kelly Legacy. <br>Only those bearing the Key of Ascension may access these treasures.</p>
       
-    <div class="enhanced-door">
-  <img src="A_digital_illustration_titled_The_Kly_Vault.png" alt="Vault Door" class="vault-image" />
+<div class="enhanced-door">
+  <img src="vault-door.png" alt="Vault Door" class="vault-image" />
   <div class="door-overlay">
     <h2 class="vault-door-title">Key of Ascension Required</h2>
     <button class="unlock-btn" id="unlockBtn">Enter the Vault</button>
