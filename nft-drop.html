@@ -461,44 +461,42 @@
         </div>
     </div>
 
-<!-- Ethers.js + Wallet Connect + Mint Script -->
-<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" 
-        integrity="sha384-0Q3z3Q5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5"
-        crossorigin="anonymous"></script>
+<!-- ✅ Ethers.js (Reliable CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+<!-- ✅ Particles.js -->
 <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js" defer></script>
+
+<!-- ✅ Wallet Connect + Mint Script -->
 <script>
   // First verify critical dependencies are loaded
   function checkDependencies() {
     const errors = [];
-    
+
     if (typeof ethers === 'undefined') {
       errors.push('Ethers.js library failed to load');
     }
-    
+
     if (errors.length > 0) {
       const errorMsg = `Critical errors detected:\n${errors.join('\n')}\n\nPlease refresh the page.`;
       console.error(errorMsg);
       alert(errorMsg);
       return false;
     }
-    
+
     return true;
   }
 
-  // Main initialization function
-  async function initializeApp() {
+  document.addEventListener("DOMContentLoaded", () => {
     if (!checkDependencies()) return;
+    initializeApp();
+  });
 
+  async function initializeApp() {
     try {
-      // Initialize particles.js background (non-critical)
       initializeParticles();
-      
-      // Setup countdown timer
       setupCountdown();
-      
-      // Initialize Web3 functionality
       await initializeWeb3();
-      
     } catch (error) {
       console.error('Initialization error:', error);
       showError('Initialization failed: ' + error.message);
@@ -507,62 +505,52 @@
 
   function initializeParticles() {
     if (typeof particlesJS !== 'undefined') {
-      try {
-        particlesJS('particles-js', {
-          particles: {
-            number: { value: 80, density: { enable: true, value_area: 800 } },
-            color: { value: "#6e45e2" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: true },
-            line_linked: { enable: true, distance: 150, color: "#88d3ce", opacity: 0.4, width: 1 },
-            move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
-          },
-          interactivity: {
-            detect_on: "canvas",
-            events: {
-              onhover: { enable: true, mode: "repulse" },
-              onclick: { enable: true, mode: "push" }
-            }
+      particlesJS('particles-js', {
+        particles: {
+          number: { value: 80, density: { enable: true, value_area: 800 } },
+          color: { value: "#6e45e2" },
+          shape: { type: "circle" },
+          opacity: { value: 0.5, random: true },
+          size: { value: 3, random: true },
+          line_linked: { enable: true, distance: 150, color: "#88d3ce", opacity: 0.4, width: 1 },
+          move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: { enable: true, mode: "repulse" },
+            onclick: { enable: true, mode: "push" }
           }
-        });
-      } catch (e) {
-        console.warn('Particles.js initialization failed:', e);
-      }
+        }
+      });
     }
   }
 
   function setupCountdown() {
     const countdownDate = new Date();
     countdownDate.setDate(countdownDate.getDate() + 7);
-    
+
     const updateCountdown = () => {
-      try {
-        const now = new Date().getTime();
-        const distance = countdownDate - now;
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      const now = new Date().getTime();
+      const distance = countdownDate - now;
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        document.getElementById("days").textContent = String(days).padStart(2, "0");
-        document.getElementById("hours").textContent = String(hours).padStart(2, "0");
-        document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
-        document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+      document.getElementById("days").textContent = String(days).padStart(2, "0");
+      document.getElementById("hours").textContent = String(hours).padStart(2, "0");
+      document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
+      document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
 
-        if (distance < 0) {
-          clearInterval(countdownInterval);
-          const mintButton = document.getElementById("mintButton");
-          if (mintButton) {
-            mintButton.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-            mintButton.disabled = false;
-          }
-          const mintStatus = document.getElementById("mintStatus");
-          if (mintStatus) mintStatus.textContent = "Minting is now live!";
-        }
-      } catch (e) {
-        console.error('Countdown error:', e);
+      if (distance < 0) {
         clearInterval(countdownInterval);
+        const mintButton = document.getElementById("mintButton");
+        if (mintButton) {
+          mintButton.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+          mintButton.disabled = false;
+        }
+        document.getElementById("mintStatus").textContent = "Minting is now live!";
       }
     };
 
@@ -570,7 +558,6 @@
     updateCountdown();
   }
 
-  // Web3 Initialization
   async function initializeWeb3() {
     const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
     const contractABI = [/* Your ABI here */];
@@ -581,10 +568,8 @@
     const mintBtn = document.getElementById("mintButton");
     const mintStatus = document.getElementById("mintStatus");
 
-    // Check initial wallet connection
     await checkWalletConnection();
 
-    // Event listeners
     if (connectBtn) connectBtn.addEventListener("click", connectWallet);
     if (mintBtn) mintBtn.addEventListener("click", mintNFT);
 
@@ -594,76 +579,44 @@
         return;
       }
 
-      try {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.listAccounts();
-        
-        if (accounts.length > 0) {
-          await connectWallet();
-        } else {
-          if (mintBtn) {
-            mintBtn.innerHTML = '<i class="fas fa-lock"></i> CONNECT TO MINT';
-            mintBtn.disabled = true;
-          }
-        }
-      } catch (err) {
-        console.error("Wallet connection check failed:", err);
-        updateMintStatus("Error checking wallet connection");
-      }
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await provider.listAccounts();
+      if (accounts.length > 0) await connectWallet();
     }
 
     async function connectWallet() {
-      if (!window.ethereum) {
-        updateMintStatus("MetaMask is required to mint. Please install it.");
-        showError("MetaMask is required to mint. Please install it.");
-        return;
-      }
-
       try {
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         const address = await signer.getAddress();
-        
-        // Update UI
-        if (connectBtn) {
-          connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-          connectBtn.classList.add("connected");
-        }
-        
-        if (mintBtn) {
-          mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-          mintBtn.disabled = false;
-          mintBtn.classList.add("connected");
-        }
-        
-        updateMintStatus("Wallet connected. You can now mint your Frequency Key.");
-        
-        // Initialize contract
+
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        
-        // Check network
+
+        connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
+        connectBtn.classList.add("connected");
+
+        mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+        mintBtn.disabled = false;
+        mintBtn.classList.add("connected");
+
+        updateMintStatus("Wallet connected. You can now mint your Frequency Key.");
+
         const network = await provider.getNetwork();
-        const networkInfo = document.getElementById("networkInfo");
         if (network.chainId !== 1) {
-          if (networkInfo) {
-            networkInfo.textContent = `Please switch to Ethereum Mainnet (Currently on ${network.name})`;
-            networkInfo.style.display = "block";
-          }
-          updateMintStatus("Wrong network detected. Please switch to Ethereum Mainnet.");
-          if (mintBtn) mintBtn.disabled = true;
-        } else if (networkInfo) {
-          networkInfo.style.display = "none";
+          document.getElementById("networkInfo").textContent = `Switch to Ethereum Mainnet (Currently ${network.name})`;
+          document.getElementById("networkInfo").style.display = "block";
+          mintBtn.disabled = true;
         }
-        
-        // Check if user already minted
+
         const balance = await contract.balanceOf(address);
-        if (balance.gt(0) && mintBtn) {
+        if (balance.gt(0)) {
           mintBtn.innerHTML = '<i class="fas fa-check"></i> ALREADY MINTED';
           mintBtn.disabled = true;
           mintBtn.classList.add("minted");
           updateMintStatus("You already own a Frequency Key!");
         }
+
       } catch (err) {
         console.error("Wallet connection failed:", err);
         updateMintStatus("Failed to connect wallet: " + err.message);
@@ -678,102 +631,63 @@
       }
 
       try {
-        if (mintBtn) {
-          mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MINTING...';
-          mintBtn.disabled = true;
-        }
+        mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MINTING...';
+        mintBtn.disabled = true;
+
         updateMintStatus("Processing your transaction...");
-        
+
         const userAddress = await signer.getAddress();
         const tx = await contract.mintTo(userAddress, metadataURI);
-        
-        updateMintStatus("Transaction sent! Waiting for confirmation...");
-        
-        const receipt = await tx.wait();
-        
-        // Success!
-        if (mintBtn) {
-          mintBtn.innerHTML = '<i class="fas fa-check"></i> MINTED!';
-          mintBtn.disabled = true;
-          mintBtn.classList.add("minted");
-        }
+
+        updateMintStatus("Waiting for confirmation...");
+        await tx.wait();
+
+        mintBtn.innerHTML = '<i class="fas fa-check"></i> MINTED!';
+        mintBtn.disabled = true;
+        mintBtn.classList.add("minted");
         updateMintStatus("Success! Your Frequency Key has been minted.");
-        
-        // Show success modal with transaction link
+
         const txLink = document.getElementById("txLink");
         const successModal = document.getElementById("successModal");
         if (txLink && successModal) {
           txLink.href = `https://etherscan.io/tx/${tx.hash}`;
           successModal.style.display = "flex";
         }
+
       } catch (err) {
         console.error("Mint error:", err);
-        
         let errorMsg = "Mint failed";
-        if (err.message.includes("user rejected transaction")) {
-          errorMsg = "Transaction rejected by user";
-        } else if (err.message.includes("insufficient funds")) {
-          errorMsg = "Insufficient funds for transaction";
-        } else if (err.message.includes("already minted")) {
-          errorMsg = "You've already minted a Frequency Key";
-        } else {
-          errorMsg = err.message;
-        }
-        
-        if (mintBtn) {
-          mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-          mintBtn.disabled = false;
-        }
+        if (err.message.includes("user rejected")) errorMsg = "Transaction rejected by user";
+        else if (err.message.includes("insufficient funds")) errorMsg = "Insufficient funds";
+        else if (err.message.includes("already minted")) errorMsg = "You've already minted";
+        else errorMsg = err.message;
+
+        mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+        mintBtn.disabled = false;
         updateMintStatus(errorMsg);
         showError(errorMsg);
       }
     }
 
-    function updateMintStatus(message) {
+    function updateMintStatus(msg) {
       const mintStatus = document.getElementById("mintStatus");
-      if (mintStatus) mintStatus.textContent = message;
+      if (mintStatus) mintStatus.textContent = msg;
     }
 
-    function showError(message) {
+    function showError(msg) {
       const errorMessage = document.getElementById("errorMessage");
       const errorModal = document.getElementById("errorModal");
       if (errorMessage && errorModal) {
-        errorMessage.textContent = message;
+        errorMessage.textContent = msg;
         errorModal.style.display = "flex";
       }
     }
 
-    // Handle account/network changes
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", (accounts) => {
-        if (accounts.length === 0) {
-          // Wallet disconnected
-          if (connectBtn) {
-            connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-            connectBtn.classList.remove("connected");
-          }
-          if (mintBtn) {
-            mintBtn.innerHTML = '<i class="fas fa-lock"></i> CONNECT TO MINT';
-            mintBtn.disabled = true;
-            mintBtn.classList.remove("connected", "minted");
-          }
-          updateMintStatus("");
-          const networkInfo = document.getElementById("networkInfo");
-          if (networkInfo) networkInfo.style.display = "none";
-        } else {
-          // Account changed
-          connectWallet();
-        }
-      });
-
-      window.ethereum.on("chainChanged", () => {
-        window.location.reload();
-      });
+      window.ethereum.on("accountsChanged", () => window.location.reload());
+      window.ethereum.on("chainChanged", () => window.location.reload());
     }
   }
-
-  // Start the application when DOM is ready
-  document.addEventListener("DOMContentLoaded", initializeApp);
 </script>
 </body>
 </html>
