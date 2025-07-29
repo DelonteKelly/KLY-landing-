@@ -364,10 +364,10 @@
   </div>
 
   <div class="section">
-    <h2 class="section-title">Ready to Join the Tribe?</h2>
-    <p>Step into your divine role. This isn't just a movement — it's a Return to your true essence.</p>
-    <button class="cta-button" onclick="location.href='/portal.html'">Begin Your Initiation</button>
-  </div>
+  <h2 class="section-title">Ready to Join the Tribe?</h2>
+  <p>Step into your divine role. This isn't just a movement — it's a Return to your true essence.</p>
+  <button class="cta-button" onclick="checkNFTAccess()">Begin Your Initiation</button>
+</div>
 
   <footer>
     <div class="social-links">
@@ -379,9 +379,13 @@
   </footer>
 
   <script>
-  const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52'; // ✅ Your actual KLY token
+<script>
+  const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
   const KLY_MIN_REQUIRED = 100;
+  const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // NFT contract
+  const NFT_TOKEN_ID = 2; // Key of Ascension ID (update if needed)
 
+  // KLY Token Gating (100 KLY)
   async function checkKLYAccess() {
     if (typeof window.ethereum === 'undefined') {
       alert('Please install MetaMask or a Web3 wallet.');
@@ -415,21 +419,60 @@
     }
   }
 
-        function scrollToSection() {
-      document.getElementById('join-section').scrollIntoView({ 
-        behavior: 'smooth' 
-      });
+  // NFT Gating (Key of Ascension)
+  async function checkNFTAccess() {
+    if (typeof window.ethereum === 'undefined') {
+      alert('Please install MetaMask or a Web3 wallet.');
+      return;
     }
-    
-    // Add fade-in animation as user scrolls
-    document.addEventListener('DOMContentLoaded', () => {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('fade-in');
-          }
-        });
-      }, { threshold: 0.1 });
-      </script>
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+
+      const abi = [
+        "function balanceOf(address account, uint256 id) external view returns (uint256)"
+      ];
+
+      const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+      const balance = await contract.balanceOf(address, NFT_TOKEN_ID);
+
+      if (balance > 0) {
+        window.location.href = "/portal.html";
+      } else {
+        alert("You must hold the 'Key of Ascension' NFT to access the Portal.");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Could not verify your NFT. Please check your wallet and try again.");
+    }
+  }
+
+  // Smooth Scroll
+  function scrollToSection() {
+    document.getElementById('join-section').scrollIntoView({ 
+      behavior: 'smooth' 
+    });
+  }
+
+  // Fade-in animation
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('fade-in');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.section, .pathway').forEach(section => {
+      section.style.opacity = '0';
+      section.style.transition = 'opacity 0.6s ease-out';
+      observer.observe(section);
+    });
+  });
+</script>
 </body>
 </html>
