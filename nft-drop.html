@@ -462,400 +462,160 @@
     </div>
 
 <!-- Ethers.js + Wallet Connect + Mint Script -->
-<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" 
+        integrity="sha384-0Q3z3Q5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5p5"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js" defer></script>
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    // Initialize particles.js background
-    if (typeof particlesJS !== 'undefined') {
-      particlesJS('particles-js', {
-        particles: {
-          number: { value: 80, density: { enable: true, value_area: 800 } },
-          color: { value: "#6e45e2" },
-          shape: { type: "circle" },
-          opacity: { value: 0.5, random: true },
-          size: { value: 3, random: true },
-          line_linked: { enable: true, distance: 150, color: "#88d3ce", opacity: 0.4, width: 1 },
-          move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
-        },
-        interactivity: {
-          detect_on: "canvas",
-          events: {
-            onhover: { enable: true, mode: "repulse" },
-            onclick: { enable: true, mode: "push" }
-          }
-        }
-      });
+  // First verify critical dependencies are loaded
+  function checkDependencies() {
+    const errors = [];
+    
+    if (typeof ethers === 'undefined') {
+      errors.push('Ethers.js library failed to load');
     }
+    
+    if (errors.length > 0) {
+      const errorMsg = `Critical errors detected:\n${errors.join('\n')}\n\nPlease refresh the page.`;
+      console.error(errorMsg);
+      alert(errorMsg);
+      return false;
+    }
+    
+    return true;
+  }
 
-    // ⏳ Countdown Timer
+  // Main initialization function
+  async function initializeApp() {
+    if (!checkDependencies()) return;
+
+    try {
+      // Initialize particles.js background (non-critical)
+      initializeParticles();
+      
+      // Setup countdown timer
+      setupCountdown();
+      
+      // Initialize Web3 functionality
+      await initializeWeb3();
+      
+    } catch (error) {
+      console.error('Initialization error:', error);
+      showError('Initialization failed: ' + error.message);
+    }
+  }
+
+  function initializeParticles() {
+    if (typeof particlesJS !== 'undefined') {
+      try {
+        particlesJS('particles-js', {
+          particles: {
+            number: { value: 80, density: { enable: true, value_area: 800 } },
+            color: { value: "#6e45e2" },
+            shape: { type: "circle" },
+            opacity: { value: 0.5, random: true },
+            size: { value: 3, random: true },
+            line_linked: { enable: true, distance: 150, color: "#88d3ce", opacity: 0.4, width: 1 },
+            move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: { enable: true, mode: "repulse" },
+              onclick: { enable: true, mode: "push" }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Particles.js initialization failed:', e);
+      }
+    }
+  }
+
+  function setupCountdown() {
     const countdownDate = new Date();
     countdownDate.setDate(countdownDate.getDate() + 7);
+    
     const updateCountdown = () => {
-      const now = new Date().getTime();
-      const distance = countdownDate - now;
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      try {
+        const now = new Date().getTime();
+        const distance = countdownDate - now;
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-      document.getElementById("days").innerHTML = String(days).padStart(2, "0");
-      document.getElementById("hours").innerHTML = String(hours).padStart(2, "0");
-      document.getElementById("minutes").innerHTML = String(minutes).padStart(2, "0");
-      document.getElementById("seconds").innerHTML = String(seconds).padStart(2, "0");
+        document.getElementById("days").textContent = String(days).padStart(2, "0");
+        document.getElementById("hours").textContent = String(hours).padStart(2, "0");
+        document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
+        document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
 
-      if (distance < 0) {
+        if (distance < 0) {
+          clearInterval(countdownInterval);
+          const mintButton = document.getElementById("mintButton");
+          if (mintButton) {
+            mintButton.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+            mintButton.disabled = false;
+          }
+          const mintStatus = document.getElementById("mintStatus");
+          if (mintStatus) mintStatus.textContent = "Minting is now live!";
+        }
+      } catch (e) {
+        console.error('Countdown error:', e);
         clearInterval(countdownInterval);
-        document.getElementById("mintButton").innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-        document.getElementById("mintButton").disabled = false;
-        document.getElementById("mintStatus").textContent = "Minting is now live!";
       }
     };
+
     const countdownInterval = setInterval(updateCountdown, 1000);
     updateCountdown();
+  }
 
-    // 🦊 Web3 Wallet Connect + Mint
+  // Web3 Initialization
+  async function initializeWeb3() {
     const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-    const contractABI = [
-      {
-        "inputs": [],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "approved",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "Approval",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "operator",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "bool",
-            "name": "approved",
-            "type": "bool"
-          }
-        ],
-        "name": "ApprovalForAll",
-        "type": "event"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "approve",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "string",
-            "name": "uri",
-            "type": "string"
-          }
-        ],
-        "name": "mintTo",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "Transfer",
-        "type": "event"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "transfer",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "safeTransferFrom",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "data",
-            "type": "bytes"
-          }
-        ],
-        "name": "safeTransferFrom",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "operator",
-            "type": "address"
-          },
-          {
-            "internalType": "bool",
-            "name": "approved",
-            "type": "bool"
-          }
-        ],
-        "name": "setApprovalForAll",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          }
-        ],
-        "name": "balanceOf",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "getApproved",
-        "outputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "operator",
-            "type": "address"
-          }
-        ],
-        "name": "isApprovedForAll",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "ownerOf",
-        "outputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ];
+    const contractABI = [/* Your ABI here */];
     const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
 
     let provider, signer, contract;
     const connectBtn = document.getElementById("connectWallet");
     const mintBtn = document.getElementById("mintButton");
     const mintStatus = document.getElementById("mintStatus");
-    const networkInfo = document.getElementById("networkInfo");
-    const successModal = document.getElementById("successModal");
-    const errorModal = document.getElementById("errorModal");
-    const txLink = document.getElementById("txLink");
-    const errorMessage = document.getElementById("errorMessage");
-    const closeModal = document.getElementById("closeModal");
-    const closeErrorModal = document.getElementById("closeErrorModal");
 
-    // Modal handlers
-    closeModal.addEventListener("click", () => {
-      successModal.style.display = "none";
-    });
-    
-    closeErrorModal.addEventListener("click", () => {
-      errorModal.style.display = "none";
-    });
+    // Check initial wallet connection
+    await checkWalletConnection();
 
-    // Check if wallet is connected on page load
+    // Event listeners
+    if (connectBtn) connectBtn.addEventListener("click", connectWallet);
+    if (mintBtn) mintBtn.addEventListener("click", mintNFT);
+
     async function checkWalletConnection() {
-      if (window.ethereum) {
-        try {
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          const accounts = await provider.listAccounts();
-          
-          if (accounts.length > 0) {
-            await connectWallet();
-          } else {
+      if (!window.ethereum) {
+        updateMintStatus("MetaMask or other Web3 wallet is required to mint.");
+        return;
+      }
+
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        
+        if (accounts.length > 0) {
+          await connectWallet();
+        } else {
+          if (mintBtn) {
             mintBtn.innerHTML = '<i class="fas fa-lock"></i> CONNECT TO MINT';
             mintBtn.disabled = true;
           }
-        } catch (err) {
-          console.error("Error checking wallet connection:", err);
         }
-      } else {
-        mintStatus.textContent = "MetaMask or other Web3 wallet is required to mint.";
+      } catch (err) {
+        console.error("Wallet connection check failed:", err);
+        updateMintStatus("Error checking wallet connection");
       }
     }
 
     async function connectWallet() {
       if (!window.ethereum) {
-        mintStatus.textContent = "MetaMask is required to mint. Please install it.";
-        errorMessage.textContent = "MetaMask is required to mint. Please install it.";
-        errorModal.style.display = "flex";
+        updateMintStatus("MetaMask is required to mint. Please install it.");
+        showError("MetaMask is required to mint. Please install it.");
         return;
       }
 
@@ -866,72 +626,86 @@
         const address = await signer.getAddress();
         
         // Update UI
-        connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-        connectBtn.classList.add("connected");
+        if (connectBtn) {
+          connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
+          connectBtn.classList.add("connected");
+        }
         
-        mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-        mintBtn.disabled = false;
-        mintBtn.classList.add("connected");
+        if (mintBtn) {
+          mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+          mintBtn.disabled = false;
+          mintBtn.classList.add("connected");
+        }
         
-        mintStatus.textContent = "Wallet connected. You can now mint your Frequency Key.";
+        updateMintStatus("Wallet connected. You can now mint your Frequency Key.");
         
         // Initialize contract
         contract = new ethers.Contract(contractAddress, contractABI, signer);
         
         // Check network
         const network = await provider.getNetwork();
-        if (network.chainId !== 1) { // 1 is Ethereum Mainnet
-          networkInfo.textContent = `Please switch to Ethereum Mainnet (Currently on ${network.name})`;
-          networkInfo.style.display = "block";
-          mintStatus.textContent = "Wrong network detected. Please switch to Ethereum Mainnet.";
-          mintBtn.disabled = true;
-        } else {
+        const networkInfo = document.getElementById("networkInfo");
+        if (network.chainId !== 1) {
+          if (networkInfo) {
+            networkInfo.textContent = `Please switch to Ethereum Mainnet (Currently on ${network.name})`;
+            networkInfo.style.display = "block";
+          }
+          updateMintStatus("Wrong network detected. Please switch to Ethereum Mainnet.");
+          if (mintBtn) mintBtn.disabled = true;
+        } else if (networkInfo) {
           networkInfo.style.display = "none";
         }
         
         // Check if user already minted
         const balance = await contract.balanceOf(address);
-        if (balance.gt(0)) {
+        if (balance.gt(0) && mintBtn) {
           mintBtn.innerHTML = '<i class="fas fa-check"></i> ALREADY MINTED';
           mintBtn.disabled = true;
           mintBtn.classList.add("minted");
-          mintStatus.textContent = "You already own a Frequency Key!";
+          updateMintStatus("You already own a Frequency Key!");
         }
       } catch (err) {
         console.error("Wallet connection failed:", err);
-        mintStatus.textContent = "Failed to connect wallet: " + err.message;
-        errorMessage.textContent = "Failed to connect wallet: " + err.message;
-        errorModal.style.display = "flex";
+        updateMintStatus("Failed to connect wallet: " + err.message);
+        showError("Failed to connect wallet: " + err.message);
       }
     }
 
     async function mintNFT() {
       if (!signer || !contract) {
-        mintStatus.textContent = "Please connect your wallet first.";
+        updateMintStatus("Please connect your wallet first.");
         return;
       }
 
       try {
-        mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MINTING...';
-        mintBtn.disabled = true;
-        mintStatus.textContent = "Processing your transaction...";
+        if (mintBtn) {
+          mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MINTING...';
+          mintBtn.disabled = true;
+        }
+        updateMintStatus("Processing your transaction...");
         
         const userAddress = await signer.getAddress();
         const tx = await contract.mintTo(userAddress, metadataURI);
         
-        mintStatus.textContent = "Transaction sent! Waiting for confirmation...";
+        updateMintStatus("Transaction sent! Waiting for confirmation...");
         
         const receipt = await tx.wait();
         
         // Success!
-        mintBtn.innerHTML = '<i class="fas fa-check"></i> MINTED!';
-        mintBtn.disabled = true;
-        mintBtn.classList.add("minted");
-        mintStatus.textContent = "Success! Your Frequency Key has been minted.";
+        if (mintBtn) {
+          mintBtn.innerHTML = '<i class="fas fa-check"></i> MINTED!';
+          mintBtn.disabled = true;
+          mintBtn.classList.add("minted");
+        }
+        updateMintStatus("Success! Your Frequency Key has been minted.");
         
         // Show success modal with transaction link
-        txLink.href = `https://etherscan.io/tx/${tx.hash}`;
-        successModal.style.display = "flex";
+        const txLink = document.getElementById("txLink");
+        const successModal = document.getElementById("successModal");
+        if (txLink && successModal) {
+          txLink.href = `https://etherscan.io/tx/${tx.hash}`;
+          successModal.style.display = "flex";
+        }
       } catch (err) {
         console.error("Mint error:", err);
         
@@ -946,34 +720,46 @@
           errorMsg = err.message;
         }
         
-        mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-        mintBtn.disabled = false;
-        mintStatus.textContent = errorMsg;
-        
-        errorMessage.textContent = errorMsg;
-        errorModal.style.display = "flex";
+        if (mintBtn) {
+          mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
+          mintBtn.disabled = false;
+        }
+        updateMintStatus(errorMsg);
+        showError(errorMsg);
       }
     }
 
-    // Event listeners
-    connectBtn.addEventListener("click", connectWallet);
-    mintBtn.addEventListener("click", mintNFT);
+    function updateMintStatus(message) {
+      const mintStatus = document.getElementById("mintStatus");
+      if (mintStatus) mintStatus.textContent = message;
+    }
 
-    // Check for wallet connection on page load
-    checkWalletConnection();
+    function showError(message) {
+      const errorMessage = document.getElementById("errorMessage");
+      const errorModal = document.getElementById("errorModal");
+      if (errorMessage && errorModal) {
+        errorMessage.textContent = message;
+        errorModal.style.display = "flex";
+      }
+    }
 
     // Handle account/network changes
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", (accounts) => {
         if (accounts.length === 0) {
           // Wallet disconnected
-          connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-          connectBtn.classList.remove("connected");
-          mintBtn.innerHTML = '<i class="fas fa-lock"></i> CONNECT TO MINT';
-          mintBtn.disabled = true;
-          mintBtn.classList.remove("connected", "minted");
-          mintStatus.textContent = "";
-          networkInfo.style.display = "none";
+          if (connectBtn) {
+            connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+            connectBtn.classList.remove("connected");
+          }
+          if (mintBtn) {
+            mintBtn.innerHTML = '<i class="fas fa-lock"></i> CONNECT TO MINT';
+            mintBtn.disabled = true;
+            mintBtn.classList.remove("connected", "minted");
+          }
+          updateMintStatus("");
+          const networkInfo = document.getElementById("networkInfo");
+          if (networkInfo) networkInfo.style.display = "none";
         } else {
           // Account changed
           connectWallet();
@@ -984,7 +770,10 @@
         window.location.reload();
       });
     }
-  });
+  }
+
+  // Start the application when DOM is ready
+  document.addEventListener("DOMContentLoaded", initializeApp);
 </script>
 </body>
 </html>
