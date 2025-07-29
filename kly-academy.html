@@ -1,430 +1,678 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KLY Academy Portal</title>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+  <!-- Animate.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <!-- Ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <!-- Confetti.js -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
+    :root {
+      --neon-blue: #0ff;
+      --neon-pink: #ff00cc;
+      --dark-bg: #050505;
+      --card-bg: linear-gradient(145deg, #0a0a0a, #000);
+    }
+
     body {
-      background-color: #000;
+      background: var(--dark-bg) url('https://i.imgur.com/JWqJZQb.png') no-repeat fixed;
+      background-size: cover;
       color: #fff;
-      font-family: 'Arial', sans-serif;
+      font-family: 'Kanit', sans-serif;
       margin: 0;
       padding: 0;
       text-align: center;
+      min-height: 100vh;
     }
 
     h1 {
-      font-size: 2em;
-      color: #0ff;
-      margin-top: 30px;
-      text-shadow: 0 0 10px #0ff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5em;
+      color: var(--neon-blue);
+      margin: 30px 0;
+      text-shadow: 0 0 15px var(--neon-blue);
+      letter-spacing: 2px;
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 10px var(--neon-blue); }
+      to { text-shadow: 0 0 20px var(--neon-blue), 0 0 30px var(--neon-pink); }
     }
 
     .course-box, .codes-box {
-      border: 1px solid #0ff;
-      border-radius: 20px;
-      margin: 20px auto;
-      padding: 20px;
+      border: 2px solid var(--neon-blue);
+      border-radius: 25px;
+      margin: 25px auto;
+      padding: 25px;
       width: 90%;
-      max-width: 400px;
-      background: linear-gradient(145deg, #111, #000);
-      box-shadow: 0 0 25px #0ff;
+      max-width: 450px;
+      background: var(--card-bg);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+      backdrop-filter: blur(5px);
+      transition: transform 0.3s, box-shadow 0.3s;
     }
 
-    .course-box h2, .codes-box h2 {
-      color: #ff00cc;
-      text-shadow: 0 0 8px #ff00cc;
+    .course-box:hover, .codes-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.5);
     }
 
     .button {
-      margin: 10px;
-      padding: 15px 25px;
+      margin: 12px;
+      padding: 16px 28px;
       border: none;
-      border-radius: 12px;
-      background: linear-gradient(to right, #00f0ff, #ff00cc);
-      color: black;
+      border-radius: 15px;
+      background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink));
+      color: #000;
       font-weight: bold;
-      font-size: 1em;
+      font-size: 1.1em;
       cursor: pointer;
-      box-shadow: 0 0 10px #ff00cc;
+      box-shadow: 0 0 15px rgba(255, 0, 204, 0.5);
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .button:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue));
+      transition: all 0.4s;
+      z-index: -1;
     }
 
     .button:hover {
-      opacity: 0.9;
+      transform: translateY(-3px);
+      box-shadow: 0 0 25px rgba(255, 0, 204, 0.8);
     }
 
-    p {
-      color: #f0f0f0;
-      font-size: 1em;
-      margin-top: 20px;
-    }
-
-    .note {
-      color: #ff00cc;
-      font-size: 0.9em;
+    .button:hover:before {
+      left: 0;
     }
 
     /* Module styles */
     .module-card {
       display: none;
-      border: 1px solid #0ff;
-      border-radius: 20px;
+      border: 2px solid var(--neon-blue);
+      border-radius: 25px;
       margin: 20px auto;
-      padding: 20px;
+      padding: 25px;
       width: 90%;
       max-width: 800px;
-      background: linear-gradient(145deg, #111, #000);
-      box-shadow: 0 0 25px #0ff;
+      background: var(--card-bg);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+      backdrop-filter: blur(5px);
       text-align: left;
     }
 
     .module-title {
-      font-size: 1.5em;
-      color: #0ff;
-      margin-bottom: 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8em;
+      color: var(--neon-blue);
+      margin-bottom: 25px;
       text-align: center;
-      text-shadow: 0 0 8px #0ff;
+      text-shadow: 0 0 10px var(--neon-blue);
     }
 
     .module-content h3 {
-      color: #ff00cc;
-      margin-top: 20px;
+      color: var(--neon-pink);
+      margin-top: 25px;
+      font-size: 1.3em;
+      border-bottom: 1px solid rgba(255, 0, 204, 0.3);
+      padding-bottom: 5px;
+    }
+
+    .module-content ul {
+      padding-left: 20px;
+    }
+
+    .module-content li {
+      margin-bottom: 10px;
     }
 
     .module-next {
-      color: #0ff;
+      display: inline-block;
+      margin-top: 25px;
+      padding: 10px 20px;
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid var(--neon-blue);
+      border-radius: 10px;
+      color: var(--neon-blue);
       cursor: pointer;
-      text-decoration: none;
-      font-weight: bold;
+      transition: all 0.3s;
     }
 
     .module-next:hover {
-      text-decoration: underline;
+      background: rgba(0, 255, 255, 0.2);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
     }
 
+    /* Wallet status */
     #wallet-status {
-      color: #ff00cc;
-      margin-top: 10px;
+      margin-top: 15px;
+      font-size: 0.9em;
+      line-height: 1.5;
     }
 
+    /* Mint status */
     #mint-status {
-      margin-top: 1rem;
-      color: #00ffe7;
-      font-weight: bold;
+      margin-top: 1.5rem;
+      min-height: 60px;
     }
 
-    .nav-button {
-      margin: 10px;
-      padding: 15px 25px;
-      border: none;
+    /* Loader */
+    .loader {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid var(--neon-blue);
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Module navigation */
+    .module-nav-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .module-btn {
+      margin: 8px;
+      padding: 12px 20px;
+      border: 1px solid var(--neon-blue);
       border-radius: 12px;
-      background: linear-gradient(to right, #00f0ff, #ff00cc);
-      color: black;
+      background: transparent;
+      color: white;
       font-weight: bold;
-      font-size: 1em;
       cursor: pointer;
-      box-shadow: 0 0 10px #ff00cc;
+      transition: all 0.3s;
+    }
+    
+    .module-btn:hover {
+      background: rgba(0, 255, 255, 0.1);
+    }
+    
+    .active-module {
+      background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink));
+      color: black;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+
+    /* Progress bar */
+    .progress-container {
+      margin: 20px 0;
+    }
+
+    .progress-bar-bg {
+      background: #222;
+      height: 10px;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      background: linear-gradient(to right, var(--neon-blue), var(--neon-pink));
+      height: 100%;
+      border-radius: 5px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Theme toggle */
+    #theme-toggle {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--neon-blue);
+      color: white;
+      padding: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 1000;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s;
+    }
+
+    #theme-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px var(--neon-blue);
+    }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background-color: #111;
+      color: white;
+      border-left: 5px solid #4CAF50;
+      border-radius: 5px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      animation: fadeIn 0.5s;
+    }
+
+    .notification.error {
+      border-left-color: #F44336;
+    }
+
+    .notification.warning {
+      border-left-color: #FF9800;
+    }
+
+    .notification.info {
+      border-left-color: #2196F3;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(20px); }
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8em;
+        margin-top: 20px;
+      }
+      
+      .course-box, .codes-box {
+        width: 95%;
+        padding: 15px;
+        margin: 15px auto;
+      }
+    
+      .button {
+        padding: 12px 20px;
+        font-size: 0.9em;
+        margin: 8px;
+      }
+    
+      .module-nav-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .module-btn {
+        width: 90%;
+        margin: 5px 0;
+      }
+      
+      .module-card {
+        padding: 15px;
+      }
+
+      #theme-toggle {
+        bottom: 10px;
+        left: 10px;
+        padding: 10px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <button id="theme-toggle" title="Toggle Dark/Light Mode">
+    <i class="fas fa-moon"></i>
+  </button>
+
   <h1>KLY Beginner DeFi Course</h1>
+  
   <div class="course-box">
-    <button class="button">Module 1</button>
-    <button class="button">Module 2</button>
-    <button class="button">Module 3</button>
-    <button class="button">Module 4</button>
-    <button class="button">Module 5</button>
+    <div class="module-nav-container">
+      <button class="module-btn active-module" data-module="module1" onclick="showModule('module1')">1: DeFi Basics</button>
+      <button class="module-btn" data-module="module2" onclick="showModule('module2')">2: Wallet Setup</button>
+      <button class="module-btn" data-module="module3" onclick="showModule('module3')">3: Using DEXs</button>
+      <button class="module-btn" data-module="module4" onclick="showModule('module4')">4: Earning</button>
+      <button class="module-btn" data-module="module5" onclick="showModule('module5')">5: Safety</button>
+    </div>
+    
     <p class="note">This course is only available to wallets holding 100+ KLY tokens.</p>
-    <button id="connect-btn" class="button" onclick="connectWallet()">Connect Wallet to Unlock Course</button>
+    <button id="connect-btn" class="button" onclick="connectWallet()">
+      <i class="fas fa-wallet"></i> Connect Wallet to Unlock Course
+    </button>
     <div id="wallet-status"></div>
+    
+    <div class="progress-container" style="display: none;">
+      <div class="progress-bar-bg">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p id="progress-text">0/5 modules completed</p>
+    </div>
   </div>
 
   <div class="codes-box">
     <h2>Spiritual Wealth Codes</h2>
     <p>A 7-Code transmission of wealth remembrance from your Higher Self. No token required. Fully open scroll.</p>
-    <button class="button" onclick="window.location.href='Spiritual%20wealth%20codes.html'">✨ Enter Spiritual Wealth Codes ✨</button>
+    <button class="button" onclick="window.location.href='Spiritual%20wealth%20codes.html'">
+      <i class="fas fa-star"></i> Enter Spiritual Wealth Codes <i class="fas fa-star"></i>
+    </button>
   </div>
 
-<div id="course-wrapper" style="display: none;">
+  <div id="course-wrapper" style="display: none;">
+    <!-- MODULE 1 -->
+    <div id="module1" class="module-card animate__animated">
+      <div class="module-title">Module 1: What is DeFi?</div>
+      <div class="module-content">
+        <h3>Overview</h3>
+        <p>Decentralized Finance (DeFi) is a groundbreaking evolution of traditional finance. Instead of relying on banks or intermediaries, DeFi uses blockchain technology to give you direct, secure, and transparent control over your finances.</p>
 
-  <!-- MODULE 1 -->
-  <div id="module1" class="module-card">
-    <div class="module-title">Module 1: What is DeFi?</div>
-    <div class="module-content">
-      <h3>Overview</h3>
-      <p>Decentralized Finance (DeFi) is a groundbreaking evolution of traditional finance. Instead of relying on banks or intermediaries, DeFi uses blockchain technology to give you direct, secure, and transparent control over your finances.</p>
+        <h3>Objectives</h3>
+        <ul>
+          <li>Understand the fundamentals of DeFi</li>
+          <li>Explore the benefits of decentralization</li>
+          <li>Recognize the risks and responsibilities involved</li>
+        </ul>
 
-      <h3>Objectives</h3>
-      <ul>
-        <li>Understand the fundamentals of DeFi</li>
-        <li>Explore the benefits of decentralization</li>
-        <li>Recognize the risks and responsibilities involved</li>
-      </ul>
+        <h3>Core Concepts</h3>
+        <ul>
+          <li><strong>Blockchain:</strong> A secure, transparent ledger that records every transaction.</li>
+          <li><strong>Smart Contracts:</strong> Self-executing digital contracts coded directly into the blockchain.</li>
+          <li><strong>Non-Custodial:</strong> Full ownership of your funds — no banks, no middlemen.</li>
+        </ul>
 
-      <h3>Core Concepts</h3>
-      <ul>
-        <li><strong>Blockchain:</strong> A secure, transparent ledger that records every transaction.</li>
-        <li><strong>Smart Contracts:</strong> Self-executing digital contracts coded directly into the blockchain.</li>
-        <li><strong>Non-Custodial:</strong> Full ownership of your funds — no banks, no middlemen.</li>
-      </ul>
+        <h3>Why It Matters</h3>
+        <p>Traditional finance is often slow, costly, and exclusive. DeFi removes gatekeepers, lowers fees, and democratizes access to financial tools — all you need is a crypto wallet.</p>
 
-      <h3>Why It Matters</h3>
-      <p>Traditional finance is often slow, costly, and exclusive. DeFi removes gatekeepers, lowers fees, and democratizes access to financial tools — all you need is a crypto wallet.</p>
+        <h3>Real-World Example</h3>
+        <p>Imagine lending crypto to someone in another country and earning interest — instantly, without banks or paperwork. That's DeFi in action.</p>
 
-      <h3>Real-World Example</h3>
-      <p>Imagine lending crypto to someone in another country and earning interest — instantly, without banks or paperwork. That’s DeFi in action.</p>
+        <h3>KLY Integration</h3>
+        <p>KLY is a utility token designed to power DeFi education and access. Holding KLY unlocks premium content, platform features, and DAO governance rights.</p>
 
-      <h3>KLY Integration</h3>
-      <p>KLY is a utility token designed to power DeFi education and access. Holding KLY unlocks premium content, platform features, and DAO governance rights.</p>
+        <blockquote style="border-left: 3px solid var(--neon-pink); padding-left: 15px; font-style: italic;">
+          "DeFi is finance by the people, for the people."
+        </blockquote>
 
-      <blockquote>“DeFi is finance by the people, for the people.”</blockquote>
-
-      <div class="module-navigation">
-        <a class="module-next" onclick="showModule('module2')">Next: Setting Up Your Wallet</a>
+        <div class="module-navigation">
+          <a class="module-next" onclick="showModule('module2')">
+            <i class="fas fa-arrow-right"></i> Next: Setting Up Your Wallet
+          </a>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="module2" class="module-card">
-    <div class="module-title">Module 2: Setting Up Your Wallet</div>
-    <div class="module-content">
-      <h3>Overview</h3>
-      <p>Your DeFi wallet is your digital passport. It stores your assets, connects you to dApps, and empowers you to interact directly with Web3 platforms. In this module, you'll learn how to create, secure, and fund your wallet.</p>
+    <!-- MODULE 2 -->
+    <div id="module2" class="module-card animate__animated">
+      <div class="module-title">Module 2: Setting Up Your Wallet</div>
+      <div class="module-content">
+        <h3>Overview</h3>
+        <p>Your DeFi wallet is your digital passport. It stores your assets, connects you to dApps, and empowers you to interact directly with Web3 platforms. In this module, you'll learn how to create, secure, and fund your wallet.</p>
 
-      <h3>Objectives</h3>
-      <ul>
-        <li>Understand what DeFi wallets do</li>
-        <li>Create and back up your wallet securely</li>
-        <li>Fund and connect your wallet to the DeFi ecosystem</li>
-      </ul>
+        <h3>Objectives</h3>
+        <ul>
+          <li>Understand what DeFi wallets do</li>
+          <li>Create and back up your wallet securely</li>
+          <li>Fund and connect your wallet to the DeFi ecosystem</li>
+        </ul>
 
-      <h3>Step-by-Step: Create Your Wallet</h3>
+        <h3>Step-by-Step: Create Your Wallet</h3>
 
-      <h4>Step 1: Choose a Wallet</h4>
-      <ul>
-        <li><strong>MetaMask:</strong> Leading browser/mobile wallet for Ethereum and BNB Chain.</li>
-        <li><strong>Trust Wallet:</strong> Mobile-first wallet supporting multiple blockchains.</li>
-        <li><strong>Coinbase Wallet:</strong> Ideal for beginners — not the same as Coinbase Exchange.</li>
-      </ul>
+        <h4>Step 1: Choose a Wallet</h4>
+        <ul>
+          <li><strong>MetaMask:</strong> Leading browser/mobile wallet for Ethereum and BNB Chain.</li>
+          <li><strong>Trust Wallet:</strong> Mobile-first wallet supporting multiple blockchains.</li>
+          <li><strong>Coinbase Wallet:</strong> Ideal for beginners — not the same as Coinbase Exchange.</li>
+        </ul>
 
-      <h4>Step 2: Install the Wallet</h4>
-      <p>Use official sources only:</p>
-      <ul>
-        <li><a href="https://metamask.io" target="_blank">MetaMask.io</a></li>
-        <li>Or download from the App Store / Google Play</li>
-      </ul>
+        <h4>Step 2: Install the Wallet</h4>
+        <p>Use official sources only:</p>
+        <ul>
+          <li><a href="https://metamask.io" target="_blank" style="color: var(--neon-blue);">MetaMask.io</a></li>
+          <li>Or download from the App Store / Google Play</li>
+        </ul>
 
-      <h4>Step 3: Backup Your Secret Phrase</h4>
-      <p>Write down your 12- or 24-word recovery phrase during setup. Never store it online or share it. It’s the master key to your funds.</p>
+        <h4>Step 3: Backup Your Secret Phrase</h4>
+        <p>Write down your 12- or 24-word recovery phrase during setup. Never store it online or share it. It's the master key to your funds.</p>
 
-      <h4>Step 4: Fund Your Wallet</h4>
-      <ul>
-        <li>Transfer BNB (for BNB Chain) or ETH (for Ethereum) from a centralized exchange</li>
-        <li>Receive crypto directly from another wallet</li>
-      </ul>
+        <h4>Step 4: Fund Your Wallet</h4>
+        <ul>
+          <li>Transfer BNB (for BNB Chain) or ETH (for Ethereum) from a centralized exchange</li>
+          <li>Receive crypto directly from another wallet</li>
+        </ul>
 
-      <h4>Step 5: Connect to a dApp</h4>
-      <p>Visit any DeFi-enabled site (like <strong>kellylegacyestates.com</strong>) and click <em>"Connect Wallet"</em>. Confirm the connection in your wallet app.</p>
+        <h4>Step 5: Connect to a dApp</h4>
+        <p>Visit any DeFi-enabled site (like <strong>kellylegacyestates.com</strong>) and click <em>"Connect Wallet"</em>. Confirm the connection in your wallet app.</p>
 
-      <h3>Wallet Safety Tips</h3>
-      <ul>
-        <li>Verify URLs before connecting</li>
-        <li>Use a hardware wallet for large balances</li>
-        <li>Enable password and biometric protection</li>
-        <li>Never share your recovery phrase</li>
-      </ul>
+        <h3>Wallet Safety Tips</h3>
+        <ul>
+          <li>Verify URLs before connecting</li>
+          <li>Use a hardware wallet for large balances</li>
+          <li>Enable password and biometric protection</li>
+          <li>Never share your recovery phrase</li>
+        </ul>
 
-      <h3>Real-World Example</h3>
-      <p>John installs MetaMask, sends $100 in BNB from Binance, and connects to PancakeSwap. He’s trading within minutes — no banks, no delays.</p>
+        <h3>Real-World Example</h3>
+        <p>John installs MetaMask, sends $100 in BNB from Binance, and connects to PancakeSwap. He's trading within minutes — no banks, no delays.</p>
 
-      <h3>KLY Integration</h3>
-      <p>To unlock advanced KLY features like certificate minting and governance, you’ll need a wallet with KLY tokens connected to the platform.</p>
+        <h3>KLY Integration</h3>
+        <p>To unlock advanced KLY features like certificate minting and governance, you'll need a wallet with KLY tokens connected to the platform.</p>
 
-      <div class="module-navigation">
-        <a class="module-next" onclick="showModule('module3')">Next: Using Decentralized Exchanges</a>
+        <div class="module-navigation">
+          <a class="module-next" onclick="showModule('module3')">
+            <i class="fas fa-arrow-right"></i> Next: Using Decentralized Exchanges
+          </a>
+        </div>
       </div>
     </div>
+    
+    <!-- MODULE 3 -->
+    <div id="module3" class="module-card animate__animated">
+      <div class="module-title">Module 3: Using Decentralized Exchanges (DEXs)</div>
+      <div class="module-content">
+
+        <h3>Overview</h3>
+        <p>Decentralized Exchanges (DEXs) allow you to trade crypto directly from your wallet — no registration, no middlemen. These platforms use smart contracts to enable peer-to-peer trading securely and transparently.</p>
+
+        <h3>Objectives</h3>
+        <ul>
+          <li>Understand how DEXs differ from centralized exchanges</li>
+          <li>Learn how to swap tokens using your wallet</li>
+          <li>Explore top DEX platforms on Ethereum and BNB Chain</li>
+        </ul>
+
+        <h3>How to Trade on a DEX</h3>
+
+        <h4>Step 1: Connect Your Wallet</h4>
+        <p>Go to a trusted DEX like <a href="https://pancakeswap.finance" target="_blank" style="color: var(--neon-blue);">PancakeSwap</a> or <a href="https://uniswap.org" target="_blank" style="color: var(--neon-blue);">Uniswap</a>. Click "Connect Wallet" and approve the request from your wallet app.</p>
+
+        <h4>Step 2: Select Tokens</h4>
+        <p>Choose the crypto you want to swap (e.g., BNB) and the one you want to receive (e.g., KLY). Enter the amount.</p>
+
+        <h4>Step 3: Review and Confirm</h4>
+        <p>Click "Swap" and approve the transaction in your wallet. Pay the small gas fee, and your tokens will appear in your wallet within seconds.</p>
+
+        <h3>Popular DEX Platforms</h3>
+        <ul>
+          <li><a href="https://pancakeswap.finance" target="_blank" style="color: var(--neon-blue);">PancakeSwap</a> – Best for BNB Chain</li>
+          <li><a href="https://uniswap.org" target="_blank" style="color: var(--neon-blue);">Uniswap</a> – Pioneer DEX on Ethereum</li>
+          <li><a href="https://app.1inch.io" target="_blank" style="color: var(--neon-blue);">1inch</a> – Aggregates best rates across multiple DEXs</li>
+        </ul>
+
+        <h3>What You'll Need</h3>
+        <ul>
+          <li>A DeFi wallet (e.g., MetaMask or Trust Wallet)</li>
+          <li>BNB or ETH to pay gas fees</li>
+          <li>The crypto you want to trade</li>
+        </ul>
+
+        <h3>Benefits of DEXs</h3>
+        <ul>
+          <li>Full control of your funds — no third-party custody</li>
+          <li>No KYC or personal data required</li>
+          <li>Access to new and community-driven tokens like KLY</li>
+        </ul>
+
+        <h3>Real-World Example</h3>
+        <p>Jane connects Trust Wallet to PancakeSwap, swaps BNB for KLY, and receives her tokens in real time — no signup, no wait.</p>
+
+        <h3>KLY Integration</h3>
+        <p>You can buy KLY using BNB on PancakeSwap. Always verify the official token address from the KLY dashboard before swapping.</p>
+
+        <div class="module-navigation">
+          <a class="module-next" onclick="showModule('module4')">
+            <i class="fas fa-arrow-right"></i> Next: Earning with DeFi
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODULE 4 -->
+    <div id="module4" class="module-card animate__animated">
+      <div class="module-title">Module 4: Earning with DeFi (Yield & Lending)</div>
+      <div class="module-content">
+
+        <h3>Overview</h3>
+        <p>DeFi enables passive income through staking, lending, and yield farming — allowing you to earn without actively trading. This module breaks down each method and how to get started safely.</p>
+
+        <h3>Objectives</h3>
+        <ul>
+          <li>Understand how DeFi generates passive income</li>
+          <li>Compare staking, lending, and yield farming</li>
+          <li>Identify top platforms to start earning</li>
+        </ul>
+
+        <h3>1. Staking</h3>
+        <p>Lock your tokens in a smart contract to earn rewards. You help secure the network or support a protocol while earning more of the same token.</p>
+        <ul>
+          <li><strong>Example:</strong> Stake KLY to earn additional KLY</li>
+          <li><strong>Platforms:</strong> Kelly Legacy Platform, PancakeSwap</li>
+        </ul>
+
+        <h3>2. Lending</h3>
+        <p>Deposit crypto into a lending pool where borrowers pay interest. You earn that interest passively.</p>
+        <ul>
+          <li><strong>Example:</strong> Lend BUSD on Venus to earn up to 12% APY</li>
+          <li><strong>Assets:</strong> BUSD, USDT, BNB, ETH</li>
+        </ul>
+
+        <h3>3. Yield Farming</h3>
+        <p>Provide liquidity to a DEX (by pairing two tokens), then earn trading fees and bonus tokens. This is higher risk but can generate higher returns.</p>
+        <ul>
+          <li><strong>Example:</strong> Add KLY/USDT liquidity to PancakeSwap</li>
+          <li><strong>Note:</strong> Be aware of impermanent loss</li>
+        </ul>
+
+        <h3>Top Platforms</h3>
+        <ul>
+          <li><a href="https://app.venus.io" target="_blank" style="color: var(--neon-blue);">Venus</a> – Lending on BNB Chain</li>
+          <li><a href="https://pancakeswap.finance" target="_blank" style="color: var(--neon-blue);">PancakeSwap</a> – Staking and LP rewards</li>
+          <li><a href="https://aave.com" target="_blank" style="color: var(--neon-blue);">Aave</a> – Lending on Ethereum and Polygon</li>
+        </ul>
+
+        <h3>Tips for Earning Safely</h3>
+        <ul>
+          <li>Start small and test the platform</li>
+          <li>Only use trusted, audited platforms</li>
+          <li>Track your rewards and set goals</li>
+        </ul>
+
+        <h3>Real-World Example</h3>
+        <p>Marcus stakes 5,000 KLY and earns 250 KLY in rewards after 30 days — no trading required.</p>
+
+        <h3>KLY Integration</h3>
+        <p>Use the Liberty Pool on PancakeSwap to farm KLY/USDT LP tokens. Staking also grants governance rights in the KLY DAO.</p>
+
+        <div class="module-navigation">
+          <a class="module-next" onclick="showModule('module5')">
+            <i class="fas fa-arrow-right"></i> Next: DeFi Safety & Strategy
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODULE 5 -->
+    <div id="module5" class="module-card animate__animated">
+      <div class="module-title">Module 5: DeFi Safety & Long-Term Strategy</div>
+      <div class="module-content">
+
+        <h3>Overview</h3>
+        <p>With great freedom comes great responsibility. This module helps you protect your assets, avoid common scams, and build a smart, sustainable crypto strategy.</p>
+
+        <h3>Objectives</h3>
+        <ul>
+          <li>Learn the major risks in DeFi</li>
+          <li>Practice wallet safety and protection</li>
+          <li>Build a smart, long-term investment strategy</li>
+        </ul>
+
+        <h3>Common Risks</h3>
+        <ul>
+          <li><strong>Rugpulls:</strong> When developers abandon a project after draining funds</li>
+          <li><strong>Phishing:</strong> Fake links and impostor sites tricking users</li>
+          <li><strong>Smart Contract Bugs:</strong> Code flaws hackers can exploit</li>
+          <li><strong>Impermanent Loss:</strong> Value loss from providing liquidity</li>
+        </ul>
+
+        <h3>Security Best Practices</h3>
+        <ul>
+          <li>Bookmark trusted platforms — avoid random links</li>
+          <li>Never share your seed phrase — ever</li>
+          <li>Use hardware wallets for high-value holdings</li>
+          <li>Use "burner wallets" to test new dApps</li>
+        </ul>
+
+        <h3>Long-Term Wealth Strategy</h3>
+        <ul>
+          <li><strong>Diversify:</strong> Spread risk across assets and protocols</li>
+          <li><strong>Reinvest:</strong> Compound your yield over time</li>
+          <li><strong>Take Profits:</strong> Secure gains into stablecoins or move to cold storage</li>
+          <li><strong>Stay Informed:</strong> Follow news, audits, and governance changes</li>
+        </ul>
+
+        <h3>KLY Wealth Blueprint</h3>
+        <p>After completing this course, you can stake KLY, mint your NFT Certificate, and even launch your own project via the KLY Launchpad. Education is just the beginning.</p>
+
+        <blockquote style="border-left: 4px solid var(--neon-blue); padding-left: 1rem; margin-top: 2rem; color: #aaa;">
+          "In DeFi, the most powerful strategy is education + protection."
+        </blockquote>
+
+        <div class="module-navigation">
+          <a class="module-next" onclick="showModule('module1')">
+            <i class="fas fa-arrow-left"></i> Return to Module 1
+          </a>
+        </div>
+      </div>
+    </div>
+
   </div>
   
-  <div id="module3" class="module-card">
-    <div class="module-title">Module 3: Using Decentralized Exchanges (DEXs)</div>
-    <div class="module-content">
-
-      <h3>Overview</h3>
-      <p>Decentralized Exchanges (DEXs) allow you to trade crypto directly from your wallet — no registration, no middlemen. These platforms use smart contracts to enable peer-to-peer trading securely and transparently.</p>
-
-      <h3>Objectives</h3>
-      <ul>
-        <li>Understand how DEXs differ from centralized exchanges</li>
-        <li>Learn how to swap tokens using your wallet</li>
-        <li>Explore top DEX platforms on Ethereum and BNB Chain</li>
-      </ul>
-
-      <h3>How to Trade on a DEX</h3>
-
-      <h4>Step 1: Connect Your Wallet</h4>
-      <p>Go to a trusted DEX like <a href="https://pancakeswap.finance" target="_blank">PancakeSwap</a> or <a href="https://uniswap.org" target="_blank">Uniswap</a>. Click “Connect Wallet” and approve the request from your wallet app.</p>
-
-      <h4>Step 2: Select Tokens</h4>
-      <p>Choose the crypto you want to swap (e.g., BNB) and the one you want to receive (e.g., KLY). Enter the amount.</p>
-
-      <h4>Step 3: Review and Confirm</h4>
-      <p>Click “Swap” and approve the transaction in your wallet. Pay the small gas fee, and your tokens will appear in your wallet within seconds.</p>
-
-      <h3>Popular DEX Platforms</h3>
-      <ul>
-        <li><a href="https://pancakeswap.finance" target="_blank">PancakeSwap</a> – Best for BNB Chain</li>
-        <li><a href="https://uniswap.org" target="_blank">Uniswap</a> – Pioneer DEX on Ethereum</li>
-        <li><a href="https://app.1inch.io" target="_blank">1inch</a> – Aggregates best rates across multiple DEXs</li>
-      </ul>
-
-      <h3>What You’ll Need</h3>
-      <ul>
-        <li>A DeFi wallet (e.g., MetaMask or Trust Wallet)</li>
-        <li>BNB or ETH to pay gas fees</li>
-        <li>The crypto you want to trade</li>
-      </ul>
-
-      <h3>Benefits of DEXs</h3>
-      <ul>
-        <li>Full control of your funds — no third-party custody</li>
-        <li>No KYC or personal data required</li>
-        <li>Access to new and community-driven tokens like KLY</li>
-      </ul>
-
-      <h3>Real-World Example</h3>
-      <p>Jane connects Trust Wallet to PancakeSwap, swaps BNB for KLY, and receives her tokens in real time — no signup, no wait.</p>
-
-      <h3>KLY Integration</h3>
-      <p>You can buy KLY using BNB on PancakeSwap. Always verify the official token address from the KLY dashboard before swapping.</p>
-
-      <div class="module-navigation">
-        <a class="module-next" onclick="showModule('module4')">Next: Earning with DeFi</a>
-      </div>
-    </div>
-  </div>
-  
-  <div id="module4" class="module-card">
-    <div class="module-title">Module 4: Earning with DeFi (Yield & Lending)</div>
-    <div class="module-content">
-
-      <h3>Overview</h3>
-      <p>DeFi enables passive income through staking, lending, and yield farming — allowing you to earn without actively trading. This module breaks down each method and how to get started safely.</p>
-
-      <h3>Objectives</h3>
-      <ul>
-        <li>Understand how DeFi generates passive income</li>
-        <li>Compare staking, lending, and yield farming</li>
-        <li>Identify top platforms to start earning</li>
-      </ul>
-
-      <h3>1. Staking</h3>
-      <p>Lock your tokens in a smart contract to earn rewards. You help secure the network or support a protocol while earning more of the same token.</p>
-      <ul>
-        <li><strong>Example:</strong> Stake KLY to earn additional KLY</li>
-        <li><strong>Platforms:</strong> Kelly Legacy Platform, PancakeSwap</li>
-      </ul>
-
-      <h3>2. Lending</h3>
-      <p>Deposit crypto into a lending pool where borrowers pay interest. You earn that interest passively.</p>
-      <ul>
-        <li><strong>Example:</strong> Lend BUSD on Venus to earn up to 12% APY</li>
-        <li><strong>Assets:</strong> BUSD, USDT, BNB, ETH</li>
-      </ul>
-
-      <h3>3. Yield Farming</h3>
-      <p>Provide liquidity to a DEX (by pairing two tokens), then earn trading fees and bonus tokens. This is higher risk but can generate higher returns.</p>
-      <ul>
-        <li><strong>Example:</strong> Add KLY/USDT liquidity to PancakeSwap</li>
-        <li><strong>Note:</strong> Be aware of impermanent loss</li>
-      </ul>
-
-      <h3>Top Platforms</h3>
-      <ul>
-        <li><a href="https://app.venus.io" target="_blank">Venus</a> – Lending on BNB Chain</li>
-        <li><a href="https://pancakeswap.finance" target="_blank">PancakeSwap</a> – Staking and LP rewards</li>
-        <li><a href="https://aave.com" target="_blank">Aave</a> – Lending on Ethereum and Polygon</li>
-      </ul>
-
-      <h3>Tips for Earning Safely</h3>
-      <ul>
-        <li>Start small and test the platform</li>
-        <li>Only use trusted, audited platforms</li>
-        <li>Track your rewards and set goals</li>
-      </ul>
-
-      <h3>Real-World Example</h3>
-      <p>Marcus stakes 5,000 KLY and earns 250 KLY in rewards after 30 days — no trading required.</p>
-
-      <h3>KLY Integration</h3>
-      <p>Use the Liberty Pool on PancakeSwap to farm KLY/USDT LP tokens. Staking also grants governance rights in the KLY DAO.</p>
-
-      <div class="module-navigation">
-        <a class="module-next" onclick="showModule('module5')">Next: DeFi Safety & Strategy</a>
-      </div>
-    </div>
-  </div>
-  
-  <div id="module5" class="module-card">
-    <div class="module-title">Module 5: DeFi Safety & Long-Term Strategy</div>
-    <div class="module-content">
-
-      <h3>Overview</h3>
-      <p>With great freedom comes great responsibility. This module helps you protect your assets, avoid common scams, and build a smart, sustainable crypto strategy.</p>
-
-      <h3>Objectives</h3>
-      <ul>
-        <li>Learn the major risks in DeFi</li>
-        <li>Practice wallet safety and protection</li>
-        <li>Build a smart, long-term investment strategy</li>
-      </ul>
-
-      <h3>Common Risks</h3>
-      <ul>
-        <li><strong>Rugpulls:</strong> When developers abandon a project after draining funds</li>
-        <li><strong>Phishing:</strong> Fake links and impostor sites tricking users</li>
-        <li><strong>Smart Contract Bugs:</strong> Code flaws hackers can exploit</li>
-        <li><strong>Impermanent Loss:</strong> Value loss from providing liquidity</li>
-      </ul>
-
-      <h3>Security Best Practices</h3>
-      <ul>
-        <li>Bookmark trusted platforms — avoid random links</li>
-        <li>Never share your seed phrase — ever</li>
-        <li>Use hardware wallets for high-value holdings</li>
-        <li>Use “burner wallets” to test new dApps</li>
-      </ul>
-
-      <h3>Long-Term Wealth Strategy</h3>
-      <ul>
-        <li><strong>Diversify:</strong> Spread risk across assets and protocols</li>
-        <li><strong>Reinvest:</strong> Compound your yield over time</li>
-        <li><strong>Take Profits:</strong> Secure gains into stablecoins or move to cold storage</li>
-        <li><strong>Stay Informed:</strong> Follow news, audits, and governance changes</li>
-      </ul>
-
-      <h3>KLY Wealth Blueprint</h3>
-      <p>After completing this course, you can stake KLY, mint your NFT Certificate, and even launch your own project via the KLY Launchpad. Education is just the beginning.</p>
-
-      <blockquote style="border-left: 4px solid #00ffe7; padding-left: 1rem; margin-top: 2rem; color: #aaa;">
-        “In DeFi, the most powerful strategy is education + protection.”
-      </blockquote>
-
-      <div class="module-navigation">
-        <a class="module-next" onclick="showModule('module1')">Return to Module 1</a>
-      </div>
-    </div>
-  </div>
-
-</div>
-    <div style="text-align: center; margin-top: 2.5rem;">
-      <button class="nav-button" onclick="mintCertificate()">Mint NFT Certificate</button>
-      <p id="mint-status"></p>
-    </div>
+  <div style="text-align: center; margin-top: 2.5rem; display: none;" id="certificate-section">
+    <button class="button" onclick="mintCertificate()">
+      <i class="fas fa-certificate"></i> Mint NFT Certificate
+    </button>
+    <p id="mint-status"></p>
   </div>
 
   <script>
@@ -446,27 +694,58 @@
     const connectBtn = document.getElementById('connect-btn');
     const walletStatus = document.getElementById('wallet-status');
     const courseWrapper = document.getElementById('course-wrapper');
+    const certificateSection = document.getElementById('certificate-section');
+    let currentModule = 1;
+    const totalModules = 5;
 
     // Connect wallet function
     async function connectWallet() {
       if (typeof window.ethereum === 'undefined') {
-        walletStatus.textContent = "MetaMask not detected. Please install it first.";
+        walletStatus.innerHTML = `
+          <span style="color: #ff5555">MetaMask not detected.</span>
+          <br>
+          <a href="https://metamask.io/download.html" target="_blank" style="color: var(--neon-blue)">Download MetaMask</a>
+        `;
         return;
       }
 
       try {
-        connectBtn.textContent = "Connecting...";
+        connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
         walletStatus.textContent = "";
         
         // Request account access
         provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        
+        if (accounts.length === 0) {
+          throw new Error("No accounts found");
+        }
+        
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         
-        // Shorten address for display
-        const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
-        walletStatus.textContent = `Connected: ${shortAddress}`;
+        // Display ENS name if available
+        let displayName = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+        try {
+          const ensName = await provider.lookupAddress(userAddress);
+          if (ensName) displayName = ensName;
+        } catch (e) {}
+        
+        walletStatus.innerHTML = `
+          <span style="color: #4caf50">Connected:</span> ${displayName}
+          <br>
+          <button onclick="disconnectWallet()" style="background: none; border: none; color: #ff5555; cursor: pointer; margin-top: 5px;">
+            Disconnect
+          </button>
+        `;
+        
+        // Check network
+        const network = await provider.getNetwork();
+        if (network.chainId !== 56 && network.chainId !== 1) { // BSC or ETH
+          walletStatus.innerHTML += `
+            <br><span style="color: #ff9800">Warning: Please switch to BSC or Ethereum Mainnet</span>
+          `;
+        }
         
         // Check KLY balance
         const klyContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
@@ -475,45 +754,79 @@
         const adjustedBalance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
         
         if (adjustedBalance >= 100) {
-          // Grant access to course
           connectBtn.style.display = 'none';
           document.querySelector('.course-box p.note').style.display = 'none';
           courseWrapper.style.display = 'block';
+          certificateSection.style.display = 'block';
           showModule('module1');
+          
+          // Initialize progress tracking
+          initializeProgressTracking();
+          
+          // Show welcome message
+          walletStatus.innerHTML += `
+            <br><span style="color: var(--neon-blue)">Welcome to KLY Academy!</span>
+          `;
         } else {
-          walletStatus.textContent = `Insufficient KLY balance: ${adjustedBalance.toFixed(2)}/500 required`;
+          walletStatus.innerHTML += `
+            <br><span style="color: #ff5555">Insufficient KLY: ${adjustedBalance.toFixed(2)}/100 required</span>
+            <br><a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" 
+                  target="_blank" 
+                  style="color: var(--neon-blue)">
+              Buy KLY on PancakeSwap
+            </a>
+          `;
         }
       } catch (error) {
         console.error("Wallet connection error:", error);
-        walletStatus.textContent = error.code === 4001 
-          ? "Connection rejected by user" 
-          : "Failed to connect wallet";
+        walletStatus.innerHTML = error.code === 4001 
+          ? `<span style="color: #ff5555">Connection rejected</span>` 
+          : `<span style="color: #ff5555">Error: ${error.message}</span>`;
       } finally {
         connectBtn.textContent = "Connect Wallet to Unlock Course";
       }
     }
 
-    // Mint certificate function
-    async function mintCertificate() {
-      if (!signer) {
-        alert("Please connect your wallet first");
-        return;
-      }
+    // Disconnect wallet function
+    async function disconnectWallet() {
+      // This is a soft disconnect since MetaMask doesn't allow true disconnection
+      walletStatus.textContent = "Wallet disconnected";
+      connectBtn.style.display = 'block';
+      document.querySelector('.course-box p.note').style.display = 'block';
+      courseWrapper.style.display = 'none';
+      certificateSection.style.display = 'none';
+      document.querySelector('.progress-container').style.display = 'none';
+      provider = null;
+      signer = null;
+      userAddress = null;
+    }
 
-      try {
-        document.getElementById("mint-status").textContent = "Minting in progress...";
-        
-        const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-        const tx = await contract.mintTo(
-          userAddress, 
-          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-        );
-        
-        await tx.wait();
-        document.getElementById("mint-status").textContent = "Certificate Minted Successfully!";
-      } catch (error) {
-        console.error("Minting error:", error);
-        document.getElementById("mint-status").textContent = "Minting failed. Please try again.";
+    // Initialize progress tracking
+    function initializeProgressTracking() {
+      const progressKey = `kly-progress-${userAddress}`;
+      let progress = JSON.parse(localStorage.getItem(progressKey)) || {
+        completedModules: [],
+        lastAccessed: new Date().toISOString()
+      };
+      
+      // Show progress container
+      const progressContainer = document.querySelector('.progress-container');
+      progressContainer.style.display = 'block';
+      
+      // Update progress UI
+      updateProgressUI();
+      
+      function updateProgressUI() {
+        const progressPercent = (progress.completedModules.length / totalModules) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+        document.getElementById('progress-text').textContent = 
+          `${progress.completedModules.length}/${totalModules} modules completed`;
+          
+        if (progressPercent === 100) {
+          document.getElementById('progress-text').innerHTML += `
+            <br><span style="color: var(--neon-blue)">Course completed! Ready to mint your certificate.</span>
+          `;
+        }
       }
     }
 
@@ -521,9 +834,167 @@
     function showModule(moduleId) {
       document.querySelectorAll('.module-card').forEach(card => {
         card.style.display = 'none';
+        card.classList.remove('animate__fadeIn');
       });
-      document.getElementById(moduleId).style.display = 'block';
+      
+      const module = document.getElementById(moduleId);
+      module.style.display = 'block';
+      module.classList.add('animate__animated', 'animate__fadeIn');
+      
+      // Update current module number
+      currentModule = parseInt(moduleId.replace('module', ''));
+      
+      // Update button states
+      document.querySelectorAll('.module-btn').forEach(btn => {
+        btn.classList.remove('active-module');
+        if (btn.dataset.module === moduleId) {
+          btn.classList.add('active-module');
+        }
+      });
+      
+      // Track module view
+      trackModuleView(moduleId);
     }
+
+    // Track module view
+    function trackModuleView(moduleId) {
+      if (!userAddress) return;
+      
+      const progressKey = `kly-progress-${userAddress}`;
+      let progress = JSON.parse(localStorage.getItem(progressKey)) || {
+        completedModules: [],
+        lastAccessed: new Date().toISOString()
+      };
+      
+      const moduleNum = moduleId.replace('module', '');
+      if (!progress.completedModules.includes(moduleNum)) {
+        progress.completedModules.push(moduleNum);
+        progress.lastAccessed = new Date().toISOString();
+        localStorage.setItem(progressKey, JSON.stringify(progress));
+        updateProgressUI();
+      }
+      
+      function updateProgressUI() {
+        const progressPercent = (progress.completedModules.length / totalModules) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+        document.getElementById('progress-text').textContent = 
+          `${progress.completedModules.length}/${totalModules} modules completed`;
+          
+        if (progressPercent === 100) {
+          document.getElementById('progress-text').innerHTML += `
+            <br><span style="color: var(--neon-blue)">Course completed! Ready to mint your certificate.</span>
+          `;
+        }
+      }
+    }
+
+    // Mint certificate function
+    async function mintCertificate() {
+      if (!signer) {
+        showNotification("Please connect your wallet first", "error");
+        return;
+      }
+
+      try {
+        const mintStatus = document.getElementById("mint-status");
+        mintStatus.innerHTML = `
+          <div class="loader" style="display: block;"></div>
+          <p>Preparing your NFT certificate...</p>
+        `;
+        
+        const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+        
+        // Estimate gas first
+        const gasEstimate = await contract.estimateGas.mintTo(
+          userAddress, 
+          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
+        );
+        
+        // Add 20% buffer
+        const gasLimit = gasEstimate.mul(120).div(100);
+        
+        const tx = await contract.mintTo(
+          userAddress, 
+          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
+          { gasLimit }
+        );
+        
+        mintStatus.innerHTML = `
+          <div class="loader" style="display: block;"></div>
+          <p>Minting in progress...</p>
+          <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--neon-blue)">
+            View on BscScan
+          </a>
+        `;
+        
+        const receipt = await tx.wait();
+        
+        showNotification("Certificate Minted Successfully!", "success");
+        mintStatus.innerHTML = `
+          <p style="color: #4caf50">✅ Certificate Minted Successfully!</p>
+          <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--neon-blue)">
+            View Transaction
+          </a>
+        `;
+        
+        // Show confetti celebration
+        launchConfetti();
+      } catch (error) {
+        console.error("Minting error:", error);
+        showNotification(`Minting failed: ${error.message}`, "error");
+        document.getElementById("mint-status").innerHTML = `
+          <p style="color: #ff5555">❌ Minting failed</p>
+          <p>${error.message}</p>
+        `;
+      }
+    }
+
+    // Launch confetti
+    function launchConfetti() {
+      const confettiSettings = {
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#0ff', '#ff00cc', '#ffffff']
+      };
+      
+      if (typeof confetti === 'function') {
+        confetti(confettiSettings);
+        setTimeout(() => confetti(confettiSettings), 500);
+      }
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+      const colors = {
+        info: '#2196F3',
+        success: '#4CAF50',
+        error: '#F44336',
+        warning: '#FF9800'
+      };
+      
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = message;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s';
+        setTimeout(() => notification.remove(), 500);
+      }, 5000);
+    }
+
+    // Theme toggle
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+      const icon = document.querySelector('#theme-toggle i');
+      if (document.body.classList.contains('light-mode')) {
+        icon.classList.replace('fa-moon', 'fa-sun');
+      } else {
+        icon.classList.replace('fa-sun', 'fa-moon');
+      }
+    });
 
     // Event listeners
     window.addEventListener('load', async () => {
@@ -537,13 +1008,8 @@
         // Listen for account changes
         window.ethereum.on('accountsChanged', (accounts) => {
           if (accounts.length === 0) {
-            // Wallet disconnected
-            connectBtn.style.display = 'block';
-            document.querySelector('.course-box p.note').style.display = 'block';
-            courseWrapper.style.display = 'none';
-            walletStatus.textContent = "Wallet disconnected";
+            disconnectWallet();
           } else {
-            // Account changed
             connectWallet();
           }
         });
@@ -557,6 +1023,7 @@
 
     // Make functions available globally
     window.connectWallet = connectWallet;
+    window.disconnectWallet = disconnectWallet;
     window.mintCertificate = mintCertificate;
     window.showModule = showModule;
   </script>
