@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Required Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Transformational 7-module course on self-realization for KLY token holders">
@@ -964,231 +968,215 @@
   </ul>
 </section>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Constants
-      const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-      const KLY_TOKEN_ABI = [
-        "function balanceOf(address owner) view returns (uint256)",
-        "function decimals() view returns (uint8)"
-      ];
-      const REQUIRED_BALANCE = 500;
-      
-      // DOM Elements
-      const connectBtn = document.getElementById('connectWalletBtn');
-      const disconnectBtn = document.getElementById('disconnectWalletBtn');
-      const statusEl = document.getElementById('status');
-      const courseContent = document.getElementById('courseContent');
-      const connectSection = document.getElementById('connect-section');
-      const walletConnected = document.getElementById('walletConnected');
-      const walletAddress = document.getElementById('walletAddress');
-      const progressContainer = document.getElementById('progressContainer');
-      const progressBar = document.getElementById('progressBar');
-      const progressText = document.getElementById('progressText');
-      const moduleCheckboxes = document.querySelectorAll('.module-complete input');
-      
-      // State
-      let provider, signer, userAddress, tokenContract;
-      let completedModules = JSON.parse(localStorage.getItem('completedModules')) || [];
-      
-      // Initialize
-      init();
-      
-      function init() {
-        checkSavedWallet();
-        updateProgress();
-        updateModuleStyles();
-        
-        // Event Listeners
-        connectBtn.addEventListener('click', connectWallet);
-        disconnectBtn.addEventListener('click', disconnectWallet);
-        
-        moduleCheckboxes.forEach(checkbox => {
-          checkbox.addEventListener('change', toggleModuleComplete);
-          // Restore checkbox state from localStorage
-          const moduleNum = checkbox.dataset.module;
-          checkbox.checked = completedModules.includes(moduleNum);
-        });
-      }
-      
-      // Check if wallet is already connected (from previous session)
-      async function checkSavedWallet() {
-        if (window.ethereum && localStorage.getItem('walletConnected')) {
-          try {
-            await connectWallet();
-          statusEl.textContent = "Automatically reconnected to your wallet";
-            setTimeout(() => {
-              statusEl.textContent = "";
-            }, 3000);
-          } catch (error) {
-            console.error("Auto-connect failed:", error);
-            localStorage.removeItem('walletConnected');
-            statusEl.textContent = "Session expired. Please reconnect your wallet.";
-          }
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Constants
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
+  const REQUIRED_BALANCE = 500;
+  const BNB_CHAIN_ID = 56;
+
+  // Web3 State
+  let provider, signer, userAddress, tokenContract, web3Modal, externalProvider;
+
+  // DOM Elements
+  const connectBtn = document.getElementById('connectWalletBtn');
+  const disconnectBtn = document.getElementById('disconnectWalletBtn');
+  const statusEl = document.getElementById('status');
+  const courseContent = document.getElementById('courseContent');
+  const connectSection = document.getElementById('connect-section');
+  const walletConnected = document.getElementById('walletConnected');
+  const walletAddress = document.getElementById('walletAddress');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  const moduleCheckboxes = document.querySelectorAll('.module-complete input');
+
+  // Progress state
+  let completedModules = JSON.parse(localStorage.getItem('completedModules')) || [];
+
+  init();
+
+  function init() {
+    setupWeb3Modal();
+    checkSavedWallet();
+    updateProgress();
+    updateModuleStyles();
+
+    connectBtn.addEventListener('click', connectWallet);
+    disconnectBtn.addEventListener('click', disconnectWallet);
+
+    moduleCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', toggleModuleComplete);
+      const moduleNum = checkbox.dataset.module;
+      checkbox.checked = completedModules.includes(moduleNum);
+    });
+  }
+
+  function setupWeb3Modal() {
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: {
+            56: "https://bsc-dataseed.binance.org/"
+          },
+          chainId: BNB_CHAIN_ID
         }
       }
-      
-      // Connect wallet handler
-      async function connectWallet() {
-        if (!window.ethereum) {
-          statusEl.textContent = "Please install MetaMask or another Ethereum wallet";
-          showWalletInstallLink();
-          return;
-        }
-        
-        try {
-          connectBtn.disabled = true;
-          statusEl.innerHTML = "Connecting <span class='loading'></span>";
-          
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          
-          // Request account access
-          await provider.send("eth_requestAccounts", []);
-          signer = provider.getSigner();
-          userAddress = await signer.getAddress();
-          
-          // Shorten address for display
-          const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
-          walletAddress.textContent = shortAddress;
-          
-          // Initialize token contract
-          tokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-          
-          // Check token balance
-          const decimals = await tokenContract.decimals();
-          const rawBalance = await tokenContract.balanceOf(userAddress);
-          const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-          
-          if (balance >= REQUIRED_BALANCE) {
-            // Success - show course content
-            connectSection.style.display = 'block';
-            walletConnected.classList.remove('hidden');
-            progressContainer.classList.remove('hidden');
-            connectBtn.classList.add('hidden');
-            courseContent.classList.add('visible');
-            statusEl.textContent = "Course unlocked!";
-            
-            // Save connection state
-            localStorage.setItem('walletConnected', 'true');
-            
-            // Brief confirmation animation
-            progressBar.style.transition = 'none';
-            progressBar.style.width = '100%';
-            setTimeout(() => {
-              progressBar.style.transition = 'width 1s ease';
-              progressBar.style.width = '0%';
-              setTimeout(() => {
-                updateProgress();
-              }, 50);
-            }, 300);
-          } else {
-            statusEl.textContent = `You have ${balance.toFixed(2)} KLY. ${REQUIRED_BALANCE} KLY required to access this course.`;
-          }
-        } catch (error) {
-          console.error("Wallet connection error:", error);
-          if (error.message.includes("User rejected")) {
-            statusEl.textContent = "Connection cancelled";
-          } else if (error.message.includes("already pending")) {
-            statusEl.textContent = "Request already pending. Check your wallet.";
-          } else {
-            statusEl.textContent = "Error connecting wallet";
-          }
-        } finally {
-          connectBtn.disabled = false;
-        }
-      }
-      
-      function showWalletInstallLink() {
-        statusEl.innerHTML = "Please install a Web3 wallet like <a href='https://metamask.io/' target='_blank' style='color: var(--primary)'>MetaMask</a>";
-      }
-      
-      // Disconnect wallet handler
-      function disconnectWallet() {
-        // Reset UI
-        walletConnected.classList.add('hidden');
-        connectBtn.classList.remove('hidden');
-        courseContent.classList.remove('visible');
-        progressContainer.classList.add('hidden');
-        statusEl.textContent = "Wallet disconnected";
-        
-        // Clear state
-        provider = null;
-        signer = null;
-        userAddress = null;
-        tokenContract = null;
-        
-        // Remove from localStorage
+    };
+
+    web3Modal = new window.Web3Modal.default({
+      cacheProvider: true,
+      providerOptions,
+      theme: "dark"
+    });
+  }
+
+  async function checkSavedWallet() {
+    if (web3Modal && web3Modal.cachedProvider) {
+      try {
+        await connectWallet();
+        statusEl.textContent = "Automatically reconnected to your wallet";
+        setTimeout(() => statusEl.textContent = "", 3000);
+      } catch (err) {
+        console.warn("Auto-connect failed:", err);
         localStorage.removeItem('walletConnected');
+        statusEl.textContent = "Session expired. Please reconnect.";
       }
-      
-      // Toggle module completion status
-      function toggleModuleComplete(e) {
-        const moduleNum = e.target.dataset.module;
-        const moduleArticle = document.getElementById(`module${moduleNum}`);
-        
-        if (e.target.checked) {
-          if (!completedModules.includes(moduleNum)) {
-            completedModules.push(moduleNum);
-            moduleArticle.classList.add('completed');
-            
-            // Brief completion animation
-            moduleArticle.style.transform = 'scale(1.02)';
-            setTimeout(() => {
-              moduleArticle.style.transform = '';
-            }, 300);
-          }
-        } else {
-          completedModules = completedModules.filter(m => m !== moduleNum);
-          moduleArticle.classList.remove('completed');
-        }
-        
-        localStorage.setItem('completedModules', JSON.stringify(completedModules));
-        updateProgress();
+    }
+  }
+
+  async function connectWallet() {
+    try {
+      connectBtn.disabled = true;
+      statusEl.innerHTML = "Connecting <span class='loading'></span>";
+
+      externalProvider = await web3Modal.connect();
+      provider = new ethers.providers.Web3Provider(externalProvider);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== BNB_CHAIN_ID) {
+        statusEl.textContent = `Wrong network: switch to BNB Smart Chain`;
+        return;
       }
-      
-      // Update progress bar
-      function updateProgress() {
-        const totalModules = 7;
-        const completedCount = completedModules.length;
-        const progressPercent = (completedCount / totalModules) * 100;
-        
-        progressBar.style.width = `${progressPercent}%`;
-        progressText.textContent = `${Math.round(progressPercent)}% Complete`;
-        
-        if (completedCount > 0) {
-          statusEl.textContent = `Progress: ${completedCount}/${totalModules} modules completed`;
-        }
+
+      const shortAddress = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+      connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> ${shortAddress}`;
+      connectBtn.classList.add("connected");
+      walletAddress.textContent = shortAddress;
+
+      tokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+      const decimals = await tokenContract.decimals();
+      const rawBalance = await tokenContract.balanceOf(userAddress);
+      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+      if (balance >= REQUIRED_BALANCE) {
+        connectSection.style.display = 'block';
+        walletConnected.classList.remove('hidden');
+        progressContainer.classList.remove('hidden');
+        connectBtn.classList.add('hidden');
+        courseContent.classList.add('visible');
+        statusEl.textContent = "Course unlocked!";
+        localStorage.setItem('walletConnected', 'true');
+
+        progressBar.style.transition = 'none';
+        progressBar.style.width = '100%';
+        setTimeout(() => {
+          progressBar.style.transition = 'width 1s ease';
+          progressBar.style.width = '0%';
+          setTimeout(updateProgress, 50);
+        }, 300);
+      } else {
+        statusEl.textContent = `You have ${balance.toFixed(2)} KLY. 500 KLY required to access this course.`;
       }
-      
-      // Update module styles based on completion status
-      function updateModuleStyles() {
-        completedModules.forEach(moduleNum => {
-          const moduleArticle = document.getElementById(`module${moduleNum}`);
-          if (moduleArticle) {
-            moduleArticle.classList.add('completed');
-          }
-        });
+
+      if (externalProvider.on) {
+        externalProvider.on("accountsChanged", () => window.location.reload());
+        externalProvider.on("chainChanged", () => window.location.reload());
       }
-      
-      // Listen for account changes
-      if (window.ethereum) {
-        window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) {
-            // Wallet disconnected
-            disconnectWallet();
-          } else if (accounts[0] !== userAddress) {
-            // Account changed
-            connectWallet();
-          }
-        });
-        
-        // Listen for chain changes
-        window.ethereum.on('chainChanged', () => {
-          window.location.reload();
-        });
+
+    } catch (error) {
+      console.error("Wallet connect error:", error);
+      if (error.message.includes("User rejected")) {
+        statusEl.textContent = "Connection cancelled.";
+      } else {
+        statusEl.textContent = "Connection failed.";
+      }
+    } finally {
+      connectBtn.disabled = false;
+    }
+  }
+
+  function disconnectWallet() {
+    walletConnected.classList.add('hidden');
+    connectBtn.classList.remove('hidden');
+    courseContent.classList.remove('visible');
+    progressContainer.classList.add('hidden');
+    statusEl.textContent = "Wallet disconnected";
+
+    provider = null;
+    signer = null;
+    userAddress = null;
+    tokenContract = null;
+
+    localStorage.removeItem('walletConnected');
+    if (web3Modal) web3Modal.clearCachedProvider();
+  }
+
+  function toggleModuleComplete(e) {
+    const moduleNum = e.target.dataset.module;
+    const moduleArticle = document.getElementById(`module${moduleNum}`);
+
+    if (e.target.checked) {
+      if (!completedModules.includes(moduleNum)) {
+        completedModules.push(moduleNum);
+        moduleArticle.classList.add('completed');
+        moduleArticle.style.transform = 'scale(1.02)';
+        setTimeout(() => moduleArticle.style.transform = '', 300);
+      }
+    } else {
+      completedModules = completedModules.filter(m => m !== moduleNum);
+      moduleArticle.classList.remove('completed');
+    }
+
+    localStorage.setItem('completedModules', JSON.stringify(completedModules));
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const totalModules = 7;
+    const completedCount = completedModules.length;
+    const progressPercent = (completedCount / totalModules) * 100;
+
+    progressBar.style.width = `${progressPercent}%`;
+    progressText.textContent = `${Math.round(progressPercent)}% Complete`;
+
+    if (completedCount > 0) {
+      statusEl.textContent = `Progress: ${completedCount}/${totalModules} modules completed`;
+    }
+  }
+
+  function updateModuleStyles() {
+    completedModules.forEach(moduleNum => {
+      const moduleArticle = document.getElementById(`module${moduleNum}`);
+      if (moduleArticle) {
+        moduleArticle.classList.add('completed');
       }
     });
-  </script>
+  }
+
+  // Listen for chain/account changes (MetaMask fallback)
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', () => window.location.reload());
+    window.ethereum.on('chainChanged', () => window.location.reload());
+  }
+});
+</script>
 </body>
 </html>
