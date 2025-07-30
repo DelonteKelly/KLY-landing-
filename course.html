@@ -2,14 +2,22 @@
 <html lang="en">
 <head>
   <!-- Required Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Transformational 7-module course on self-realization for KLY token holders">
   <title>KLY Path of Awakening</title>
+  
+  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;700&family=EB+Garamond:ital@0;1&family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.0/aframe/build/aframe-ar.min.js"></script>
+  
   <style>
     :root {
       --gold-light: #f9e076;
@@ -23,6 +31,7 @@
       --text-muted: rgba(200, 200, 200, 0.6);
       --module-bg: rgba(20, 20, 30, 0.8);
       --module-complete: rgba(212, 175, 55, 0.1);
+      --nft-glow: rgba(0, 255, 231, 0.3);
     }
     
     body {
@@ -35,7 +44,7 @@
       line-height: 1.6;
     }
     
-    /* Sacred Geometry Background */
+    /* 3D Sacred Geometry Background */
     .cosmic-canvas {
       position: fixed;
       top: 0;
@@ -43,13 +52,15 @@
       width: 100%;
       height: 100%;
       z-index: -1;
-      opacity: 0.08;
+      opacity: 0.15;
+      pointer-events: none;
     }
     
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 0 2rem;
+      position: relative;
     }
     
     /* Hero Section */
@@ -500,6 +511,85 @@
       display: none;
     }
     
+    /* AR Styles */
+    .ar-marker {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 300px;
+      height: 300px;
+      z-index: 100;
+      border: 1px solid var(--gold-primary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    /* Meditation Visualizer */
+    .meditation-viz {
+      width: 100%;
+      height: 200px;
+      background: rgba(0,0,0,0.2);
+      margin: 2rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .breath-circle {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--teal-light);
+      transform: translate(-50%, -50%);
+      opacity: 0.7;
+    }
+    
+    /* NFT Certificate */
+    .nft-certificate {
+      max-width: 400px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: linear-gradient(135deg, rgba(20, 20, 30, 0.8), rgba(5, 5, 8, 0.9));
+      border: 1px solid var(--gold-primary);
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 0 30px var(--nft-glow);
+      display: none;
+    }
+    
+    .nft-certificate h3 {
+      color: var(--gold-primary);
+      margin-bottom: 1rem;
+    }
+    
+    .nft-certificate p {
+      margin: 0.5rem 0;
+    }
+    
+    .nft-image {
+      width: 150px;
+      height: 150px;
+      margin: 1rem auto;
+      background: radial-gradient(circle, var(--teal-light) 0%, var(--gold-primary) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: var(--bg-darker);
+    }
+    
+    /* Community Section */
+    .community-section {
+      background: rgba(0, 122, 109, 0.05);
+      border: 1px solid var(--teal-dark);
+      padding: 2rem;
+      border-radius: 8px;
+      margin: 4rem 0;
+    }
+    
+    .community-section h3 {
+      color: var(--teal-light);
+    }
+    
     /* Responsive Adjustments */
     @media (max-width: 768px) {
       .container {
@@ -527,17 +617,37 @@
         padding: 1rem 2rem;
         font-size: 1rem;
       }
+      
+      .ar-marker {
+        width: 200px;
+        height: 200px;
+        bottom: 1rem;
+        right: 1rem;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Sacred Geometry Background -->
-  <canvas id="cosmicCanvas" class="cosmic-canvas"></canvas>
+  <!-- 3D Sacred Geometry Background -->
+  <div id="cosmicContainer" class="cosmic-canvas"></div>
+  
+  <!-- AR Meditation Marker (hidden by default) -->
+  <div class="ar-marker hidden" id="arMarker">
+    <a-scene embedded arjs>
+      <a-entity 
+        geometry="primitive: torusKnot; radius: 0.5; radiusTubular: 0.1"
+        material="color: #D4AF37; metalness: 0.8; roughness: 0.2"
+        rotation="0 45 0"
+        animation="property: rotation; to: 0 405 0; loop: true; dur: 10000">
+      </a-entity>
+      <a-marker-camera preset="hiro"></a-marker-camera>
+    </a-scene>
+  </div>
   
   <div class="container">
     <!-- Hero Section -->
     <section class="wisdom-hero">
-     
+      <img src="https://via.placeholder.com/120" alt="KLY Logo" class="kly-logo">
       
       <div class="title-container">
         <div class="title-decoration top"></div>
@@ -552,9 +662,9 @@
           <span class="cta-icon">⌾</span>
         </button>
         
-      <p class="disclaimer" style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #8B4513; letter-spacing: 1px;">  
-  ✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧  
-</p>
+        <p class="disclaimer" style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #8B4513; letter-spacing: 1px;">  
+          ✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧  
+        </p>
         
         <!-- Animated Triquetra (hidden until connection) -->
         <svg id="triquetra" class="triquetra" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -828,39 +938,39 @@
             these waves in the body, but allowing them to surface leads to healing.  
             <br><br>
             <em>Practice Tip:</em> When a heavy emotion arises, instead of labeling it as "bad," 
-            silently say, "I welcome this feeling. I allow it to pass through me."
+
+            try saying, "This is energy moving through me. I allow it to be here."
           </li>
 
           <li>
-            <strong>Accepting Impermanence:</strong><br>
-            Everything in life is transient — joy, pain, seasons, and even identities. Suffering arises 
-            when we resist this natural flow. Acceptance opens the heart to peace.  
-            <br><br>
-            <em>Reflection Question:</em> Which current situation in your life are you resisting, 
-            and what would shift if you embraced its impermanence?
+            <strong>The 3 Steps of Emotional Alchemy:</strong><br>
+            <ol>
+              <li><strong>Feel It:</strong> Drop into the body and locate where the emotion resides (e.g., tight chest, knotted stomach).</li>
+              <li><strong>Name It:</strong> Identify the emotion without judgment ("This is anger," "This is grief").</li>
+              <li><strong>Release It:</strong> Breathe into the sensation, visualizing it dissolving into light.</li>
+            </ol>
           </li>
 
           <li>
-            <strong>The Art of Non-Attachment:</strong><br>
-            Non-attachment is not detachment. It's the ability to fully enjoy life, people, and moments 
-            without clinging or demanding they stay the same.  
+            <strong>Forgiveness as Liberation:</strong><br>
+            Forgiveness is not condoning harmful actions — it is freeing yourself from the weight of resentment.  
             <br><br>
-            <em>Mantra:</em> "I honor what comes, I release what goes, and I trust what remains."
+            <em>Journal Prompt:</em> "What pain am I ready to release? How has holding onto this hurt affected me?"
           </li>
         </ul>
 
         <div class="practice-box">
           <h4>Practice</h4>
           <p>
-            <strong>Guided Emotion-Release Meditation:</strong><br>
-            A 10-minute body scan meditation to feel and release tension, where you breathe deeply into 
-            any areas of tightness and allow suppressed emotions to surface and dissolve.  
-            <em>(Audio file provided in resources.)</em>
+            <strong>Surrender Breathwork (15 min):</strong><br>
+            Lie down comfortably. Inhale deeply for 4 counts, hold for 2, then exhale slowly for 6 counts.  
+            With each exhale, mentally repeat: "I release all resistance." Visualize tension leaving your body as dark smoke,  
+            transforming into golden light with each breath.
           </p>
         </div>
 
         <div class="key-quote">
-          <p><em>"Surrender is not about losing control; it's about trusting the flow of life to carry you."</em></p>
+          <p><em>"Peace comes not from controlling life, but from surrendering to it."</em></p>
         </div>
 
         <div class="module-complete">
@@ -871,67 +981,61 @@
 
       <!-- Module 5 -->
       <article id="module5">
-        <h3>Module 5: The Reality of Oneness</h3>
-        <h4>Theme: Beyond Separation</h4>
+        <h3>Module 5: The Illusion of Separation</h3>
+        <h4>Theme: Remembering Oneness</h4>
         <p>
-          The sense of separation is the root illusion of human suffering. 
-          When we see life as "me vs. them," we fall into conflict, judgment, and fear. 
-          True awakening reveals that all beings, all experiences, and all forms 
-          are expressions of the same universal consciousness. In this module, we dissolve the illusion 
-          of duality and step into the reality of interconnectedness.
+          The sense of being a separate "self" is the root of all suffering. This module explores the truth of  
+          interconnectedness — how the boundaries we perceive between "self" and "other" are constructs of the mind.  
+          As we dissolve these illusions, we awaken to our fundamental unity with all existence.
         </p>
 
         <ul>
           <li>
-            <strong>The Illusion of Duality:</strong><br>
-            We are taught to see life through subject-object perception: "I am here, and the world is out there."  
-            But this division is mental, not real. Consciousness is the field in which all experiences arise — 
-            there is no true boundary between self and other.  
+            <strong>Seeing Through the Veil of Duality:</strong><br>
+            The mind categorizes reality into opposites: good/bad, light/dark, self/other.  
+            But in truth, these are two sides of one whole.  
             <br><br>
-            <em>Insight:</em> Just as a wave is never separate from the ocean, you are never separate from the Source.
+            <em>Meditation:</em> Contemplate how every "opposite" depends on its counterpart to exist  
+            (e.g., there is no "light" without "dark" to define it).
           </li>
 
           <li>
-            <strong>Recognizing the Self in Others:</strong><br>
-            Everyone you meet is a mirror, reflecting parts of you — both the light and the shadow.  
-            By practicing <strong>mirror work</strong> and noticing your projections, you deepen your awareness of the 
-            shared consciousness that links all beings.  
+            <strong>The Mirror of Relationships:</strong><br>
+            Every person reflects aspects of yourself — both the qualities you admire and those you judge.  
             <br><br>
-            <em>Practice Tip:</em> When triggered by someone, ask:  
-            "What is this person reflecting about me that I have yet to accept or integrate?"
+            <em>Exercise:</em> Think of someone who irritates you. Ask: "What does this person show me about myself?  
+            Where might I have similar patterns?"
           </li>
 
           <li>
-            <strong>Compassion as Practice:</strong><br>
-            Compassion is the direct recognition of oneness. When you feel the suffering of others as your own, 
-            the illusion of separation begins to dissolve.  
+            <strong>Nature as Teacher:</strong><br>
+            Spend time observing how everything in nature exists in symbiotic relationship.  
+            The tree "separate" from the soil is an illusion — they are one interconnected system.  
             <br><br>
-            <em>Reflection:</em> Start with small acts of empathy — listening deeply, forgiving quickly, and 
-            silently wishing others well.
+            <em>Practice:</em> Sit with a plant or natural object. Sense its energy field merging with yours.
           </li>
 
           <li>
-            <strong>Interconnected Systems:</strong><br>
-            All life forms and ecosystems exist in a web of interdependence. What you do to another, 
-            you ultimately do to yourself.  
-            <br><br>
-            <em>Key Question:</em> How does my energy, intention, and action ripple out into the larger field of life?
+            <strong>Quantum Entanglement & Spiritual Connection:</strong><br>
+            Modern physics confirms what mystics have always known — at the fundamental level,  
+            all things are interconnected and influence each other across space and time.
           </li>
         </ul>
 
         <div class="practice-box">
           <h4>Practice</h4>
-         <p>
-            <strong>Oneness Meditation (15 min):</strong><br>
-            Sit quietly and visualize roots extending from your body into the earth, connecting you to all life.  
-            Then, expand your awareness outward—feeling the air you share with others, the energy that flows between beings.  
-            Contemplate how every breath you take is part of a greater exchange with the world.  
-            <em>(Guided audio included in resources.)</em>
+          <p>
+            <strong>Oneness Meditation (20 min):</strong><br>
+            Visualize your consciousness expanding to include the room, the city, the planet,  
+            and ultimately the entire cosmos. Feel that every being is a unique expression  
+            of the same infinite consciousness.  
+            <br><br>
+            <em>Mantra:</em> "I am not in the universe — the universe is in me."
           </p>
         </div>
 
         <div class="key-quote">
-          <p><em>"We are not drops in the ocean. We are the ocean in drops."</em></p>
+          <p><em>"You are not a drop in the ocean. You are the entire ocean in a drop." — Rumi</em></p>
         </div>
 
         <div class="module-complete">
@@ -942,64 +1046,60 @@
 
       <!-- Module 6 -->
       <article id="module6">
-        <h3>Module 6: Living in Truth</h3>
-        <h4>Theme: Embodied Enlightenment</h4>
+        <h3>Module 6: Embodied Enlightenment</h3>
+        <h4>Theme: Wisdom in Action</h4>
         <p>
-          Awakening is not just about peak experiences—it's about how you live day to day.  
-          This module bridges spiritual insight with practical living, helping you align your actions,  
-          relationships, and purpose with your deepest truth.
+          Awakening is not an escape from life, but a deeper engagement with it. This module bridges  
+          spiritual insight with practical embodiment — how to live your realization in everyday moments,  
+          relationships, and challenges.
         </p>
 
         <ul>
           <li>
-            <strong>Authenticity Over Approval:</strong><br>
-            Many people dim their light to fit in or avoid conflict. True freedom comes when you  
-            prioritize inner alignment over external validation.  
+            <strong>From Transcendence to Integration:</strong><br>
+            Many seekers get "stuck" in transcendent states, avoiding worldly responsibilities.  
+            True awakening embraces both form and formlessness.  
             <br><br>
-            <em>Practice:</em> Notice where you hold back your truth to please others.  
-            Start with small, honest expressions and build from there.
+            <em>Question:</em> "How can I bring more presence into my daily tasks?"
           </li>
 
           <li>
-            <strong>Right Action vs. Ego-Driven Action:</strong><br>
-            Actions rooted in presence feel effortless and aligned. Ego-driven actions often come  
-            from fear, lack, or the need to prove something.  
-            <br><br>
-            <em>Check-in Question:</em> "Is this action coming from love or fear? From fullness or lack?"
+            <strong>The 4 Pillars of Embodied Awakening:</strong><br>
+            <ol>
+              <li><strong>Presence:</strong> Maintaining awareness during routine activities</li>
+              <li><strong>Authenticity:</strong> Expressing your truth with compassion</li>
+              <li><strong>Service:</strong> Seeing all actions as offerings</li>
+              <li><strong>Surrender:</strong> Trusting life's unfolding</li>
+            </ol>
           </li>
 
           <li>
-            <strong>Shadow Integration:</strong><br>
-            Your "shadow" represents the disowned parts of yourself—qualities you deny or suppress.  
-            Integrating these aspects (anger, vulnerability, power) leads to wholeness.  
+            <strong>Shadow Work & Wholeness:</strong><br>
+            Your "shadow" consists of disowned aspects of yourself. Integrating these brings profound healing.  
             <br><br>
-            <em>Exercise:</em> When you judge someone harshly, ask: "What does this say about a quality  
-            I might be denying in myself?"
+            <em>Journal Prompt:</em> "What qualities do I judge harshly in others? How might these reflect  
+            parts of myself I've rejected?"
           </li>
 
           <li>
-            <strong>Service as Sacred Practice:</strong><br>
-            True service arises naturally from the recognition of oneness. It's not about being  
-            "selfless," but about expressing your true nature through contribution.  
+            <strong>Sacred Mundanity:</strong><br>
+            Enlightenment shines through ordinary moments — washing dishes, walking the dog, waiting in line.  
             <br><br>
-            <em>Reflection:</em> How can your unique gifts serve the awakening of collective consciousness?
+            <em>Practice:</em> Choose one routine activity this week to perform with complete mindful attention.
           </li>
         </ul>
 
         <div class="practice-box">
           <h4>Practice</h4>
           <p>
-            <strong>Daily Alignment Check-In:</strong><br>
-            Each morning, ask:  
-            "How can I live more authentically today?"  
-            Each evening, reflect:  
-            "Where did I act from truth? Where did I hold back?"  
-            Journal your observations without judgment.
+            <strong>Walking Meditation + Energy Grounding:</strong><br>
+            Walk slowly, feeling each foot connect with the earth. With each step, visualize roots  
+            extending from your feet into the earth's core, anchoring your awakened awareness into physical form.
           </p>
         </div>
 
         <div class="key-quote">
-          <p><em>"Enlightenment is not about becoming special. It's about realizing you were never separate."</em></p>
+          <p><em>"Before enlightenment, chop wood, carry water. After enlightenment, chop wood, carry water." — Zen Proverb</em></p>
         </div>
 
         <div class="module-complete">
@@ -1010,63 +1110,59 @@
 
       <!-- Module 7 -->
       <article id="module7">
-        <h3>Module 7: The Eternal Journey</h3>
-        <h4>Theme: Beyond Awakening</h4>
+        <h3>Module 7: Living as Awareness</h3>
+        <h4>Theme: The Unfolding Mystery</h4>
         <p>
-          Awakening is not a destination—it's a continuous unfolding. This final module explores  
-          how to navigate the paradox of seeking while knowing there's nothing to attain, and how  
-          to live with an open heart in an ever-changing world.
+          The final module is not an ending, but a new beginning — living from the recognition  
+          that you are the awareness in which all experiences arise and pass away. Here, we explore  
+          how to navigate life from this liberated perspective.
         </p>
 
         <ul>
           <li>
-            <strong>The Paradox of Seeking:</strong><br>
-            Even the desire for enlightenment can become a trap. True awakening often happens  
-            when you stop trying to "get" anywhere and simply rest in being.  
+            <strong>The Dance of Form and Formlessness:</strong><br>
+            You are both the wave (individual self) and the ocean (universal consciousness).  
+            Awakening embraces this paradox — fully engaged in life while resting in timeless presence.  
             <br><br>
-            <em>Insight:</em> "You are already what you seek."
+            <em>Meditation:</em> Alternate focus between your individual identity and the vast awareness  
+            that contains it.
           </li>
 
           <li>
-            <strong>Cycles of Expansion & Integration:</strong><br>
-            Spiritual growth moves in spirals—periods of profound insight followed by phases  
-            of integration. Both are necessary.  
+            <strong>Spontaneity & Flow:</strong><br>
+            When identified with awareness, action arises from intuitive wisdom rather than conditioned thinking.  
             <br><br>
-            <em>Reminder:</em> If you feel like you've "lost" your awakening, you haven't.  
-            You're just integrating it at deeper levels.
+            <em>Practice:</em> For one day, pause before decisions and ask: "What arises from presence right now?"
           </li>
 
           <li>
-            <strong>Embracing the Mystery:</strong><br>
-            The mind wants answers, but true wisdom lives in the questions. Learn to  
-            embrace not-knowing as the highest knowing.  
+            <strong>The Gift of Impermanence:</strong><br>
+            All forms change — this is not a flaw, but the beauty of existence.  
             <br><br>
-            <em>Practice:</em> When faced with uncertainty, say: "I don't need to figure this out.  
-            I trust the intelligence of life to guide me."
+            <em>Contemplation:</em> Watch a sunset, noticing how each moment is perfectly complete even as it transforms.
           </li>
 
           <li>
-            <strong>Death as the Ultimate Teacher:</strong><br>
-            Contemplating mortality isn't morbid—it's liberating. Remembering that  
-            everything ends helps you cherish each moment and live with greater presence.  
+            <strong>Beyond Seeking:</strong><br>
+            The seeker dissolves into the found. Here, life becomes a playful exploration rather than  
+            a problem to solve.  
             <br><br>
-            <em>Reflection:</em> "If this were my last year, how would I live differently?"
+            <em>Question:</em> "What remains when I stop trying to become?"
           </li>
         </ul>
 
         <div class="practice-box">
           <h4>Practice</h4>
           <p>
-            <strong>Gratitude & Letting Go Ritual:</strong><br>
-            Each night, write down:  
-            1) What you're grateful for from the day  
-            2) What you're ready to release  
-            Then, burn or tear up the "release" paper as a symbolic act of surrender.
+            <strong>Open-Eye Awareness Meditation (30 min):</strong><br>
+            Sit comfortably with eyes open, letting your gaze soften. Notice how all appearances —  
+            objects, sounds, sensations — arise within your awareness like reflections in a mirror.  
+            Rest as the mirror itself — clear, boundless, and undisturbed.
           </p>
         </div>
 
         <div class="key-quote">
-          <p><em>"The journey doesn't end—it deepens. There is no final awakening, only infinite layers of homecoming."</em></p>
+          <p><em>"You are not a person seeking enlightenment. You are enlightenment recognizing itself."</em></p>
         </div>
 
         <div class="module-complete">
@@ -1075,334 +1171,345 @@
         </div>
       </article>
 
-      <!-- Bonus Section -->
+      <!-- Bonus Content -->
       <div class="bonus-section">
-        <h3>Bonus: Integration & Living Practice</h3>
+        <h3>Bonus: The Alchemy of KLY</h3>
         <p>
-          True transformation happens through consistent practice. Here are additional tools  
-          to support your ongoing awakening journey:
+          As a KLY holder, you're part of a conscious community bridging ancient wisdom with blockchain technology.  
+          These bonus materials explore the deeper symbology of KLY tokens as tools for collective awakening.
         </p>
 
         <ul>
-          <li>
-            <strong>Morning Presence Ritual:</strong><br>
-            Before checking your phone, spend 5 minutes in silence—feeling your breath,  
-            setting an intention, or simply being.
-          </li>
-
-          <li>
-            <strong>Conscious Communication:</strong><br>
-            Practice listening fully without preparing your response. Notice how this  
-            changes your relationships.
-          </li>
-
-          <li>
-            <strong>Nature as Mirror:</strong><br>
-            Spend time in nature observing how everything—trees, clouds, animals—lives  
-            in perfect presence. Let it remind you of your own natural state.
-          </li>
-
-          <li>
-            <strong>Digital Detox:</strong><br>
-            Regular periods of disconnection create space for reconnection with yourself.
-          </li>
+          <li><strong>The KLY Meditation:</strong> A guided visualization connecting with the energy of your tokens</li>
+          <li><strong>Sacred Economics:</strong> How to engage with crypto markets from a place of presence</li>
+          <li><strong>AR Meditation Space:</strong> Activate the AR marker (button below) for an immersive experience</li>
         </ul>
 
-        <h4>Recommended Resources</h4>
+        <button id="arToggleBtn" class="wisdom-cta" style="margin-top: 1.5rem;">
+          Toggle AR Meditation Space
+        </button>
+      </div>
+
+      <!-- NFT Certificate -->
+      <div class="nft-certificate" id="nftCertificate">
+        <div class="nft-image">🌌</div>
+        <h3>Certificate of Awakening</h3>
+        <p>Presented to:</p>
+        <p id="certificateAddress" style="font-family: monospace; word-break: break-all;"></p>
+        <p>For completing The Path of Awakening course</p>
+        <p>Issued on: <span id="certificateDate"></span></p>
+        <button id="mintCertificateBtn" class="wisdom-cta" style="margin-top: 1.5rem;">
+          Mint as NFT (0.001 ETH)
+        </button>
+      </div>
+
+      <!-- Community Section -->
+      <div class="community-section">
+        <h3>Join the KLY Wisdom Circle</h3>
+        <p>
+          Connect with fellow travelers on the path. Share insights, ask questions, and deepen your practice  
+          in our exclusive community for KLY holders.
+        </p>
         <ul>
-          <li><em>The Power of Now</em> by Eckhart Tolle</li>
-          <li><em>Be Here Now</em> by Ram Dass</li>
-          <li><em>The Untethered Soul</em> by Michael Singer</li>
-          <li><em>Awakening the Buddha Within</em> by Lama Surya Das</li>
+          <li>Private Discord server with weekly wisdom shares</li>
+          <li>Monthly live Q&A sessions</li>
+          <li>Token-gated meditation gatherings</li>
         </ul>
+        <button id="joinCommunityBtn" class="wisdom-cta" style="margin-top: 1.5rem;">
+          Access Community Portal
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    // Cosmic Background Animation
-    const canvas = document.getElementById('cosmicCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    // Sacred Geometry Parameters
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const maxRadius = Math.min(canvas.width, canvas.height) * 0.4;
-    const goldenRatio = (1 + Math.sqrt(5)) / 2;
-
-    function drawSacredGeometry() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = `rgba(212, 175, 55, 0.3)`;
-      ctx.lineWidth = 1.2;
-
-      // Flower of Life
-      const circles = 6;
-      const radius = maxRadius * 0.3;
-      
-      for (let i = 0; i < circles; i++) {
-        const angle = (i * Math.PI * 2) / circles;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Metatron's Cube
-      ctx.beginPath();
-      const cubeSize = maxRadius * 0.15;
-      const points = [];
-      
-      for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI * 2) / 6;
-        points.push({
-          x: centerX + Math.cos(angle) * cubeSize,
-          y: centerY + Math.sin(angle) * cubeSize
-        });
-      }
-      
-      // Connect all points
-      for (let i = 0; i < points.length; i++) {
-        for (let j = 0; j < points.length; j++) {
-          ctx.moveTo(points[i].x, points[i].y);
-          ctx.lineTo(points[j].x, points[j].y);
+    // KLY Token Contract Address (Mainnet)
+    const KLY_TOKEN_ADDRESS = "0x..."; // Replace with actual KLY token address
+    const KLY_TOKEN_ABI = [...]; // Replace with actual KLY token ABI
+    
+    // NFT Certificate Contract
+    const NFT_CERTIFICATE_ADDRESS = "0x..."; // Replace with actual NFT contract address
+    const NFT_CERTIFICATE_ABI = [...]; // Replace with actual NFT contract ABI
+    
+    // Minimum KLY balance required
+    const MIN_KLY_BALANCE = ethers.utils.parseUnits("500", 18); // 500 KLY
+    
+    // Web3Modal configuration
+    const web3Modal = new Web3Modal({
+      cacheProvider: true,
+      providerOptions: {
+        walletconnect: {
+          package: WalletConnectProvider,
+          options: {
+            rpc: {
+              1: "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID",
+            }
+          }
         }
       }
-      ctx.stroke();
-
-      // Golden Spiral
-      ctx.beginPath();
-      let spiralRadius = 5;
-      let theta = 0;
-      const turns = 5;
-      const segments = 100;
-      
-      for (let i = 0; i <= segments; i++) {
-        theta = (i / segments) * Math.PI * 2 * turns;
-        spiralRadius = 5 * Math.pow(goldenRatio, (theta / (Math.PI * 2)));
-        
-        const x = centerX + Math.cos(theta) * spiralRadius;
-        const y = centerY + Math.sin(theta) * spiralRadius;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      ctx.stroke();
-    }
-
-    // Animate the background
-    let angle = 0;
-    function animate() {
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(angle * 0.0005);
-      ctx.translate(-centerX, -centerY);
-      drawSacredGeometry();
-      ctx.restore();
-      angle++;
-      requestAnimationFrame(animate);
-    }
-
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      drawSacredGeometry();
     });
-
-    // Initialize
-    drawSacredGeometry();
-    animate();
-
-    // Wallet Connection Logic
- let provider;
-let web3Modal;
-let selectedAccount;
-
-// Initialize Web3Modal
-function initWeb3Modal() {
-  const providerOptions = {
-    walletconnect: {
-      package: WalletConnectProvider.default,
-      options: {
-        rpc: {
-          56: "https://bsc-dataseed.binance.org/"
-        },
-        chainId: 56
+    
+    // Global variables
+    let provider;
+    let web3;
+    let accounts = [];
+    let klyTokenContract;
+    let nftCertificateContract;
+    let hasEnoughKLY = false;
+    
+    // DOM Elements
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const disconnectWalletBtn = document.getElementById('disconnectWalletBtn');
+    const walletConnected = document.getElementById('walletConnected');
+    const walletAddress = document.getElementById('walletAddress');
+    const status = document.getElementById('status');
+    const courseContent = document.getElementById('courseContent');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const arToggleBtn = document.getElementById('arToggleBtn');
+    const arMarker = document.getElementById('arMarker');
+    const triquetra = document.getElementById('triquetra');
+    const nftCertificate = document.getElementById('nftCertificate');
+    const certificateAddress = document.getElementById('certificateAddress');
+    const certificateDate = document.getElementById('certificateDate');
+    const mintCertificateBtn = document.getElementById('mintCertificateBtn');
+    const joinCommunityBtn = document.getElementById('joinCommunityBtn');
+    
+    // Module completion checkboxes
+    const moduleCheckboxes = document.querySelectorAll('input[type="checkbox"][data-module]');
+    
+    // Initialize 3D background
+    let scene, camera, renderer, geometry, material, mesh;
+    
+    function init3DBackground() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      document.getElementById('cosmicContainer').appendChild(renderer.domElement);
+      
+      // Sacred geometry - Icosahedron
+      geometry = new THREE.IcosahedronGeometry(2, 1);
+      material = new THREE.MeshBasicMaterial({ 
+        color: 0xD4AF37,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3
+      });
+      mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+      
+      camera.position.z = 5;
+      
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        mesh.rotation.x += 0.001;
+        mesh.rotation.y += 0.002;
+        renderer.render(scene, camera);
       }
+      animate();
+      
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
     }
-  };
-
-  web3Modal = new Web3Modal({
-    cacheProvider: true,
-    providerOptions
-  });
-}
-
-    // Connect Wallet
-    async function connectWallet() {
-      const statusElement = document.getElementById('status');
-      statusElement.innerHTML = 'Connecting... <span class="loading"></span>';
-
+    
+    // Check KLY token balance
+    async function checkKLYBalance() {
       try {
-        provider = await web3Modal.connect();
-        const web3Provider = new ethers.providers.Web3Provider(provider);
-        const accounts = await web3Provider.listAccounts();
+        status.innerHTML = 'Checking KLY balance... <span class="loading"></span>';
         
-        if (accounts.length > 0) {
-          selectedAccount = accounts[0];
-          onWalletConnected(selectedAccount);
-          checkKLYBalance(web3Provider, selectedAccount);
-        } else {
-          statusElement.textContent = 'No accounts found. Please try again.';
-        }
-      } catch (error) {
-        console.error('Error connecting wallet:', error);
-        statusElement.textContent = 'Error connecting wallet. Please try again.';
-      }
-    }
-
-    // Disconnect Wallet
-    function disconnectWallet() {
-      if (provider && provider.close) {
-        provider.close();
-      }
-      web3Modal.clearCachedProvider();
-      selectedAccount = null;
-      
-      document.getElementById('walletConnected').classList.add('hidden');
-      document.getElementById('connectWalletBtn').classList.remove('hidden');
-      document.getElementById('status').textContent = '';
-      document.getElementById('courseContent').classList.remove('visible');
-      document.getElementById('progressContainer').classList.add('hidden');
-      document.getElementById('triquetra').style.opacity = '0';
-    }
-
-    // Wallet Connected Handler
-    function onWalletConnected(address) {
-      const shortAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-      
-      document.getElementById('walletAddress').textContent = shortAddress;
-      document.getElementById('walletConnected').classList.remove('hidden');
-      document.getElementById('connectWalletBtn').classList.add('hidden');
-      document.getElementById('triquetra').style.opacity = '0.6';
-    }
-
-    // Check KLY Token Balance
-    async function checkKLYBalance(web3Provider, address) {
-      const statusElement = document.getElementById('status');
-      statusElement.innerHTML = 'Checking KLY balance... <span class="loading"></span>';
-
-      // KLY Token Contract Address (replace with actual KLY contract address)
-const klyContractAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; 
-      
-      // Minimum required KLY balance (500 tokens)
-      const minBalance = ethers.utils.parseUnits("500", 18); // Assuming 18 decimals
-      
-      try {
-        // ABI for balanceOf function
-        const abi = ["function balanceOf(address owner) view returns (uint256)"];
-        const contract = new ethers.Contract(klyContractAddress, abi, web3Provider);
+        const balance = await klyTokenContract.balanceOf(accounts[0]);
+        hasEnoughKLY = balance.gte(MIN_KLY_BALANCE);
         
-        const balance = await contract.balanceOf(address);
-        
-        if (balance.gte(minBalance)) {
-          statusElement.textContent = '✅ You hold sufficient KLY tokens. Access granted.';
-          showCourseContent();
+        if (hasEnoughKLY) {
+          status.innerHTML = `✅ You hold ${ethers.utils.formatUnits(balance, 18)} KLY - Access granted`;
+          courseContent.classList.add('visible');
+          triquetra.style.opacity = '0.7';
           loadProgress();
         } else {
-          statusElement.textContent = '❌ You need at least 500 KLY tokens to access this content.';
+          status.innerHTML = `❌ You need at least 500 KLY to access this content (you have ${ethers.utils.formatUnits(balance, 18)})`;
         }
       } catch (error) {
-        console.error('Error checking balance:', error);
-        statusElement.textContent = 'Error checking KLY balance. Please try again.';
+        console.error("Error checking KLY balance:", error);
+        status.innerHTML = 'Error checking KLY balance';
       }
     }
-
-    // Show Course Content
-    function showCourseContent() {
-      document.getElementById('courseContent').classList.add('visible');
-      document.getElementById('progressContainer').classList.remove('hidden');
-    }
-
-    // Load and Track Progress
+    
+    // Load user progress from localStorage
     function loadProgress() {
-      const checkboxes = document.querySelectorAll('input[type="checkbox"][data-module]');
-      const progressBar = document.getElementById('progressBar');
-      const progressText = document.getElementById('progressText');
+      let completedModules = 0;
       
-      checkboxes.forEach(checkbox => {
-        // Load saved state from localStorage
+      moduleCheckboxes.forEach(checkbox => {
         const moduleId = checkbox.getAttribute('data-module');
-        const isComplete = localStorage.getItem(`module-${moduleId}-complete`) === 'true';
+        const isComplete = localStorage.getItem(`module_${moduleId}_complete`) === 'true';
         
         if (isComplete) {
           checkbox.checked = true;
-          checkbox.closest('article').classList.add('completed');
+          document.getElementById(`module${moduleId}`).classList.add('completed');
+          completedModules++;
         }
         
-        // Add event listener
-        checkbox.addEventListener('change', function() {
-          const article = this.closest('article');
+        checkbox.addEventListener('change', (e) => {
+          const moduleId = e.target.getAttribute('data-module');
+          const isChecked = e.target.checked;
           
-          if (this.checked) {
-            article.classList.add('completed');
-            localStorage.setItem(`module-${this.getAttribute('data-module')}-complete`, 'true');
-          } else {
-            article.classList.remove('completed');
-            localStorage.setItem(`module-${this.getAttribute('data-module')}-complete`, 'false');
+          localStorage.setItem(`module_${moduleId}_complete`, isChecked);
+          document.getElementById(`module${moduleId}`).classList.toggle('completed', isChecked);
+          
+          // Update progress
+          const newCompleted = isChecked ? completedModules + 1 : completedModules - 1;
+          completedModules = Math.max(0, Math.min(7, newCompleted));
+          updateProgress(completedModules);
+          
+          // Show NFT certificate if all modules completed
+          if (completedModules === 7) {
+            showCertificate();
           }
-          
-          updateProgress();
         });
       });
       
-      updateProgress();
+      updateProgress(completedModules);
+      progressContainer.classList.remove('hidden');
+    }
+    
+    // Update progress bar
+    function updateProgress(completed) {
+      const percent = Math.round((completed / 7) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${percent}% Complete`;
+    }
+    
+    // Show NFT certificate
+    function showCertificate() {
+      certificateAddress.textContent = accounts[0];
+      certificateDate.textContent = new Date().toLocaleDateString();
+      nftCertificate.style.display = 'block';
       
-      function updateProgress() {
-        const completed = document.querySelectorAll('input[type="checkbox"][data-module]:checked').length;
-        const total = checkboxes.length;
-        const percentage = Math.round((completed / total) * 100);
+      // Scroll to certificate
+      setTimeout(() => {
+        nftCertificate.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+    
+    // Mint NFT certificate
+    async function mintCertificate() {
+      try {
+        mintCertificateBtn.disabled = true;
+        mintCertificateBtn.textContent = 'Minting...';
         
-        progressBar.style.width = `${percentage}%`;
-        progressText.textContent = `${percentage}% Complete`;
+        const tx = await nftCertificateContract.mintCertificate(accounts[0], {
+          value: ethers.utils.parseEther("0.001")
+        });
+        
+        status.innerHTML = 'Transaction sent. Waiting for confirmation... <span class="loading"></span>';
+        
+        await tx.wait();
+        status.innerHTML = '🎉 Certificate NFT minted successfully!';
+        mintCertificateBtn.textContent = 'Minted!';
+      } catch (error) {
+        console.error("Error minting NFT:", error);
+        status.innerHTML = 'Error minting NFT';
+        mintCertificateBtn.disabled = false;
+        mintCertificateBtn.textContent = 'Mint as NFT (0.001 ETH)';
       }
     }
-
+    
+    // Connect wallet
+    async function connectWallet() {
+      try {
+        connectWalletBtn.disabled = true;
+        status.innerHTML = 'Connecting... <span class="loading"></span>';
+        
+        const instance = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(instance);
+        web3 = new Web3(instance);
+        
+        // Subscribe to accounts change
+        instance.on("accountsChanged", (newAccounts) => {
+          accounts = newAccounts;
+          walletAddress.textContent = accounts[0];
+          checkKLYBalance();
+        });
+        
+        // Subscribe to chainId change
+        instance.on("chainChanged", (chainId) => {
+          window.location.reload();
+        });
+        
+        // Subscribe to provider disconnection
+        instance.on("disconnect", (error) => {
+          console.log("Wallet disconnected", error);
+          disconnectWallet();
+        });
+        
+        // Get accounts
+        accounts = await provider.listAccounts();
+        
+        if (accounts.length > 0) {
+          walletAddress.textContent = accounts[0];
+          walletConnected.classList.remove('hidden');
+          connectWalletBtn.classList.add('hidden');
+          
+          // Initialize contracts
+          klyTokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider.getSigner());
+          nftCertificateContract = new ethers.Contract(NFT_CERTIFICATE_ADDRESS, NFT_CERTIFICATE_ABI, provider.getSigner());
+          
+          checkKLYBalance();
+        } else {
+          status.innerHTML = 'Please unlock your wallet and connect an account';
+          connectWalletBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error("Error connecting wallet:", error);
+        status.innerHTML = 'Error connecting wallet';
+        connectWalletBtn.disabled = false;
+      }
+    }
+    
+    // Disconnect wallet
+    function disconnectWallet() {
+      web3Modal.clearCachedProvider();
+      walletConnected.classList.add('hidden');
+      connectWalletBtn.classList.remove('hidden');
+      connectWalletBtn.disabled = false;
+      courseContent.classList.remove('visible');
+      progressContainer.classList.add('hidden');
+      triquetra.style.opacity = '0';
+      status.innerHTML = '';
+      accounts = [];
+    }
+    
     // Event Listeners
+    connectWalletBtn.addEventListener('click', connectWallet);
+    disconnectWalletBtn.addEventListener('click', disconnectWallet);
+    arToggleBtn.addEventListener('click', () => {
+      arMarker.classList.toggle('hidden');
+    });
+    mintCertificateBtn.addEventListener('click', mintCertificate);
+    joinCommunityBtn.addEventListener('click', () => {
+      if (hasEnoughKLY) {
+        window.open('https://discord.gg/YOUR_INVITE_LINK', '_blank');
+      } else {
+        status.innerHTML = 'You need at least 500 KLY to access the community';
+      }
+    });
+    
+    // Initialize
     document.addEventListener('DOMContentLoaded', () => {
-      initWeb3Modal();
-      
-      document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
-      document.getElementById('disconnectWalletBtn').addEventListener('click', disconnectWallet);
+      init3DBackground();
       
       // Check if wallet is already connected
       if (web3Modal.cachedProvider) {
         connectWallet();
       }
     });
-
-    // Handle account changes
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          // Wallet disconnected
-          disconnectWallet();
-        } else {
-          // Account changed
-          selectedAccount = accounts[0];
-          onWalletConnected(selectedAccount);
-          const web3Provider = new ethers.providers.Web3Provider(provider);
-          checkKLYBalance(web3Provider, selectedAccount);
-        }
-      });
-    }
   </script>
 </body>
 </html>
