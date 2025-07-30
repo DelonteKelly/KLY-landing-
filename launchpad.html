@@ -527,6 +527,10 @@
     <span id="notificationMessage">Notification message</span>
   </div>
   
+<!-- Include Web3Modal and WalletConnectProvider v2 -->
+<script src="https://unpkg.com/web3modal@1.9.5/dist/index.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@2.0.0-beta.10/dist/umd/index.min.js"></script>
+
 <script>
   const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const BSC_CHAIN_ID = 56;
@@ -545,12 +549,10 @@
     "function mintTo(address to, uint256 amount)"
   ];
 
-  // Web3
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
   let tokenDecimals = 18;
   let txInterval;
 
-  // DOM
   const connectBtn = document.getElementById("connectWallet");
   const buttonText = document.getElementById("buttonText");
   const walletStatus = document.getElementById("walletStatus");
@@ -570,18 +572,28 @@
   const minutesEl = document.getElementById("minutes");
   const secondsEl = document.getElementById("seconds");
 
-  // Web3Modal Setup
   function setupWeb3Modal() {
     const providerOptions = {
       walletconnect: {
-        package: window.WalletConnectProvider.default,
+        package: WalletConnectProvider.default,
         options: {
-          rpc: { 56: "https://bsc-dataseed.binance.org/" },
-          chainId: 56
+          projectId: "df8063092ef3c627437d698df0977bc1",
+          rpcMap: {
+            56: "https://bsc-dataseed.binance.org/",
+          },
+          chains: [56],
+          showQrModal: true,
+          metadata: {
+            name: "KLY Launchpad",
+            description: "KLY Token Launch Portal",
+            url: "https://kellylegacyestates.com",
+            icons: ["https://kellylegacyestates.com/icon.png"]
+          }
         }
       }
     };
-    web3Modal = new window.Web3Modal.default({
+
+    web3Modal = new Web3Modal.default({
       cacheProvider: true,
       providerOptions,
       theme: "dark"
@@ -619,7 +631,6 @@
       await loadTokenInfo();
       showNotification("Wallet connected successfully", "success");
 
-      // Wallet events
       if (externalProvider.on) {
         externalProvider.on("accountsChanged", handleAccountsChanged);
         externalProvider.on("chainChanged", () => window.location.reload());
@@ -783,7 +794,6 @@
     viewExplorer.addEventListener("click", viewOnExplorer);
   }
 
-  // Init on load
   window.addEventListener('DOMContentLoaded', () => {
     initParticles();
     setupWeb3Modal();
