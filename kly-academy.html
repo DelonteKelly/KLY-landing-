@@ -718,7 +718,7 @@ body.light-mode .button {
         package: window.WalletConnectProvider.default,
         options: {
           rpc: {
-            56: "https://bsc-dataseed.binance.org/"
+            56: "https://bsc-dataseed1.defibit.io/" // Use a reliable BSC endpoint
           },
           chainId: 56
         }
@@ -753,10 +753,26 @@ body.light-mode .button {
         return;
       }
 
+      const code = await provider.getCode(KLY_TOKEN_ADDRESS);
+      if (code === "0x") {
+        walletStatus.innerHTML += `<br><span style="color: #ff5555">KLY Token contract not found on this network.</span>`;
+        return;
+      }
+
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-      const raw = await kly.balanceOf(userAddress);
-      const decimals = await kly.decimals();
-      const balance = parseFloat(ethers.utils.formatUnits(raw, decimals));
+
+      let balance = 0;
+      try {
+        const raw = await kly.balanceOf(userAddress);
+        const decimals = await kly.decimals();
+        balance = parseFloat(ethers.utils.formatUnits(raw, decimals));
+      } catch (err) {
+        console.error("Balance fetch failed:", err);
+        walletStatus.innerHTML += `
+          <br><span style="color: #ff5555">Could not verify token balance. Please try again or switch RPC node.</span>
+        `;
+        return;
+      }
 
       if (balance >= 100) {
         connectBtn.style.display = 'none';
@@ -846,7 +862,6 @@ body.light-mode .button {
     }, 5000);
   }
 
-  // Load on page
   window.addEventListener('load', async () => {
     await initWeb3Modal();
     if (web3Modal.cachedProvider) {
@@ -854,7 +869,6 @@ body.light-mode .button {
     }
   });
 
-  // Expose global functions
   window.connectWallet = connectWallet;
   window.disconnectWallet = disconnectWallet;
   window.mintCertificate = mintCertificate;
