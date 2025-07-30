@@ -1330,25 +1330,25 @@
     }
 
     // Setup Web3Modal for BSC
-    function setupWeb3Modal() {
-        const providerOptions = {
-            walletconnect: {
-                package: WalletConnectProvider,
-                options: {
-                    projectId: "df8063092ef3c627437d698df0977bc1",
-                    rpc: { [BSC_CHAIN_ID]: BSC_RPC_URL },
-                    chains: [BSC_CHAIN_ID],
-                    showQrModal: true
+function setupWeb3Modal() {
+    const providerOptions = {
+        walletconnect: {
+            package: WalletConnectProvider.default, // Use `.default` if imported via script tag
+            options: {
+                projectId: "df8063092ef3c627437d698df0977bc1",
+                rpc: {
+                    [BSC_CHAIN_ID]: BSC_RPC_URL
                 }
             }
-        };
+        }
+    };
 
-        return new Web3Modal({
-            cacheProvider: true,
-            providerOptions,
-            theme: "dark"
-        });
-    }
+    return new Web3Modal({
+        cacheProvider: true,
+        providerOptions,
+        theme: "dark"
+    });
+}
 
     // Check KLY token balance (ERC-20)
     async function checkAccess() {
@@ -1401,35 +1401,36 @@
     }
 
     // Connect wallet
-    async function connectWallet() {
-        try {
-            const connectBtn = document.getElementById('connectWalletBtn');
-            connectBtn.disabled = true;
-            document.getElementById('status').innerHTML = 'Connecting... <span class="loading"></span>';
-            
-            web3Modal = setupWeb3Modal();
-            const provider = new ethers.providers.Web3Provider(await web3Modal.connect());
-            accounts = await provider.listAccounts();
-            
-            if (accounts.length > 0) {
-                // Initialize contracts
-                klyTokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider.getSigner());
-                nftCollectionContract = new ethers.Contract(NFT_COLLECTION_ADDRESS, NFT_COLLECTION_ABI, provider.getSigner());
-                
-                // Update UI
-                document.getElementById('walletAddress').textContent = 
-                    `${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
-                document.getElementById('walletConnected').classList.remove('hidden');
-                connectBtn.classList.add('hidden');
-                
-                checkAccess();
-            }
-        } catch (error) {
-            console.error("Connection error:", error);
-            document.getElementById('status').innerHTML = 'Connection cancelled';
-            document.getElementById('connectWalletBtn').disabled = false;
+ async function connectWallet() {
+    try {
+        const connectBtn = document.getElementById('connectWalletBtn');
+        connectBtn.disabled = true;
+        document.getElementById('status').innerHTML = 'Connecting... <span class="loading"></span>';
+
+        web3Modal = setupWeb3Modal();
+        const instance = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(instance);
+        accounts = await provider.listAccounts();
+
+        if (accounts.length > 0) {
+            // Initialize contracts
+            const signer = provider.getSigner();
+            klyTokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
+            nftCollectionContract = new ethers.Contract(NFT_COLLECTION_ADDRESS, NFT_COLLECTION_ABI, signer);
+
+            document.getElementById('walletAddress').textContent =
+                `${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+            document.getElementById('walletConnected').classList.remove('hidden');
+            connectBtn.classList.add('hidden');
+
+            checkAccess();
         }
+    } catch (error) {
+        console.error("Connection error:", error);
+        document.getElementById('status').innerHTML = 'Connection cancelled';
+        document.getElementById('connectWalletBtn').disabled = false;
     }
+}
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
