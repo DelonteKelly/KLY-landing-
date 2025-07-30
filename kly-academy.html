@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Web3Modal + Ethers.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KLY Academy Portal</title>
@@ -690,357 +694,171 @@ body.light-mode .button {
     <p id="mint-status"></p>
   </div>
 
-  <script>
-    // Contract addresses and ABIs
-    const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+<script>
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
+  const NFT_CONTRACT_ABI = [
+    "function mintTo(address to, string memory uri) public"
+  ];
 
-    const KLY_TOKEN_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function decimals() view returns (uint8)"
-    ];
+  let provider, web3Modal, signer, userAddress;
 
-    const NFT_CONTRACT_ABI = [
-      "function mintTo(address to, string memory uri) public"
-    ];
+  const connectBtn = document.getElementById('connect-btn');
+  const walletStatus = document.getElementById('wallet-status');
+  const courseWrapper = document.getElementById('course-wrapper');
+  const certificateSection = document.getElementById('certificate-section');
 
-    // Global variables
-    let provider, signer, userAddress;
-    const connectBtn = document.getElementById('connect-btn');
-    const walletStatus = document.getElementById('wallet-status');
-    const courseWrapper = document.getElementById('course-wrapper');
-    const certificateSection = document.getElementById('certificate-section');
-    let currentModule = 1;
-    const totalModules = 5;
+  async function initWeb3Modal() {
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: {
+            56: "https://bsc-dataseed.binance.org/"
+          },
+          chainId: 56
+        }
+      }
+    };
+    web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions
+    });
+  }
 
-    // Connect wallet function
-    async function connectWallet() {
-      if (typeof window.ethereum === 'undefined') {
-        walletStatus.innerHTML = `
-          <span style="color: #ff5555">MetaMask not detected.</span>
-          <br>
-          <a href="https://metamask.io/download.html" target="_blank" style="color: var(--neon-blue)">Download MetaMask</a>
-        `;
+  async function connectWallet() {
+    try {
+      connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+      const instance = await web3Modal.connect();
+      provider = new ethers.providers.Web3Provider(instance);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      let displayName = `${userAddress.substring(0, 6)}...${userAddress.slice(-4)}`;
+      walletStatus.innerHTML = `
+        <span style="color: #4caf50">Connected:</span> ${displayName}
+        <br>
+        <button onclick="disconnectWallet()" style="background:none;border:none;color:#ff5555;cursor:pointer;margin-top:5px;">
+          Disconnect
+        </button>
+      `;
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== 56) {
+        walletStatus.innerHTML += `<br><span style="color: #ff9800">Switch to BNB Chain</span>`;
         return;
       }
 
-      try {
-        connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-        walletStatus.textContent = "";
-        
-        // Request account access
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        
-        if (accounts.length === 0) {
-          throw new Error("No accounts found");
-        }
-        
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        
-        // Display ENS name if available
-        let displayName = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
-        try {
-          const ensName = await provider.lookupAddress(userAddress);
-          if (ensName) displayName = ensName;
-        } catch (e) {}
-        
-        walletStatus.innerHTML = `
-          <span style="color: #4caf50">Connected:</span> ${displayName}
-          <br>
-          <button onclick="disconnectWallet()" style="background: none; border: none; color: #ff5555; cursor: pointer; margin-top: 5px;">
-            Disconnect
-          </button>
-        `;
-        
-        // Check network
-        const network = await provider.getNetwork();
-        if (network.chainId !== 56 && network.chainId !== 1) { // BSC or ETH
-          walletStatus.innerHTML += `
-            <br><span style="color: #ff9800">Warning: Please switch to BSC or Ethereum Mainnet</span>
-          `;
-        }
-        
-        // Check KLY balance
-        const klyContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-        const rawBalance = await klyContract.balanceOf(userAddress);
-        const decimals = await klyContract.decimals();
-        const adjustedBalance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-        
-        if (adjustedBalance >= 100) {
-          connectBtn.style.display = 'none';
-          document.querySelector('.course-box p.note').style.display = 'none';
-          courseWrapper.style.display = 'block';
-          certificateSection.style.display = 'block';
-          showModule('module1');
-          
-          // Initialize progress tracking
-          initializeProgressTracking();
-          
-          // Show welcome message
-          walletStatus.innerHTML += `
-            <br><span style="color: var(--neon-blue)">Welcome to KLY Academy!</span>
-          `;
-        } else {
-          walletStatus.innerHTML += `
-            <br><span style="color: #ff5555">Insufficient KLY: ${adjustedBalance.toFixed(2)}/100 required</span>
-            <br><a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" 
-                  target="_blank" 
-                  style="color: var(--neon-blue)">
-              Buy KLY on PancakeSwap
-            </a>
-          `;
-        }
-      } catch (error) {
-        console.error("Wallet connection error:", error);
-        walletStatus.innerHTML = error.code === 4001 
-          ? `<span style="color: #ff5555">Connection rejected</span>` 
-          : `<span style="color: #ff5555">Error: ${error.message}</span>`;
-      } finally {
-        connectBtn.textContent = "Connect Wallet to Unlock Course";
-      }
-    }
+      const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+      const raw = await kly.balanceOf(userAddress);
+      const decimals = await kly.decimals();
+      const balance = parseFloat(ethers.utils.formatUnits(raw, decimals));
 
-    // Disconnect wallet function
-    async function disconnectWallet() {
-      // This is a soft disconnect since MetaMask doesn't allow true disconnection
-      walletStatus.textContent = "Wallet disconnected";
-      connectBtn.style.display = 'block';
-      document.querySelector('.course-box p.note').style.display = 'block';
-      courseWrapper.style.display = 'none';
-      certificateSection.style.display = 'none';
-      document.querySelector('.progress-container').style.display = 'none';
-      provider = null;
-      signer = null;
-      userAddress = null;
-    }
-
-    // Initialize progress tracking
-    function initializeProgressTracking() {
-      const progressKey = `kly-progress-${userAddress}`;
-      let progress = JSON.parse(localStorage.getItem(progressKey)) || {
-        completedModules: [],
-        lastAccessed: new Date().toISOString()
-      };
-      
-      // Show progress container
-      const progressContainer = document.querySelector('.progress-container');
-      progressContainer.style.display = 'block';
-      
-      // Update progress UI
-      updateProgressUI();
-      
-      function updateProgressUI() {
-        const progressPercent = (progress.completedModules.length / totalModules) * 100;
-        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
-        document.getElementById('progress-text').textContent = 
-          `${progress.completedModules.length}/${totalModules} modules completed`;
-          
-        if (progressPercent === 100) {
-          document.getElementById('progress-text').innerHTML += `
-            <br><span style="color: var(--neon-blue)">Course completed! Ready to mint your certificate.</span>
-          `;
-        }
-      }
-    }
-
-    // Show module function
-    function showModule(moduleId) {
-      document.querySelectorAll('.module-card').forEach(card => {
-        card.style.display = 'none';
-        card.classList.remove('animate__fadeIn');
-      });
-      
-      const module = document.getElementById(moduleId);
-      module.style.display = 'block';
-      module.classList.add('animate__animated', 'animate__fadeIn');
-      
-      // Update current module number
-      currentModule = parseInt(moduleId.replace('module', ''));
-      
-      // Update button states
-      document.querySelectorAll('.module-btn').forEach(btn => {
-        btn.classList.remove('active-module');
-        if (btn.dataset.module === moduleId) {
-          btn.classList.add('active-module');
-        }
-      });
-      
-      // Track module view
-      trackModuleView(moduleId);
-    }
-
-    // Track module view
-    function trackModuleView(moduleId) {
-      if (!userAddress) return;
-      
-      const progressKey = `kly-progress-${userAddress}`;
-      let progress = JSON.parse(localStorage.getItem(progressKey)) || {
-        completedModules: [],
-        lastAccessed: new Date().toISOString()
-      };
-      
-      const moduleNum = moduleId.replace('module', '');
-      if (!progress.completedModules.includes(moduleNum)) {
-        progress.completedModules.push(moduleNum);
-        progress.lastAccessed = new Date().toISOString();
-        localStorage.setItem(progressKey, JSON.stringify(progress));
-        updateProgressUI();
-      }
-      
-      function updateProgressUI() {
-        const progressPercent = (progress.completedModules.length / totalModules) * 100;
-        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
-        document.getElementById('progress-text').textContent = 
-          `${progress.completedModules.length}/${totalModules} modules completed`;
-          
-        if (progressPercent === 100) {
-          document.getElementById('progress-text').innerHTML += `
-            <br><span style="color: var(--neon-blue)">Course completed! Ready to mint your certificate.</span>
-          `;
-        }
-      }
-    }
-
-    // Mint certificate function
-    async function mintCertificate() {
-      if (!signer) {
-        showNotification("Please connect your wallet first", "error");
-        return;
-      }
-
-      try {
-        const mintStatus = document.getElementById("mint-status");
-        mintStatus.innerHTML = `
-          <div class="loader" style="display: block;"></div>
-          <p>Preparing your NFT certificate...</p>
-        `;
-        
-        const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-        
-        // Estimate gas first
-        const gasEstimate = await contract.estimateGas.mintTo(
-          userAddress, 
-          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-        );
-        
-        // Add 20% buffer
-        const gasLimit = gasEstimate.mul(120).div(100);
-        
-        const tx = await contract.mintTo(
-          userAddress, 
-          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
-          { gasLimit }
-        );
-        
-        mintStatus.innerHTML = `
-          <div class="loader" style="display: block;"></div>
-          <p>Minting in progress...</p>
-          <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--neon-blue)">
-            View on BscScan
-          </a>
-        `;
-        
-        const receipt = await tx.wait();
-        
-        showNotification("Certificate Minted Successfully!", "success");
-        mintStatus.innerHTML = `
-          <p style="color: #4caf50">✅ Certificate Minted Successfully!</p>
-          <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--neon-blue)">
-            View Transaction
-          </a>
-        `;
-        
-        // Show confetti celebration
-        launchConfetti();
-      } catch (error) {
-        console.error("Minting error:", error);
-        showNotification(`Minting failed: ${error.message}`, "error");
-        document.getElementById("mint-status").innerHTML = `
-          <p style="color: #ff5555">❌ Minting failed</p>
-          <p>${error.message}</p>
-        `;
-      }
-    }
-
-    // Launch confetti
-    function launchConfetti() {
-      const confettiSettings = {
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#0ff', '#ff00cc', '#ffffff']
-      };
-      
-      if (typeof confetti === 'function') {
-        confetti(confettiSettings);
-        setTimeout(() => confetti(confettiSettings), 500);
-      }
-    }
-
-    // Show notification
-    function showNotification(message, type = 'info') {
-      const colors = {
-        info: '#2196F3',
-        success: '#4CAF50',
-        error: '#F44336',
-        warning: '#FF9800'
-      };
-      
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.innerHTML = message;
-      
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s';
-        setTimeout(() => notification.remove(), 500);
-      }, 5000);
-    }
-
-    // Theme toggle
-    document.getElementById('theme-toggle').addEventListener('click', () => {
-      document.body.classList.toggle('light-mode');
-      const icon = document.querySelector('#theme-toggle i');
-      if (document.body.classList.contains('light-mode')) {
-        icon.classList.replace('fa-moon', 'fa-sun');
+      if (balance >= 100) {
+        connectBtn.style.display = 'none';
+        document.querySelector('.course-box p.note').style.display = 'none';
+        courseWrapper.style.display = 'block';
+        certificateSection.style.display = 'block';
+        showModule('module1');
+        walletStatus.innerHTML += `<br><span style="color: var(--neon-blue)">Welcome to KLY Academy!</span>`;
       } else {
-        icon.classList.replace('fa-sun', 'fa-moon');
+        walletStatus.innerHTML += `
+          <br><span style="color: #ff5555">Insufficient KLY: ${balance.toFixed(2)}/100</span>
+          <br><a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" 
+                target="_blank" 
+                style="color: var(--neon-blue)">Buy KLY on PancakeSwap</a>
+        `;
       }
-    });
+    } catch (error) {
+      console.error(error);
+      walletStatus.innerHTML = `<span style="color:#ff5555">Error: ${error.message}</span>`;
+    } finally {
+      connectBtn.textContent = "Connect Wallet to Unlock Course";
+    }
+  }
 
-    // Event listeners
-    window.addEventListener('load', async () => {
-      if (window.ethereum) {
-        // Check if already connected
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          await connectWallet();
-        }
-        
-        // Listen for account changes
-        window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) {
-            disconnectWallet();
-          } else {
-            connectWallet();
-          }
-        });
-        
-        // Listen for chain changes
-        window.ethereum.on('chainChanged', () => {
-          window.location.reload();
-        });
-      }
-    });
+  async function disconnectWallet() {
+    if (web3Modal && web3Modal.clearCachedProvider) {
+      await web3Modal.clearCachedProvider();
+    }
+    walletStatus.textContent = "Wallet disconnected";
+    connectBtn.style.display = 'block';
+    document.querySelector('.course-box p.note').style.display = 'block';
+    courseWrapper.style.display = 'none';
+    certificateSection.style.display = 'none';
+  }
 
-    // Make functions available globally
-    window.connectWallet = connectWallet;
-    window.disconnectWallet = disconnectWallet;
-    window.mintCertificate = mintCertificate;
-    window.showModule = showModule;
-  </script>
+  async function mintCertificate() {
+    if (!signer) return showNotification("Connect wallet first", "error");
+    const mintStatus = document.getElementById("mint-status");
+    try {
+      mintStatus.innerHTML = `<div class="loader" style="display:block;"></div><p>Preparing your NFT certificate...</p>`;
+      const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+      const gas = await nft.estimateGas.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+      const tx = await nft.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4", { gasLimit: gas.mul(120).div(100) });
+      mintStatus.innerHTML = `<div class="loader" style="display:block;"></div><p>Minting in progress...</p>
+        <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--neon-blue)">View on BscScan</a>`;
+      await tx.wait();
+      mintStatus.innerHTML = `<p style="color: #4caf50">✅ Certificate Minted Successfully!</p>`;
+      launchConfetti();
+    } catch (err) {
+      console.error(err);
+      showNotification(`Minting failed: ${err.message}`, "error");
+      mintStatus.innerHTML = `<p style="color: #ff5555">❌ Minting failed</p><p>${err.message}</p>`;
+    }
+  }
+
+  function showModule(id) {
+    document.querySelectorAll('.module-card').forEach(el => {
+      el.style.display = 'none';
+      el.classList.remove('animate__fadeIn');
+    });
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.classList.add('animate__animated', 'animate__fadeIn');
+  }
+
+  function launchConfetti() {
+    if (typeof confetti === 'function') {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#0ff', '#ff00cc', '#ffffff'] });
+    }
+  }
+
+  function showNotification(msg, type = 'info') {
+    const color = {
+      info: '#2196F3',
+      success: '#4CAF50',
+      error: '#F44336',
+      warning: '#FF9800'
+    }[type];
+    const note = document.createElement('div');
+    note.className = `notification ${type}`;
+    note.innerHTML = msg;
+    note.style.backgroundColor = color;
+    document.body.appendChild(note);
+    setTimeout(() => {
+      note.style.animation = 'fadeOut 0.5s';
+      setTimeout(() => note.remove(), 500);
+    }, 5000);
+  }
+
+  // Load on page
+  window.addEventListener('load', async () => {
+    await initWeb3Modal();
+    if (web3Modal.cachedProvider) {
+      await connectWallet();
+    }
+  });
+
+  // Expose global functions
+  window.connectWallet = connectWallet;
+  window.disconnectWallet = disconnectWallet;
+  window.mintCertificate = mintCertificate;
+  window.showModule = showModule;
+</script>
 </body>
 </html>
