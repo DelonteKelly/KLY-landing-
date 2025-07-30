@@ -1220,8 +1220,10 @@
       </div>
     </div>
   </div>
+  
+
 <script>
-    // KLY Token Contract Address (BSC Mainnet)
+    // KLY Token Contract (BSC)
     const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     const KLY_TOKEN_ABI = [
         {
@@ -1232,39 +1234,41 @@
             "type": "function"
         }
     ];
-    
-    // NFT Certificate Contract (BSC)
-    const NFT_CERTIFICATE_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-    const NFT_CERTIFICATE_ABI = [
+
+    // NFT Collection Contract (BSC)
+    const NFT_COLLECTION_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+    const NFT_COLLECTION_ABI = [
         {
             "inputs": [
-                { "internalType": "address", "name": "receiver", "type": "address" },
-                { "internalType": "string", "name": "uri", "type": "string" }
+                {"internalType": "address", "name": "to", "type": "address"},
+                {"internalType": "uint256", "name": "tokenId", "type": "uint256"}
             ],
-            "name": "mintTo",
+            "name": "mint",
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
+        },
+        {
+            "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "ownerOf",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
         }
     ];
-    
+
     // Chain Configuration
-    const BSC_CHAIN_ID = 56; // Binance Smart Chain Mainnet
+    const BSC_CHAIN_ID = 56;
     const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
-    
-    // Minimum KLY balance required (500 KLY)
     const MIN_KLY_BALANCE = ethers.utils.parseUnits("500", 18);
-    
+
     // Global variables
-    let provider;
-    let web3;
-    let accounts = [];
-    let klyTokenContract;
-    let nftCertificateContract;
-    let hasEnoughKLY = false;
-    let externalProvider;
-    let web3Modal;
-    
+    let provider, web3, accounts = [];
+    let klyTokenContract, nftCollectionContract;
+    let hasEnoughKLY = false, externalProvider, web3Modal;
+    let scene, camera, renderer, geometry, material, mesh;
+    let particles, particleSystem;
+
     // DOM Elements
     const connectWalletBtn = document.getElementById('connectWalletBtn');
     const disconnectWalletBtn = document.getElementById('disconnectWalletBtn');
@@ -1283,21 +1287,19 @@
     const certificateDate = document.getElementById('certificateDate');
     const mintCertificateBtn = document.getElementById('mintCertificateBtn');
     const joinCommunityBtn = document.getElementById('joinCommunityBtn');
-    
-    // Module completion checkboxes
     const moduleCheckboxes = document.querySelectorAll('input[type="checkbox"][data-module]');
-    
-    // Initialize 3D background
-    let scene, camera, renderer, geometry, material, mesh;
-    
+
+    // Initialize 3D background with particles
     function init3DBackground() {
+        // Scene setup
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setClearColor(0x000000, 0);
         document.getElementById('cosmicContainer').appendChild(renderer.domElement);
-        
+
+        // Sacred geometry
         geometry = new THREE.IcosahedronGeometry(2, 1);
         material = new THREE.MeshBasicMaterial({ 
             color: 0xD4AF37,
@@ -1307,39 +1309,69 @@
         });
         mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
-        
+
+        // Particles system
+        const particleCount = 1000;
+        const particles = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleColors = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 100;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+
+            particleColors[i * 3] = 0.8 + Math.random() * 0.2; // Gold
+            particleColors[i * 3 + 1] = 0.6 + Math.random() * 0.2;
+            particleColors[i * 3 + 2] = 0.1 + Math.random() * 0.1;
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
         camera.position.z = 5;
-        
+
+        // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+            
             mesh.rotation.x += 0.001;
             mesh.rotation.y += 0.002;
+            particleSystem.rotation.y += 0.0005;
+            
             renderer.render(scene, camera);
         }
         animate();
-        
+
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
     }
-    
-    // Setup Web3Modal with WalletConnect for BSC
+
+    // Setup Web3Modal for BSC
     function setupWeb3Modal() {
         const providerOptions = {
             walletconnect: {
                 package: WalletConnectProvider,
                 options: {
                     projectId: "df8063092ef3c627437d698df0977bc1",
-                    rpc: {
-                        56: BSC_RPC_URL,
-                    },
+                    rpc: { [BSC_CHAIN_ID]: BSC_RPC_URL },
                     chains: [BSC_CHAIN_ID],
                     showQrModal: true,
                     metadata: {
                         name: "KLY Path of Awakening",
-                        description: "Transformational course for KLY holders",
                         url: window.location.href,
                         icons: ["https://kellylegacyestates.com/icon.png"]
                     }
@@ -1353,70 +1385,102 @@
             theme: "dark"
         });
     }
-    
-    // Check if connected to BSC
-    async function checkNetwork() {
-        try {
-            const network = await provider.getNetwork();
-            if (network.chainId !== BSC_CHAIN_ID) {
-                status.innerHTML = 'Please switch to Binance Smart Chain';
-                return false;
-            }
-            return true;
-        } catch (error) {
-            console.error("Network check error:", error);
-            status.innerHTML = 'Error checking network';
-            return false;
-        }
-    }
-    
-    // Add BSC network to wallet if needed
+
+    // Check and switch to BSC network
     async function addBSCNetwork() {
         try {
             await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
                     chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
-                    chainName: 'Binance Smart Chain Mainnet',
+                    chainName: 'Binance Smart Chain',
                     nativeCurrency: {
                         name: 'BNB',
-                        symbol: 'bnb',
+                        symbol: 'BNB',
                         decimals: 18
                     },
                     rpcUrls: [BSC_RPC_URL],
-                    blockExplorerUrls: ['https://bscscan.com/']
+                    blockExplorerUrls: ['https://bscscan.com']
                 }]
             });
             return true;
         } catch (error) {
-            console.error("Error adding BSC network:", error);
+            console.error("Error adding BSC:", error);
+            status.innerHTML = 'Please switch to BSC manually';
             return false;
         }
     }
-    
-    // Check KLY token balance
-    async function checkKLYBalance() {
+
+    // Check network
+    async function checkNetwork() {
+        const network = await provider.getNetwork();
+        if (network.chainId !== BSC_CHAIN_ID) {
+            status.innerHTML = 'Please switch to Binance Smart Chain';
+            return false;
+        }
+        return true;
+    }
+
+    // Check KLY balance and NFT ownership
+    async function checkAccess() {
         try {
-            status.innerHTML = 'Checking KLY balance... <span class="loading"></span>';
+            status.innerHTML = 'Verifying access... <span class="loading"></span>';
             
             const balance = await klyTokenContract.balanceOf(accounts[0]);
             hasEnoughKLY = balance.gte(MIN_KLY_BALANCE);
             
             if (hasEnoughKLY) {
-                status.innerHTML = `✅ You hold ${ethers.utils.formatUnits(balance, 18)} KLY - Access granted`;
+                status.innerHTML = `✅ Access granted (${ethers.utils.formatUnits(balance, 18)} KLY)`;
                 courseContent.classList.add('visible');
                 triquetra.style.opacity = '0.7';
                 loadProgress();
             } else {
-                status.innerHTML = `❌ You need at least 500 KLY (you have ${ethers.utils.formatUnits(balance, 18)})`;
+                status.innerHTML = `❌ Need 500+ KLY (you have ${ethers.utils.formatUnits(balance, 18)})`;
             }
         } catch (error) {
-            console.error("Balance check error:", error);
-            status.innerHTML = 'Error checking balance';
+            console.error("Access check error:", error);
+            status.innerHTML = 'Error verifying access';
         }
     }
-    
-    // Load user progress
+
+    // Mint NFT from collection
+    async function mintCertificate() {
+        try {
+            mintCertificateBtn.disabled = true;
+            mintCertificateBtn.textContent = 'Minting...';
+            status.innerHTML = 'Preparing mint... <span class="loading"></span>';
+
+            // Mint with next available tokenId (adjust based on your contract)
+            const tx = await nftCollectionContract.mint(accounts[0], 0, { 
+                gasLimit: 300000 
+            });
+
+            status.innerHTML = 'Minting NFT... <span class="loading"></span>';
+            const receipt = await tx.wait();
+
+            // Visual effects on success
+            if (receipt.status === 1) {
+                particleSystem.material.color.setHex(0x00FFE7); // Teal flash
+                setTimeout(() => {
+                    particleSystem.material.color.setHex(0xD4AF37); // Back to gold
+                }, 1000);
+                
+                status.innerHTML = '🎉 Certificate Minted!';
+                mintCertificateBtn.textContent = 'Minted!';
+            } else {
+                throw new Error("Transaction failed");
+            }
+        } catch (error) {
+            console.error("Mint error:", error);
+            status.innerHTML = error.message.includes("user rejected") 
+                ? "Mint cancelled" 
+                : "Mint failed. Try again.";
+            mintCertificateBtn.disabled = false;
+            mintCertificateBtn.textContent = 'Mint Certificate';
+        }
+    }
+
+    // Load and track progress
     function loadProgress() {
         let completedModules = 0;
         
@@ -1448,60 +1512,33 @@
         updateProgress(completedModules);
         progressContainer.classList.remove('hidden');
     }
-    
-    // Update progress display
+
     function updateProgress(completed) {
         const percent = Math.round((completed / 7) * 100);
         progressBar.style.width = `${percent}%`;
         progressText.textContent = `${percent}% Complete`;
+        
+        // Visual effect - particles intensify as progress increases
+        particleSystem.material.opacity = 0.5 + (percent/200);
     }
-    
-    // Show NFT certificate
+
     function showCertificate() {
-        certificateAddress.textContent = formatAddress(accounts[0]);
+        certificateAddress.textContent = `${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
         certificateDate.textContent = new Date().toLocaleDateString();
         nftCertificate.style.display = 'block';
-        setTimeout(() => nftCertificate.scrollIntoView({ behavior: 'smooth' }), 500);
+        
+        // Animate particles toward certificate
+        gsap.to(particleSystem.rotation, {
+            y: particleSystem.rotation.y + Math.PI,
+            duration: 3,
+            ease: "power2.inOut"
+        });
+        
+        setTimeout(() => {
+            nftCertificate.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
     }
-    
-    // Mint NFT certificate
-    async function mintCertificate() {
-        try {
-            mintCertificateBtn.disabled = true;
-            mintCertificateBtn.textContent = 'Minting...';
 
-            const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
-            const tx = await nftCertificateContract.mintTo(accounts[0], metadataURI);
-
-            status.innerHTML = 'Transaction sent... <span class="loading"></span>';
-            await tx.wait();
-            
-            status.innerHTML = '🎉 Certificate minted!';
-            mintCertificateBtn.textContent = 'Minted!';
-        } catch (error) {
-            console.error("Minting error:", error);
-            status.innerHTML = 'Error minting NFT';
-            mintCertificateBtn.disabled = false;
-            mintCertificateBtn.textContent = 'Mint as NFT';
-        }
-    }
-    
-    // Format address for display
-    function formatAddress(address) {
-        return address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : '';
-    }
-    
-    // Handle account changes
-    function handleAccountsChanged(accounts) {
-        if (!accounts.length) {
-            disconnectWallet();
-        } else {
-            accounts = accounts;
-            walletAddress.textContent = formatAddress(accounts[0]);
-            checkKLYBalance();
-        }
-    }
-    
     // Connect wallet
     async function connectWallet() {
         try {
@@ -1511,12 +1548,12 @@
             web3Modal = setupWeb3Modal();
             externalProvider = await web3Modal.connect();
             provider = new ethers.providers.Web3Provider(externalProvider);
+            web3 = new Web3(externalProvider);
             
-            // Check network
+            // Network check
             if (!await checkNetwork()) {
                 const switched = await addBSCNetwork();
                 if (!switched) {
-                    status.innerHTML = 'Please connect to Binance Smart Chain';
                     connectWalletBtn.disabled = false;
                     return;
                 }
@@ -1526,44 +1563,57 @@
             accounts = await provider.listAccounts();
             
             if (accounts.length > 0) {
-                walletAddress.textContent = formatAddress(accounts[0]);
+                walletAddress.textContent = `${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
                 walletConnected.classList.remove('hidden');
                 connectWalletBtn.classList.add('hidden');
                 
                 // Initialize contracts
                 klyTokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider.getSigner());
-                nftCertificateContract = new ethers.Contract(NFT_CERTIFICATE_ADDRESS, NFT_CERTIFICATE_ABI, provider.getSigner());
+                nftCollectionContract = new ethers.Contract(NFT_COLLECTION_ADDRESS, NFT_COLLECTION_ABI, provider.getSigner());
+                
+                // Verify contracts
+                const klyCode = await provider.getCode(KLY_TOKEN_ADDRESS);
+                const nftCode = await provider.getCode(NFT_COLLECTION_ADDRESS);
+                if (klyCode === "0x" || nftCode === "0x") {
+                    throw new Error("Contracts not deployed");
+                }
                 
                 // Set up event listeners
                 if (externalProvider.on) {
-                    externalProvider.on("accountsChanged", handleAccountsChanged);
+                    externalProvider.on("accountsChanged", (newAccounts) => {
+                        accounts = newAccounts;
+                        if (!newAccounts.length) disconnectWallet();
+                        else {
+                            walletAddress.textContent = `${newAccounts[0].substring(0, 6)}...${newAccounts[0].substring(38)}`;
+                            checkAccess();
+                        }
+                    });
                     externalProvider.on("chainChanged", () => window.location.reload());
-                    externalProvider.on("disconnect", () => disconnectWallet());
+                    externalProvider.on("disconnect", disconnectWallet);
                 }
                 
-                checkKLYBalance();
+                checkAccess();
             } else {
-                status.innerHTML = 'Please unlock your wallet';
-                connectWalletBtn.disabled = false;
+                throw new Error("No accounts found");
             }
         } catch (error) {
             console.error("Connection error:", error);
-            status.innerHTML = 'Connection failed';
+            status.innerHTML = error.message === "User closed modal" 
+                ? "Connection cancelled" 
+                : error.message || "Connection failed";
             connectWalletBtn.disabled = false;
         }
     }
-    
+
     // Disconnect wallet
     function disconnectWallet() {
-        if (externalProvider && externalProvider.removeListener) {
-            externalProvider.removeListener("accountsChanged", handleAccountsChanged);
-            externalProvider.removeListener("chainChanged", () => window.location.reload());
-            externalProvider.removeListener("disconnect", () => disconnectWallet());
+        if (externalProvider?.removeListener) {
+            externalProvider.removeListener("accountsChanged");
+            externalProvider.removeListener("chainChanged");
+            externalProvider.removeListener("disconnect");
         }
         
-        if (web3Modal) {
-            web3Modal.clearCachedProvider();
-        }
+        if (web3Modal) web3Modal.clearCachedProvider();
         
         walletConnected.classList.add('hidden');
         connectWalletBtn.classList.remove('hidden');
@@ -1574,27 +1624,30 @@
         status.innerHTML = '';
         accounts = [];
         hasEnoughKLY = false;
+        
+        // Reset particles
+        particleSystem.material.opacity = 0.5;
     }
-    
-    // Event Listeners
-    connectWalletBtn.addEventListener('click', connectWallet);
-    disconnectWalletBtn.addEventListener('click', disconnectWallet);
-    arToggleBtn.addEventListener('click', () => arMarker.classList.toggle('hidden'));
-    mintCertificateBtn.addEventListener('click', mintCertificate);
-    joinCommunityBtn.addEventListener('click', () => {
-        if (hasEnoughKLY) {
-            window.open('https://discord.gg/YOUR_INVITE_LINK', '_blank');
-        } else {
-            status.innerHTML = 'Requires 500+ KLY';
-        }
-    });
-    
-    // Initialize
+
+    // Initialize everything
     document.addEventListener('DOMContentLoaded', () => {
         init3DBackground();
         
-        // Check if wallet is already connected
-        if (window.ethereum && window.ethereum.selectedAddress) {
+        // Event listeners
+        connectWalletBtn.addEventListener('click', connectWallet);
+        disconnectWalletBtn.addEventListener('click', disconnectWallet);
+        arToggleBtn.addEventListener('click', () => arMarker.classList.toggle('hidden'));
+        mintCertificateBtn.addEventListener('click', mintCertificate);
+        joinCommunityBtn.addEventListener('click', () => {
+            if (hasEnoughKLY) {
+                window.open('https://discord.gg/YOUR_INVITE_LINK', '_blank');
+            } else {
+                status.innerHTML = 'Requires 500+ KLY to join';
+            }
+        });
+
+        // Check if already connected
+        if (window.ethereum?.selectedAddress) {
             connectWallet();
         }
     });
