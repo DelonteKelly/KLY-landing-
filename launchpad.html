@@ -7,6 +7,11 @@
   <meta name="description" content="KLY Launchpad - The premier platform for initial DEX offerings on BNB Chain">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Web3 Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
   <style>
     :root {
       --primary: #00ffe7;
@@ -521,458 +526,298 @@
     <i class="fas fa-info-circle"></i>
     <span id="notificationMessage">Notification message</span>
   </div>
-
-  <!-- Web3 Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
   
-  <script>
-    // Configuration
-    const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const BSC_CHAIN_ID = 56;
-    const RPC_URLS = [
-      "https://bsc-dataseed.binance.org/",
-      "https://bsc-dataseed1.defibit.io/",
-      "https://bsc-dataseed1.ninicoin.io/"
-    ];
-    
-    const EXPLORER_URL = "https://bscscan.com";
-    const TOKEN_SYMBOL = "KLY";
-    
-    // Token ABI
-    const TOKEN_ABI = [
-      "function symbol() view returns (string)",
-      "function decimals() view returns (uint8)",
-      "function balanceOf(address) view returns (uint256)",
-      "function mintTo(address to, uint256 amount)"
-    ];
-    
-    // DOM Elements
-    const connectBtn = document.getElementById("connectWallet");
-    const buttonText = document.getElementById("buttonText");
-    const walletStatus = document.getElementById("walletStatus");
-    const tokenInfo = document.getElementById("tokenInfo");
-    const tokenBalance = document.getElementById("tokenBalance");
-    const contractAddress = document.getElementById("contractAddress");
-    const getTokensButton = document.getElementById("getTokensButton");
-    const actionButtons = document.getElementById("actionButtons");
-    const viewExplorer = document.getElementById("viewExplorer");
-    const notification = document.getElementById("notification");
-    const notificationMessage = document.getElementById("notificationMessage");
-    const txStatus = document.getElementById("txStatus");
-    const txHashLink = document.getElementById("txHashLink");
-    const txProgress = document.getElementById("txProgress");
-    
-    // Countdown elements
-    const daysEl = document.getElementById("days");
-    const hoursEl = document.getElementById("hours");
-    const minutesEl = document.getElementById("minutes");
-    const secondsEl = document.getElementById("seconds");
-    
-    // State
-    let provider, signer, contract, userAddress, tokenDecimals = 18;
-    let txInterval;
-    
-    // Initialize
-    window.addEventListener('DOMContentLoaded', async () => {
-      initParticles();
-      setupEventListeners();
-      startCountdown();
-      
-      if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) await connectWallet();
+<script>
+  const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const BSC_CHAIN_ID = 56;
+  const RPC_URLS = [
+    "https://bsc-dataseed.binance.org/",
+    "https://bsc-dataseed1.defibit.io/",
+    "https://bsc-dataseed1.ninicoin.io/"
+  ];
+  const EXPLORER_URL = "https://bscscan.com";
+  const TOKEN_SYMBOL = "KLY";
+
+  const TOKEN_ABI = [
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function balanceOf(address) view returns (uint256)",
+    "function mintTo(address to, uint256 amount)"
+  ];
+
+  // Web3
+  let web3Modal, externalProvider, provider, signer, contract, userAddress;
+  let tokenDecimals = 18;
+  let txInterval;
+
+  // DOM
+  const connectBtn = document.getElementById("connectWallet");
+  const buttonText = document.getElementById("buttonText");
+  const walletStatus = document.getElementById("walletStatus");
+  const tokenInfo = document.getElementById("tokenInfo");
+  const tokenBalance = document.getElementById("tokenBalance");
+  const contractAddress = document.getElementById("contractAddress");
+  const getTokensButton = document.getElementById("getTokensButton");
+  const actionButtons = document.getElementById("actionButtons");
+  const viewExplorer = document.getElementById("viewExplorer");
+  const notification = document.getElementById("notification");
+  const txStatus = document.getElementById("txStatus");
+  const txHashLink = document.getElementById("txHashLink");
+  const txProgress = document.getElementById("txProgress");
+
+  const daysEl = document.getElementById("days");
+  const hoursEl = document.getElementById("hours");
+  const minutesEl = document.getElementById("minutes");
+  const secondsEl = document.getElementById("seconds");
+
+  // Web3Modal Setup
+  function setupWeb3Modal() {
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 56: "https://bsc-dataseed.binance.org/" },
+          chainId: 56
+        }
       }
+    };
+    web3Modal = new window.Web3Modal.default({
+      cacheProvider: true,
+      providerOptions,
+      theme: "dark"
     });
-    
-    // Initialize particle background
-    function initParticles() {
-      particlesJS('particles-js', {
-        "particles": {
-          "number": {
-            "value": 80,
-            "density": {
-              "enable": true,
-              "value_area": 800
-            }
-          },
-          "color": {
-            "value": ["#00ffe7", "#ff00aa"]
-          },
-          "shape": {
-            "type": "circle",
-            "stroke": {
-              "width": 0,
-              "color": "#000000"
-            }
-          },
-          "opacity": {
-            "value": 0.5,
-            "random": true,
-            "anim": {
-              "enable": true,
-              "speed": 1,
-              "opacity_min": 0.1,
-              "sync": false
-            }
-          },
-          "size": {
-            "value": 3,
-            "random": true,
-            "anim": {
-              "enable": true,
-              "speed": 2,
-              "size_min": 0.1,
-              "sync": false
-            }
-          },
-          "line_linked": {
-            "enable": true,
-            "distance": 150,
-            "color": "#00ffe7",
-            "opacity": 0.2,
-            "width": 1
-          },
-          "move": {
-            "enable": true,
-            "speed": 1,
-            "direction": "none",
-            "random": true,
-            "straight": false,
-            "out_mode": "out",
-            "bounce": false,
-            "attract": {
-              "enable": false,
-              "rotateX": 600,
-              "rotateY": 1200
-            }
-          }
-        },
-        "interactivity": {
-          "detect_on": "canvas",
-          "events": {
-            "onhover": {
-              "enable": true,
-              "mode": "grab"
-            },
-            "onclick": {
-              "enable": true,
-              "mode": "push"
-            },
-            "resize": true
-          },
-          "modes": {
-            "grab": {
-              "distance": 140,
-              "line_linked": {
-                "opacity": 0.5
-              }
-            },
-            "bubble": {
-              "distance": 400,
-              "size": 40,
-              "duration": 2,
-              "opacity": 8,
-              "speed": 3
-            },
-            "repulse": {
-              "distance": 200,
-              "duration": 0.4
-            },
-            "push": {
-              "particles_nb": 4
-            },
-            "remove": {
-              "particles_nb": 2
-            }
-          }
-        },
-        "retina_detect": true
-      });
-    }
-    
-    // Setup event listeners
-    function setupEventListeners() {
-      connectBtn.addEventListener('click', connectWallet);
-      getTokensButton.addEventListener('click', mintTokens);
-      viewExplorer.addEventListener('click', viewOnExplorer);
-      
-      if (window.ethereum) {
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', () => window.location.reload());
-      }
-    }
-    
-    // Connect wallet handler
-    async function connectWallet() {
-      if (!window.ethereum) {
-        return showNotification("Please install MetaMask or a Web3 wallet", "error");
-      }
-      
-      try {
-        showNotification("Connecting wallet...", "warning");
-        connectBtn.disabled = true;
-        buttonText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting';
-        
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const network = await provider.getNetwork();
-        
-        if (network.chainId !== BSC_CHAIN_ID && !(await switchToBSC())) {
-          connectBtn.disabled = false;
-          buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-          return showNotification("Please switch to BNB Chain", "error");
-        }
-        
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        walletStatus.textContent = formatAddress(userAddress);
-        buttonText.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-        
-        contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
-        
-        // Verify contract exists
-        const code = await provider.getCode(CONTRACT_ADDRESS);
-        if (!code || code === "0x") {
-          return showNotification("Contract not found on BNB Chain", "error");
-        }
-        
-        await loadTokenInfo();
-        showNotification("Wallet connected successfully", "success");
-        
-      } catch (error) {
-        console.error("Connection error:", error);
-        const msg = error.code === 4001 ? "Connection rejected" : error.message || "Connection failed";
-        showNotification(msg, "error");
+  }
+
+  async function connectWallet() {
+    try {
+      showNotification("Connecting wallet...", "warning");
+      connectBtn.disabled = true;
+      buttonText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting';
+
+      externalProvider = await web3Modal.connect();
+      provider = new ethers.providers.Web3Provider(externalProvider);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== BSC_CHAIN_ID) {
+        showNotification("Please switch to BNB Chain", "error");
         buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-      } finally {
         connectBtn.disabled = false;
+        return;
       }
-    }
-    
-    // Switch to BSC network
-    async function switchToBSC() {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x38' }]
-        });
-        return true;
-      } catch (err) {
-        if (err.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: '0x38',
-                chainName: 'BNB Smart Chain',
-                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                rpcUrls: RPC_URLS,
-                blockExplorerUrls: [EXPLORER_URL]
-              }]
-            });
-            return true;
-          } catch (addErr) {
-            console.error("Add BSC error:", addErr);
-            showNotification("Failed to add BNB Chain", "error");
-          }
-        }
-        return false;
+
+      contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
+      const code = await provider.getCode(CONTRACT_ADDRESS);
+      if (!code || code === "0x") {
+        return showNotification("Contract not found on BNB Chain", "error");
       }
-    }
-    
-    // Load token info
-    async function loadTokenInfo() {
-      try {
-        showNotification("Loading token information...", "warning");
-        
-        const [symbol, decimals, balance] = await Promise.all([
-          contract.symbol(),
-          contract.decimals(),
-          contract.balanceOf(userAddress)
-        ]);
-        
-        tokenDecimals = decimals;
-        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
-        
-        tokenBalance.innerHTML = `Balance: <strong>${formattedBalance} ${symbol}</strong>`;
-        tokenInfo.style.display = "block";
-        actionButtons.style.display = "flex";
-        
-        // Check if mint function is available
-        const hasMintTo = typeof contract.mintTo === "function";
-        getTokensButton.disabled = !hasMintTo;
-        
-        if (!hasMintTo) {
-          showNotification("Mint function not available in contract", "warning");
-        }
-        
-      } catch (err) {
-        console.error("Token info error:", err);
-        tokenBalance.textContent = "Balance: Error";
-        showNotification("Failed to load token info", "error");
+
+      walletStatus.textContent = formatAddress(userAddress);
+      buttonText.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+
+      await loadTokenInfo();
+      showNotification("Wallet connected successfully", "success");
+
+      // Wallet events
+      if (externalProvider.on) {
+        externalProvider.on("accountsChanged", handleAccountsChanged);
+        externalProvider.on("chainChanged", () => window.location.reload());
       }
+
+    } catch (err) {
+      console.error("Connection error:", err);
+      showNotification("Connection failed", "error");
+      buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+    } finally {
+      connectBtn.disabled = false;
     }
-    
-    // Mint tokens handler
-    async function mintTokens() {
-      if (!signer) {
-        return showNotification("Please connect your wallet first", "error");
+  }
+
+  function handleAccountsChanged(accounts) {
+    if (!accounts.length) {
+      walletStatus.textContent = "Not connected";
+      buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+      tokenInfo.style.display = "none";
+      actionButtons.style.display = "none";
+      showNotification("Wallet disconnected", "error");
+    } else {
+      userAddress = accounts[0];
+      walletStatus.textContent = formatAddress(userAddress);
+      loadTokenInfo();
+      showNotification("Wallet account changed", "warning");
+    }
+  }
+
+  async function loadTokenInfo() {
+    try {
+      showNotification("Loading token information...", "warning");
+      const [symbol, decimals, balance] = await Promise.all([
+        contract.symbol(),
+        contract.decimals(),
+        contract.balanceOf(userAddress)
+      ]);
+      tokenDecimals = decimals;
+      const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+      tokenBalance.innerHTML = `Balance: <strong>${formattedBalance} ${symbol}</strong>`;
+      tokenInfo.style.display = "block";
+      actionButtons.style.display = "flex";
+    } catch (err) {
+      console.error("Token info error:", err);
+      tokenBalance.textContent = "Balance: Error";
+      showNotification("Failed to load token info", "error");
+    }
+  }
+
+  async function mintTokens() {
+    if (!signer) return showNotification("Please connect your wallet first", "error");
+
+    try {
+      showNotification("Preparing mint transaction...", "warning");
+      getTokensButton.disabled = true;
+      getTokensButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
+      txStatus.style.display = "block";
+      txHashLink.textContent = "Preparing transaction...";
+      txHashLink.href = "#";
+      txProgress.style.width = "10%";
+
+      const mintAmount = ethers.utils.parseUnits("100", tokenDecimals);
+      const gasEstimate = await contract.estimateGas.mintTo(userAddress, mintAmount);
+      const tx = await contract.mintTo(userAddress, mintAmount, {
+        gasLimit: gasEstimate.mul(120).div(100)
+      });
+
+      const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
+      txHashLink.textContent = formatAddress(tx.hash);
+      txHashLink.href = txUrl;
+      txProgress.style.width = "30%";
+
+      let progress = 30;
+      txInterval = setInterval(() => {
+        progress += 1;
+        if (progress < 90) txProgress.style.width = `${progress}%`;
+      }, 500);
+
+      await tx.wait();
+      clearInterval(txInterval);
+      txProgress.style.width = "100%";
+      await loadTokenInfo();
+      showNotification("Tokens minted successfully!", "success");
+
+    } catch (err) {
+      clearInterval(txInterval);
+      console.error("Mint error:", err);
+      showNotification("Mint failed: " + (err.message || "unknown error"), "error");
+      txStatus.style.display = "none";
+    } finally {
+      getTokensButton.disabled = false;
+      getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
+    }
+  }
+
+  function viewOnExplorer() {
+    window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
+  }
+
+  function formatAddress(addr) {
+    return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
+  }
+
+  function showNotification(message, type = "info", link = null) {
+    let icon;
+    switch (type) {
+      case "error": icon = "fas fa-exclamation-circle"; break;
+      case "success": icon = "fas fa-check-circle"; break;
+      case "warning": icon = "fas fa-exclamation-triangle"; break;
+      default: icon = "fas fa-info-circle";
+    }
+
+    notification.innerHTML = `
+      <i class="${icon}"></i>
+      <span id="notificationMessage">${message}</span>
+      ${link ? `<a href="${link}" target="_blank" style="color: var(--primary); margin-left: auto;"><i class="fas fa-external-link-alt"></i></a>` : ''}
+    `;
+    notification.className = `notification ${type} show`;
+
+    clearTimeout(notification.timeout);
+    notification.timeout = setTimeout(() => {
+      notification.classList.remove("show");
+    }, 5000);
+  }
+
+  function startCountdown() {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 7);
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const diff = targetDate - now;
+
+      if (diff <= 0) {
+        clearInterval(countdownInterval);
+        daysEl.textContent = "00";
+        hoursEl.textContent = "00";
+        minutesEl.textContent = "00";
+        secondsEl.textContent = "00";
+        return;
       }
-      
-      try {
-        showNotification("Preparing mint transaction...", "warning");
-        getTokensButton.disabled = true;
-        getTokensButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
-        
-        // Show tx status
-        txStatus.style.display = "block";
-        txHashLink.textContent = "Preparing transaction...";
-        txHashLink.href = "#";
-        txProgress.style.width = "10%";
-        
-        // Estimate gas
-        const mintAmount = ethers.utils.parseUnits("100", tokenDecimals);
-        const gasEstimate = await contract.estimateGas.mintTo(userAddress, mintAmount);
-        
-        // Send transaction
-        const tx = await contract.mintTo(userAddress, mintAmount, {
-          gasLimit: gasEstimate.mul(120).div(100) // Add 20% buffer
-        });
-        
-        // Update UI with tx hash
-        const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
-        txHashLink.textContent = formatAddress(tx.hash);
-        txHashLink.href = txUrl;
-        txProgress.style.width = "30%";
-        
-        showNotification(`Transaction sent! Click to view`, "warning", txUrl);
-        
-        // Start progress animation
-        let progress = 30;
-        txInterval = setInterval(() => {
-          progress += 1;
-          if (progress < 90) {
-            txProgress.style.width = `${progress}%`;
-          }
-        }, 500);
-        
-        // Wait for confirmation
-        const receipt = await tx.wait();
-        clearInterval(txInterval);
-        txProgress.style.width = "100%";
-        
-        // Update balance
-        await loadTokenInfo();
-        showNotification("Tokens minted successfully!", "success");
-        getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
-        
-      } catch (err) {
-        console.error("Mint error:", err);
-        clearInterval(txInterval);
-        
-        const msg = err.code === 4001
-          ? "Transaction rejected by user"
-          : err.message.includes("revert")
-          ? "Transaction reverted (check contract)"
-          : "Mint failed";
-        
-        showNotification(msg, "error");
-        txStatus.style.display = "none";
-      } finally {
-        getTokensButton.disabled = false;
-        getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
-      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      daysEl.textContent = days.toString().padStart(2, '0');
+      hoursEl.textContent = hours.toString().padStart(2, '0');
+      minutesEl.textContent = minutes.toString().padStart(2, '0');
+      secondsEl.textContent = seconds.toString().padStart(2, '0');
+    };
+
+    updateCountdown();
+    const countdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  function setupEventListeners() {
+    connectBtn.addEventListener("click", connectWallet);
+    getTokensButton.addEventListener("click", mintTokens);
+    viewExplorer.addEventListener("click", viewOnExplorer);
+  }
+
+  // Init on load
+  window.addEventListener('DOMContentLoaded', () => {
+    initParticles();
+    setupWeb3Modal();
+    setupEventListeners();
+    startCountdown();
+
+    if (window.Web3Modal && web3Modal && web3Modal.cachedProvider) {
+      connectWallet();
     }
-    
-    // View on explorer
-    function viewOnExplorer() {
-      window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
-    }
-    
-    // Handle account changes
-    function handleAccountsChanged(accounts) {
-      if (!accounts.length) {
-        // Wallet disconnected
-        walletStatus.textContent = "Not connected";
-        buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-        tokenInfo.style.display = "none";
-        actionButtons.style.display = "none";
-        showNotification("Wallet disconnected", "error");
-      } else {
-        // Account changed
-        userAddress = accounts[0];
-        walletStatus.textContent = formatAddress(userAddress);
-        loadTokenInfo();
-        showNotification("Wallet account changed", "warning");
-      }
-    }
-    
-    // Show notification
-    function showNotification(message, type = "info", link = null) {
-      // Set icon based on type
-      let icon;
-      switch(type) {
-        case "error": icon = "fas fa-exclamation-circle"; break;
-        case "success": icon = "fas fa-check-circle"; break;
-        case "warning": icon = "fas fa-exclamation-triangle"; break;
-        default: icon = "fas fa-info-circle";
-      }
-      
-      notification.innerHTML = `
-        <i class="${icon}"></i>
-        <span id="notificationMessage">${message}</span>
-        ${link ? `<a href="${link}" target="_blank" style="color: var(--primary); margin-left: auto;"><i class="fas fa-external-link-alt"></i></a>` : ''}
-      `;
-      
-      notification.className = `notification ${type} show`;
-      
-      // Auto-hide after 5 seconds
-      clearTimeout(notification.timeout);
-      notification.timeout = setTimeout(() => {
-        notification.classList.remove("show");
-      }, 5000);
-    }
-    
-    // Format address
-    function formatAddress(addr) {
-      return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
-    }
-    
-    // Countdown timer (example for future drops)
-    function startCountdown() {
-      // Set target date (7 days from now)
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + 7);
-      
-      const updateCountdown = () => {
-        const now = new Date();
-        const diff = targetDate - now;
-        
-        if (diff <= 0) {
-          clearInterval(countdownInterval);
-          daysEl.textContent = "00";
-          hoursEl.textContent = "00";
-          minutesEl.textContent = "00";
-          secondsEl.textContent = "00";
-          return;
-        }
-        
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        
-        daysEl.textContent = days.toString().padStart(2, '0');
-        hoursEl.textContent = hours.toString().padStart(2, '0');
-        minutesEl.textContent = minutes.toString().padStart(2, '0');
-        secondsEl.textContent = seconds.toString().padStart(2, '0');
-      };
-      
-      updateCountdown();
-      const countdownInterval = setInterval(updateCountdown, 1000);
-    }
-  </script>
+  });
+
+  function initParticles() {
+    particlesJS('particles-js', {
+      "particles": {
+        "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
+        "color": { "value": ["#00ffe7", "#ff00aa"] },
+        "shape": { "type": "circle" },
+        "opacity": { "value": 0.5, "random": true },
+        "size": { "value": 3, "random": true },
+        "line_linked": {
+          "enable": true,
+          "distance": 150,
+          "color": "#00ffe7",
+          "opacity": 0.2,
+          "width": 1
+        },
+        "move": { "enable": true, "speed": 1, "random": true }
+      },
+      "interactivity": {
+        "events": { "onhover": { "enable": true, "mode": "grab" } }
+      },
+      "retina_detect": true
+    });
+  }
+</script>
 </body>
 </html>
