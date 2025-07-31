@@ -885,27 +885,36 @@
   }
 
   // Check KLY token balance
-  async function checkKLYBalance() {
-    try {
-      const token = new ethers.Contract(CONFIG.KLY_CONTRACT, CONFIG.erc20ABI, state.provider);
-      const rawBalance = await token.balanceOf(state.address);
-      const decimals = await token.decimals();
-      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
-      
-      if (balance >= CONFIG.MIN_BALANCE) {
-        elements.courseContent.style.display = "block";
-        elements.walletStatus.textContent += ` | ✅ ${balance.toFixed(2)} KLY — Access Granted`;
-        showCertificateIfCompleted();
-      } else {
-        elements.courseContent.style.display = "none";
-        elements.walletStatus.textContent += ` | ❌ ${balance.toFixed(2)} KLY — Minimum 500 KLY required`;
-      }
-    } catch (error) {
-      console.error("Balance check failed:", error);
-      elements.walletStatus.textContent += " | Error checking balance";
-    }
-  }
+async function checkKLYBalance() {
+  try {
+    const token = new ethers.Contract(CONFIG.KLY_CONTRACT, CONFIG.erc20ABI, state.provider);
+    const rawBalance = await token.balanceOf(state.address);
+    const decimals = await token.decimals();
+    const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
 
+    if (balance >= CONFIG.MIN_BALANCE) {
+      elements.walletStatus.textContent += ` | ✅ ${balance.toFixed(2)} KLY — Access Granted`;
+
+      // Fetch and load gated course content
+      const response = await fetch("course-modules.html");
+      const html = await response.text();
+      elements.courseContent.innerHTML = html;
+      elements.courseContent.style.display = "block";
+
+      // Re-initialize logic after content is injected
+      setupEventListeners();
+      updateProgress(state.progress);
+      showCertificateIfCompleted();
+
+    } else {
+      elements.courseContent.style.display = "none";
+      elements.walletStatus.textContent += ` | ❌ ${balance.toFixed(2)} KLY — Minimum 500 KLY required`;
+    }
+  } catch (error) {
+    console.error("Balance check failed:", error);
+    elements.walletStatus.textContent += " | Error checking balance";
+  }
+}
   // Update module completion status
   function updateModuleCompletion(moduleId, isCompleted) {
     if (isCompleted) {
