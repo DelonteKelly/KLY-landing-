@@ -293,7 +293,12 @@ header {
       </div>
 
       <div class="nft-panel">
-        <h2 class="panel-title">ASCENDERS NFT</h2>
+        <h2 class="panel-title">ASCENDERS NFT</h2> 
+        <div class="mint-btn-wrapper">
+  <button class="action-btn" id="mintBtn">
+    <i class="fas fa-fire"></i> MINT ASCENDER
+  </button>
+</div>
         
         <div class="nft-display">
           <img src="https://via.placeholder.com/150" alt="Ascender NFT" class="nft-image" id="nftImage">
@@ -318,177 +323,128 @@ header {
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
-  <script>
-    // Contract addresses
-    const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
-    const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+<script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
 
-    // Contract ABIs (simplified for example)
-    const tokenABI = [
-      {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},
-      {"constant":true,"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}
-    ];
-    
-    const stakeABI = [
-      {"constant":false,"inputs":[{"name":"_amount","type":"uint256"}],"name":"stake","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},
-      {"constant":false,"inputs":[],"name":"claim","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},
-      {"constant":true,"inputs":[{"name":"_user","type":"address"}],"name":"getUserStake","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}
-    ];
-    
-    const nftABI = [
-      {"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"uri","type":"string"}],"name":"mintTo","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},
-      {"constant":true,"inputs":[{"name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"}
-    ];
+<script>
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 
-    let web3;
-    let web3Modal;
-    let provider;
-    let accounts;
-    let klyContract;
-    let stakeContract;
-    let nftContract;
+  const tokenABI = [
+    {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
+    {"constant":true,"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}
+  ];
 
-    // Initialize Web3Modal
-    function initWeb3Modal() {
-      const providerOptions = {
-        walletconnect: {
-          package: WalletConnectProvider,
-          options: {
-            rpc: {
-              56: "https://bsc-dataseed.binance.org/"
-            }
-          }
+  const stakeABI = [
+    {"constant":false,"inputs":[{"name":"_amount","type":"uint256"}],"name":"stake","outputs":[],"type":"function"},
+    {"constant":false,"inputs":[],"name":"claim","outputs":[],"type":"function"},
+    {"constant":true,"inputs":[{"name":"_user","type":"address"}],"name":"getUserStake","outputs":[{"name":"","type":"uint256"}],"type":"function"}
+  ];
+
+  const nftABI = [
+    {"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"uri","type":"string"}],"name":"mintTo","outputs":[],"type":"function"}
+  ];
+
+  let web3, web3Modal, provider, accounts;
+  let klyContract, stakeContract, nftContract;
+
+  function initWeb3Modal() {
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 56: "https://bsc-dataseed.binance.org/" }
         }
-      };
-
-      web3Modal = new Web3Modal({
-        cacheProvider: true,
-        providerOptions,
-        theme: "dark"
-      });
-    }
-
-    // Connect wallet
-    async function connectWallet() {
-      try {
-        provider = await web3Modal.connect();
-        web3 = new Web3(provider);
-        
-        // Get accounts
-        accounts = await web3.eth.getAccounts();
-        
-        // Initialize contracts
-        klyContract = new web3.eth.Contract(tokenABI, KLY_TOKEN);
-        stakeContract = new web3.eth.Contract(stakeABI, STAKE_CONTRACT);
-        nftContract = new web3.eth.Contract(nftABI, NFT_CONTRACT);
-        
-        // Update UI
-        updateUI();
-        
-        // Set up event listeners
-        provider.on("accountsChanged", () => window.location.reload());
-        provider.on("chainChanged", () => window.location.reload());
-        provider.on("disconnect", () => {
-          web3Modal.clearCachedProvider();
-          window.location.reload();
-        });
-        
-      } catch (error) {
-        console.error("Could not connect to wallet:", error);
       }
-    }
+    };
 
-    // Update UI with wallet data
-    async function updateUI() {
-      if (!accounts || accounts.length === 0) return;
-      
-      document.getElementById('connectWallet').textContent = accounts[0].slice(0, 6) + '...' + accounts[0].slice(-4);
-      
-      // Get staking data
-      const stakedAmount = await stakeContract.methods.getUserStake(accounts[0]).call();
-      document.getElementById('stakedValue').textContent = web3.utils.fromWei(stakedAmount, 'ether') + ' KLY';
-      
-      // Check for NFTs (simplified - would need proper NFT checking logic)
-      checkNFTs();
-    }
-
-    // Stake KLY tokens
-    async function stakeTokens() {
-      if (!accounts || accounts.length === 0) {
-        alert("Please connect your wallet first");
-        return;
-      }
-      
-      const amount = document.getElementById('stakeAmount').value;
-      if (!amount || amount <= 0) {
-        alert("Please enter a valid amount");
-        return;
-      }
-      
-      try {
-        // Approve tokens first
-        const amountWei = web3.utils.toWei(amount, 'ether');
-        await klyContract.methods.approve(STAKE_CONTRACT, amountWei).send({ from: accounts[0] });
-        
-        // Then stake
-        await stakeContract.methods.stake(amountWei).send({ from: accounts[0] });
-        
-        // Update UI
-        updateUI();
-        alert("Successfully staked " + amount + " KLY");
-        
-      } catch (error) {
-        console.error("Staking failed:", error);
-        alert("Staking failed: " + error.message);
-      }
-    }
-
-    // Mint NFT
-    async function mintNFT() {
-      if (!accounts || accounts.length === 0) {
-        alert("Please connect your wallet first");
-        return;
-      }
-      
-      try {
-        // For demo purposes - would need actual minting logic
-        document.getElementById('nftImage').src = "https://via.placeholder.com/150/00ffe7/000000?text=Ascender";
-        document.getElementById('nftName').textContent = "Ascender #1025";
-        
-        alert("Minting successful! Your Ascender NFT has been added to your wallet.");
-        
-      } catch (error) {
-        console.error("Minting failed:", error);
-        alert("Minting failed: " + error.message);
-      }
-    }
-
-    // Check for user's NFTs (simplified demo)
-    function checkNFTs() {
-      // In a real implementation, you would query the NFT contract for the user's tokens
-      // For demo, we'll just show a placeholder
-      document.getElementById('nftImage').src = "https://via.placeholder.com/150/00ffe7/000000?text=Ascender";
-      document.getElementById('nftName').textContent = "Ascender #1025";
-    }
-
-    // Initialize when page loads
-    window.addEventListener('load', async () => {
-      initWeb3Modal();
-      
-      // Set up button event listeners
-      document.getElementById('connectWallet').addEventListener('click', connectWallet);
-      document.getElementById('stakeBtn').addEventListener('click', stakeTokens);
-      document.getElementById('mintBtn').addEventListener('click', mintNFT);
-      
-      // Check if wallet is already connected
-      if (web3Modal.cachedProvider) {
-        await connectWallet();
-      }
+    web3Modal = new window.Web3Modal.default({
+      cacheProvider: true,
+      providerOptions,
+      theme: "dark"
     });
-  </script>
+  }
+
+  async function connectWallet() {
+    try {
+      provider = await web3Modal.connect();
+      web3 = new Web3(provider);
+      accounts = await web3.eth.getAccounts();
+
+      klyContract = new web3.eth.Contract(tokenABI, KLY_TOKEN);
+      stakeContract = new web3.eth.Contract(stakeABI, STAKE_CONTRACT);
+      nftContract = new web3.eth.Contract(nftABI, NFT_CONTRACT);
+
+      document.getElementById("connectWallet").textContent =
+        accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+
+      updateUI();
+
+      provider.on("accountsChanged", () => window.location.reload());
+      provider.on("chainChanged", () => window.location.reload());
+      provider.on("disconnect", () => {
+        web3Modal.clearCachedProvider();
+        window.location.reload();
+      });
+
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+    }
+  }
+
+  async function updateUI() {
+    if (!accounts || accounts.length === 0) return;
+    const stake = await stakeContract.methods.getUserStake(accounts[0]).call();
+    document.getElementById("stakedValue").textContent = web3.utils.fromWei(stake, 'ether') + " KLY";
+    checkNFTs();
+  }
+
+  async function stakeTokens() {
+    const amount = document.getElementById("stakeAmount").value;
+    if (!amount || amount <= 0) {
+      return alert("Enter a valid KLY amount");
+    }
+
+    const amountWei = web3.utils.toWei(amount, 'ether');
+    try {
+      await klyContract.methods.approve(STAKE_CONTRACT, amountWei).send({ from: accounts[0] });
+      await stakeContract.methods.stake(amountWei).send({ from: accounts[0] });
+      alert("Staked " + amount + " KLY!");
+      updateUI();
+    } catch (err) {
+      console.error("Staking failed:", err);
+      alert("Stake error: " + err.message);
+    }
+  }
+
+  async function mintNFT() {
+    const mockUri = "ipfs://QmMockAscenderNFTuri"; // Replace later with dropdown logic if needed
+    try {
+      await nftContract.methods.mintTo(accounts[0], mockUri).send({ from: accounts[0] });
+      document.getElementById("nftImage").src = "https://via.placeholder.com/150/00ffe7/000000?text=Ascender";
+      document.getElementById("nftName").textContent = "Ascender NFT Minted";
+      alert("NFT Minted!");
+    } catch (err) {
+      console.error("Mint failed:", err);
+      alert("Minting failed: " + err.message);
+    }
+  }
+
+  function checkNFTs() {
+    // Simplified; later can pull from contract
+    document.getElementById("nftImage").src = "https://via.placeholder.com/150/00ffe7/000000?text=Ascender";
+    document.getElementById("nftName").textContent = "Ascender #1025";
+  }
+
+  window.addEventListener("load", async () => {
+    initWeb3Modal();
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+    document.getElementById("stakeBtn").addEventListener("click", stakeTokens);
+    document.getElementById("mintBtn").addEventListener("click", mintNFT);
+    if (web3Modal.cachedProvider) await connectWallet();
+  });
+</script>
 </body>
 </html>
