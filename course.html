@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/@web3modal/ethers@2.6.1/dist/index.js"></script>
   <!-- Required Libraries -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -572,21 +574,27 @@ article p:active {
         <p class="subtitle">A <span class="serif-italic">transformational</span> journey into self-realization, presence, and embodied truth.</p>
       </div>
       
-      <div class="cta-container">
-        <button id="startCourseBtn" class="wisdom-cta">
-          <span class="cta-text">Begin Journey</span>
-          <span class="cta-icon">⌾</span>
-        </button>
-        
-        <p class="disclaimer" style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #8B4513; letter-spacing: 1px;">  
-          ✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧  
-        </p>
-        
-        <!-- Animated Triquetra -->
-        <svg id="triquetra" class="triquetra" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <path d="M50,15 L65,50 L50,85 L35,50 L50,15 M20,65 L50,50 L80,65 L65,50 L80,35 L50,50 L20,35 L35,50 L20,65"/>
-        </svg>
-      </div>
+    <div class="cta-container">
+  <button id="startCourseBtn" class="wisdom-cta">
+    <span class="cta-text">Begin Journey</span>
+    <span class="cta-icon">⌾</span>
+  </button>
+
+  <!-- Token-Gated Connect Wallet Button -->
+  <button id="connectWallet" class="wisdom-cta" style="margin-top:1.5rem;">
+    Connect Wallet to Unlock
+  </button>
+  <p id="walletStatus" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);"></p>
+
+  <p class="disclaimer" style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #8B4513; letter-spacing: 1px;">  
+    ✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧  
+  </p>
+
+  <!-- Animated Triquetra -->
+  <svg id="triquetra" class="triquetra" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,15 L65,50 L50,85 L35,50 L50,15 M20,65 L50,50 L80,65 L65,50 L80,35 L50,50 L20,35 L35,50 L20,65"/>
+  </svg>
+</div>
     </section>
 
     <!-- Progress Tracking -->
@@ -1117,7 +1125,60 @@ article p:active {
   </div>
   
 
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/@web3modal/ethers@2.6.1/dist/index.js"></script>
 <script>
+  const KLY_CONTRACT = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const MIN_BALANCE = 500;
+  let provider, signer, address;
+
+  const erc20ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
+
+  async function connectWallet() {
+    try {
+      const modal = new window.web3modal.EthersModal({
+        projectId: "demo", // Optional for WalletConnect
+        ethersConfig: {},
+        chains: [{ chainId: 56, name: 'BNB Smart Chain' }]
+      });
+
+      const connection = await modal.connect();
+      provider = new ethers.providers.Web3Provider(connection);
+      signer = provider.getSigner();
+      address = await signer.getAddress();
+
+      document.getElementById('walletStatus').innerText = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
+      checkKLYBalance();
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+      document.getElementById('walletStatus').innerText = "❌ Wallet connection failed.";
+    }
+  }
+
+  async function checkKLYBalance() {
+    try {
+      const token = new ethers.Contract(KLY_CONTRACT, erc20ABI, provider);
+      const rawBalance = await token.balanceOf(address);
+      const decimals = await token.decimals();
+      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+
+      if (balance >= MIN_BALANCE) {
+        document.getElementById('courseContent').style.display = 'block';
+        document.getElementById('walletStatus').innerText += ` | ✅ ${balance} KLY — Access Granted`;
+      } else {
+        document.getElementById('courseContent').style.display = 'none';
+        alert(`⛔ You need at least 500 KLY to access this course. Your balance: ${balance} KLY`);
+      }
+    } catch (error) {
+      console.error("Balance check failed:", error);
+    }
+  }
+
+  document.getElementById('connectWallet').addEventListener('click', connectWallet);
+  document.getElementById('courseContent').style.display = 'none';
     // Global variables
     let scene, camera, renderer, particleSystem;
 
