@@ -1470,30 +1470,39 @@
   }
 
   // Mint certificate as NFT
-  async function mintCertificateNFT() {
-    if (!state.signer) {
-      alert("Please connect your wallet first");
-      return;
-    }
-    
-    try {
-      elements.mintNFTBtn.textContent = "Minting...";
-      elements.mintNFTBtn.disabled = true;
-      
-      // In a real implementation, you would call your NFT contract here
-      // This is just a simulation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert("🎉 Certificate NFT minted successfully!");
-      elements.mintNFTBtn.textContent = "Mint as NFT";
-      elements.mintNFTBtn.disabled = false;
-    } catch (error) {
-      console.error("Minting error:", error);
-      alert("Failed to mint NFT. Please try again.");
-      elements.mintNFTBtn.textContent = "Mint as NFT";
-      elements.mintNFTBtn.disabled = false;
-    }
+ async function mintCertificateNFT() {
+  if (!state.signer || !state.address) {
+    alert("Please connect your wallet first");
+    return;
   }
+
+  try {
+    elements.mintNFTBtn.textContent = "Minting...";
+    elements.mintNFTBtn.disabled = true;
+
+    // Define NFT contract address and minimal ABI
+    const nftContractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+    const mintABI = ["function mintTo(address recipient, string uri) public"];
+
+    // Example NFT metadata URI (replace with your IPFS/Central URI)
+    const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
+
+    // Connect to NFT contract with signer
+    const nftContract = new ethers.Contract(nftContractAddress, mintABI, state.signer);
+
+    // Call mintTo function
+    const tx = await nftContract.mintTo(state.address, metadataURI);
+    await tx.wait();
+
+    alert("🎉 Certificate NFT minted successfully!");
+  } catch (error) {
+    console.error("Minting error:", error);
+    alert("❌ Failed to mint NFT. Please check your wallet and try again.");
+  } finally {
+    elements.mintNFTBtn.textContent = "Mint as NFT";
+    elements.mintNFTBtn.disabled = false;
+  }
+}
 
   // Toggle AR marker visibility
   function toggleAR() {
