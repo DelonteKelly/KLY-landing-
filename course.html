@@ -574,27 +574,21 @@ article p:active {
         <p class="subtitle">A <span class="serif-italic">transformational</span> journey into self-realization, presence, and embodied truth.</p>
       </div>
       
-    <div class="cta-container">
-  <button id="startCourseBtn" class="wisdom-cta">
-    <span class="cta-text">Begin Journey</span>
-    <span class="cta-icon">⌾</span>
-  </button>
+<div class="cta-container">
+    <button id="startCourseBtn" class="wisdom-cta">
+      <span class="cta-text">Begin Journey</span>
+      <span class="cta-icon">⌾</span>
+    </button>
 
-  <!-- Token-Gated Connect Wallet Button -->
-  <button id="connectWallet" class="wisdom-cta" style="margin-top:1.5rem;">
-    Connect Wallet to Unlock
-  </button>
-  <p id="walletStatus" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);"></p>
+    <button id="connectWallet" class="wisdom-cta">Connect Wallet to Unlock</button>
+    <p id="walletStatus"></p>
 
-  <p class="disclaimer" style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #8B4513; letter-spacing: 1px;">  
-    ✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧  
-  </p>
+    <p class="disclaimer">✧ For those who grasp the alchemical keys — the veil parts but for a moment. ✧</p>
 
-  <!-- Animated Triquetra -->
-  <svg id="triquetra" class="triquetra" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path d="M50,15 L65,50 L50,85 L35,50 L50,15 M20,65 L50,50 L80,65 L65,50 L80,35 L50,50 L20,35 L35,50 L20,65"/>
-  </svg>
-</div>
+    <svg class="triquetra" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50,15 L65,50 L50,85 L35,50 L50,15 M20,65 L50,50 L80,65 L65,50 L80,35 L50,50 L20,35 L35,50 L20,65"/>
+    </svg>
+  </div>
     </section>
 
     <!-- Progress Tracking -->
@@ -1125,24 +1119,27 @@ article p:active {
   </div>
   
 
+<!-- Include Web3 & 3D Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script src="https://unpkg.com/@web3modal/ethers@2.6.1/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+
 <script>
   const KLY_CONTRACT = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const MIN_BALANCE = 500;
-  let provider, signer, address;
-
   const erc20ABI = [
     "function balanceOf(address) view returns (uint256)",
     "function decimals() view returns (uint8)"
   ];
 
+  let provider, signer, address;
+
   async function connectWallet() {
     try {
       const modal = new window.web3modal.EthersModal({
-        projectId: "demo", // Optional for WalletConnect
+        projectId: "demo", // Optional
         ethersConfig: {},
-        chains: [{ chainId: 56, name: 'BNB Smart Chain' }]
+        chains: [{ chainId: 56, name: "BNB Smart Chain" }]
       });
 
       const connection = await modal.connect();
@@ -1150,26 +1147,26 @@ article p:active {
       signer = provider.getSigner();
       address = await signer.getAddress();
 
-      document.getElementById('walletStatus').innerText = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
+      document.getElementById("walletStatus").innerText = `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`;
       checkKLYBalance();
     } catch (err) {
       console.error("Wallet connection error:", err);
-      document.getElementById('walletStatus').innerText = "❌ Wallet connection failed.";
+      document.getElementById("walletStatus").innerText = "❌ Wallet connection failed.";
     }
   }
 
   async function checkKLYBalance() {
     try {
       const token = new ethers.Contract(KLY_CONTRACT, erc20ABI, provider);
-      const rawBalance = await token.balanceOf(address);
+      const raw = await token.balanceOf(address);
       const decimals = await token.decimals();
-      const balance = parseFloat(ethers.utils.formatUnits(rawBalance, decimals));
+      const balance = parseFloat(ethers.utils.formatUnits(raw, decimals));
 
       if (balance >= MIN_BALANCE) {
-        document.getElementById('courseContent').style.display = 'block';
-        document.getElementById('walletStatus').innerText += ` | ✅ ${balance} KLY — Access Granted`;
+        document.getElementById("courseContent").style.display = "block";
+        document.getElementById("walletStatus").innerText += ` | ✅ ${balance} KLY — Access Granted`;
       } else {
-        document.getElementById('courseContent').style.display = 'none';
+        document.getElementById("courseContent").style.display = "none";
         alert(`⛔ You need at least 500 KLY to access this course. Your balance: ${balance} KLY`);
       }
     } catch (error) {
@@ -1177,134 +1174,115 @@ article p:active {
     }
   }
 
-  document.getElementById('connectWallet').addEventListener('click', connectWallet);
-  document.getElementById('courseContent').style.display = 'none';
-    // Global variables
-    let scene, camera, renderer, particleSystem;
+  // Cosmic 3D Background
+  let scene, camera, renderer, particleSystem;
 
-    // Initialize 3D background with particles
-    function init3DBackground() {
-        // Scene setup
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('cosmicContainer').appendChild(renderer.domElement);
+  function init3DBackground() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById("cosmicContainer").appendChild(renderer.domElement);
 
-        // Sacred geometry
-        const geometry = new THREE.IcosahedronGeometry(2, 1);
-        const material = new THREE.MeshBasicMaterial({ 
-            color: 0xD4AF37, // Gold
-            wireframe: true,
-            transparent: true,
-            opacity: 0.3
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
+    const geometry = new THREE.IcosahedronGeometry(2, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xD4AF37, wireframe: true, transparent: true, opacity: 0.3 });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
 
-        // Particles system
-        const particles = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(1000 * 3);
-        const particleColors = new Float32Array(1000 * 3);
+    const particles = new THREE.BufferGeometry();
+    const pos = new Float32Array(1000 * 3);
+    const color = new Float32Array(1000 * 3);
 
-        for (let i = 0; i < 1000; i++) {
-            particlePositions[i * 3] = (Math.random() - 0.5) * 100;
-            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 100;
-            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+    for (let i = 0; i < 1000; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 100;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 100;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 100;
 
-            particleColors[i * 3] = 0.8 + Math.random() * 0.2; // Gold
-            particleColors[i * 3 + 1] = 0.6 + Math.random() * 0.2;
-            particleColors[i * 3 + 2] = 0.1 + Math.random() * 0.1;
-        }
-
-        particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        particles.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-
-        particleSystem = new THREE.Points(
-            particles,
-            new THREE.PointsMaterial({
-                size: 0.2,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8
-            })
-        );
-        scene.add(particleSystem);
-
-        camera.position.z = 5;
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            mesh.rotation.x += 0.001;
-            mesh.rotation.y += 0.002;
-            particleSystem.rotation.y += 0.0005;
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+      color[i * 3] = 0.8 + Math.random() * 0.2;
+      color[i * 3 + 1] = 0.6 + Math.random() * 0.2;
+      color[i * 3 + 2] = 0.1 + Math.random() * 0.1;
     }
 
-    // Toggle AR marker
-    function toggleAR() {
-        const arMarker = document.getElementById('arMarker');
-        if (arMarker.classList.contains('hidden')) {
-            arMarker.classList.remove('hidden');
-        } else {
-            arMarker.classList.add('hidden');
-        }
+    particles.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    particles.setAttribute("color", new THREE.BufferAttribute(color, 3));
+
+    particleSystem = new THREE.Points(particles, new THREE.PointsMaterial({
+      size: 0.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8
+    }));
+
+    scene.add(particleSystem);
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      mesh.rotation.x += 0.001;
+      mesh.rotation.y += 0.002;
+      particleSystem.rotation.y += 0.0005;
+      renderer.render(scene, camera);
     }
 
-    // Track module completion
-    function trackProgress() {
-        const checkboxes = document.querySelectorAll('.module-complete input[type="checkbox"]');
-        const progressBar = document.getElementById('progressBar');
-        const progressText = document.getElementById('progressText');
-        
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const completed = document.querySelectorAll('.module-complete input[type="checkbox"]:checked').length;
-                const total = checkboxes.length;
-                const percentage = Math.round((completed / total) * 100);
-                
-                progressBar.style.width = `${percentage}%`;
-                progressText.textContent = `${percentage}% Complete`;
-                
-                // Mark article as completed
-                if (this.checked) {
-                    this.closest('article').classList.add('completed');
-                } else {
-                    this.closest('article').classList.remove('completed');
-                }
-            });
-        });
-    }
+    animate();
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-        init3DBackground();
-        trackProgress();
-        
-        // Set up event listeners
-        document.getElementById('arToggleBtn').addEventListener('click', toggleAR);
-        document.getElementById('startCourseBtn').addEventListener('click', () => {
-            window.scrollTo({
-                top: document.getElementById('courseContent').offsetTop - 100,
-                behavior: 'smooth'
-            });
-        });
-        
-        // Simulate some progress for demo
-        setTimeout(() => {
-            document.getElementById('progressBar').style.width = '10%';
-            document.getElementById('progressText').textContent = '10% Complete';
-        }, 1000);
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
+  }
+
+  function toggleAR() {
+    const arMarker = document.getElementById("arMarker");
+    arMarker.classList.toggle("hidden");
+  }
+
+  function trackProgress() {
+    const checkboxes = document.querySelectorAll(".module-complete input[type='checkbox']");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener("change", function () {
+        const completed = document.querySelectorAll(".module-complete input[type='checkbox']:checked").length;
+        const total = checkboxes.length;
+        const percent = Math.round((completed / total) * 100);
+        progressBar.style.width = `${percent}%`;
+        progressText.textContent = `${percent}% Complete`;
+
+        if (this.checked) {
+          this.closest("article").classList.add("completed");
+        } else {
+          this.closest("article").classList.remove("completed");
+        }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    init3DBackground();
+    trackProgress();
+
+    document.getElementById("arToggleBtn")?.addEventListener("click", toggleAR);
+
+    document.getElementById("startCourseBtn")?.addEventListener("click", () => {
+      const target = document.getElementById("courseContent");
+      if (target) {
+        window.scrollTo({ top: target.offsetTop - 100, behavior: "smooth" });
+      }
+    });
+
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+
+    document.getElementById("courseContent").style.display = "none";
+
+    // Demo: preload partial progress
+    setTimeout(() => {
+      document.getElementById("progressBar").style.width = "10%";
+      document.getElementById("progressText").textContent = "10% Complete";
+    }, 1000);
+  });
 </script>
 </body>
 </html>
