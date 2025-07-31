@@ -1403,7 +1403,7 @@
     </div>
   </div>
 
-  <script>
+<script>
     // Contract addresses and ABIs
     const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
@@ -1434,6 +1434,8 @@
     // Create floating particles
     function createParticles() {
       const particlesContainer = document.getElementById('particles');
+      if (!particlesContainer) return;
+      
       const particleCount = window.innerWidth < 768 ? 20 : 50;
       
       for (let i = 0; i < particleCount; i++) {
@@ -1465,6 +1467,11 @@
 
     // Initialize Web3Modal
     async function initWeb3Modal() {
+      if (!window.Web3Modal || !window.WalletConnectProvider) {
+        console.error("Web3Modal or WalletConnectProvider not loaded");
+        return;
+      }
+      
       const providerOptions = {
         walletconnect: {
           package: window.WalletConnectProvider.default,
@@ -1478,7 +1485,7 @@
       };
       
       web3Modal = new window.Web3Modal.default({
-        cacheProvider: false,
+        cacheProvider: true,
         providerOptions,
         theme: {
           background: "var(--darker)",
@@ -1493,6 +1500,10 @@
     // Connect wallet
     async function connectWallet() {
       try {
+        if (!web3Modal) {
+          await initWeb3Modal();
+        }
+        
         connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
         
         const instance = await web3Modal.connect();
@@ -1597,41 +1608,47 @@
       showNotification("Wallet disconnected", "success");
     }
     
-// Show module with smooth scrolling
-function showModule(moduleId) {
-  // Hide all modules
-  document.querySelectorAll('.module').forEach(el => {
-    el.style.display = 'none';
-  });
-  
-  // Show selected module
-  const module = document.getElementById(moduleId);
-  module.style.display = 'block';
-  module.classList.add('animate__animated', 'animate__fadeIn');
-  
-  // Scroll to top of the module
-  module.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  
-  // Update active menu item
-  document.querySelectorAll('.menu-item').forEach(el => {
-    el.classList.remove('active');
-    const icon = el.querySelector('.menu-icon i');
-    icon.className = icon.className.replace('fas fa-check-circle', 'far fa-circle');
-  });
-  
-  const activeItem = document.querySelector(`.menu-item[onclick="showModule('${moduleId}')"]`);
-  if (activeItem) {
-    activeItem.classList.add('active');
-    const icon = activeItem.querySelector('.menu-icon i');
-    icon.className = 'fas fa-check-circle';
-  }
-  
-  // Mark module as completed if not already
-  if (!completedModules.includes(moduleId)) {
-    completedModules.push(moduleId);
-    updateProgress();
-  }
-}
+    // Show module with smooth scrolling
+    function showModule(moduleId) {
+      // Hide all modules
+      document.querySelectorAll('.module').forEach(el => {
+        el.style.display = 'none';
+      });
+      
+      // Show selected module
+      const module = document.getElementById(moduleId);
+      if (!module) return;
+      
+      module.style.display = 'block';
+      module.classList.add('animate__animated', 'animate__fadeIn');
+      
+      // Scroll to top of the module
+      module.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Update active menu item
+      document.querySelectorAll('.menu-item').forEach(el => {
+        el.classList.remove('active');
+        const icon = el.querySelector('.menu-icon i');
+        if (icon) {
+          icon.className = icon.className.replace('fas fa-check-circle', 'far fa-circle');
+        }
+      });
+      
+      const activeItem = document.querySelector(`.menu-item[onclick="showModule('${moduleId}')"]`);
+      if (activeItem) {
+        activeItem.classList.add('active');
+        const icon = activeItem.querySelector('.menu-icon i');
+        if (icon) {
+          icon.className = 'fas fa-check-circle';
+        }
+      }
+      
+      // Mark module as completed if not already
+      if (!completedModules.includes(moduleId)) {
+        completedModules.push(moduleId);
+        updateProgress();
+      }
+    }
     
     // Update progress bar
     function updateProgress() {
@@ -1639,11 +1656,11 @@ function showModule(moduleId) {
       const completed = completedModules.length;
       const percentage = (completed / totalModules) * 100;
       
-      progressBar.style.width = `${percentage}%`;
-      progressText.textContent = `${completed}/${totalModules}`;
+      if (progressBar) progressBar.style.width = `${percentage}%`;
+      if (progressText) progressText.textContent = `${completed}/${totalModules}`;
       
       // Enable mint button if all modules completed
-      if (completed === totalModules) {
+      if (completed === totalModules && mintBtn) {
         mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Mint NFT Certificate';
         mintBtn.disabled = false;
         mintBtn.classList.add('pulse');
@@ -1673,26 +1690,30 @@ function showModule(moduleId) {
           { gasLimit: gasEstimate.mul(120).div(100) }
         );
         
-        mintStatus.innerHTML = `
-          <div style="color: var(--accent); text-align: center;">
-            <i class="fas fa-spinner fa-spin"></i> Transaction submitted...
-            <div style="margin-top: 0.5rem;">
-              <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--accent)">
-                <i class="fas fa-external-link-alt"></i> View on BscScan
-              </a>
+        if (mintStatus) {
+          mintStatus.innerHTML = `
+            <div style="color: var(--accent); text-align: center;">
+              <i class="fas fa-spinner fa-spin"></i> Transaction submitted...
+              <div style="margin-top: 0.5rem;">
+                <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--accent)">
+                  <i class="fas fa-external-link-alt"></i> View on BscScan
+                </a>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
         
         await tx.wait();
         
         // Success
-        mintStatus.innerHTML = `
-          <div style="color: var(--success); text-align: center;">
-            <i class="fas fa-check-circle"></i> Certificate minted successfully!
-          </div>
-        `;
-        mintBtn.style.display = 'none';
+        if (mintStatus) {
+          mintStatus.innerHTML = `
+            <div style="color: var(--success); text-align: center;">
+              <i class="fas fa-check-circle"></i> Certificate minted successfully!
+            </div>
+          `;
+        }
+        if (mintBtn) mintBtn.style.display = 'none';
         
         // Celebrate!
         launchConfetti();
@@ -1701,18 +1722,24 @@ function showModule(moduleId) {
         // Update menu item
         document.querySelectorAll('.menu-item').forEach(item => {
           const icon = item.querySelector('.menu-icon i');
-          icon.className = 'fas fa-check-circle';
+          if (icon) {
+            icon.className = 'fas fa-check-circle';
+          }
         });
       } catch (error) {
         console.error("Minting error:", error);
         showNotification(`Minting failed: ${error.message}`, "error");
-        mintStatus.innerHTML = `
-          <div style="color: var(--danger); text-align: center;">
-            <i class="fas fa-times-circle"></i> Error: ${error.message}
-          </div>
-        `;
-        mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
-        mintBtn.disabled = false;
+        if (mintStatus) {
+          mintStatus.innerHTML = `
+            <div style="color: var(--danger); text-align: center;">
+              <i class="fas fa-times-circle"></i> Error: ${error.message}
+            </div>
+          `;
+        }
+        if (mintBtn) {
+          mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
+          mintBtn.disabled = false;
+        }
       }
     }
     
@@ -1801,7 +1828,7 @@ function showModule(moduleId) {
       await initWeb3Modal();
       
       // Check if wallet is already connected
-      if (web3Modal.cachedProvider) {
+      if (web3Modal && web3Modal.cachedProvider) {
         await connectWallet();
       }
       
@@ -1815,6 +1842,7 @@ function showModule(moduleId) {
     window.mintCertificate = mintCertificate;
     window.showModule = showModule;
     window.addBscNetwork = addBscNetwork;
-  </script>
+</script>
+
 </body>
 </html>
