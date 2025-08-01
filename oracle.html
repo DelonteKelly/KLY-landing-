@@ -1,20 +1,510 @@
-<section id="kly-oracle" style="background: radial-gradient(circle at center, #0d0d0d 0%, #000 100%); padding: 80px 0;">
-  <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px; text-align: center;">
-    <h2 class="section-title" style="color: #fff; font-family: 'Cinzel', serif; font-size: clamp(28px,3vw,42px); margin-bottom: 20px; text-shadow: 0 0 12px rgba(147,112,219,0.4);">
-      🔮 KLY Oracle
-    </h2>
-    <p style="color: #ccc; font-size: 16px; max-width: 600px; margin: 0 auto 30px;">
-      Connect your wallet & hold KLY tokens to unlock tiered access to the Oracle.
-    </p>
-    <div style="border-radius: 12px; overflow: hidden; box-shadow: 0 0 24px rgba(147,112,219,0.2);">
-   <iframe
-  src="https://oracle-kly-info5436.replit.app/"
-  width="100%"
-  height="1700px"
-  style="border: none; display: block;"
-  allowfullscreen
-  loading="eager">
-</iframe>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Oracle Scrolls</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        :root {
+            --parchment: #f5e9d9;
+            --ink: #3a3226;
+            --gold: #d4af37;
+            --magic-blue: #4fc3f7;
+            --magic-purple: #9c27b0;
+        }
+        
+        body {
+            font-family: 'Cinzel', 'Times New Roman', serif;
+            background-color: #0a0a12;
+            color: var(--ink);
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(79, 195, 247, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(156, 39, 176, 0.1) 0%, transparent 20%),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a0a12"/><path d="M0,0 L100,100 M100,0 L0,100" stroke="%23333" stroke-width="0.5"/></svg>');
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        @font-face {
+            font-family: 'Cinzel';
+            src: url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            position: relative;
+            perspective: 1000px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            color: var(--gold);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        h1::after {
+            content: "";
+            display: block;
+            width: 150px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            margin: 10px auto;
+        }
+        
+        .scroll-container {
+            position: relative;
+            padding: 2rem 0;
+            overflow: hidden;
+        }
+        
+        .scroll {
+            background-color: var(--parchment);
+            background-image: 
+                linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 5%),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20,20 Q30,10 40,20 T60,20 T80,20" fill="none" stroke="%233a3226" stroke-width="0.3" opacity="0.2"/></svg>');
+            padding: 3rem 4rem;
+            margin: 0 auto;
+            border-radius: 5px;
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.3),
+                0 0 60px rgba(79, 195, 247, 0.2);
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            border: 1px solid rgba(212, 180, 131, 0.5);
+        }
+        
+        .scroll.active {
+            max-height: 1000px;
+            opacity: 1;
+            animation: fadeIn 1.5s ease-out, glowPulse 8s infinite alternate;
+        }
+        
+        .scroll::before, .scroll::after {
+            content: "";
+            position: absolute;
+            height: 100%;
+            width: 40px;
+            top: 0;
+            background: 
+                linear-gradient(to right, var(--parchment), 
+                rgba(212, 180, 131, 0.7), 
+                var(--parchment));
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+        
+        .scroll::before {
+            left: -20px;
+            border-radius: 5px 0 0 5px;
+        }
+        
+        .scroll::after {
+            right: -20px;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .scroll-content {
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .initial-prompt {
+            font-size: 1.3em;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--magic-purple), var(--magic-blue));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right, 
+                rgba(255,255,255,0) 0%, 
+                rgba(255,255,255,0.8) 50%, 
+                rgba(255,255,255,0) 100%
+            );
+            transform: rotate(30deg);
+            transition: all 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        .oracle-message {
+            font-style: italic;
+            font-size: 1.4em;
+            line-height: 1.8;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-left: 3px solid var(--gold);
+            position: relative;
+            display: none;
+        }
+        
+        .oracle-message::before, .oracle-message::after {
+            content: """;
+            font-size: 3em;
+            color: var(--gold);
+            opacity: 0.3;
+            position: absolute;
+        }
+        
+        .oracle-message::before {
+            top: -10px;
+            left: -5px;
+        }
+        
+        .oracle-message::after {
+            bottom: -30px;
+            right: -5px;
+        }
+        
+        .creature {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            opacity: 0.7;
+            z-index: 1;
+            transition: all 0.5s ease;
+        }
+        
+        .phoenix {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,10 L60,40 L90,50 L60,60 L50,90 L40,60 L10,50 L40,40 Z" fill="%23d4af37"/></svg>');
+            top: -50px;
+            right: -50px;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .dragon {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,50 Q30,30 50,50 Q70,70 90,50" stroke="%239c27b0" stroke-width="2" fill="none"/></svg>');
+            bottom: -50px;
+            left: -50px;
+            animation: float 8s ease-in-out infinite 2s;
+        }
+        
+        .web3-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: rgba(15, 15, 25, 0.7);
+            border-radius: 10px;
+            border: 1px solid var(--magic-blue);
+            display: none;
+        }
+        
+        .web3-section h3 {
+            color: var(--magic-blue);
+            margin-top: 0;
+        }
+        
+        .wallet-address {
+            font-family: monospace;
+            word-break: break-all;
+            color: var(--gold);
+        }
+        
+        .nft-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .nft-item {
+            width: 100px;
+            height: 100px;
+            background-color: rgba(79, 195, 247, 0.1);
+            border: 1px solid var(--magic-blue);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            transition: all 0.3s;
+        }
+        
+        .nft-item:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px var(--magic-blue);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes glowPulse {
+            0% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.3), 0 0 60px rgba(79, 195, 247, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(212, 175, 55, 0.5), 0 0 80px rgba(79, 195, 247, 0.4); }
+            100% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.3), 0 0 60px rgba(79, 195, 247, 0.2); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        
+        .constellation {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 2s infinite alternate;
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .scroll {
+                padding: 2rem;
+            }
+            
+            .creature {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .phoenix {
+                top: -30px;
+                right: -30px;
+            }
+            
+            .dragon {
+                bottom: -30px;
+                left: -30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="constellation" id="constellation"></div>
+    
+    <div class="container">
+        <h1>Web3 Oracle Scrolls</h1>
+        
+        <div class="scroll-container">
+            <div class="creature phoenix"></div>
+            <div class="creature dragon"></div>
+            
+            <div class="scroll" id="oracleScroll">
+                <div class="scroll-content">
+                    <div class="initial-prompt">
+                        Focus your mind on your question, then invoke the Oracle to reveal your destiny. 
+                        The ancient wisdom of the blockchain awaits...
+                    </div>
+                    
+                    <button id="consultButton">Invoke the Oracle</button>
+                    
+                    <div class="oracle-message" id="oracleMessage"></div>
+                    
+                    <div class="web3-section" id="web3Section">
+                        <h3>Web3 Revelation</h3>
+                        <div id="walletInfo">
+                            <p>Connected Wallet: <span class="wallet-address" id="walletAddress">Not connected</span></p>
+                        </div>
+                        <div id="nftSection">
+                            <h4>Your Oracle NFTs</h4>
+                            <div class="nft-gallery" id="nftGallery">
+                                <!-- NFT items will be added here dynamically -->
+                            </div>
+                        </div>
+                        <button id="mintScroll">Mint Your Prophecy as NFT</button>
+                    </div>
+                    
+                    <button id="tryAgain" style="display: none;">Seek Further Wisdom</button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</section>
+
+    <script>
+        // Oracle messages with Web3 themes
+        const messages = [
+            "The blockchain whispers of a coming transformation. Prepare your wallet for unexpected abundance.",
+            "When the gas fees are low and the moon is in retrograde, your transaction shall find favor.",
+            "A smart contract in your future bears unexpected fruit. Verify all variables before signing.",
+            "The DAO of your destiny votes unanimously: the path forward is decentralized.",
+            "Beware the 51st hour, when whales may surface to test your resolve.",
+            "Your seed phrase holds more power than you know. Guard it as the dragons guard their gold.",
+            "The merge is coming, and with it, a new era for your digital assets.",
+            "Look to Layer 2 for solutions when the mainnet grows congested.",
+            "The NFTs in your collection will soon reveal their true utility.",
+            "A cross-chain bridge appears in your future. Tread carefully and verify all contracts.",
+            "The oracle nodes speak as one: your verification is imminent.",
+            "When the bear market ends, your patience will be rewarded sevenfold."
+        ];
+        
+        // Generate constellation
+        function createConstellation() {
+            const container = document.getElementById('constellation');
+            const starCount = 50;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.animationDelay = `${Math.random() * 2}s`;
+                star.style.width = `${1 + Math.random() * 2}px`;
+                star.style.height = star.style.width;
+                container.appendChild(star);
+            }
+            
+            // Connect some stars to form constellations
+            const stars = document.querySelectorAll('.star');
+            const connections = Math.floor(starCount / 3);
+            
+            for (let i = 0; i < connections; i++) {
+                const star1 = stars[Math.floor(Math.random() * stars.length)];
+                const star2 = stars[Math.floor(Math.random() * stars.length)];
+                
+                const line = document.createElement('div');
+                line.style.position = 'absolute';
+                line.style.backgroundColor = 'rgba(79, 195, 247, 0.3)';
+                line.style.height = '1px';
+                
+                const x1 = parseFloat(star1.style.left);
+                const y1 = parseFloat(star1.style.top);
+                const x2 = parseFloat(star2.style.left);
+                const y2 = parseFloat(star2.style.top);
+                
+                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                
+                line.style.width = `${length}%`;
+                line.style.left = `${x1}%`;
+                line.style.top = `${y1}%`;
+                line.style.transformOrigin = '0 0';
+                line.style.transform = `rotate(${angle}deg)`;
+                line.style.zIndex = '0';
+                
+                container.appendChild(line);
+            }
+        }
+        
+        // Initialize Web3 (mock implementation - replace with actual Web3 integration)
+        async function initWeb3() {
+            // In a real implementation, this would connect to a wallet like MetaMask
+            console.log("Initializing Web3...");
+            
+            // Mock connection after delay
+            setTimeout(() => {
+                document.getElementById('walletAddress').textContent = "0x7f...3a4b";
+                document.getElementById('nftGallery').innerHTML = `
+                    <div class="nft-item">🔮</div>
+                    <div class="nft-item">🌌</div>
+                    <div class="nft-item">⚡</div>
+                `;
+            }, 1500);
+        }
+        
+        // Unfurl the scroll
+        function unfurlScroll() {
+            const scroll = document.getElementById('oracleScroll');
+            scroll.classList.add('active');
+        }
+        
+        // Display a random oracle message
+        function displayOracleMessage() {
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            const messageElement = document.getElementById('oracleMessage');
+            
+            messageElement.textContent = randomMessage;
+            messageElement.style.display = 'block';
+            
+            // Show Web3 section for some messages
+            if (Math.random() > 0.5) {
+                document.getElementById('web3Section').style.display = 'block';
+                initWeb3();
+            }
+            
+            document.getElementById('consultButton').style.display = 'none';
+            document.getElementById('tryAgain').style.display = 'block';
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            createConstellation();
+            unfurlScroll();
+            
+            document.getElementById('consultButton').addEventListener('click', displayOracleMessage);
+            
+            document.getElementById('tryAgain').addEventListener('click', () => {
+                document.getElementById('oracleMessage').style.display = 'none';
+                document.getElementById('web3Section').style.display = 'none';
+                document.getElementById('consultButton').style.display = 'block';
+                document.getElementById('tryAgain').style.display = 'none';
+            });
+            
+            document.getElementById('mintScroll').addEventListener('click', () => {
+                alert("In a full implementation, this would mint an NFT of your prophecy on the blockchain!");
+            });
+        });
+    </script>
+</body>
+</html>
