@@ -1355,13 +1355,11 @@ header {
   </div>
 
 <script>
-  // Updated Configuration for Stake Contract
   const CONFIG = {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
     STAKE_CONTRACT: "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0",
-    MIN_STAKE: 100, // Minimum KLY tokens required to stake
+    MIN_STAKE: 100,
     stakingABI: [
-      // Stake Contract ABI
       "function stake(uint256 amount) external",
       "function unstake(uint256 amount) external",
       "function claim() external",
@@ -1370,222 +1368,168 @@ header {
       "function totalValueLocked() external view returns (uint256)"
     ],
     erc20ABI: [
-      // KLY Token ABI
       "function balanceOf(address) view returns (uint256)",
       "function approve(address spender, uint256 amount) returns (bool)",
       "function decimals() view returns (uint8)"
     ]
   };
 
-  // Enhanced State Management
   const state = {
     provider: null,
     signer: null,
     contract: null,
     tokenContract: null,
     address: null,
-    stakedBalance: 0,
-    pendingRewards: 0,
-    tokenBalance: 0,
-    tvl: 0
+    decimals: 18,
+    tokenBalance: 0
   };
 
-  // DOM Elements for Staking Interface
   const elements = {
     connectWallet: document.getElementById("connectWallet"),
-    walletAddress: document.getElementById("walletAddress"),
+    disconnectWallet: document.getElementById("disconnectWallet"),
     stakeAmount: document.getElementById("stakeAmount"),
-    stakeButton: document.getElementById("stakeButton"),
-    unstakeButton: document.getElementById("unstakeButton"),
-    claimButton: document.getElementById("claimButton"),
-    stakedBalance: document.getElementById("stakedBalance"),
-    pendingRewards: document.getElementById("pendingRewards"),
-    tokenBalance: document.getElementById("tokenBalance"),
-    tvlDisplay: document.getElementById("tvlDisplay"),
+    stakeBtn: document.getElementById("stakeBtn"),
+    unstakeBtn: document.getElementById("unstakeBtn"),
+    claimBtn: document.getElementById("claimBtn"),
+    stakedValue: document.getElementById("stakedValue"),
+    rewardValue: document.getElementById("rewardValue"),
+    tvlValue: document.getElementById("tvlValue"),
+    maxBtn: document.getElementById("maxBtn"),
     transactionStatus: document.getElementById("transactionStatus")
   };
 
-  // Initialize the staking interface
-  async function initStakingApp() {
-    try {
-      setupEventListeners();
-      
-      // Check if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        await connectWallet();
-      }
-    } catch (error) {
-      console.error("Initialization error:", error);
-      showError("Failed to initialize. Please refresh the page.");
-    }
-  }
-
-  // Connect Wallet Function
   async function connectWallet() {
     try {
-      // Request account access
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       state.address = accounts[0];
-      
-      // Initialize providers and contracts
       state.provider = new ethers.providers.Web3Provider(window.ethereum);
       state.signer = state.provider.getSigner();
-      
-      // Initialize contracts
-      state.tokenContract = new ethers.Contract(
-        CONFIG.KLY_TOKEN,
-        CONFIG.erc20ABI,
-        state.signer
-      );
-      
-      state.contract = new ethers.Contract(
-        CONFIG.STAKE_CONTRACT,
-        CONFIG.stakingABI,
-        state.signer
-      );
-      
-      // Update UI
-      updateWalletDisplay();
+      state.tokenContract = new ethers.Contract(CONFIG.KLY_TOKEN, CONFIG.erc20ABI, state.signer);
+      state.contract = new ethers.Contract(CONFIG.STAKE_CONTRACT, CONFIG.stakingABI, state.signer);
+
+      state.decimals = await state.tokenContract.decimals();
+
+      elements.connectWallet.style.display = "none";
+      elements.disconnectWallet.style.display = "inline-block";
+
       await updateStakingData();
-      
-      // Set up event listeners
-      window.ethereum.on('accountsChanged', () => window.location.reload());
-      window.ethereum.on('chainChanged', () => window.location.reload());
-      
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      showError("Wallet connection failed");
+    } catch (err) {
+      showError("Wallet connection failed.");
     }
   }
 
-  // Update Staking Data
   async function updateStakingData() {
-    try {
-      // Get all data in parallel
-      const [balance, staked, rewards, tvl] = await Promise.all([
-        state.tokenContract.balanceOf(state.address),
-        state.contract.getUserStake(state.address),
-        state.contract.getPendingRewards(state.address),
-        state.contract.totalValueLocked()
-      ]);
-      
-      // Update state
-      state.tokenBalance = ethers.utils.formatUnits(balance, 18);
-      state.stakedBalance = ethers.utils.formatUnits(staked, 18);
-      state.pendingRewards = ethers.utils.formatUnits(rewards, 18);
-      state.tvl = ethers.utils.formatUnits(tvl, 18);
-      
-      // Update UI
-      elements.tokenBalance.textContent = state.tokenBalance;
-      elements.stakedBalance.textContent = state.stakedBalance;
-      elements.pendingRewards.textContent = state.pendingRewards;
-      elements.tvlDisplay.textContent = state.tvl;
-      
-    } catch (error) {
-      console.error("Data update error:", error);
-      showError("Failed to update staking data");
-    }
+    const [balance, staked, rewards, tvl] = await Promise.all([
+      state.tokenContract.balanceOf(state.address),
+      state.contract.getUserStake(state.address),
+      state.contract.getPendingRewards(state.address),
+      state.contract.totalValueLocked()
+    ]);
+
+    state.tokenBalance = ethers.utils.formatUnits(balance, state.decimals);
+    elements.stakedValue.textContent = ethers.utils.formatUnits(staked, state.decimals) + " KLY";
+    elements.rewardValue.textContent = ethers.utils.formatUnits(rewards, state.decimals) + " KLY";
+    elements.tvlValue.textContent = ethers.utils.formatUnits(tvl, state.decimals) + " KLY";
   }
 
-  // Stake Tokens
   async function stakeTokens() {
-    const amount = elements.stakeAmount.value;
-    if (!amount || amount <= 0) {
-      showError("Please enter a valid amount");
-      return;
+    const amount = parseFloat(elements.stakeAmount.value);
+    if (!amount || amount < CONFIG.MIN_STAKE) {
+      return showError(`Minimum stake is ${CONFIG.MIN_STAKE} KLY`);
     }
-    
+
     try {
-      showStatus("Approving tokens...");
-      
-      // Approve token transfer
-      const amountWei = ethers.utils.parseUnits(amount, 18);
-      const approveTx = await state.tokenContract.approve(CONFIG.STAKE_CONTRACT, amountWei);
-      await approveTx.wait();
-      
+      showStatus("Approving KLY...");
+      const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
+      const approval = await state.tokenContract.approve(CONFIG.STAKE_CONTRACT, amountWei);
+      await approval.wait();
+
       showStatus("Staking tokens...");
-      const stakeTx = await state.contract.stake(amountWei);
-      await stakeTx.wait();
-      
-      showStatus("Staking successful!");
+      const tx = await state.contract.stake(amountWei);
+      await tx.wait();
+
+      showToast("Staked successfully!", "success");
       await updateStakingData();
-      
-    } catch (error) {
-      console.error("Staking error:", error);
-      showError(`Staking failed: ${error.message}`);
+    } catch (err) {
+      showToast("Staking failed: " + err.message, "error");
     }
   }
 
-  // Unstake Tokens
   async function unstakeTokens() {
-    const amount = elements.stakeAmount.value;
+    const amount = parseFloat(elements.stakeAmount.value);
     if (!amount || amount <= 0) {
-      showError("Please enter a valid amount");
-      return;
+      return showError("Enter a valid unstake amount.");
     }
-    
+
     try {
-      showStatus("Processing unstake...");
-      const amountWei = ethers.utils.parseUnits(amount, 18);
+      const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
+      showStatus("Unstaking...");
       const tx = await state.contract.unstake(amountWei);
       await tx.wait();
-      
-      showStatus("Tokens unstaked successfully!");
+      showToast("Unstaked successfully!", "success");
       await updateStakingData();
-      
-    } catch (error) {
-      console.error("Unstaking error:", error);
-      showError(`Unstaking failed: ${error.message}`);
+    } catch (err) {
+      showToast("Unstaking failed: " + err.message, "error");
     }
   }
 
-  // Claim Rewards
   async function claimRewards() {
     try {
       showStatus("Claiming rewards...");
       const tx = await state.contract.claim();
       await tx.wait();
-      
-      showStatus("Rewards claimed successfully!");
+      showToast("Rewards claimed!", "success");
       await updateStakingData();
-      
-    } catch (error) {
-      console.error("Claim error:", error);
-      showError(`Claim failed: ${error.message}`);
+    } catch (err) {
+      showToast("Claim failed: " + err.message, "error");
     }
   }
 
-  // Helper Functions
-  function updateWalletDisplay() {
-    elements.walletAddress.textContent = `${state.address.slice(0, 6)}...${state.address.slice(-4)}`;
-    elements.connectWallet.textContent = "Connected";
+  // Toast helper
+  function showToast(message, type = "success") {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast ${type} show`;
+    toast.innerHTML = `
+      <span class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i></span>
+      <span class="toast-message">${message}</span>
+      <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
   }
 
-  function showStatus(message) {
-    elements.transactionStatus.textContent = message;
+  function showStatus(msg) {
+    elements.transactionStatus.textContent = msg;
     elements.transactionStatus.style.color = "var(--success-color)";
   }
 
-  function showError(message) {
-    elements.transactionStatus.textContent = message;
+  function showError(msg) {
+    elements.transactionStatus.textContent = msg;
     elements.transactionStatus.style.color = "var(--error-color)";
   }
 
-  // Set up event listeners
-  function setupEventListeners() {
+  function setupListeners() {
     elements.connectWallet.addEventListener("click", connectWallet);
-    elements.stakeButton.addEventListener("click", stakeTokens);
-    elements.unstakeButton.addEventListener("click", unstakeTokens);
-    elements.claimButton.addEventListener("click", claimRewards);
-    
-    // Max button functionality
-    document.getElementById("maxButton")?.addEventListener("click", () => {
-      elements.stakeAmount.value = state.tokenBalance;
-    });
+    elements.disconnectWallet.addEventListener("click", () => window.location.reload());
+    elements.stakeBtn.addEventListener("click", stakeTokens);
+    elements.unstakeBtn.addEventListener("click", unstakeTokens);
+    elements.claimBtn.addEventListener("click", claimRewards);
+
+    if (elements.maxBtn) {
+      elements.maxBtn.addEventListener("click", () => {
+        elements.stakeAmount.value = state.tokenBalance;
+      });
+    }
   }
 
-  // Initialize when page loads
-  window.addEventListener("load", initStakingApp);
+  window.addEventListener("load", () => {
+    if (window.ethereum) {
+      setupListeners();
+    } else {
+      showError("MetaMask or Web3 wallet not detected.");
+    }
+  });
 </script>
 </body>
 </html>
