@@ -647,17 +647,17 @@ header {
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script>
+<script>
     // Contract addresses
     const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
     const STAKE_CONTRACT = "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0";
     const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
     
-    // IPFS configuration
+    // IPFS configuration with your provided credentials
     const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
-    const PINATA_API_KEY = "YOUR_PINATA_API_KEY";
-    const PINATA_SECRET = "YOUR_PINATA_SECRET";
-    
+    const PINATA_API_KEY = "07f903243a423840b786";
+    const PINATA_SECRET = "8da374050be27a57aa87e2cca74052b141af0564e21382667ed80cb7c8cc1cf2";
+    const PINATA_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIyMjJhODQ5MS1iNmRjLTRjZjEtODRkNS00MWFlMTJmNzJlMDEiLCJlbWFpbCI6ImluZm9Aa2VsbHlsZWdhY3llc3RhdGVzLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6IkZSQTEifSx7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6Ik5ZQzEifV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiIwN2Y5MDMyNDNhNDIzODQwYjc4NiIsInNjb3BlZEtleVNlY3JldCI6IjhkYTM3NDA1MGJlMjdhNTdhYTg3ZTJjY2E3NDA1MmIxNDFhZjA1NjRlMjEzODI2NjdlZDgwY2I3YzhjYzFjZjIiLCJleHAiOjE3ODU1NDMzNDJ9.Yguy-DZ1LFc2n7q0qgyzIqvhCWssbtx0LkDNqLi1R6o";
     // Contract ABIs (simplified)
     const tokenABI = [
       {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
@@ -804,30 +804,29 @@ header {
       document.getElementById('txModal').style.display = 'flex';
     }
     
-    // Upload metadata to IPFS via Pinata
-    async function uploadToIpfs(metadata) {
-      try {
-        const data = JSON.stringify({
-          pinataContent: metadata,
-          pinataOptions: {
-            cidVersion: 1
-          }
-        });
-        
-        const response = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', data, {
-          headers: {
-            'Content-Type': 'application/json',
-            'pinata_api_key': PINATA_API_KEY,
-            'pinata_secret_api_key': PINATA_SECRET
-          }
-        });
-        
-        return `ipfs://${response.data.IpfsHash}`;
-      } catch (error) {
-        console.error("Error uploading to IPFS:", error);
-        throw error;
+  // Upload metadata to IPFS via Pinata
+async function uploadToIpfs(metadata) {
+  try {
+    const data = JSON.stringify({
+      pinataContent: metadata,
+      pinataOptions: {
+        cidVersion: 1
       }
-    }
+    });
+    
+    const response = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', data, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PINATA_JWT}`
+      }
+    });
+    
+    return `ipfs://${response.data.IpfsHash}`;
+  } catch (error) {
+    console.error("Error uploading to IPFS:", error);
+    throw error;
+  }
+}
     
     // Connect wallet
     async function connectWallet() {
