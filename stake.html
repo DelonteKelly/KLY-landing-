@@ -11,6 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/GlitchPass.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BloomPass.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.1.2/chroma.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ascension Portal | KLY Token</title>
@@ -40,6 +41,8 @@
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -56,6 +59,26 @@ body {
     radial-gradient(circle at 20% 30%, rgba(0, 255, 231, 0.05) 0%, transparent 20%),
     radial-gradient(circle at 80% 70%, rgba(170, 0, 255, 0.05) 0%, transparent 20%),
     linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.95));
+}
+
+/* Quantum Energy Grid Background */
+.quantum-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(rgba(0, 255, 231, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 231, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  z-index: -2;
+  animation: gridMove 120s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 1000px 1000px; }
 }
 
 /* Animated background elements */
@@ -125,8 +148,19 @@ body {
   to { transform: translateY(-100vh); }
 }
 
+/* Holographic Interface Elements */
+.holographic-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+  box-shadow: 0 0 10px var(--neon-green);
+  transform-origin: left center;
+  z-index: 1;
+}
+
+/* Main Header */
 header {
-  background: var(--panel-bg);
+  background: rgba(0, 0, 0, 0.7);
   border-bottom: 1px solid var(--neon-green);
   box-shadow: var(--glow-green);
   padding: 1rem 2rem;
@@ -135,7 +169,8 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .logo {
@@ -147,6 +182,26 @@ header {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+}
+
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--neon-green), var(--neon-purple));
+  box-shadow: var(--glow-green);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.5s ease;
+}
+
+.logo:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .logo-icon {
@@ -220,26 +275,18 @@ header {
     0 0 0 2px rgba(0, 255, 231, 0.5);
 }
 
-/* Mobile menu */
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--neon-green);
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-
-/* Hero section */
+/* Hero Section with 3D Portal */
 .hero {
   position: relative;
   padding: 4rem 2rem;
   text-align: center;
   overflow: hidden;
-  height: 60vh;
+  height: 80vh;
+  min-height: 600px;
   display: flex;
   align-items: center;
   justify-content: center;
+  isolation: isolate;
 }
 
 .hero::before {
@@ -260,53 +307,111 @@ header {
   margin: 0 auto;
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-@media (max-width: 768px) {
-  #portal3d-container {
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-    width: 90vw;
-    height: 300px;
-    margin: 0 auto 2rem;
-  }
-
-  .portal-overlay-text {
-    position: static;
-    transform: none;
-    margin-bottom: 1.5rem;
-    text-align: center;
-  }
-
-  .portal-overlay-text h2 {
-    font-size: 2rem;
-  }
-
-  .portal-overlay-text p {
-    font-size: 1rem;
-  }
-
-  .portal-container {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-  }
-
-  .portal-header h1 {
-    font-size: 2.2rem;
-  }
-
-  .portal-header p {
-    font-size: 1rem;
-    padding: 0 1rem;
-  }
+#portal3d-container {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  margin: 0 auto;
+  z-index: 1;
 }
-/* Animated gradient border */
+
+#portal3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.portal-overlay-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+  width: 100%;
+}
+
+.portal-overlay-text h2 {
+  font-size: 3rem;
+  color: var(--neon-green);
+  text-shadow: 0 0 20px var(--neon-green);
+  margin-bottom: 1rem;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  font-weight: 900;
+  animation: textGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes textGlow {
+  0% { text-shadow: 0 0 10px var(--neon-green); }
+  100% { text-shadow: 0 0 30px var(--neon-green), 0 0 50px var(--neon-purple); }
+}
+
+.portal-overlay-text p {
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  text-shadow: 0 0 10px var(--neon-green);
+  letter-spacing: 2px;
+}
+
+.portal-header {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.portal-header h1 {
+  font-size: 4rem;
+  background: linear-gradient(45deg, var(--neon-green), var(--neon-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(0, 255, 231, 0.3);
+  letter-spacing: 5px;
+  margin-bottom: 1rem;
+  animation: titleGlow 5s ease infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.portal-header p {
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.6;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Main Content Grid */
+.portal-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  position: relative;
+}
+
+/* Glassmorphism Panels */
 .gradient-border {
   position: relative;
   border-radius: 16px;
   overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 255, 231, 0.1);
+  transition: all 0.5s ease;
 }
 
 .gradient-border::before {
@@ -327,6 +432,7 @@ header {
   z-index: -1;
   border-radius: 18px;
   animation: gradient-border 6s ease infinite;
+  opacity: 0.7;
 }
 
 @keyframes gradient-border {
@@ -336,18 +442,17 @@ header {
 }
 
 .stake-panel, .nft-panel {
-  background: var(--panel-bg);
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(0, 255, 231, 0.2);
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 0 20px rgba(0, 255, 231, 0.1);
   transition: all var(--transition-medium) ease;
   position: relative;
   overflow: hidden;
 }
 
 .stake-panel:hover, .nft-panel:hover {
-  transform: translateY(-5px);
+  transform: translateY(-5px) scale(1.01);
   box-shadow: 0 10px 30px rgba(0, 255, 231, 0.3);
 }
 
@@ -370,8 +475,17 @@ header {
   height: 2px;
   background: var(--neon-green);
   box-shadow: var(--glow-green);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.5s ease;
 }
 
+.panel-title:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Stats Grid */
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -385,6 +499,24 @@ header {
   border-radius: 8px;
   padding: 1rem;
   transition: all var(--transition-medium) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 231, 0.05) 0%,
+    rgba(170, 0, 255, 0.05) 50%,
+    rgba(0, 255, 231, 0.05) 100%
+  );
+  z-index: 0;
 }
 
 .stat-item:hover {
@@ -399,6 +531,8 @@ header {
   display: flex;
   align-items: center;
   gap: 5px;
+  position: relative;
+  z-index: 1;
 }
 
 .stat-value {
@@ -406,8 +540,11 @@ header {
   color: var(--neon-green);
   font-weight: bold;
   text-shadow: 0 0 5px var(--neon-green);
+  position: relative;
+  z-index: 1;
 }
 
+/* Interactive Buttons */
 .wallet-btn {
   width: 100%;
   padding: 1rem;
@@ -425,6 +562,7 @@ header {
   overflow: hidden;
   text-transform: uppercase;
   letter-spacing: 1px;
+  z-index: 1;
 }
 
 .wallet-btn::after {
@@ -453,6 +591,7 @@ header {
   box-shadow: 0 0 25px var(--neon-purple);
 }
 
+/* Form Elements */
 .stake-form {
   margin-top: 1.5rem;
 }
@@ -543,6 +682,7 @@ header {
   box-shadow: 0 0 25px var(--neon-blue);
 }
 
+/* NFT Display */
 .nft-display {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--neon-green);
@@ -584,6 +724,7 @@ header {
   transition: all var(--transition-medium) ease;
   position: relative;
   z-index: 1;
+  border: 2px solid var(--neon-green);
 }
 
 .nft-image:hover {
@@ -928,6 +1069,7 @@ header {
   width: 100%;
   height: 5px;
   background: var(--neon-green);
+  box-shadow: var(--glow-green);
 }
 
 .tier.tier-1::before {
@@ -1225,12 +1367,132 @@ header {
   }
   
   .hero {
-    height: 50vh;
+    height: 70vh;
   }
+}
+
+/* Holographic Data Visualization */
+.data-visualization {
+  position: relative;
+  height: 200px;
+  margin: 2rem 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--neon-green);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.data-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+.data-point {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--neon-green);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+/* Energy Pulse Effect */
+@keyframes pulseEnergy {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.pulse {
+  animation: pulseEnergy 2s infinite ease-in-out;
+}
+
+/* Digital Rain Effect (for future use) */
+.digital-rain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* Floating UI Elements */
+.floating-element {
+  position: absolute;
+  animation: float 8s ease-in-out infinite;
+}
+
+/* Special Effects for Large Stakes */
+.mega-stake-effect {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0, 255, 231, 0.2) 0%, transparent 70%);
+  z-index: 1001;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+/* 3D Card Flip Effect */
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 1s;
+}
+
+.card-3d:hover {
+  transform: rotateY(15deg) rotateX(10deg);
+}
+
+/* Advanced Glow Effects */
+.glow-text {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.glow-box {
+  box-shadow: 0 0 20px currentColor;
+}
+
+/* Cyberpunk Scanlines Overlay */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(
+      rgba(0, 255, 231, 0.03) 1px, 
+      transparent 1px
+    );
+  background-size: 100% 2px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.3;
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  from { background-position: 0 0; }
+  to { background-position: 0 100%; }
 }
   </style>
 </head>
 <body>
+  <!-- Quantum Energy Grid Background -->
+  <div class="quantum-grid"></div>
+  
   <!-- Background elements -->
   <div class="background-element"></div>
   <div class="background-element"></div>
@@ -1238,6 +1500,9 @@ header {
   
   <!-- Particle effects -->
   <div class="particles" id="particles"></div>
+  
+  <!-- Cyberpunk Scanlines Effect -->
+  <div class="scanlines"></div>
   
   <!-- Toast notifications container -->
   <div class="toast-container" id="toastContainer"></div>
@@ -1505,11 +1770,15 @@ header {
     </div>
   </div>
 
+  <!-- Mega Stake Effect (hidden by default) -->
+  <div class="mega-stake-effect" id="megaStakeEffect"></div>
+
 <script>
-  // Enhanced 3D Portal with Effects
+  // Enhanced 3D Portal with Advanced Effects
   let portalScene, portalCamera, portalRenderer, portal, composer;
   let isMouseOver = false;
   let mouseX = 0, mouseY = 0;
+  let particleSystem;
   
   function initPortal() {
     // Scene setup
@@ -1520,21 +1789,22 @@ header {
     portalCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
     portalCamera.position.z = 30;
     
-    // Renderer setup
+    // Renderer setup with enhanced settings
     portalRenderer = new THREE.WebGLRenderer({ 
       antialias: true,
-      alpha: true 
+      alpha: true,
+      powerPreference: "high-performance"
     });
-    portalRenderer.setPixelRatio(window.devicePixelRatio);
+    portalRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     portalRenderer.setSize(600, 600);
     portalRenderer.domElement.style.width = '100%';
     portalRenderer.domElement.style.height = '100%';
     document.getElementById('portal3d').appendChild(portalRenderer.domElement);
     
-    // Create portal geometry - more complex shape
+    // Create complex portal geometry
     const geometry = new THREE.TorusKnotGeometry(8, 3, 256, 32);
     
-    // Advanced material with emissive properties
+    // Advanced material with multiple effects
     const material = new THREE.MeshPhongMaterial({
       color: 0x000000,
       emissive: 0x00ff00,
@@ -1543,67 +1813,119 @@ header {
       shininess: 100,
       transparent: true,
       opacity: 0.9,
-      wireframe: true
+      wireframe: true,
+      wireframeLinewidth: 2
     });
     
     portal = new THREE.Mesh(geometry, material);
     portalScene.add(portal);
     
-    // Add ambient and directional light
+    // Enhanced lighting setup
     const ambientLight = new THREE.AmbientLight(0x00ff00, 0.3);
     portalScene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0x00ff88, 1);
-    directionalLight.position.set(1, 1, 1);
-    portalScene.add(directionalLight);
+    const directionalLight1 = new THREE.DirectionalLight(0x00ff88, 1);
+    directionalLight1.position.set(1, 1, 1);
+    portalScene.add(directionalLight1);
     
-    // Add glowing particles inside portal
-    const particleGeometry = new THREE.BufferGeometry();
-    const particleCount = 1000;
+    const directionalLight2 = new THREE.DirectionalLight(0xaa00ff, 0.5);
+    directionalLight2.position.set(-1, -1, 1);
+    portalScene.add(directionalLight2);
+    
+    // Create particle system with more complexity
+    const particleCount = 2000;
+    const particles = new THREE.BufferGeometry();
     const posArray = new Float32Array(particleCount * 3);
+    const colorArray = new Float32Array(particleCount * 3);
+    const sizeArray = new Float32Array(particleCount);
     
     for(let i = 0; i < particleCount * 3; i++) {
       posArray[i] = (Math.random() - 0.5) * 20;
+      
+      // Color particles based on position
+      if(i % 3 === 0) {
+        colorArray[i] = 0.2 + Math.random() * 0.8; // R
+        colorArray[i+1] = 0.5 + Math.random() * 0.5; // G
+        colorArray[i+2] = 0.7 + Math.random() * 0.3; // B
+      }
+      
+      if(i % 3 === 0) {
+        sizeArray[i/3] = 0.1 + Math.random() * 0.3;
+      }
     }
     
-    particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    particles.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    particles.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+    particles.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
     
     const particleMaterial = new THREE.PointsMaterial({
-      size: 0.1,
-      color: 0x00ff00,
+      size: 0.2,
+      vertexColors: true,
       transparent: true,
       opacity: 0.8,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
     });
     
-    const particles = new THREE.Points(particleGeometry, particleMaterial);
-    portal.add(particles);
+    particleSystem = new THREE.Points(particles, particleMaterial);
+    portal.add(particleSystem);
     
-    // Post-processing effects
+    // Post-processing effects with more intensity
     composer = new THREE.EffectComposer(portalRenderer);
     const renderPass = new THREE.RenderPass(portalScene, portalCamera);
     composer.addPass(renderPass);
     
     const bloomPass = new THREE.BloomPass(
-      1.5,    // strength
+      2.0,    // increased strength
       25,     // kernel size
-      4,      // sigma 
-      256     // blur scale
+      5,      // increased sigma 
+      512     // increased blur scale
     );
     composer.addPass(bloomPass);
     
-    // Mouse move interaction
+    // Add glitch effect that activates during interactions
+    const glitchPass = new THREE.GlitchPass();
+    glitchPass.goWild = false;
+    glitchPass.enabled = false;
+    composer.addPass(glitchPass);
+    
+    // Mouse move interaction with more responsive feedback
     document.addEventListener('mousemove', (event) => {
       mouseX = (event.clientX / window.innerWidth) * 2 - 1;
       mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+      
+      // Make particles react to mouse movement
+      const positions = particleSystem.geometry.attributes.position.array;
+      for(let i = 0; i < positions.length; i += 3) {
+        const distFromMouse = Math.sqrt(
+          Math.pow(positions[i] - mouseX * 10, 2) + 
+          Math.pow(positions[i+1] - mouseY * 10, 2)
+        );
+        
+        if(distFromMouse < 5) {
+          positions[i] += (Math.random() - 0.5) * 0.5;
+          positions[i+1] += (Math.random() - 0.5) * 0.5;
+        }
+      }
+      particleSystem.geometry.attributes.position.needsUpdate = true;
     });
     
     document.getElementById('portal3d-container').addEventListener('mouseenter', () => {
       isMouseOver = true;
+      glitchPass.enabled = true;
+      gsap.to(portal.material, { 
+        emissiveIntensity: 1.5, 
+        duration: 0.5 
+      });
     });
     
     document.getElementById('portal3d-container').addEventListener('mouseleave', () => {
       isMouseOver = false;
+      glitchPass.enabled = false;
+      gsap.to(portal.material, { 
+        emissiveIntensity: 0.5, 
+        duration: 0.5 
+      });
     });
     
     // Handle window resize
@@ -1622,24 +1944,40 @@ header {
   function animatePortal() {
     requestAnimationFrame(animatePortal);
     
-    // Rotate portal
-    portal.rotation.x += 0.005;
-    portal.rotation.y += 0.007;
+    // Rotate portal with dynamic speed based on interaction
+    const rotationSpeed = isMouseOver ? 0.015 : 0.007;
+    portal.rotation.x += rotationSpeed;
+    portal.rotation.y += rotationSpeed * 1.2;
     
-    // Interactive response to mouse
+    // Interactive response to mouse with more natural movement
     if(isMouseOver) {
-      portal.rotation.z = mouseX * 0.2;
-      portal.rotation.x += mouseY * 0.01;
-      portal.material.emissiveIntensity = 1.0;
+      portal.rotation.z = THREE.MathUtils.lerp(portal.rotation.z, mouseX * 0.3, 0.1);
+      portal.rotation.x = THREE.MathUtils.lerp(portal.rotation.x, mouseY * 0.2, 0.1);
     } else {
       portal.rotation.z = THREE.MathUtils.lerp(portal.rotation.z, 0, 0.05);
-      portal.material.emissiveIntensity = 0.5;
+      portal.rotation.x = THREE.MathUtils.lerp(portal.rotation.x, 0, 0.05);
     }
     
-    // Pulsing effect
+    // Animate particles for more organic movement
+    const positions = particleSystem.geometry.attributes.position.array;
     const time = Date.now() * 0.001;
-    portal.scale.setScalar(1 + Math.sin(time * 2) * 0.05);
-    portal.material.opacity = 0.8 + Math.sin(time * 3) * 0.1;
+    
+    for(let i = 0; i < positions.length; i += 3) {
+      // Add subtle noise-based movement
+      positions[i] += Math.sin(time + i) * 0.01;
+      positions[i+1] += Math.cos(time + i * 0.5) * 0.01;
+      positions[i+2] += Math.sin(time * 0.5 + i * 0.1) * 0.01;
+      
+      // Keep particles within bounds
+      if(Math.abs(positions[i]) > 15) positions[i] *= -0.95;
+      if(Math.abs(positions[i+1]) > 15) positions[i+1] *= -0.95;
+      if(Math.abs(positions[i+2]) > 15) positions[i+2] *= -0.95;
+    }
+    particleSystem.geometry.attributes.position.needsUpdate = true;
+    
+    // Dynamic pulsing effect based on time
+    const pulseIntensity = 1 + Math.sin(time * 2) * 0.1;
+    portal.scale.setScalar(pulseIntensity);
     
     // Render with effects
     composer.render();
@@ -1648,53 +1986,85 @@ header {
   // Initialize when page loads
   window.addEventListener('load', initPortal);
   
-  // Make portal reactive to staking events
+  // Enhanced staking event effects
   function onStakeEvent(amount) {
-    // Flash effect when staking occurs
+    // Flash effect with color variation based on amount
+    const flashColor = amount > 5000 ? 0xaa00ff : 0x00ffe7;
+    
     gsap.to(portal.material, {
-      emissiveIntensity: 2.0,
-      duration: 0.5,
+      emissive: flashColor,
+      emissiveIntensity: 3.0,
+      duration: 0.3,
       ease: "power2.out",
       yoyo: true,
-      repeat: 1
+      repeat: 1,
+      onComplete: () => {
+        portal.material.emissive.setHex(0x00ff00);
+      }
     });
     
-    // Add particles explosion
-    if(amount > 1000) {
-      const explosionGeometry = new THREE.BufferGeometry();
-      const explosionCount = 500;
-      const explosionArray = new Float32Array(explosionCount * 3);
+    // Add particles explosion with amount-based intensity
+    const explosionCount = Math.min(1000, amount / 10);
+    const explosionGeometry = new THREE.BufferGeometry();
+    const explosionArray = new Float32Array(explosionCount * 3);
+    const explosionColors = new Float32Array(explosionCount * 3);
+    
+    for(let i = 0; i < explosionCount * 3; i++) {
+      explosionArray[i] = (Math.random() - 0.5) * 10;
       
-      for(let i = 0; i < explosionCount * 3; i++) {
-        explosionArray[i] = (Math.random() - 0.5) * 10;
+      if(i % 3 === 0) {
+        explosionColors[i] = 0.0; // R
+        explosionColors[i+1] = 1.0; // G
+        explosionColors[i+2] = amount > 5000 ? 0.5 + Math.random() * 0.5 : 0.7 + Math.random() * 0.3; // B
       }
+    }
+    
+    explosionGeometry.setAttribute('position', new THREE.BufferAttribute(explosionArray, 3));
+    explosionGeometry.setAttribute('color', new THREE.BufferAttribute(explosionColors, 3));
+    
+    const explosionMaterial = new THREE.PointsMaterial({
+      size: amount > 5000 ? 0.4 : 0.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
+    });
+    
+    const explosion = new THREE.Points(explosionGeometry, explosionMaterial);
+    explosion.position.copy(portal.position);
+    portalScene.add(explosion);
+    
+    // Animate explosion with physics-like behavior
+    const explosionAnim = {
+      scale: 1,
+      opacity: 1,
+      speed: amount > 5000 ? 2 : 1
+    };
+    
+    gsap.to(explosionAnim, {
+      scale: 5,
+      opacity: 0,
+      duration: explosionAnim.speed,
+      ease: "power2.out",
+      onUpdate: () => {
+        explosion.scale.set(explosionAnim.scale, explosionAnim.scale, explosionAnim.scale);
+        explosionMaterial.opacity = explosionAnim.opacity;
+      },
+      onComplete: () => portalScene.remove(explosion)
+    });
+    
+    // Special effect for large stakes
+    if(amount > 10000) {
+      const megaEffect = document.getElementById('megaStakeEffect');
+      megaEffect.style.opacity = '1';
+      megaEffect.style.background = `radial-gradient(circle, rgba(${
+        amount > 50000 ? '170, 0, 255' : '0, 255, 231'
+      }, 0.3) 0%, transparent 70%)`;
       
-      explosionGeometry.setAttribute('position', new THREE.BufferAttribute(explosionArray, 3));
-      
-      const explosionMaterial = new THREE.PointsMaterial({
-        size: 0.2,
-        color: 0x00ff00,
-        transparent: true,
-        opacity: 1,
-        blending: THREE.AdditiveBlending
-      });
-      
-      const explosion = new THREE.Points(explosionGeometry, explosionMaterial);
-      portalScene.add(explosion);
-      
-      // Animate explosion
-      gsap.to(explosion.position, {
-        z: 50,
-        duration: 2,
-        ease: "power2.out",
-        onComplete: () => portalScene.remove(explosion)
-      });
-      
-      gsap.to(explosion.material, {
-        opacity: 0,
-        duration: 2,
-        ease: "power2.out"
-      });
+      setTimeout(() => {
+        megaEffect.style.opacity = '0';
+      }, 1000);
     }
   }
 
@@ -1757,15 +2127,44 @@ header {
     txFee: document.getElementById("txFee"),
     txProgress: document.getElementById("txProgress"),
     metamaskFallback: document.getElementById("metamaskFallback"),
-    metamaskBtn: document.getElementById("metamaskBtn")
+    metamaskBtn: document.getElementById("metamaskBtn"),
+    megaStakeEffect: document.getElementById("megaStakeEffect")
   };
 
-  // Achievements system
+  // Enhanced Achievements system with more details
   const achievements = [
-    { id: 1, name: "First Stake", icon: "fa-seedling", earned: false, condition: (stakeAmount) => stakeAmount > 0 },
-    { id: 2, name: "KLY Veteran", icon: "fa-medal", earned: false, condition: (_, stakingDays) => stakingDays >= 30 },
-    { id: 3, name: "Top 100 Staker", icon: "fa-trophy", earned: false, condition: (stakeAmount) => stakeAmount >= 50000 },
-    { id: 4, name: "NFT Collector", icon: "fa-gem", earned: false, condition: (_, __, nftCount) => nftCount >= 5 }
+    { 
+      id: 1, 
+      name: "First Stake", 
+      icon: "fa-seedling", 
+      earned: false, 
+      condition: (stakeAmount) => stakeAmount > 0,
+      reward: "100 KLY bonus"
+    },
+    { 
+      id: 2, 
+      name: "KLY Veteran", 
+      icon: "fa-medal", 
+      earned: false, 
+      condition: (_, stakingDays) => stakingDays >= 30,
+      reward: "Exclusive NFT"
+    },
+    { 
+      id: 3, 
+      name: "Top 100 Staker", 
+      icon: "fa-trophy", 
+      earned: false, 
+      condition: (stakeAmount) => stakeAmount >= 50000,
+      reward: "VIP Access"
+    },
+    { 
+      id: 4, 
+      name: "NFT Collector", 
+      icon: "fa-gem", 
+      earned: false, 
+      condition: (_, __, nftCount) => nftCount >= 5,
+      reward: "Rare NFT Mint"
+    }
   ];
 
   async function connectWallet() {
@@ -1774,6 +2173,12 @@ header {
         elements.metamaskFallback.style.display = "block";
         throw new Error("No Ethereum provider found");
       }
+
+      // Animate wallet connection
+      gsap.fromTo(elements.connectWallet, 
+        { scale: 1 },
+        { scale: 0.9, duration: 0.2, yoyo: true, repeat: 1 }
+      );
 
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       state.address = accounts[0];
@@ -1784,18 +2189,65 @@ header {
 
       state.decimals = await state.tokenContract.decimals();
 
-      elements.connectWallet.style.display = "none";
-      elements.disconnectWallet.style.display = "inline-block";
+      // Animate wallet connected state
+      gsap.to(elements.connectWallet, {
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => {
+          elements.connectWallet.style.display = "none";
+          elements.disconnectWallet.style.display = "inline-block";
+          gsap.fromTo(elements.disconnectWallet,
+            { opacity: 0, y: 10 },
+            { opacity: 1, y: 0, duration: 0.5 }
+          );
+        }
+      });
+
       elements.metamaskFallback.style.display = "none";
 
       await updateStakingData();
       checkAchievements();
       
       showToast("Wallet connected successfully!", "success");
+      
+      // Add holographic effect to connected wallet
+      addHolographicEffect(elements.disconnectWallet);
     } catch (err) {
       showError("Wallet connection failed: " + err.message);
       showToast("Wallet connection failed", "error");
     }
+  }
+
+  // Add holographic effect to elements
+  function addHolographicEffect(element) {
+    const lines = [];
+    
+    // Create 4 holographic lines
+    for(let i = 0; i < 4; i++) {
+      const line = document.createElement('div');
+      line.className = 'holographic-line';
+      line.style.width = '0%';
+      line.style.top = `${i * 25}%`;
+      element.appendChild(line);
+      lines.push(line);
+    }
+    
+    // Animate lines
+    gsap.to(lines, {
+      width: '100%',
+      duration: 0.5,
+      stagger: 0.1,
+      ease: 'power2.out',
+      onComplete: () => {
+        gsap.to(lines, {
+          opacity: 0,
+          duration: 0.3,
+          onComplete: () => {
+            lines.forEach(line => line.remove());
+          }
+        });
+      }
+    });
   }
 
   async function updateStakingData() {
@@ -1812,18 +2264,28 @@ header {
       const rewardAmount = ethers.utils.formatUnits(rewards, state.decimals);
       const tvlAmount = ethers.utils.formatUnits(tvl, state.decimals);
 
-      elements.stakedValue.textContent = stakedAmount + " KLY";
-      elements.rewardValue.textContent = rewardAmount + " KLY";
-      elements.tvlValue.textContent = tvlAmount + " KLY";
+      // Animate value changes
+      animateValueChange(elements.stakedValue, stakedAmount + " KLY");
+      animateValueChange(elements.rewardValue, rewardAmount + " KLY");
+      animateValueChange(elements.tvlValue, tvlAmount + " KLY");
 
-      // Show/hide buttons based on staked amount
+      // Show/hide buttons based on staked amount with animations
       if (parseFloat(stakedAmount) > 0) {
-        elements.claimBtn.style.display = "block";
-        elements.unstakeBtn.style.display = "block";
+        gsap.to([elements.claimBtn, elements.unstakeBtn], {
+          display: "block",
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          stagger: 0.1
+        });
         elements.stakeBtn.textContent = "ADD TO STAKE";
       } else {
-        elements.claimBtn.style.display = "none";
-        elements.unstakeBtn.style.display = "none";
+        gsap.to([elements.claimBtn, elements.unstakeBtn], {
+          display: "none",
+          opacity: 0,
+          y: 10,
+          duration: 0.3
+        });
         elements.stakeBtn.textContent = "STAKE KLY";
       }
 
@@ -1838,6 +2300,26 @@ header {
     }
   }
 
+  // Animate value changes with counting effect
+  function animateValueChange(element, newValue) {
+    const oldValue = element.textContent;
+    if (oldValue === newValue) return;
+
+    gsap.to(element, {
+      opacity: 0.5,
+      y: -5,
+      duration: 0.2,
+      onComplete: () => {
+        element.textContent = newValue;
+        gsap.to(element, {
+          opacity: 1,
+          y: 0,
+          duration: 0.3
+        });
+      }
+    });
+  }
+
   async function stakeTokens() {
     const amount = parseFloat(elements.stakeAmount.value);
     if (!amount || amount < CONFIG.MIN_STAKE) {
@@ -1846,28 +2328,59 @@ header {
 
     try {
       showStatus("Approving KLY...", "status-success");
-      const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
       
-      // Show transaction modal
+      // Show enhanced transaction modal
       showTransactionModal("Token Approval", "Approve KLY tokens for staking", "0.0012 BNB ($0.95)");
       
+      const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
+      
+      // Animate button during approval
+      gsap.to(elements.stakeBtn, {
+        background: "linear-gradient(135deg, var(--neon-purple), var(--neon-blue))",
+        duration: 0.3
+      });
+      
       const approval = await state.tokenContract.approve(CONFIG.STAKE_CONTRACT, amountWei);
+      
+      // Update modal with transaction hash
+      updateTransactionModal("Approval Pending", `Transaction: ${approval.hash.slice(0, 10)}...`, "0.0012 BNB ($0.95)");
+      
       await approval.wait();
 
       showStatus("Staking tokens...", "status-success");
       updateTransactionModal("Staking", "Staking KLY tokens", "0.0035 BNB ($2.80)");
       
       const tx = await state.contract.stake(amountWei);
+      
+      // Update modal with staking transaction hash
+      updateTransactionModal("Staking Pending", `Transaction: ${tx.hash.slice(0, 10)}...`, "0.0035 BNB ($2.80)");
+      
       await tx.wait();
 
       showToast("Staked successfully!", "success");
-      onStakeEvent(amount); // Trigger portal animation
+      
+      // Enhanced stake event animation
+      onStakeEvent(amount);
+      
       await updateStakingData();
       checkAchievements();
       hideTransactionModal();
+      
+      // Reset button animation
+      gsap.to(elements.stakeBtn, {
+        background: "linear-gradient(135deg, var(--neon-green), var(--neon-pink))",
+        duration: 0.3
+      });
     } catch (err) {
       showToast("Staking failed: " + err.message, "error");
       hideTransactionModal();
+      
+      // Error animation
+      gsap.to(elements.stakeBtn, {
+        x: [-5, 5, -5, 5, 0],
+        duration: 0.5,
+        ease: "power1.inOut"
+      });
     }
   }
 
@@ -1882,16 +2395,40 @@ header {
       showTransactionModal("Unstaking", "Unstaking KLY tokens", "0.0035 BNB ($2.80)");
       
       const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
+      
+      // Animate unstake button
+      gsap.to(elements.unstakeBtn, {
+        background: "linear-gradient(135deg, #ff5555, #ff0000)",
+        duration: 0.3
+      });
+      
       const tx = await state.contract.unstake(amountWei);
+      
+      // Update modal with transaction hash
+      updateTransactionModal("Unstaking Pending", `Transaction: ${tx.hash.slice(0, 10)}...`, "0.0035 BNB ($2.80)");
+      
       await tx.wait();
       
       showToast("Unstaked successfully!", "success");
       await updateStakingData();
       checkAchievements();
       hideTransactionModal();
+      
+      // Reset button animation
+      gsap.to(elements.unstakeBtn, {
+        background: "linear-gradient(135deg, var(--neon-purple), var(--neon-blue))",
+        duration: 0.3
+      });
     } catch (err) {
       showToast("Unstaking failed: " + err.message, "error");
       hideTransactionModal();
+      
+      // Error animation
+      gsap.to(elements.unstakeBtn, {
+        x: [-5, 5, -5, 5, 0],
+        duration: 0.5,
+        ease: "power1.inOut"
+      });
     }
   }
 
@@ -1900,15 +2437,75 @@ header {
       showStatus("Claiming rewards...", "status-success");
       showTransactionModal("Claim Rewards", "Claiming staking rewards", "0.0035 BNB ($2.80)");
       
+      // Animate claim button
+      gsap.to(elements.claimBtn, {
+        background: "linear-gradient(135deg, var(--neon-yellow), var(--neon-orange))",
+        duration: 0.3
+      });
+      
       const tx = await state.contract.claim();
+      
+      // Update modal with transaction hash
+      updateTransactionModal("Claim Pending", `Transaction: ${tx.hash.slice(0, 10)}...`, "0.0035 BNB ($2.80)");
+      
       await tx.wait();
       
       showToast("Rewards claimed!", "success");
+      
+      // Celebration effect
+      createConfettiEffect(elements.claimBtn);
+      
       await updateStakingData();
       hideTransactionModal();
+      
+      // Reset button animation
+      gsap.to(elements.claimBtn, {
+        background: "linear-gradient(135deg, var(--neon-purple), var(--neon-blue))",
+        duration: 0.3
+      });
     } catch (err) {
       showToast("Claim failed: " + err.message, "error");
       hideTransactionModal();
+    }
+  }
+
+  // Create confetti celebration effect
+  function createConfettiEffect(element) {
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const colors = [
+      '#00ffe7', '#ff00aa', '#aa00ff', 
+      '#00aaff', '#ff6b00', '#fff000'
+    ];
+    
+    for(let i = 0; i < 50; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'particle';
+      confetti.style.position = 'fixed';
+      confetti.style.width = '8px';
+      confetti.style.height = '8px';
+      confetti.style.left = `${centerX}px`;
+      confetti.style.top = `${centerY}px`;
+      confetti.style.borderRadius = '50%';
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.zIndex = '1000';
+      document.body.appendChild(confetti);
+      
+      const angle = Math.random() * Math.PI * 2;
+      const velocity = 5 + Math.random() * 5;
+      const x = Math.cos(angle) * velocity;
+      const y = Math.sin(angle) * velocity;
+      
+      gsap.to(confetti, {
+        x: x * 50,
+        y: y * 50,
+        opacity: 0,
+        duration: 1 + Math.random(),
+        ease: 'power1.out',
+        onComplete: () => confetti.remove()
+      });
     }
   }
 
@@ -1917,30 +2514,62 @@ header {
       showStatus("Minting NFT...", "status-success");
       showTransactionModal("Mint NFT", "Minting Ascender NFT", "0.005 BNB ($4.00)");
       
+      // Animate mint button
+      gsap.to(elements.mintBtn, {
+        background: "linear-gradient(135deg, var(--neon-purple), var(--neon-pink))",
+        duration: 0.3
+      });
+      
       // Simulate NFT minting (replace with actual contract call)
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Generate random NFT attributes
-      const rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+      // Generate random NFT attributes with weighted probabilities
+      const rarities = [
+        { name: "Common", weight: 60 },
+        { name: "Uncommon", weight: 25 },
+        { name: "Rare", weight: 10 },
+        { name: "Epic", weight: 4 },
+        { name: "Legendary", weight: 1 }
+      ];
+      
       const tiers = ["1", "2", "3", "4", "5"];
-      const randomRarity = rarities[Math.floor(Math.random() * rarities.length)];
+      
+      const randomRarity = weightedRandom(rarities);
       const randomTier = tiers[Math.floor(Math.random() * tiers.length)];
       
       // Update UI with new NFT
       elements.nftName.textContent = `Ascender #${Math.floor(Math.random() * 10000)}`;
-      elements.nftRarity.textContent = randomRarity;
+      elements.nftRarity.textContent = randomRarity.name;
       elements.nftTier.textContent = randomTier;
       
-      // Generate random color for NFT image
-      const colors = ["00ffe7", "ff00aa", "aa00ff", "00aaff", "ff6b00", "fff000"];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      elements.nftImage.src = `https://via.placeholder.com/150/000000/${randomColor}?text=KLY+NFT`;
+      // Generate color based on rarity
+      let color;
+      switch(randomRarity.name) {
+        case "Common": color = "00ffe7"; break;
+        case "Uncommon": color = "00aaff"; break;
+        case "Rare": color = "aa00ff"; break;
+        case "Epic": color = "ff00aa"; break;
+        case "Legendary": color = "fff000"; break;
+        default: color = "00ffe7";
+      }
       
-      // Generate random attributes
+      elements.nftImage.src = `https://via.placeholder.com/150/000000/${color}?text=${randomRarity.name.toUpperCase()}`;
+      
+      // Generate random attributes with rarity bonuses
       elements.nftAttributes.innerHTML = '';
       const attributes = ["Power", "Speed", "Intelligence", "Luck", "Charisma"];
       attributes.forEach(attr => {
-        const value = Math.floor(Math.random() * 100);
+        let baseValue = Math.floor(Math.random() * 50);
+        
+        // Apply rarity bonus
+        switch(randomRarity.name) {
+          case "Uncommon": baseValue += 10; break;
+          case "Rare": baseValue += 20; break;
+          case "Epic": baseValue += 30; break;
+          case "Legendary": baseValue += 50; break;
+        }
+        
+        const value = Math.min(100, baseValue);
         const attributeEl = document.createElement('div');
         attributeEl.className = 'nft-attribute';
         attributeEl.textContent = `${attr}: ${value}`;
@@ -1948,12 +2577,49 @@ header {
       });
       
       showToast("NFT minted successfully!", "success");
+      
+      // Special effect for rare NFTs
+      if(randomRarity.name !== "Common") {
+        const rarityColor = {
+          "Uncommon": "#00aaff",
+          "Rare": "#aa00ff",
+          "Epic": "#ff00aa",
+          "Legendary": "#fff000"
+        }[randomRarity.name];
+        
+        gsap.to(elements.nftImage, {
+          boxShadow: `0 0 30px ${rarityColor}`,
+          duration: 0.5,
+          yoyo: true,
+          repeat: 3
+        });
+      }
+      
       checkAchievements();
       hideTransactionModal();
+      
+      // Reset button animation
+      gsap.to(elements.mintBtn, {
+        background: "linear-gradient(135deg, var(--neon-green), var(--neon-pink))",
+        duration: 0.3
+      });
     } catch (err) {
       showToast("Minting failed: " + err.message, "error");
       hideTransactionModal();
     }
+  }
+
+  // Weighted random selection for NFT rarity
+  function weightedRandom(items) {
+    let total = items.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * total;
+    
+    for(let item of items) {
+      if(random < item.weight) return item;
+      random -= item.weight;
+    }
+    
+    return items[0];
   }
 
   function checkAchievements() {
@@ -1979,12 +2645,26 @@ header {
       badge.querySelector('i').style.color = "var(--neon-green)";
       badge.querySelector('h4').style.color = "var(--neon-green)";
       
-      showToast(`Achievement Unlocked: ${achievement.name}`, "success");
+      // Add reward text
+      const rewardText = document.createElement('p');
+      rewardText.textContent = `Reward: ${achievement.reward}`;
+      rewardText.style.color = "var(--neon-green)";
+      rewardText.style.marginTop = "0.5rem";
+      rewardText.style.fontSize = "0.7rem";
+      badge.appendChild(rewardText);
       
-      // Add animation
+      showToast(`Achievement Unlocked: ${achievement.name} - ${achievement.reward}`, "success");
+      
+      // Enhanced animation sequence
       gsap.fromTo(badge, 
-        { scale: 0.8, opacity: 0.5 },
-        { scale: 1.1, opacity: 1, duration: 0.5, ease: "back.out" }
+        { scale: 0.8, opacity: 0.5, y: 20 },
+        { 
+          scale: 1.1, 
+          opacity: 1, 
+          y: 0,
+          duration: 0.5, 
+          ease: "back.out" 
+        }
       );
       
       gsap.to(badge, {
@@ -1993,6 +2673,9 @@ header {
         yoyo: true,
         repeat: 1
       });
+      
+      // Add particle effect
+      createConfettiEffect(badge);
     }
   }
 
@@ -2001,10 +2684,16 @@ header {
     elements.txFee.textContent = fee;
     elements.txModal.classList.add('active');
     
-    // Simulate progress
+    // Enhanced modal animation
+    gsap.fromTo(elements.txModal, 
+      { opacity: 0, y: 50 },
+      { opacity: 1, y: 0, duration: 0.5 }
+    );
+    
+    // Simulate progress with more realistic steps
     let progress = 0;
     const interval = setInterval(() => {
-      progress += 5;
+      progress += Math.random() * 10;
       elements.txProgress.style.width = `${Math.min(progress, 90)}%`;
       if (progress >= 90) clearInterval(interval);
     }, 200);
@@ -2015,48 +2704,86 @@ header {
     elements.txFee.textContent = fee;
     elements.txProgress.style.width = "0%";
     
-    // Simulate progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      elements.txProgress.style.width = `${Math.min(progress, 90)}%`;
-      if (progress >= 90) clearInterval(interval);
-    }, 200);
+    // Animate the update
+    gsap.fromTo(elements.txProgress,
+      { width: "0%" },
+      { width: "90%", duration: 2, ease: "power1.out" }
+    );
   }
 
   function hideTransactionModal() {
-    elements.txModal.classList.remove('active');
-    elements.txProgress.style.width = "0%";
+    gsap.to(elements.txModal, {
+      opacity: 0,
+      y: 50,
+      duration: 0.3,
+      onComplete: () => {
+        elements.txModal.classList.remove('active');
+        elements.txProgress.style.width = "0%";
+      }
+    });
   }
 
-  // Toast helper
+  // Enhanced Toast helper with animations
   function showToast(message, type = "success") {
     const container = document.getElementById("toastContainer");
     const toast = document.createElement("div");
-    toast.className = `toast ${type} show`;
+    toast.className = `toast ${type}`;
     toast.innerHTML = `
       <span class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i></span>
       <span class="toast-message">${message}</span>
       <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
     `;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    
+    // Animate in
+    gsap.fromTo(toast,
+      { x: 100, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.3 }
+    );
+    
+    // Auto-remove after delay
+    setTimeout(() => {
+      gsap.to(toast, {
+        x: 100,
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => toast.remove()
+      });
+    }, 5000);
   }
 
   function showStatus(msg, type = "status-success") {
     elements.transactionStatus.textContent = msg;
     elements.transactionStatus.className = `status-message ${type}`;
+    
+    // Animate status change
+    gsap.fromTo(elements.transactionStatus,
+      { y: -10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.3 }
+    );
   }
 
   function showError(msg) {
     elements.transactionStatus.textContent = msg;
     elements.transactionStatus.className = "status-message status-error";
+    
+    // Error animation
+    gsap.fromTo(elements.transactionStatus,
+      { x: [-5, 5, -5, 5, 0], opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.5 }
+    );
   }
 
   function setupListeners() {
     // Wallet connection
     elements.connectWallet.addEventListener("click", connectWallet);
-    elements.disconnectWallet.addEventListener("click", () => window.location.reload());
+    elements.disconnectWallet.addEventListener("click", () => {
+      gsap.to(elements.disconnectWallet, {
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => window.location.reload()
+      });
+    });
     elements.metamaskBtn.addEventListener("click", connectWallet);
     
     // Staking actions
@@ -2067,22 +2794,36 @@ header {
     // NFT actions
     elements.mintBtn.addEventListener("click", mintNFT);
     
-    // Max button
+    // Max button with animation
     elements.maxBtn.addEventListener("click", () => {
       elements.stakeAmount.value = state.tokenBalance;
+      gsap.fromTo(elements.maxBtn,
+        { scale: 1 },
+        { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1 }
+      );
     });
     
-    // Mobile menu
+    // Mobile menu with animation
     elements.mobileMenuBtn.addEventListener("click", () => {
       elements.navLinks.classList.toggle('active');
+      
+      if(elements.navLinks.classList.contains('active')) {
+        gsap.fromTo(elements.navLinks.querySelectorAll('a'),
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, stagger: 0.1, duration: 0.3 }
+        );
+      }
     });
     
     // Transaction modal
     elements.closeModal.addEventListener("click", hideTransactionModal);
     elements.cancelTx.addEventListener("click", hideTransactionModal);
     elements.confirmTx.addEventListener("click", () => {
-      elements.txProgress.style.width = "100%";
-      setTimeout(hideTransactionModal, 1000);
+      gsap.to(elements.txProgress, {
+        width: "100%",
+        duration: 0.5,
+        onComplete: hideTransactionModal
+      });
     });
     
     // Close modal when clicking outside
@@ -2091,33 +2832,62 @@ header {
         hideTransactionModal();
       }
     });
+    
+    // Add hover effects to all buttons
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        gsap.to(btn, {
+          scale: 1.05,
+          duration: 0.2
+        });
+      });
+      
+      btn.addEventListener('mouseleave', () => {
+        gsap.to(btn, {
+          scale: 1,
+          duration: 0.2
+        });
+      });
+    });
   }
 
-  // Initialize particles
+  // Initialize particles with more variety
   function initParticles() {
     const container = document.getElementById('particles');
-    const particleCount = 100;
+    const particleCount = 150;
     
     for (let i = 0; i < particleCount; i++) {
       const particle = document.createElement('div');
       particle.className = 'particle';
       
-      // Random properties
+      // Random properties with more variation
       const size = Math.random() * 5 + 1;
       const posX = Math.random() * 100;
-      const delay = Math.random() * 10;
-      const duration = Math.random() * 20 + 10;
+      const delay = Math.random() * 15;
+      const duration = Math.random() * 25 + 15;
+      const opacity = Math.random() * 0.5 + 0.1;
       
       particle.style.width = `${size}px`;
       particle.style.height = `${size}px`;
       particle.style.left = `${posX}%`;
       particle.style.animationDelay = `${delay}s`;
       particle.style.animationDuration = `${duration}s`;
+      particle.style.opacity = opacity;
       
-      // Random neon color
-      const colors = ['--neon-green', '--neon-purple', '--neon-pink', '--neon-blue'];
+      // Random neon color with chroma.js for better color manipulation
+      const colors = [
+        chroma('#00ffe7').brighten(1).hex(),
+        chroma('#ff00aa').brighten(0.5).hex(),
+        chroma('#aa00ff').brighten(0.7).hex(),
+        chroma('#00aaff').brighten(0.8).hex()
+      ];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      particle.style.background = `var(${randomColor})`;
+      particle.style.background = randomColor;
+      
+      // Random shape (circle or square)
+      if(Math.random() > 0.7) {
+        particle.style.borderRadius = '0';
+      }
       
       container.appendChild(particle);
     }
@@ -2126,6 +2896,13 @@ header {
   window.addEventListener("load", () => {
     initParticles();
     setupListeners();
+    
+    // Add holographic lines to main panels
+    document.querySelectorAll('.gradient-border').forEach(panel => {
+      setTimeout(() => {
+        addHolographicEffect(panel);
+      }, 1000);
+    });
     
     if (window.ethereum) {
       // Check if wallet is already connected
