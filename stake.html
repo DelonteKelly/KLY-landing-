@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
   <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/GlitchPass.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BloomPass.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ascension Portal | KLY Token</title>
@@ -227,6 +236,10 @@ header {
   padding: 4rem 2rem;
   text-align: center;
   overflow: hidden;
+  height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero::before {
@@ -247,6 +260,44 @@ header {
   margin: 0 auto;
   position: relative;
   z-index: 2;
+}
+
+#portal3d-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  z-index: 1;
+}
+
+#portal3d {
+  width: 100%;
+  height: 100%;
+}
+
+.portal-overlay-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--neon-green);
+  text-shadow: 0 0 15px var(--neon-green);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.portal-overlay-text h2 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite;
+}
+
+.portal-overlay-text p {
+  font-size: 1.2rem;
+  opacity: 0.8;
 }
 
 .portal-container {
@@ -973,6 +1024,81 @@ header {
   color: var(--neon-green);
 }
 
+/* Achievement System */
+.achievements-panel {
+  grid-column: 1 / -1;
+  background: var(--panel-bg);
+  border: 1px solid rgba(0, 255, 231, 0.2);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-top: 2rem;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.achievement-badge {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--neon-green);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all var(--transition-medium) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 231, 0.05) 0%,
+    rgba(170, 0, 255, 0.05) 50%,
+    rgba(0, 255, 231, 0.05) 100%
+  );
+  z-index: 0;
+}
+
+.achievement-badge i {
+  font-size: 2rem;
+  color: var(--neon-green);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.achievement-badge h4 {
+  margin: 0.5rem 0;
+  color: var(--neon-green);
+}
+
+.achievement-badge p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.achievement-badge.locked {
+  opacity: 0.5;
+  filter: grayscale(80%);
+}
+
+.achievement-badge.locked i {
+  color: var(--text-secondary);
+}
+
+.achievement-badge.locked h4 {
+  color: var(--text-secondary);
+}
+
 /* Disconnect Button */
 .disconnect-btn {
   background: rgba(255, 0, 0, 0.2);
@@ -1027,6 +1153,24 @@ header {
   box-shadow: 0 0 15px #f6851b;
 }
 
+/* Status Messages */
+.status-message {
+  margin: 1rem 0;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.status-success {
+  color: var(--neon-green);
+  text-shadow: 0 0 5px var(--neon-green);
+}
+
+.status-error {
+  color: #ff5555;
+  text-shadow: 0 0 5px #ff5555;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .analytics-grid {
@@ -1039,6 +1183,11 @@ header {
   
   .tier {
     min-width: calc(50% - 0.5rem);
+  }
+  
+  #portal3d-container {
+    width: 500px;
+    height: 500px;
   }
 }
 
@@ -1076,6 +1225,15 @@ header {
   .analytics-grid {
     grid-template-columns: 1fr;
   }
+  
+  #portal3d-container {
+    width: 400px;
+    height: 400px;
+  }
+  
+  .portal-overlay-text h2 {
+    font-size: 2rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1097,6 +1255,23 @@ header {
   
   .logo {
     font-size: 1.5rem;
+  }
+  
+  #portal3d-container {
+    width: 300px;
+    height: 300px;
+  }
+  
+  .portal-overlay-text h2 {
+    font-size: 1.5rem;
+  }
+  
+  .portal-overlay-text p {
+    font-size: 1rem;
+  }
+  
+  .hero {
+    height: 50vh;
   }
 }
   </style>
@@ -1130,6 +1305,13 @@ header {
 
   <main>
     <div class="hero">
+      <div id="portal3d-container">
+        <div id="portal3d"></div>
+        <div class="portal-overlay-text">
+          <h2>ENTER THE ASCENSION</h2>
+          <p>Stake to activate the portal</p>
+        </div>
+      </div>
       <div class="hero-content">
         <div class="portal-header">
           <h1>ASCENSION PORTAL</h1>
@@ -1189,17 +1371,6 @@ header {
       </div>
 
       <div id="transactionStatus" class="status-message"></div>
-<style>
-  :root {
-    --success-color: #4CAF50;
-    --error-color: #F44336;
-  }
-  .status-message {
-    margin: 1rem 0;
-    font-weight: bold;
-    transition: all 0.3s ease;
-  }
-</style>
 
       <div class="nft-panel gradient-border">
         <h2 class="panel-title"><i class="fas fa-crown"></i> ASCENDERS NFT</h2>
@@ -1231,7 +1402,6 @@ header {
           </div>
         </div>
         
-       
         <button class="action-btn" id="mintBtn">
           <i class="fas fa-plus-circle"></i> MINT ASCENDER
         </button>
@@ -1241,6 +1411,33 @@ header {
           <button class="metamask-btn" id="metamaskBtn">
             <i class="fab fa-ethereum"></i> Connect with MetaMask
           </button>
+        </div>
+      </div>
+      
+      <!-- Achievement System -->
+      <div class="achievements-panel">
+        <h2 class="panel-title"><i class="fas fa-trophy"></i> ACHIEVEMENTS</h2>
+        <div class="achievements-grid" id="achievementsContainer">
+          <div class="achievement-badge">
+            <i class="fas fa-seedling"></i>
+            <h4>First Stake</h4>
+            <p>Make your first KLY stake</p>
+          </div>
+          <div class="achievement-badge locked">
+            <i class="fas fa-medal"></i>
+            <h4>KLY Veteran</h4>
+            <p>Stake for 30+ days</p>
+          </div>
+          <div class="achievement-badge locked">
+            <i class="fas fa-trophy"></i>
+            <h4>Top 100 Staker</h4>
+            <p>Reach top 100 by TVL</p>
+          </div>
+          <div class="achievement-badge locked">
+            <i class="fas fa-gem"></i>
+            <h4>NFT Collector</h4>
+            <p>Mint 5+ Ascenders</p>
+          </div>
         </div>
       </div>
       
@@ -1355,6 +1552,199 @@ header {
   </div>
 
 <script>
+  // Enhanced 3D Portal with Effects
+  let portalScene, portalCamera, portalRenderer, portal, composer;
+  let isMouseOver = false;
+  let mouseX = 0, mouseY = 0;
+  
+  function initPortal() {
+    // Scene setup
+    portalScene = new THREE.Scene();
+    portalScene.background = null;
+    
+    // Camera setup
+    portalCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+    portalCamera.position.z = 30;
+    
+    // Renderer setup
+    portalRenderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: true 
+    });
+    portalRenderer.setPixelRatio(window.devicePixelRatio);
+    portalRenderer.setSize(600, 600);
+    portalRenderer.domElement.style.width = '100%';
+    portalRenderer.domElement.style.height = '100%';
+    document.getElementById('portal3d').appendChild(portalRenderer.domElement);
+    
+    // Create portal geometry - more complex shape
+    const geometry = new THREE.TorusKnotGeometry(8, 3, 256, 32);
+    
+    // Advanced material with emissive properties
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x000000,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.5,
+      specular: 0x00ffaa,
+      shininess: 100,
+      transparent: true,
+      opacity: 0.9,
+      wireframe: true
+    });
+    
+    portal = new THREE.Mesh(geometry, material);
+    portalScene.add(portal);
+    
+    // Add ambient and directional light
+    const ambientLight = new THREE.AmbientLight(0x00ff00, 0.3);
+    portalScene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0x00ff88, 1);
+    directionalLight.position.set(1, 1, 1);
+    portalScene.add(directionalLight);
+    
+    // Add glowing particles inside portal
+    const particleGeometry = new THREE.BufferGeometry();
+    const particleCount = 1000;
+    const posArray = new Float32Array(particleCount * 3);
+    
+    for(let i = 0; i < particleCount * 3; i++) {
+      posArray[i] = (Math.random() - 0.5) * 20;
+    }
+    
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.1,
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+    
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    portal.add(particles);
+    
+    // Post-processing effects
+    composer = new THREE.EffectComposer(portalRenderer);
+    const renderPass = new THREE.RenderPass(portalScene, portalCamera);
+    composer.addPass(renderPass);
+    
+    const bloomPass = new THREE.BloomPass(
+      1.5,    // strength
+      25,     // kernel size
+      4,      // sigma 
+      256     // blur scale
+    );
+    composer.addPass(bloomPass);
+    
+    // Mouse move interaction
+    document.addEventListener('mousemove', (event) => {
+      mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+      mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+    });
+    
+    document.getElementById('portal3d-container').addEventListener('mouseenter', () => {
+      isMouseOver = true;
+    });
+    
+    document.getElementById('portal3d-container').addEventListener('mouseleave', () => {
+      isMouseOver = false;
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', onWindowResize);
+    
+    // Start animation loop
+    animatePortal();
+  }
+  
+  function onWindowResize() {
+    portalCamera.aspect = 1;
+    portalCamera.updateProjectionMatrix();
+    portalRenderer.setSize(600, 600);
+  }
+  
+  function animatePortal() {
+    requestAnimationFrame(animatePortal);
+    
+    // Rotate portal
+    portal.rotation.x += 0.005;
+    portal.rotation.y += 0.007;
+    
+    // Interactive response to mouse
+    if(isMouseOver) {
+      portal.rotation.z = mouseX * 0.2;
+      portal.rotation.x += mouseY * 0.01;
+      portal.material.emissiveIntensity = 1.0;
+    } else {
+      portal.rotation.z = THREE.MathUtils.lerp(portal.rotation.z, 0, 0.05);
+      portal.material.emissiveIntensity = 0.5;
+    }
+    
+    // Pulsing effect
+    const time = Date.now() * 0.001;
+    portal.scale.setScalar(1 + Math.sin(time * 2) * 0.05);
+    portal.material.opacity = 0.8 + Math.sin(time * 3) * 0.1;
+    
+    // Render with effects
+    composer.render();
+  }
+  
+  // Initialize when page loads
+  window.addEventListener('load', initPortal);
+  
+  // Make portal reactive to staking events
+  function onStakeEvent(amount) {
+    // Flash effect when staking occurs
+    gsap.to(portal.material, {
+      emissiveIntensity: 2.0,
+      duration: 0.5,
+      ease: "power2.out",
+      yoyo: true,
+      repeat: 1
+    });
+    
+    // Add particles explosion
+    if(amount > 1000) {
+      const explosionGeometry = new THREE.BufferGeometry();
+      const explosionCount = 500;
+      const explosionArray = new Float32Array(explosionCount * 3);
+      
+      for(let i = 0; i < explosionCount * 3; i++) {
+        explosionArray[i] = (Math.random() - 0.5) * 10;
+      }
+      
+      explosionGeometry.setAttribute('position', new THREE.BufferAttribute(explosionArray, 3));
+      
+      const explosionMaterial = new THREE.PointsMaterial({
+        size: 0.2,
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending
+      });
+      
+      const explosion = new THREE.Points(explosionGeometry, explosionMaterial);
+      portalScene.add(explosion);
+      
+      // Animate explosion
+      gsap.to(explosion.position, {
+        z: 50,
+        duration: 2,
+        ease: "power2.out",
+        onComplete: () => portalScene.remove(explosion)
+      });
+      
+      gsap.to(explosion.material, {
+        opacity: 0,
+        duration: 2,
+        ease: "power2.out"
+      });
+    }
+  }
+
+  // Staking Contract Configuration
   const CONFIG = {
     KLY_TOKEN: "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
     STAKE_CONTRACT: "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0",
@@ -1395,11 +1785,42 @@ header {
     rewardValue: document.getElementById("rewardValue"),
     tvlValue: document.getElementById("tvlValue"),
     maxBtn: document.getElementById("maxBtn"),
-    transactionStatus: document.getElementById("transactionStatus")
+    transactionStatus: document.getElementById("transactionStatus"),
+    mintBtn: document.getElementById("mintBtn"),
+    nftImage: document.getElementById("nftImage"),
+    nftName: document.getElementById("nftName"),
+    nftAttributes: document.getElementById("nftAttributes"),
+    nftRarity: document.getElementById("nftRarity"),
+    nftTier: document.getElementById("nftTier"),
+    mobileMenuBtn: document.getElementById("mobileMenuBtn"),
+    navLinks: document.getElementById("navLinks"),
+    txModal: document.getElementById("txModal"),
+    closeModal: document.getElementById("closeModal"),
+    cancelTx: document.getElementById("cancelTx"),
+    confirmTx: document.getElementById("confirmTx"),
+    txNetwork: document.getElementById("txNetwork"),
+    txType: document.getElementById("txType"),
+    txFee: document.getElementById("txFee"),
+    txProgress: document.getElementById("txProgress"),
+    metamaskFallback: document.getElementById("metamaskFallback"),
+    metamaskBtn: document.getElementById("metamaskBtn")
   };
+
+  // Achievements system
+  const achievements = [
+    { id: 1, name: "First Stake", icon: "fa-seedling", earned: false, condition: (stakeAmount) => stakeAmount > 0 },
+    { id: 2, name: "KLY Veteran", icon: "fa-medal", earned: false, condition: (_, stakingDays) => stakingDays >= 30 },
+    { id: 3, name: "Top 100 Staker", icon: "fa-trophy", earned: false, condition: (stakeAmount) => stakeAmount >= 50000 },
+    { id: 4, name: "NFT Collector", icon: "fa-gem", earned: false, condition: (_, __, nftCount) => nftCount >= 5 }
+  ];
 
   async function connectWallet() {
     try {
+      if (!window.ethereum) {
+        elements.metamaskFallback.style.display = "block";
+        throw new Error("No Ethereum provider found");
+      }
+
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       state.address = accounts[0];
       state.provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -1411,25 +1832,56 @@ header {
 
       elements.connectWallet.style.display = "none";
       elements.disconnectWallet.style.display = "inline-block";
+      elements.metamaskFallback.style.display = "none";
 
       await updateStakingData();
+      checkAchievements();
+      
+      showToast("Wallet connected successfully!", "success");
     } catch (err) {
-      showError("Wallet connection failed.");
+      showError("Wallet connection failed: " + err.message);
+      showToast("Wallet connection failed", "error");
     }
   }
 
   async function updateStakingData() {
-    const [balance, staked, rewards, tvl] = await Promise.all([
-      state.tokenContract.balanceOf(state.address),
-      state.contract.getUserStake(state.address),
-      state.contract.getPendingRewards(state.address),
-      state.contract.totalValueLocked()
-    ]);
+    try {
+      const [balance, staked, rewards, tvl] = await Promise.all([
+        state.tokenContract.balanceOf(state.address),
+        state.contract.getUserStake(state.address),
+        state.contract.getPendingRewards(state.address),
+        state.contract.totalValueLocked()
+      ]);
 
-    state.tokenBalance = ethers.utils.formatUnits(balance, state.decimals);
-    elements.stakedValue.textContent = ethers.utils.formatUnits(staked, state.decimals) + " KLY";
-    elements.rewardValue.textContent = ethers.utils.formatUnits(rewards, state.decimals) + " KLY";
-    elements.tvlValue.textContent = ethers.utils.formatUnits(tvl, state.decimals) + " KLY";
+      state.tokenBalance = ethers.utils.formatUnits(balance, state.decimals);
+      const stakedAmount = ethers.utils.formatUnits(staked, state.decimals);
+      const rewardAmount = ethers.utils.formatUnits(rewards, state.decimals);
+      const tvlAmount = ethers.utils.formatUnits(tvl, state.decimals);
+
+      elements.stakedValue.textContent = stakedAmount + " KLY";
+      elements.rewardValue.textContent = rewardAmount + " KLY";
+      elements.tvlValue.textContent = tvlAmount + " KLY";
+
+      // Show/hide buttons based on staked amount
+      if (parseFloat(stakedAmount) > 0) {
+        elements.claimBtn.style.display = "block";
+        elements.unstakeBtn.style.display = "block";
+        elements.stakeBtn.textContent = "ADD TO STAKE";
+      } else {
+        elements.claimBtn.style.display = "none";
+        elements.unstakeBtn.style.display = "none";
+        elements.stakeBtn.textContent = "STAKE KLY";
+      }
+
+      return {
+        stakedAmount: parseFloat(stakedAmount),
+        rewardAmount: parseFloat(rewardAmount),
+        tvlAmount: parseFloat(tvlAmount)
+      };
+    } catch (err) {
+      showError("Failed to update staking data: " + err.message);
+      return null;
+    }
   }
 
   async function stakeTokens() {
@@ -1439,19 +1891,29 @@ header {
     }
 
     try {
-      showStatus("Approving KLY...");
+      showStatus("Approving KLY...", "status-success");
       const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
+      
+      // Show transaction modal
+      showTransactionModal("Token Approval", "Approve KLY tokens for staking", "0.0012 BNB ($0.95)");
+      
       const approval = await state.tokenContract.approve(CONFIG.STAKE_CONTRACT, amountWei);
       await approval.wait();
 
-      showStatus("Staking tokens...");
+      showStatus("Staking tokens...", "status-success");
+      updateTransactionModal("Staking", "Staking KLY tokens", "0.0035 BNB ($2.80)");
+      
       const tx = await state.contract.stake(amountWei);
       await tx.wait();
 
       showToast("Staked successfully!", "success");
+      onStakeEvent(amount); // Trigger portal animation
       await updateStakingData();
+      checkAchievements();
+      hideTransactionModal();
     } catch (err) {
       showToast("Staking failed: " + err.message, "error");
+      hideTransactionModal();
     }
   }
 
@@ -1462,27 +1924,155 @@ header {
     }
 
     try {
+      showStatus("Unstaking...", "status-success");
+      showTransactionModal("Unstaking", "Unstaking KLY tokens", "0.0035 BNB ($2.80)");
+      
       const amountWei = ethers.utils.parseUnits(amount.toString(), state.decimals);
-      showStatus("Unstaking...");
       const tx = await state.contract.unstake(amountWei);
       await tx.wait();
+      
       showToast("Unstaked successfully!", "success");
       await updateStakingData();
+      checkAchievements();
+      hideTransactionModal();
     } catch (err) {
       showToast("Unstaking failed: " + err.message, "error");
+      hideTransactionModal();
     }
   }
 
   async function claimRewards() {
     try {
-      showStatus("Claiming rewards...");
+      showStatus("Claiming rewards...", "status-success");
+      showTransactionModal("Claim Rewards", "Claiming staking rewards", "0.0035 BNB ($2.80)");
+      
       const tx = await state.contract.claim();
       await tx.wait();
+      
       showToast("Rewards claimed!", "success");
       await updateStakingData();
+      hideTransactionModal();
     } catch (err) {
       showToast("Claim failed: " + err.message, "error");
+      hideTransactionModal();
     }
+  }
+
+  async function mintNFT() {
+    try {
+      showStatus("Minting NFT...", "status-success");
+      showTransactionModal("Mint NFT", "Minting Ascender NFT", "0.005 BNB ($4.00)");
+      
+      // Simulate NFT minting (replace with actual contract call)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Generate random NFT attributes
+      const rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+      const tiers = ["1", "2", "3", "4", "5"];
+      const randomRarity = rarities[Math.floor(Math.random() * rarities.length)];
+      const randomTier = tiers[Math.floor(Math.random() * tiers.length)];
+      
+      // Update UI with new NFT
+      elements.nftName.textContent = `Ascender #${Math.floor(Math.random() * 10000)}`;
+      elements.nftRarity.textContent = randomRarity;
+      elements.nftTier.textContent = randomTier;
+      
+      // Generate random color for NFT image
+      const colors = ["00ffe7", "ff00aa", "aa00ff", "00aaff", "ff6b00", "fff000"];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      elements.nftImage.src = `https://via.placeholder.com/150/000000/${randomColor}?text=KLY+NFT`;
+      
+      // Generate random attributes
+      elements.nftAttributes.innerHTML = '';
+      const attributes = ["Power", "Speed", "Intelligence", "Luck", "Charisma"];
+      attributes.forEach(attr => {
+        const value = Math.floor(Math.random() * 100);
+        const attributeEl = document.createElement('div');
+        attributeEl.className = 'nft-attribute';
+        attributeEl.textContent = `${attr}: ${value}`;
+        elements.nftAttributes.appendChild(attributeEl);
+      });
+      
+      showToast("NFT minted successfully!", "success");
+      checkAchievements();
+      hideTransactionModal();
+    } catch (err) {
+      showToast("Minting failed: " + err.message, "error");
+      hideTransactionModal();
+    }
+  }
+
+  function checkAchievements() {
+    // In a real app, you would check on-chain data for these conditions
+    const stakedAmount = parseFloat(elements.stakedValue.textContent) || 0;
+    const stakingDays = Math.floor(Math.random() * 60); // Simulate random staking days
+    const nftCount = Math.floor(Math.random() * 10); // Simulate random NFT count
+    
+    achievements.forEach(ach => {
+      if (!ach.earned && ach.condition(stakedAmount, stakingDays, nftCount)) {
+        ach.earned = true;
+        unlockAchievement(ach);
+      }
+    });
+  }
+
+  function unlockAchievement(achievement) {
+    const badges = document.querySelectorAll('.achievement-badge');
+    const badge = badges[achievement.id - 1];
+    
+    if (badge) {
+      badge.classList.remove('locked');
+      badge.querySelector('i').style.color = "var(--neon-green)";
+      badge.querySelector('h4').style.color = "var(--neon-green)";
+      
+      showToast(`Achievement Unlocked: ${achievement.name}`, "success");
+      
+      // Add animation
+      gsap.fromTo(badge, 
+        { scale: 0.8, opacity: 0.5 },
+        { scale: 1.1, opacity: 1, duration: 0.5, ease: "back.out" }
+      );
+      
+      gsap.to(badge, {
+        boxShadow: "0 0 20px var(--neon-green)",
+        duration: 0.5,
+        yoyo: true,
+        repeat: 1
+      });
+    }
+  }
+
+  function showTransactionModal(type, description, fee) {
+    elements.txType.textContent = type;
+    elements.txFee.textContent = fee;
+    elements.txModal.classList.add('active');
+    
+    // Simulate progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      elements.txProgress.style.width = `${Math.min(progress, 90)}%`;
+      if (progress >= 90) clearInterval(interval);
+    }, 200);
+  }
+
+  function updateTransactionModal(type, description, fee) {
+    elements.txType.textContent = type;
+    elements.txFee.textContent = fee;
+    elements.txProgress.style.width = "0%";
+    
+    // Simulate progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      elements.txProgress.style.width = `${Math.min(progress, 90)}%`;
+      if (progress >= 90) clearInterval(interval);
+    }, 200);
+  }
+
+  function hideTransactionModal() {
+    elements.txModal.classList.remove('active');
+    elements.txProgress.style.width = "0%";
   }
 
   // Toast helper
@@ -1499,35 +2089,118 @@ header {
     setTimeout(() => toast.remove(), 5000);
   }
 
-  function showStatus(msg) {
+  function showStatus(msg, type = "status-success") {
     elements.transactionStatus.textContent = msg;
-    elements.transactionStatus.style.color = "var(--success-color)";
+    elements.transactionStatus.className = `status-message ${type}`;
   }
 
   function showError(msg) {
     elements.transactionStatus.textContent = msg;
-    elements.transactionStatus.style.color = "var(--error-color)";
+    elements.transactionStatus.className = "status-message status-error";
   }
 
   function setupListeners() {
+    // Wallet connection
     elements.connectWallet.addEventListener("click", connectWallet);
     elements.disconnectWallet.addEventListener("click", () => window.location.reload());
+    elements.metamaskBtn.addEventListener("click", connectWallet);
+    
+    // Staking actions
     elements.stakeBtn.addEventListener("click", stakeTokens);
     elements.unstakeBtn.addEventListener("click", unstakeTokens);
     elements.claimBtn.addEventListener("click", claimRewards);
+    
+    // NFT actions
+    elements.mintBtn.addEventListener("click", mintNFT);
+    
+    // Max button
+    elements.maxBtn.addEventListener("click", () => {
+      elements.stakeAmount.value = state.tokenBalance;
+    });
+    
+    // Mobile menu
+    elements.mobileMenuBtn.addEventListener("click", () => {
+      elements.navLinks.classList.toggle('active');
+    });
+    
+    // Transaction modal
+    elements.closeModal.addEventListener("click", hideTransactionModal);
+    elements.cancelTx.addEventListener("click", hideTransactionModal);
+    elements.confirmTx.addEventListener("click", () => {
+      elements.txProgress.style.width = "100%";
+      setTimeout(hideTransactionModal, 1000);
+    });
+    
+    // Close modal when clicking outside
+    elements.txModal.addEventListener("click", (e) => {
+      if (e.target === elements.txModal) {
+        hideTransactionModal();
+      }
+    });
+  }
 
-    if (elements.maxBtn) {
-      elements.maxBtn.addEventListener("click", () => {
-        elements.stakeAmount.value = state.tokenBalance;
-      });
+  // Initialize particles
+  function initParticles() {
+    const container = document.getElementById('particles');
+    const particleCount = 100;
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      
+      // Random properties
+      const size = Math.random() * 5 + 1;
+      const posX = Math.random() * 100;
+      const delay = Math.random() * 10;
+      const duration = Math.random() * 20 + 10;
+      
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left = `${posX}%`;
+      particle.style.animationDelay = `${delay}s`;
+      particle.style.animationDuration = `${duration}s`;
+      
+      // Random neon color
+      const colors = ['--neon-green', '--neon-purple', '--neon-pink', '--neon-blue'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      particle.style.background = `var(${randomColor})`;
+      
+      container.appendChild(particle);
     }
   }
 
   window.addEventListener("load", () => {
+    initParticles();
+    setupListeners();
+    
     if (window.ethereum) {
-      setupListeners();
+      // Check if wallet is already connected
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then(accounts => {
+          if (accounts.length > 0) {
+            connectWallet();
+          }
+        });
+      
+      // Handle account changes
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          // Wallet disconnected
+          window.location.reload();
+        } else {
+          // Account changed
+          state.address = accounts[0];
+          updateStakingData();
+        }
+      });
+      
+      // Handle chain changes
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
     } else {
       showError("MetaMask or Web3 wallet not detected.");
+      elements.metamaskFallback.style.display = "none";
     }
   });
 </script>
