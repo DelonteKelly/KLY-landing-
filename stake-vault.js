@@ -1,17 +1,18 @@
-<script>
-// Web3 & Ethers Config
+// ===========================
+// 🔗 Contract Setup
+// ===========================
 const ethers = window.ethers;
-
 let provider, signer, userAddress;
-const contractAddress = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
-const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-
-let stakingContract, tokenContract;
+let tokenContract, stakingContract;
 let isWalletConnected = false;
 
-// UI Elements
+const stakingAddress = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
+const tokenAddress = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+// DOM Elements
 const stakeButton = document.getElementById('stake-button');
 const claimButton = document.getElementById('claim-button');
+const withdrawButton = document.getElementById('withdraw-button');
 const walletBalance = document.getElementById('wallet-balance');
 const stakedAmount = document.getElementById('staked-amount');
 const rewardAmount = document.getElementById('reward-amount');
@@ -19,494 +20,132 @@ const statusMessage = document.getElementById('status-message');
 const stakeSlider = document.getElementById('stake-slider');
 const apyDisplay = document.getElementById('apy-display');
 
-// Three.js Variables
-let scene, camera, renderer, vault, particles, rings = [];
-let isVaultActive = false;
+// ABIs
+const tokenABI = [ /* ... */ ];
+const stakingABI = [ /* ... */ ];
 
-// ABI - Replace with your actual ABI
-const tokenABI = [
-  {
-    "constant": true,
-    "name": "balanceOf",
-    "inputs": [{"name": "_owner", "type": "address"}],
-    "outputs": [{"name": "balance", "type": "uint256"}],
-    "type": "function",
-    "stateMutability": "view"
-  },
-  {
-    "constant": false,
-    "name": "approve",
-    "inputs": [
-      {"name": "_spender", "type": "address"},
-      {"name": "_value", "type": "uint256"}
-    ],
-    "outputs": [{"name": "", "type": "bool"}],
-    "type": "function",
-    "stateMutability": "nonpayable"
-  },
-  {
-    "constant": true,
-    "name": "allowance",
-    "inputs": [
-      {"name": "_owner", "type": "address"},
-      {"name": "_spender", "type": "address"}
-    ],
-    "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function",
-    "stateMutability": "view"
-  }
-];
-
-// Staking Contract ABI
-const stakingABI = [
-  {
-    "constant": true,
-    "name": "stakedBalance",
-    "inputs": [{"name": "_user", "type": "address"}],
-    "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function",
-    "stateMutability": "view"
-  },
-  {
-    "constant": true,
-    "name": "calculateRewards",
-    "inputs": [{"name": "_user", "type": "address"}],
-    "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function",
-    "stateMutability": "view"
-  },
-  {
-    "constant": false,
-    "name": "stake",
-    "inputs": [{"name": "_amount", "type": "uint256"}],
-    "outputs": [],
-    "type": "function",
-    "stateMutability": "nonpayable"
-  },
-  {
-    "constant": false,
-    "name": "claimRewards",
-    "inputs": [],
-    "outputs": [],
-    "type": "function",
-    "stateMutability": "nonpayable"
-  },
-  {
-    "constant": false,
-    "name": "withdrawStake",
-    "inputs": [],
-    "outputs": [],
-    "type": "function",
-    "stateMutability": "nonpayable"
-  }
-];
-
-// Initialize Three.js Scene
-function initThreeJS() {
-  // Create scene
-  scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x001d3d, 0.1);
-  
-  // Create camera
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.z = 5;
-  
-  // Create renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth / 2, window.innerHeight);
-  renderer.setClearColor(0x000000, 0);
-  renderer.shadowMap.enabled = true;
-  document.getElementById('canvas-container').appendChild(renderer.domElement);
-  
-  // Create vault orb - Core Sphere
-  const geometry = new THREE.SphereGeometry(1, 64, 64);
-  const material = new THREE.MeshPhongMaterial({
-    color: 0xffd700,
-    emissive: 0xffa500,
-    emissiveIntensity: 0.2,
-    specular: 0xffffff,
-    shininess: 50,
-    transparent: true,
-    opacity: 0.95,
-    wireframe: false
-  });
-  
-  vault = new THREE.Mesh(geometry, material);
-  vault.castShadow = true;
-  vault.receiveShadow = false;
-  scene.add(vault);
-  
-  // Create energy rings around the vault
-  createEnergyRings();
-  
-  // Add particle field
-  createParticleField(500);
-  
-  // Add lights
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-  scene.add(ambientLight);
-  
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-  directionalLight.position.set(5, 5, 5);
-  directionalLight.castShadow = true;
-  scene.add(directionalLight);
-  
-  const pointLight = new THREE.PointLight(0xffd700, 1, 10);
-  pointLight.position.set(0, 0, 2);
-  pointLight.castShadow = true;
-  scene.add(pointLight);
-  
-  // Add light inside the vault
-  const innerLight = new THREE.PointLight(0xffa500, 2, 3);
-  innerLight.position.set(0, 0, 0);
-  vault.add(innerLight);
-  
-  // Handle window resize
-  window.addEventListener('resize', onWindowResize);
-  
-  // Start animation loop
-  animate();
-}
-
-function createEnergyRings() {
-  const ringGeometry = new THREE.TorusGeometry(1.5, 0.05, 16, 100);
-  const ringMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffd700,
-    emissive: 0xffa500,
-    emissiveIntensity: 0.5,
-    transparent: true,
-    opacity: 0.8,
-    side: THREE.DoubleSide
-  });
-  
-  // Create multiple rings at different angles
-  for (let i = 0; i < 3; i++) {
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial.clone());
-    ring.rotation.x = Math.PI / 2;
-    ring.rotation.y = (Math.PI / 3) * i;
-    ring.position.y = 0;
-    ring.userData.speed = 0.01 + Math.random() * 0.02;
-    ring.userData.direction = Math.random() > 0.5 ? 1 : -1;
-    scene.add(ring);
-    rings.push(ring);
-  }
-}
-
-function createParticleField(count) {
-  const particlesGeometry = new THREE.BufferGeometry();
-  const particlesMaterial = new THREE.PointsMaterial({
-    color: 0xffd700,
-    size: 0.1,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending
-  });
-  
-  const posArray = new Float32Array(count * 3);
-  const sizeArray = new Float32Array(count);
-  const colorArray = new Float32Array(count * 3);
-  
-  for (let i = 0; i < count * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 20;
-    sizeArray[i/3] = Math.random() * 0.2 + 0.05;
-    
-    // Color variation
-    if (i % 3 === 0) {
-      colorArray[i] = 1.0; // R
-      colorArray[i+1] = 0.7 + Math.random() * 0.3; // G
-      colorArray[i+2] = 0.0; // B
-    }
-  }
-  
-  particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-  particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
-  particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-  
-  particlesMaterial.vertexColors = true;
-  particles = new THREE.Points(particlesGeometry, particlesMaterial);
-  scene.add(particles);
-}
-
-function onWindowResize() {
-  camera.aspect = (window.innerWidth / 2) / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth / 2, window.innerHeight);
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-  
-  // Rotate vault slowly
-  if (vault) {
-    vault.rotation.x += 0.002;
-    vault.rotation.y += 0.003;
-    
-    // Pulsing effect when active
-    if (isVaultActive) {
-      const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.05;
-      vault.scale.set(pulse, pulse, pulse);
-    }
-  }
-  
-  // Animate rings
-  rings.forEach(ring => {
-    ring.rotation.z += ring.userData.speed * ring.userData.direction;
-    ring.position.y = Math.sin(Date.now() * 0.001 + ring.userData.speed * 100) * 0.2;
-  });
-  
-  // Animate particles
-  if (particles) {
-    const positions = particles.geometry.attributes.position.array;
-    for (let i = 0; i < positions.length; i += 3) {
-      // Make particles slowly drift toward center
-      positions[i] *= 0.999;
-      positions[i+1] *= 0.999;
-      positions[i+2] *= 0.999;
-      
-      // Random reset when too close to center
-      if (Math.abs(positions[i]) < 0.1 && Math.abs(positions[i+1]) < 0.1 && Math.abs(positions[i+2]) < 0.1) {
-        positions[i] = (Math.random() - 0.5) * 20;
-        positions[i+1] = (Math.random() - 0.5) * 20;
-        positions[i+2] = (Math.random() - 0.5) * 20;
-      }
-    }
-    particles.geometry.attributes.position.needsUpdate = true;
-  }
-  
-  renderer.render(scene, camera);
-}
-
-// Token Transfer Animation
-function animateTokenTransfer(amount) {
-  const buttonRect = stakeButton.getBoundingClientRect();
-  const buttonCenter = {
-    x: buttonRect.left + buttonRect.width / 2,
-    y: buttonRect.top + buttonRect.height / 2
-  };
-  
-  const canvasRect = document.getElementById('canvas-container').getBoundingClientRect();
-  const vaultCenter = {
-    x: canvasRect.left + canvasRect.width / 2,
-    y: canvasRect.top + canvasRect.height / 2
-  };
-  
-  const tokenCount = Math.min(20, Math.max(5, Math.floor(amount / 10)));
-  
-  for (let i = 0; i < tokenCount; i++) {
-    const token = document.createElement('div');
-    token.className = 'token';
-    document.body.appendChild(token);
-    
-    // Random starting position near the button
-    const startX = buttonCenter.x + (Math.random() - 0.5) * 30;
-    const startY = buttonCenter.y + (Math.random() - 0.5) * 30;
-    
-    // Random ending position near the vault
-    const endX = vaultCenter.x + (Math.random() - 0.5) * 100;
-    const endY = vaultCenter.y + (Math.random() - 0.5) * 100;
-    
-    // Random delay
-    const delay = i * 0.1;
-    
-    gsap.set(token, {
-      x: startX,
-      y: startY,
-      opacity: 0,
-      scale: 0.5
-    });
-    
-    gsap.to(token, {
-      x: endX,
-      y: endY,
-      opacity: 1,
-      scale: 1,
-      duration: 0.5,
-      delay: delay,
-      ease: "power1.out",
-      onStart: () => {
-        token.style.opacity = 1;
-      }
-    });
-    
-    gsap.to(token, {
-      opacity: 0,
-      scale: 0.5,
-      duration: 0.3,
-      delay: delay + 0.5,
-      onComplete: () => {
-        document.body.removeChild(token);
-      }
-    });
-  }
-}
-
-// Confetti Effect
-function showConfettiEffect() {
-  const colors = ['#ffd700', '#ffa500', '#ffffff', '#ff6347'];
-  const confettiCount = 100;
-  
-  for (let i = 0; i < confettiCount; i++) {
-    const confetti = document.createElement('div');
-    confetti.className = 'confetti';
-    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-    document.body.appendChild(confetti);
-    
-    const startX = Math.random() * window.innerWidth;
-    const startY = -10;
-    const rotation = Math.random() * 360;
-    const size = Math.random() * 10 + 5;
-    
-    gsap.set(confetti, {
-      x: startX,
-      y: startY,
-      rotation: rotation,
-      width: size + 'px',
-      height: size + 'px',
-      opacity: 0
-    });
-    
-    gsap.to(confetti, {
-      y: window.innerHeight + 10,
-      opacity: 1,
-      rotation: rotation + 360,
-      duration: 2 + Math.random() * 3,
-      ease: "power1.out",
-      delay: Math.random() * 0.5,
-      onComplete: () => {
-        document.body.removeChild(confetti);
-      }
-    });
-  }
-}
-
-// Vault Animation Effects
-function activateVault(duration = 2000) {
-  isVaultActive = true;
-  
-  // Intensify inner light
-  if (vault.children.length > 0 && vault.children[0].isLight) {
-    gsap.to(vault.children[0], {
-      intensity: 5,
-      duration: 0.5
-    });
-  }
-  
-  // Make rings more visible
-  rings.forEach(ring => {
-    gsap.to(ring.material, {
-      opacity: 1,
-      emissiveIntensity: 1,
-      duration: 0.5
-    });
-  });
-  
-  // Return to normal after duration
-  setTimeout(() => {
-    deactivateVault();
-  }, duration);
-}
-
-function deactivateVault() {
-  isVaultActive = false;
-  
-  if (vault.children.length > 0 && vault.children[0].isLight) {
-    gsap.to(vault.children[0], {
-      intensity: 2,
-      duration: 1
-    });
-  }
-  
-  rings.forEach(ring => {
-    gsap.to(ring.material, {
-      opacity: 0.8,
-      emissiveIntensity: 0.5,
-      duration: 1
-    });
-  });
-  
-  gsap.to(vault.scale, {
-    x: 1,
-    y: 1,
-    z: 1,
-    duration: 1,
-    ease: "elastic.out(1, 0.3)"
-  });
-}
-
-function pulseVaultGlow() {
-  activateVault(1000);
-  
-  if (vault?.material?.emissive) {
-    gsap.to(vault.material, {
-      emissiveIntensity: 0.8,
-      duration: 0.3,
-      yoyo: true,
-      repeat: 1
-    });
-  }
-}
-
-function scaleVaultOrb() {
-  if (vault?.scale) {
-    gsap.to(vault.scale, {
-      x: 1.3, 
-      y: 1.3, 
-      z: 1.3, 
-      duration: 0.25, 
-      yoyo: true, 
-      repeat: 1,
-      ease: "power2.inOut",
-      onComplete: () => {
-        vault.scale.set(1, 1, 1);
-      }
-    });
-  }
-}
-
-// Wallet Connection
+// ===========================
+// 🔌 Wallet Connection
+// ===========================
 async function connectWallet() {
   try {
-    if (!window.ethereum) {
-      throw new Error("Please install MetaMask or another Ethereum wallet");
-    }
-    
+    if (!window.ethereum) throw new Error("Install MetaMask");
+
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
+    tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
     stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
-tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
+
     isWalletConnected = true;
-
     await updateBalances();
-    updateUI();
 
-    statusMessage.textContent = "Wallet connected successfully!";
-    setTimeout(() => (statusMessage.textContent = ""), 3000);
-    
-    // Visual feedback for connection
+    statusMessage.textContent = "Wallet connected!";
     activateVault(3000);
     showConfettiEffect();
+
+    setTimeout(() => (statusMessage.textContent = ""), 3000);
   } catch (error) {
     console.error("Wallet connection error:", error);
-    statusMessage.textContent = error.message || "Error connecting wallet";
+    statusMessage.textContent = error.message || "Connection failed";
   }
 }
 
-function updateUI() {
-if (isWalletConnected) {
-  stakeButton.textContent = "STAKE KLY";
-  stakeButton.disabled = false;
-  claimButton.disabled = false;
-  withdrawButton.disabled = false;
-} else {
-  stakeButton.textContent = "CONNECT WALLET";
-  stakeButton.disabled = false;
-  claimButton.disabled = true;
-  withdrawButton.disabled = true;
+// ===========================
+// 🧮 Staking Logic
+// ===========================
+async function handleStake() {
+  if (!isWalletConnected) return connectWallet();
+  const value = stakeSlider.value.toString();
+  const amountWei = ethers.utils.parseUnits(value, 18);
+
+  try {
+    stakeButton.disabled = true;
+    statusMessage.textContent = "Approving tokens...";
+
+    const allowance = await tokenContract.allowance(userAddress, stakingAddress);
+    if (allowance.lt(amountWei)) {
+      const approveTx = await tokenContract.approve(stakingAddress, amountWei);
+      await approveTx.wait();
+    }
+
+    animateTokenTransfer(value);
+    activateVault(3000);
+    pulseVaultGlow();
+    scaleVaultOrb();
+
+    statusMessage.textContent = "Staking...";
+    const tx = await stakingContract.stake(amountWei);
+    await tx.wait();
+
+    statusMessage.textContent = "Staking successful!";
+    await updateBalances();
+    showConfettiEffect();
+  } catch (error) {
+    console.error("Staking error:", error);
+    statusMessage.textContent = error?.data?.message || error.message || "Stake failed";
+  } finally {
+    stakeButton.disabled = false;
+    setTimeout(() => (statusMessage.textContent = ""), 3000);
+  }
 }
 
+async function handleClaim() {
+  if (!isWalletConnected) return connectWallet();
+  try {
+    claimButton.disabled = true;
+    statusMessage.textContent = "Claiming rewards...";
+
+    activateVault(3000);
+    pulseVaultGlow();
+    scaleVaultOrb();
+
+    const tx = await stakingContract.claimRewards();
+    await tx.wait();
+    await updateBalances();
+
+    statusMessage.textContent = "Rewards claimed!";
+    showConfettiEffect();
+    animateTokenTransfer(rewardAmount.textContent);
+  } catch (error) {
+    console.error("Claim error:", error);
+    statusMessage.textContent = error?.data?.message || error.message || "Claim failed";
+  } finally {
+    claimButton.disabled = false;
+    setTimeout(() => (statusMessage.textContent = ""), 3000);
+  }
+}
+
+async function handleWithdraw() {
+  if (!isWalletConnected) return connectWallet();
+  try {
+    withdrawButton.disabled = true;
+    statusMessage.textContent = "Withdrawing stake...";
+
+    activateVault(3000);
+    pulseVaultGlow();
+    scaleVaultOrb();
+
+    const tx = await stakingContract.withdrawStake();
+    await tx.wait();
+    await updateBalances();
+
+    statusMessage.textContent = "Stake withdrawn!";
+    showConfettiEffect();
+  } catch (error) {
+    console.error("Withdraw error:", error);
+    statusMessage.textContent = error?.data?.message || error.message || "Withdraw failed";
+  } finally {
+    withdrawButton.disabled = false;
+    setTimeout(() => (statusMessage.textContent = ""), 3000);
+  }
+}
+
+// ===========================
+// 🎛️ UI Updates
+// ===========================
 async function updateBalances() {
   if (!isWalletConnected) return;
   try {
@@ -532,121 +171,218 @@ function updateStakeAmount() {
   apyDisplay.textContent = (baseAPY + bonus).toFixed(2) + "%";
 }
 
-async function handleStake() {
-  if (!isWalletConnected) return connectWallet();
-  const value = stakeSlider.value.toString();
-  const amountWei = ethers.utils.parseUnits(value, 18);
+// ===========================
+// 🌌 Three.js Vault Scene
+// ===========================
+let scene, camera, renderer, vault, particles, rings = [], isVaultActive = false;
 
-  try {
-    stakeButton.disabled = true;
-    statusMessage.textContent = "Approving tokens...";
+function initThreeJS() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x001d3d, 0.1);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
 
-   const allowance = await tokenContract.allowance(userAddress, stakingAddress);
-    if (allowance.lt(amountWei)) {
-    const approveTx = await tokenContract.approve(stakingAddress, amountWei);
-      await approveTx.wait();
-    }
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth / 2, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    animateTokenTransfer(value);
-    activateVault(3000);
-    pulseVaultGlow();
-    scaleVaultOrb();
+  const geometry = new THREE.SphereGeometry(1, 64, 64);
+  const material = new THREE.MeshPhongMaterial({
+    color: 0xffd700,
+    emissive: 0xffa500,
+    emissiveIntensity: 0.2,
+    shininess: 50,
+    transparent: true,
+    opacity: 0.95,
+  });
+  vault = new THREE.Mesh(geometry, material);
+  scene.add(vault);
 
-    statusMessage.textContent = "Staking...";
-    const tx = await stakingContract.stake(amountWei);
-    await tx.wait();
+  const innerLight = new THREE.PointLight(0xffa500, 2, 3);
+  vault.add(innerLight);
 
-    statusMessage.textContent = "Staking successful!";
-    await updateBalances();
+  createEnergyRings();
+  createParticleField(500);
 
-    showConfettiEffect();
-    stakeButton.disabled = false;
-    setTimeout(() => (statusMessage.textContent = ""), 3000);
-  } catch (error) {
-    console.error("Staking error:", error);
-    const errMsg = error?.data?.message || error.message || "Transaction failed";
-    statusMessage.textContent = errMsg;
-    stakeButton.disabled = false;
+  scene.add(new THREE.AmbientLight(0x404040, 0.5));
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(5, 5, 5);
+  scene.add(directionalLight);
+  const pointLight = new THREE.PointLight(0xffd700, 1, 10);
+  pointLight.position.set(0, 0, 2);
+  scene.add(pointLight);
+
+  window.addEventListener('resize', onWindowResize);
+  animateScene();
+}
+
+function createEnergyRings() {
+  const ringGeometry = new THREE.TorusGeometry(1.5, 0.05, 16, 100);
+  const ringMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffd700,
+    emissive: 0xffa500,
+    emissiveIntensity: 0.5,
+    opacity: 0.8,
+    transparent: true
+  });
+  for (let i = 0; i < 3; i++) {
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial.clone());
+    ring.rotation.x = Math.PI / 2;
+    ring.rotation.y = (Math.PI / 3) * i;
+    ring.userData = {
+      speed: 0.01 + Math.random() * 0.02,
+      direction: Math.random() > 0.5 ? 1 : -1
+    };
+    scene.add(ring);
+    rings.push(ring);
   }
 }
 
-async function handleClaim() {
-  if (!isWalletConnected) return connectWallet();
-  try {
-    claimButton.disabled = true;
-    statusMessage.textContent = "Claiming rewards...";
-    
-    // Visual feedback
-    activateVault(3000);
-    pulseVaultGlow();
-    scaleVaultOrb();
-    
-    const tx = await stakingContract.claimRewards();
-    await tx.wait();
-    await updateBalances();
-    statusMessage.textContent = "Rewards claimed!";
-    
-    // Celebration effect
-    showConfettiEffect();
-    animateTokenTransfer(rewardAmount.textContent);
-    
-    claimButton.disabled = false;
-    setTimeout(() => (statusMessage.textContent = ""), 3000);
-  } catch (error) {
-    console.error("Claim error:", error);
-    statusMessage.textContent = error?.data?.message || error.message || "Claim failed";
-    claimButton.disabled = false;
+function createParticleField(count) {
+  const geo = new THREE.BufferGeometry();
+  const posArray = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i++) posArray[i] = (Math.random() - 0.5) * 20;
+  geo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xffd700,
+    size: 0.1,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending
+  });
+  particles = new THREE.Points(geo, mat);
+  scene.add(particles);
+}
+
+function onWindowResize() {
+  camera.aspect = (window.innerWidth / 2) / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth / 2, window.innerHeight);
+}
+
+function animateScene() {
+  requestAnimationFrame(animateScene);
+  vault.rotation.x += 0.002;
+  vault.rotation.y += 0.003;
+  if (isVaultActive) {
+    const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.05;
+    vault.scale.set(pulse, pulse, pulse);
+  }
+  rings.forEach(r => r.rotation.z += r.userData.speed * r.userData.direction);
+  renderer.render(scene, camera);
+}
+
+// ===========================
+// ✨ Vault Visual Effects
+// ===========================
+function activateVault(duration = 2000) {
+  isVaultActive = true;
+  gsap.to(vault.children[0], { intensity: 5, duration: 0.5 });
+  rings.forEach(r => gsap.to(r.material, { opacity: 1, emissiveIntensity: 1, duration: 0.5 }));
+  setTimeout(deactivateVault, duration);
+}
+
+function deactivateVault() {
+  isVaultActive = false;
+  gsap.to(vault.children[0], { intensity: 2, duration: 1 });
+  rings.forEach(r => gsap.to(r.material, { opacity: 0.8, emissiveIntensity: 0.5, duration: 1 }));
+  gsap.to(vault.scale, { x: 1, y: 1, z: 1, duration: 1, ease: "elastic.out(1, 0.3)" });
+}
+
+function pulseVaultGlow() {
+  gsap.to(vault.material, {
+    emissiveIntensity: 0.8,
+    duration: 0.3,
+    yoyo: true,
+    repeat: 1
+  });
+}
+
+function scaleVaultOrb() {
+  gsap.to(vault.scale, {
+    x: 1.3, y: 1.3, z: 1.3,
+    duration: 0.25,
+    yoyo: true,
+    repeat: 1,
+    ease: "power2.inOut"
+  });
+}
+
+// ===========================
+// 🪙 Token & Confetti Effects
+// ===========================
+function animateTokenTransfer(amount) {
+  const buttonRect = stakeButton.getBoundingClientRect();
+  const canvasRect = document.getElementById('canvas-container').getBoundingClientRect();
+  const tokenCount = Math.min(20, Math.max(5, Math.floor(amount / 10)));
+
+  for (let i = 0; i < tokenCount; i++) {
+    const token = document.createElement('div');
+    token.className = 'token';
+    document.body.appendChild(token);
+    const startX = buttonRect.left + Math.random() * 30;
+    const startY = buttonRect.top + Math.random() * 30;
+    const endX = canvasRect.left + canvasRect.width / 2 + Math.random() * 100;
+    const endY = canvasRect.top + canvasRect.height / 2 + Math.random() * 100;
+
+    gsap.set(token, { x: startX, y: startY, opacity: 0, scale: 0.5 });
+    gsap.to(token, {
+      x: endX, y: endY, opacity: 1, scale: 1,
+      duration: 0.5, delay: i * 0.1,
+      onStart: () => (token.style.opacity = 1)
+    });
+    gsap.to(token, {
+      opacity: 0, scale: 0.5,
+      duration: 0.3, delay: i * 0.1 + 0.5,
+      onComplete: () => document.body.removeChild(token)
+    });
   }
 }
 
-  async function handleWithdraw() {
-  if (!isWalletConnected) return connectWallet();
-  try {
-    withdrawButton.disabled = true;
-    statusMessage.textContent = "Withdrawing stake...";
+function showConfettiEffect() {
+  const colors = ['#ffd700', '#ffa500', '#ffffff', '#ff6347'];
+  for (let i = 0; i < 100; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    document.body.appendChild(confetti);
 
-    // Vault visual feedback
-    activateVault(3000);
-    pulseVaultGlow();
-    scaleVaultOrb();
+    const startX = Math.random() * window.innerWidth;
+    const rotation = Math.random() * 360;
+    const size = Math.random() * 10 + 5;
 
-    const tx = await stakingContract.withdrawStake();
-    await tx.wait();
-    
-    await updateBalances();
-    statusMessage.textContent = "Stake withdrawn!";
-    showConfettiEffect();
+    gsap.set(confetti, {
+      x: startX, y: -10, rotation, width: size + 'px', height: size + 'px', opacity: 0
+    });
 
-    withdrawButton.disabled = false;
-    setTimeout(() => (statusMessage.textContent = ""), 3000);
-  } catch (error) {
-    console.error("Withdraw error:", error);
-    statusMessage.textContent = error?.data?.message || error.message || "Withdraw failed";
-    withdrawButton.disabled = false;
+    gsap.to(confetti, {
+      y: window.innerHeight + 10,
+      opacity: 1,
+      rotation: rotation + 360,
+      duration: 2 + Math.random() * 3,
+      delay: Math.random() * 0.5,
+      onComplete: () => document.body.removeChild(confetti)
+    });
   }
 }
-  
-// Initialize on Load
+
+// ===========================
+// 🎮 Event Binding
+// ===========================
+function bindEvents() {
+  document.getElementById('connect-wallet-button')?.addEventListener('click', connectWallet);
+  stakeButton?.addEventListener('click', () => isWalletConnected ? handleStake() : connectWallet());
+  claimButton?.addEventListener('click', handleClaim);
+  withdrawButton?.addEventListener('click', handleWithdraw);
+  stakeSlider?.addEventListener('input', updateStakeAmount);
+}
+
+// ===========================
+// 🚀 Initialization
+// ===========================
 window.addEventListener("load", () => {
-  // Initialize 3D scene and slider display
   initThreeJS();
   updateStakeAmount();
-
-  // DOM Elements
-  const withdrawButton = document.getElementById('withdraw-button');
-  const stakeButton = document.getElementById('stake-button');
-  const claimButton = document.getElementById('claim-button');
-  const stakeSlider = document.getElementById('stake-slider');
-  const connectWalletButton = document.getElementById('connect-wallet-button');
-
-  // Bind Event Listeners
-  stakeButton?.addEventListener('click', () => {
-    isWalletConnected ? handleStake() : connectWallet();
-  });
-
-  claimButton?.addEventListener('click', handleClaim);
-  stakeSlider?.addEventListener('input', updateStakeAmount);
-  withdrawButton?.addEventListener('click', handleWithdraw);
-  connectWalletButton?.addEventListener('click', connectWallet);
+  bindEvents();
 });
-</script>
