@@ -7,7 +7,7 @@
   <meta name="description" content="Stake your KLY tokens and earn rewards with Kelly Legacy Estates">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,6 +33,7 @@
       --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
       --shadow-accent: 0 0 20px rgba(138, 43, 226, 0.3);
       --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --sidebar-width: 80px;
     }
 
     * {
@@ -54,7 +55,43 @@
       background-attachment: fixed;
     }
 
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 30px;
+      border-right: 1px solid rgba(138, 43, 226, 0.2);
+    }
+
+    .sidebar-icon {
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+      cursor: pointer;
+      transition: var(--transition);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    .sidebar-icon:hover {
+      color: var(--accent);
+      background: rgba(138, 43, 226, 0.1);
+    }
+
+    .sidebar-icon.active {
+      color: var(--accent);
+      background: rgba(138, 43, 226, 0.2);
+    }
+
     .dashboard {
+      flex: 1;
       max-width: 1200px;
       margin: 0 auto;
       padding: 40px 20px;
@@ -517,6 +554,10 @@
       .wallet-address {
         display: none;
       }
+      
+      .sidebar {
+        display: none;
+      }
     }
 
     /* Animation classes */
@@ -538,176 +579,280 @@
       70% { box-shadow: 0 0 0 10px rgba(138, 43, 226, 0); }
       100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0); }
     }
+
+    /* Gauge section from second design */
+    .gauge-section {
+      background: var(--card);
+      padding: 20px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .gauge-label {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .gauge-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .gauge-progress {
+      height: 8px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .gauge-progress::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      border-radius: 4px;
+    }
+
+    /* Price chart from second design */
+    .price-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .token-label {
+      font-weight: 600;
+    }
+
+    .token-price {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .chart-time-select {
+      display: flex;
+      gap: 5px;
+    }
+
+    .chart-time-select button {
+      background: var(--card-light);
+      border: none;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .chart-time-select button.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .buy-button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .buy-button:hover {
+      background: var(--accent-dark);
+    }
   </style>
 </head>
 <body>
-  <div class="dashboard">
-    <header>
-      <a href="#" class="logo">
-        <i class="fas fa-key"></i>
-        <span>KLY Staking</span>
-      </a>
-      <div>
-        <button id="connectWallet" class="wallet-btn">
-          <i class="fas fa-wallet"></i>
-          <span>Connect Wallet</span>
-        </button>
-        <span id="walletAddress" class="wallet-address"></span>
-      </div>
-    </header>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <i class="fas fa-home sidebar-icon active"></i>
+      <i class="fas fa-chart-line sidebar-icon"></i>
+      <i class="fas fa-wallet sidebar-icon"></i>
+      <i class="fas fa-cog sidebar-icon"></i>
+    </aside>
 
-    <div class="grid">
-      <div class="card">
-        <h2><i class="fas fa-coins"></i> Total Staked</h2>
-        <div class="value" id="totalStaked">--</div>
-        <div class="change positive">
-          <i class="fas fa-arrow-up"></i> 5.2% from last week
+    <div class="dashboard">
+      <header>
+        <a href="#" class="logo">
+          <i class="fas fa-key"></i>
+          <span>KLY Staking</span>
+        </a>
+        <div>
+          <button id="connectWallet" class="wallet-btn">
+            <i class="fas fa-wallet"></i>
+            <span>Connect Wallet</span>
+          </button>
+          <span id="walletAddress" class="wallet-address"></span>
         </div>
-      </div>
-      <div class="card">
-        <h2><i class="fas fa-percentage"></i> APY Rate</h2>
-        <div class="value">16.60%</div>
-        <div class="change positive">
-          <i class="fas fa-arrow-up"></i> 1.2% from last month
-        </div>
-      </div>
-      <div class="card">
-        <h2><i class="fas fa-rocket"></i> Moon Points</h2>
-        <div class="value">18,432</div>
-        <div class="change negative">
-          <i class="fas fa-arrow-down"></i> 2.1% from yesterday
-        </div>
-      </div>
-      <div class="card">
-        <h2><i class="fas fa-users"></i> Active Stakers</h2>
-        <div class="value">2,451</div>
-        <div class="change positive">
-          <i class="fas fa-arrow-up"></i> 12.5% from last month
-        </div>
-      </div>
-    </div>
+      </header>
 
-    <div class="chart-container">
-      <div class="chart-header">
-        <h3 class="chart-title">KLY Staking Performance</h3>
-        <div class="chart-timeframe">
-          <button class="timeframe-btn active">1W</button>
-          <button class="timeframe-btn">1M</button>
-          <button class="timeframe-btn">3M</button>
-          <button class="timeframe-btn">1Y</button>
-          <button class="timeframe-btn">All</button>
+      <div class="grid">
+        <div class="card">
+          <h2><i class="fas fa-coins"></i> Total Staked</h2>
+          <div class="value" id="totalStaked">$557,507</div>
+          <div class="change positive">
+            <i class="fas fa-arrow-up"></i> 5.2% from last week
+          </div>
+        </div>
+        <div class="card">
+          <h2><i class="fas fa-percentage"></i> APY Rate</h2>
+          <div class="value">16.60%</div>
+          <div class="change positive">
+            <i class="fas fa-arrow-up"></i> 1.2% from last month
+          </div>
+        </div>
+        <div class="card">
+          <h2><i class="fas fa-rocket"></i> Moon Points</h2>
+          <div class="value">18,432</div>
+          <div class="change negative">
+            <i class="fas fa-arrow-down"></i> 2.1% from yesterday
+          </div>
+        </div>
+        <div class="card">
+          <h2><i class="fas fa-users"></i> Active Stakers</h2>
+          <div class="value">2,451</div>
+          <div class="change positive">
+            <i class="fas fa-arrow-up"></i> 12.5% from last month
+          </div>
         </div>
       </div>
-      <div id="apexChart"></div>
-    </div>
 
-    <div class="stake-container">
-      <div class="stake-box">
-        <h3 class="stake-box-title"><i class="fas fa-coins"></i> Stake KLY</h3>
-        
-        <div class="tab-buttons">
-          <button class="tab-btn active" data-tab="stake">Stake</button>
-          <button class="tab-btn" data-tab="withdraw">Withdraw</button>
-          <button class="tab-btn" data-tab="claim">Claim</button>
+      <div class="chart-container">
+        <div class="price-header">
+          <span class="token-label">KLY Price</span>
+          <span class="token-price">$0.18</span>
+          <div class="chart-timeframe">
+            <button class="timeframe-btn active">1W</button>
+            <button class="timeframe-btn">1M</button>
+            <button class="timeframe-btn">3M</button>
+            <button class="timeframe-btn">1Y</button>
+            <button class="timeframe-btn">All</button>
+          </div>
+          <button class="buy-button">Buy KLY</button>
         </div>
+        <div id="apexChart"></div>
+      </div>
 
-        <div id="stake-tab" class="tab-content active">
-          <div class="input-group">
-            <label class="input-label">Amount to Stake (KLY)</label>
-            <div class="input-wrapper">
-              <input type="number" id="stakeAmount" class="input-field" placeholder="0.0" min="0" step="0.1" />
-              <button class="max-btn" id="maxStakeBtn">MAX</button>
+      <div class="stake-container">
+        <div class="stake-box">
+          <h3 class="stake-box-title"><i class="fas fa-coins"></i> Stake KLY</h3>
+          
+          <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="stake">Stake</button>
+            <button class="tab-btn" data-tab="withdraw">Withdraw</button>
+            <button class="tab-btn" data-tab="claim">Claim</button>
+          </div>
+
+          <div id="stake-tab" class="tab-content active">
+            <div class="input-group">
+              <label class="input-label">Amount to Stake (KLY)</label>
+              <div class="input-wrapper">
+                <input type="number" id="stakeAmount" class="input-field" placeholder="0.0" min="0" step="0.1" />
+                <button class="max-btn" id="maxStakeBtn">MAX</button>
+              </div>
             </div>
-          </div>
-          
-          <div class="input-group">
-            <label class="input-label">Lockup Period</label>
-            <select id="lockupPeriod" class="select-field">
-              <option value="30">30 days (+5% bonus)</option>
-              <option value="60">60 days (+10% bonus)</option>
-              <option value="90">90 days (+15% bonus)</option>
-              <option value="180">180 days (+25% bonus)</option>
-            </select>
-          </div>
-          
-          <button id="stakeBtn" class="action-btn" disabled>
-            <i class="fas fa-lock"></i> Stake KLY
-          </button>
-          
-          <div id="stakeStatus" class="status"></div>
-        </div>
-
-        <div id="withdraw-tab" class="tab-content">
-          <div class="input-group">
-            <label class="input-label">Amount to Withdraw (KLY)</label>
-            <div class="input-wrapper">
-              <input type="number" id="withdrawAmount" class="input-field" placeholder="0.0" min="0" step="0.1" />
-              <button class="max-btn" id="maxWithdrawBtn">MAX</button>
+            
+            <div class="input-group">
+              <label class="input-label">Lockup Period</label>
+              <select id="lockupPeriod" class="select-field">
+                <option value="30">30 days (+5% bonus)</option>
+                <option value="60">60 days (+10% bonus)</option>
+                <option value="90">90 days (+15% bonus)</option>
+                <option value="180">180 days (+25% bonus)</option>
+              </select>
             </div>
+            
+            <button id="stakeBtn" class="action-btn" disabled>
+              <i class="fas fa-lock"></i> Stake KLY
+            </button>
+            
+            <div id="stakeStatus" class="status"></div>
           </div>
-          
-          <button id="withdrawBtn" class="action-btn" disabled>
-            <i class="fas fa-unlock"></i> Withdraw
-          </button>
-          
-          <div id="withdrawStatus" class="status"></div>
+
+          <div id="withdraw-tab" class="tab-content">
+            <div class="input-group">
+              <label class="input-label">Amount to Withdraw (KLY)</label>
+              <div class="input-wrapper">
+                <input type="number" id="withdrawAmount" class="input-field" placeholder="0.0" min="0" step="0.1" />
+                <button class="max-btn" id="maxWithdrawBtn">MAX</button>
+              </div>
+            </div>
+            
+            <button id="withdrawBtn" class="action-btn" disabled>
+              <i class="fas fa-unlock"></i> Withdraw
+            </button>
+            
+            <div id="withdrawStatus" class="status"></div>
+          </div>
+
+          <div id="claim-tab" class="tab-content">
+            <div class="stats-item">
+              <span class="stats-label">Available Rewards:</span>
+              <span class="stats-value" id="rewardAmount">-- KLY</span>
+            </div>
+            
+            <div class="stats-item">
+              <span class="stats-label">Next Reward:</span>
+              <span class="stats-value" id="nextReward">--</span>
+            </div>
+            
+            <button id="claimBtn" class="action-btn" disabled>
+              <i class="fas fa-gift"></i> Claim Rewards
+            </button>
+            
+            <div id="claimStatus" class="status"></div>
+          </div>
         </div>
 
-        <div id="claim-tab" class="tab-content">
+        <div class="stats-box">
+          <h3 class="stake-box-title"><i class="fas fa-chart-pie"></i> Your Staking Stats</h3>
+          
           <div class="stats-item">
-            <span class="stats-label">Available Rewards:</span>
-            <span class="stats-value" id="rewardAmount">-- KLY</span>
+            <span class="stats-label">Wallet Balance:</span>
+            <span class="stats-value" id="walletBalance">-- KLY</span>
           </div>
           
           <div class="stats-item">
-            <span class="stats-label">Next Reward:</span>
-            <span class="stats-value" id="nextReward">--</span>
+            <span class="stats-label">Currently Staked:</span>
+            <span class="stats-value" id="currentStake">-- KLY</span>
           </div>
           
-          <button id="claimBtn" class="action-btn" disabled>
-            <i class="fas fa-gift"></i> Claim Rewards
-          </button>
+          <div class="stats-item">
+            <span class="stats-label">Total Rewards Earned:</span>
+            <span class="stats-value" id="totalRewards">-- KLY</span>
+          </div>
           
-          <div id="claimStatus" class="status"></div>
-        </div>
-      </div>
-
-      <div class="stats-box">
-        <h3 class="stake-box-title"><i class="fas fa-chart-pie"></i> Your Staking Stats</h3>
-        
-        <div class="stats-item">
-          <span class="stats-label">Wallet Balance:</span>
-          <span class="stats-value" id="walletBalance">-- KLY</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Currently Staked:</span>
-          <span class="stats-value" id="currentStake">-- KLY</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Total Rewards Earned:</span>
-          <span class="stats-value" id="totalRewards">-- KLY</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Your Share:</span>
-          <span class="stats-value" id="userShare">--%</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Lockup Period:</span>
-          <span class="stats-value" id="userLockup">-- days</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Staking Since:</span>
-          <span class="stats-value" id="stakingSince">--</span>
-        </div>
-        
-        <div class="stats-item">
-          <span class="stats-label">Estimated Daily Rewards:</span>
-          <span class="stats-value" id="dailyRewards">-- KLY</span>
+          <div class="stats-item">
+            <span class="stats-label">Your Share:</span>
+            <span class="stats-value" id="userShare">--%</span>
+          </div>
+          
+          <div class="stats-item">
+            <span class="stats-label">Lockup Period:</span>
+            <span class="stats-value" id="userLockup">-- days</span>
+          </div>
+          
+          <div class="stats-item">
+            <span class="stats-label">Staking Since:</span>
+            <span class="stats-value" id="stakingSince">--</span>
+          </div>
+          
+          <div class="stats-item">
+            <span class="stats-label">Estimated Daily Rewards:</span>
+            <span class="stats-value" id="dailyRewards">-- KLY</span>
+          </div>
         </div>
       </div>
     </div>
