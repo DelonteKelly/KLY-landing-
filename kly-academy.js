@@ -1,328 +1,246 @@
 <script type="module">
-import { ethers } from "./ethers.min.js";
+import { ethers } from "./ethers.min.js"; // Make sure ethers is available locally or via CDN
 import Web3Modal from "./web3modal.js";
 import WalletConnectProvider from "@walletconnect/web3-provider";
 
-// Constants
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
-const BSC_CHAIN_ID = 56;
-const REQUIRED_KLY = 100;
 
 const KLY_TOKEN_ABI = [
-    "function balanceOf(address) view returns (uint256)",
-    "function decimals() view returns (uint8)"
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)"
 ];
 
 const NFT_CONTRACT_ABI = [
-    "function mintTo(address to, string uri)"
+  "function mintTo(address to, string uri)"
 ];
 
-// State management
-const state = {
-    provider: null,
-    web3Modal: null,
-    signer: null,
-    userAddress: null,
-    network: null,
-    klyBalance: 0,
-    completedModules: []
-};
+let provider, web3Modal, signer, userAddress;
+let completedModules = [];
 
-// DOM Elements
-const elements = {
-    connectSection: document.getElementById('connect-section'),
-    appContent: document.getElementById('app-content'),
-    connectBtn: document.getElementById('connect-btn'),
-    walletStatus: document.getElementById('wallet-status'),
-    walletAddress: document.getElementById('wallet-address'),
-    userAvatar: document.getElementById('user-avatar'),
-    progressBar: document.getElementById('progress'),
-    mintStatus: document.getElementById('mint-status'),
-    progressText: document.getElementById('progress-text'),
-    mintBtn: document.getElementById('mint-btn')
-};
+const connectSection = document.getElementById('connect-section');
+const appContent = document.getElementById('app-content');
+const connectBtn = document.getElementById('connect-btn');
+const walletStatus = document.getElementById('wallet-status');
+const walletAddress = document.getElementById('wallet-address');
+const userAvatar = document.getElementById('user-avatar');
+const progressBar = document.getElementById('progress');
+const mintStatus = document.getElementById('mint-status');
+const progressText = document.getElementById('progress-text');
+const mintBtn = document.getElementById('mint-btn');
 
-// Network configuration
-const BSC_NETWORK = {
-    chainId: '0x38',
-    chainName: 'Binance Smart Chain',
-    nativeCurrency: {
-        name: 'BNB',
-        symbol: 'BNB',
-        decimals: 18
-    },
-    rpcUrls: ['https://bsc-dataseed.binance.org/'],
-    blockExplorerUrls: ['https://bscscan.com']
-};
+function createParticles() {
+  const particlesContainer = document.getElementById('particles');
+  if (!particlesContainer) return;
 
-// Initialize Web3Modal
+  const particleCount = window.innerWidth < 768 ? 20 : 50;
+
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+
+    const size = Math.random() * 5 + 2;
+    const posX = Math.random() * 100;
+    const posY = Math.random() * 100;
+    const opacity = Math.random() * 0.3 + 0.1;
+    const animationDuration = Math.random() * 20 + 10;
+    const animationDelay = Math.random() * 10;
+    const color = `hsl(${Math.random() * 60 + 200}, 100%, 70%)`;
+
+    particle.style.width = `${size}px`;
+    particle.style.height = `${size}px`;
+    particle.style.left = `${posX}%`;
+    particle.style.top = `${posY}%`;
+    particle.style.opacity = opacity;
+    particle.style.background = color;
+    particle.style.animationDuration = `${animationDuration}s`;
+    particle.style.animationDelay = `-${animationDelay}s`;
+
+    particlesContainer.appendChild(particle);
+  }
+}
+
 async function initWeb3Modal() {
-    try {
-        const providerOptions = {
-            walletconnect: {
-                package: WalletConnectProvider,
-                options: {
-                    rpc: {
-                        56: "https://bsc-dataseed.binance.org/",
-                        1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY"
-                    },
-                    chainId: BSC_CHAIN_ID
-                }
-            }
-        };
-
-        state.web3Modal = new Web3Modal({
-            cacheProvider: true,
-            providerOptions,
-            theme: "dark"
-        });
-
-        console.log("Web3Modal initialized successfully");
-        return true;
-    } catch (err) {
-        console.error("Web3Modal initialization failed:", err);
-        showNotification("Wallet system initialization failed", "error");
-        return false;
+  const providerOptions = {
+    walletconnect: {
+      package: WalletConnectProvider,
+      options: {
+        rpc: { 56: "https://bsc-dataseed.binance.org/" },
+        chainId: 56
+      }
     }
+  };
+
+  web3Modal = new Web3Modal({
+    cacheProvider: true,
+    providerOptions,
+    theme: "dark"
+  });
 }
 
-// Connect wallet handler
 export async function connectWallet() {
-    if (!elements.connectBtn) return;
+  try {
+    if (!web3Modal) await initWeb3Modal();
 
-    try {
-        setButtonLoading(elements.connectBtn, "Connecting...");
+    connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
 
-        // Try direct connection first (MetaMask, etc.)
-        if (window.ethereum) {
-            console.log("Attempting direct connection with window.ethereum");
-            await handleInjectedProvider();
-        } 
-        // Fallback to Web3Modal
-        else {
-            console.log("Falling back to Web3Modal");
-            if (!state.web3Modal && !await initWeb3Modal()) return;
-            
-            const instance = await state.web3Modal.connect();
-            state.provider = new ethers.providers.Web3Provider(instance);
-        }
+    const instance = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(instance);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
 
-        // Complete connection setup
-        await completeConnection();
-        
-    } catch (err) {
-        handleConnectionError(err);
-    }
-}
+    walletAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+    userAvatar.textContent = userAddress.slice(2, 4).toUpperCase();
 
-// Handle injected provider (MetaMask, etc.)
-async function handleInjectedProvider() {
-    state.provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    
-    // Request account access
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-    
-    // Set up event listeners
-    window.ethereum.on('chainChanged', handleChainChanged);
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-}
-
-// Complete the connection process
-async function completeConnection() {
-    state.signer = state.provider.getSigner();
-    state.userAddress = await state.signer.getAddress();
-    state.network = await state.provider.getNetwork();
-    
-    console.log("Connected address:", state.userAddress);
-    console.log("Connected network:", state.network);
-
-    updateConnectionUI();
-    
-    // Check if we're on the correct network
-    if (state.network.chainId !== BSC_CHAIN_ID) {
-        handleWrongNetwork();
-        return;
-    }
-
-    // Check token balance
-    await checkTokenBalance();
-}
-
-// Update UI after connection
-function updateConnectionUI() {
-    elements.walletAddress.textContent = `${state.userAddress.slice(0, 6)}...${state.userAddress.slice(-4)}`;
-    elements.userAvatar.textContent = state.userAddress.slice(2, 4).toUpperCase();
-    elements.walletStatus.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-    setButtonSuccess(elements.connectBtn, "Connected");
-}
-
-// Handle wrong network
-function handleWrongNetwork() {
-    elements.walletStatus.innerHTML = `
+    const network = await provider.getNetwork();
+    if (network.chainId !== 56) {
+      walletStatus.innerHTML = `
         <div style="color: orange; text-align: center;">
-            <i class="fas fa-exclamation-triangle"></i> Switch to BNB Chain
-            <button onclick="addBscNetwork()" class="btn">Add BSC</button>
+          <i class="fas fa-exclamation-triangle"></i> Switch to BNB Chain
+          <button onclick="addBscNetwork()" class="btn">Add BSC</button>
         </div>`;
-    resetConnectButton();
-}
-
-// Check user's KLY token balance
-async function checkTokenBalance() {
-    try {
-        const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, state.provider);
-        const [balance, decimals] = await Promise.all([
-            token.balanceOf(state.userAddress),
-            token.decimals()
-        ]);
-        
-        state.klyBalance = parseFloat(ethers.utils.formatUnits(balance, decimals));
-        console.log("KLY balance:", state.klyBalance);
-
-        if (state.klyBalance >= REQUIRED_KLY) {
-            elements.connectSection.style.display = 'none';
-            elements.appContent.style.display = 'block';
-            showNotification("Wallet connected successfully", "success");
-        } else {
-            showInsufficientBalance();
-        }
-    } catch (err) {
-        console.error("Balance check failed:", err);
-        showNotification("Failed to check token balance", "error");
+      return;
     }
-}
 
-// Show insufficient balance message
-function showInsufficientBalance() {
-    elements.walletStatus.innerHTML = `
-        <div style="color: red; text-align: center;">
-            Insufficient KLY (${state.klyBalance.toFixed(2)}/${REQUIRED_KLY})
-            <a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" 
-               target="_blank" class="btn">Buy KLY</a>
-        </div>`;
-}
+    const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+    const balance = await token.balanceOf(userAddress);
+    const decimals = await token.decimals();
+    const kly = parseFloat(ethers.utils.formatUnits(balance, decimals));
 
-// Handle connection errors
-function handleConnectionError(err) {
-    console.error("Connection error:", err);
-    
-    let errorMessage = `Connection failed: ${err.message}`;
-    if (err.code === 4001) {
-        errorMessage = "Connection rejected by user";
-    } else if (err.code === -32002) {
-        errorMessage = "Connection request already pending";
-    }
-    
-    showNotification(errorMessage, "error");
-    elements.walletStatus.innerHTML = `
-        <div style="color: red; text-align: center;">
-            <i class="fas fa-times-circle"></i> Connection failed
-        </div>`;
-    resetConnectButton();
-}
-
-// Add BSC network handler
-export async function addBscNetwork() {
-    try {
-        await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [BSC_NETWORK]
-        });
-        showNotification("BSC network added", "success");
-        setTimeout(() => location.reload(), 2000);
-    } catch (err) {
-        console.error("Failed to add BSC network:", err);
-        showNotification("Failed to add BSC network: " + err.message, "error");
-    }
-}
-
-// Handle chain changes
-function handleChainChanged(chainId) {
-    console.log("Chain changed:", chainId);
-    window.location.reload();
-}
-
-// Handle account changes
-function handleAccountsChanged(accounts) {
-    console.log("Account changed:", accounts);
-    if (accounts.length === 0) {
-        disconnectWallet();
+    if (kly >= 100) {
+      connectSection.style.display = 'none';
+      appContent.style.display = 'block';
+      showNotification("Wallet connected", "success");
+      updateProgress();
     } else {
-        window.location.reload();
+      walletStatus.innerHTML = `
+        <div style="color: red; text-align: center;">
+          Insufficient KLY (${kly.toFixed(2)}/100)
+          <a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" class="btn">Buy KLY</a>
+        </div>`;
     }
+  } catch (err) {
+    showNotification(`Connect error: ${err.message}`, "error");
+    connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+  }
 }
 
-// Disconnect wallet
+export async function addBscNetwork() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: '0x38',
+        chainName: 'Binance Smart Chain',
+        nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+        rpcUrls: ['https://bsc-dataseed.binance.org/'],
+        blockExplorerUrls: ['https://bscscan.com']
+      }]
+    });
+    showNotification("BSC added", "success");
+    setTimeout(() => location.reload(), 2000);
+  } catch (err) {
+    showNotification("Failed to add BSC: " + err.message, "error");
+  }
+}
+
 export function disconnectWallet() {
-    if (state.web3Modal?.clearCachedProvider) {
-        state.web3Modal.clearCachedProvider();
-    }
-    
-    // Reset state
-    state.provider = null;
-    state.signer = null;
-    state.userAddress = null;
-    state.network = null;
-    state.klyBalance = 0;
-    
-    // Reset UI
-    elements.connectSection.style.display = 'block';
-    elements.appContent.style.display = 'none';
-    resetConnectButton();
-    showNotification("Wallet disconnected", "success");
+  if (web3Modal?.clearCachedProvider) web3Modal.clearCachedProvider();
+  connectSection.style.display = 'block';
+  appContent.style.display = 'none';
+  showNotification("Wallet disconnected", "success");
 }
 
-// UI Helper functions
-function setButtonLoading(button, text) {
-    button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${text}`;
-    button.disabled = true;
+export function showModule(id) {
+  document.querySelectorAll('.module').forEach(m => m.style.display = 'none');
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.style.display = 'block';
+  target.classList.add('animate__fadeIn');
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  document.querySelectorAll('.menu-item').forEach(el => {
+    el.classList.remove('active');
+    const icon = el.querySelector('i');
+    if (icon) icon.className = 'far fa-circle';
+  });
+
+  const item = document.querySelector(`.menu-item[onclick="showModule('${id}')"]`);
+  if (item) {
+    item.classList.add('active');
+    const icon = item.querySelector('i');
+    if (icon) icon.className = 'fas fa-check-circle';
+  }
+
+  if (!completedModules.includes(id)) {
+    completedModules.push(id);
+    updateProgress();
+  }
 }
 
-function setButtonSuccess(button, text) {
-    button.innerHTML = `<i class="fas fa-check-circle"></i> ${text}`;
-    button.disabled = false;
+function updateProgress() {
+  const total = 5;
+  const done = completedModules.length;
+  const percent = (done / total) * 100;
+
+  if (progressBar) progressBar.style.width = `${percent}%`;
+  if (progressText) progressText.textContent = `${done}/${total}`;
+
+  if (done === total && mintBtn) {
+    mintBtn.disabled = false;
+    mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Mint NFT Certificate';
+    mintBtn.classList.add('pulse');
+  }
 }
 
-function resetConnectButton() {
-    elements.connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-    elements.connectBtn.disabled = false;
+export async function mintCertificate() {
+  if (!signer) return showNotification("Connect wallet first", "error");
+
+  try {
+    mintBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Minting...`;
+    mintBtn.disabled = true;
+
+    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+    const gasEstimate = await contract.estimateGas.mintTo(userAddress, "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4");
+    const tx = await contract.mintTo(
+      userAddress,
+      "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
+      { gasLimit: gasEstimate.mul(120).div(100) }
+    );
+
+    mintStatus.innerHTML = `<div><i class="fas fa-spinner fa-spin"></i> Confirming on chain...</div>`;
+    await tx.wait();
+    mintStatus.innerHTML = `<div style="color: green;"><i class="fas fa-check-circle"></i> NFT Minted!</div>`;
+    mintBtn.style.display = 'none';
+    launchConfetti();
+  } catch (err) {
+    showNotification("Mint failed: " + err.message, "error");
+    mintStatus.innerHTML = `<div style="color: red;">Error: ${err.message}</div>`;
+    mintBtn.innerHTML = 'Try Again';
+    mintBtn.disabled = false;
+  }
 }
 
-// Notification system
 function showNotification(message, type = "info") {
-    const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.innerHTML = `
-        <div class="message">${message}</div>
-        <button onclick="this.parentElement.remove()">✕</button>`;
-    document.body.appendChild(notif);
-    setTimeout(() => notif.remove(), 5000);
+  const notif = document.createElement('div');
+  notif.className = `notification ${type}`;
+  notif.innerHTML = `
+    <div class="message">${message}</div>
+    <button onclick="this.parentElement.remove()">✕</button>`;
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 5000);
 }
 
-// Initialize the application
-window.addEventListener('load', async () => {
-    try {
-        // Initialize Web3Modal
-        if (!await initWeb3Modal()) return;
-        
-        // Auto-connect if cached provider exists
-        if (state.web3Modal.cachedProvider) {
-            console.log("Found cached provider, attempting auto-connect");
-            await connectWallet();
-        }
-        
-        // Initialize your modules
-        showModule("module1");
-    } catch (err) {
-        console.error("Initialization error:", err);
-        showNotification("App initialization failed", "error");
-    }
-});
+function launchConfetti() {
+  if (typeof confetti === "function") {
+    confetti({ particleCount: 150, spread: 60, origin: { y: 0.6 } });
+  }
+}
 
-// Make functions available globally
-window.connectWallet = connectWallet;
-window.addBscNetwork = addBscNetwork;
-window.disconnectWallet = disconnectWallet;
-window.showModule = showModule;
-window.mintCertificate = mintCertificate;
+window.addEventListener('load', async () => {
+  createParticles();
+  await initWeb3Modal();
+  if (web3Modal.cachedProvider) await connectWallet();
+  showModule("module1");
+});
 </script>
