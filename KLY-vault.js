@@ -26,6 +26,14 @@ async function connectWallet() {
     return;
   }
 
+  // ✅ BNB Chain Check
+  const bnbChainId = '0x38';
+  const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+  if (chainId !== bnbChainId) {
+    alert("Please switch to BNB Smart Chain.");
+    return;
+  }
+
   try {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     userAddress = accounts[0];
