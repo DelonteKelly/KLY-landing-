@@ -1,9 +1,10 @@
-<script type="module">
-import { ethers } from "./ethers.min.js";
-import Web3Modal from "./web3modal.js";
-import WalletConnectProvider from "@walletconnect/web3-provider";
+<!-- ✅ Make sure these are loaded in your <head> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
-// Constants
+<!-- ✅ Main Logic -->
+<script>
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 const NFT_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
@@ -14,7 +15,6 @@ const KLY_TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function decimals() view returns (uint8)"
 ];
-
 const NFT_CONTRACT_ABI = [
   "function mintTo(address to, string uri)"
 ];
@@ -22,7 +22,6 @@ const NFT_CONTRACT_ABI = [
 let provider, web3Modal, signer, userAddress;
 let completedModules = JSON.parse(localStorage.getItem('completedModules') || '[]');
 
-// DOM references
 const connectSection = document.getElementById('connect-section');
 const appContent = document.getElementById('app-content');
 const connectBtn = document.getElementById('connect-btn');
@@ -52,11 +51,11 @@ function createParticles() {
 }
 
 async function initWeb3Modal() {
-  web3Modal = new Web3Modal({
+  web3Modal = new window.Web3Modal.default({
     cacheProvider: false,
     providerOptions: {
       walletconnect: {
-        package: WalletConnectProvider,
+        package: window.WalletConnectProvider.default,
         options: {
           rpc: { [BSC_CHAIN_ID]: BSC_RPC },
           chainId: BSC_CHAIN_ID
@@ -256,7 +255,6 @@ window.addEventListener('load', async () => {
   showModule("module1");
 });
 
-// Expose globally
 window.connectWallet = connectWallet;
 window.disconnectWallet = disconnectWallet;
 window.mintCertificate = mintCertificate;
