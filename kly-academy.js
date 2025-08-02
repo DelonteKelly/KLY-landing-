@@ -1,12 +1,6 @@
-<!-- ✅ Make sure these are loaded in your <head> -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-
-<!-- ✅ Main Logic -->
 <script>
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
- const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950"
+const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
 const NFT_URI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
 const BSC_RPC = "https://bsc-dataseed.binance.org/";
 const BSC_CHAIN_ID = 56;
@@ -33,32 +27,26 @@ const progressText = document.getElementById('progress-text');
 const mintBtn = document.getElementById('mint-btn');
 const mintStatus = document.getElementById('mint-status');
 
-function createParticles() {
-  const container = document.getElementById('particles');
-  const count = window.innerWidth < 768 ? 20 : 50;
-  for (let i = 0; i < count; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    p.style.width = p.style.height = `${Math.random() * 5 + 2}px`;
-    p.style.left = `${Math.random() * 100}%`;
-    p.style.top = `${Math.random() * 100}%`;
-    p.style.opacity = Math.random() * 0.3 + 0.1;
-    p.style.background = `hsl(${Math.random() * 60 + 200}, 100%, 70%)`;
-    p.style.animationDuration = `${Math.random() * 20 + 10}s`;
-    p.style.animationDelay = `-${Math.random() * 10}s`;
-    container.appendChild(p);
-  }
-}
-
+// Initialize Web3Modal
 async function initWeb3Modal() {
-  web3Modal = new window.Web3Modal.default({
-    cacheProvider: false,
+  web3Modal = new Web3Modal({
+    cacheProvider: true,
     providerOptions: {
       walletconnect: {
-        package: window.WalletConnectProvider.default,
+        package: WalletConnectProvider,
         options: {
-          rpc: { [BSC_CHAIN_ID]: BSC_RPC },
+          rpc: {
+            56: BSC_RPC,
+            1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY"
+          },
           chainId: BSC_CHAIN_ID
+        }
+      },
+      injected: {
+        package: null,
+        display: {
+          name: "Browser Wallet",
+          description: "Connect with your browser wallet (MetaMask, etc)"
         }
       }
     },
@@ -66,24 +54,40 @@ async function initWeb3Modal() {
   });
 }
 
+// Connect Wallet Function
 async function connectWallet() {
   try {
     connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+    walletStatus.innerHTML = '';
 
     const instance = await web3Modal.connect();
     provider = new ethers.providers.Web3Provider(instance);
+    
+    if (!provider) {
+      throw new Error("Failed to initialize provider");
+    }
+
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    instance.on?.("accountsChanged", () => window.location.reload());
-    instance.on?.("chainChanged", () => window.location.reload());
+    // Set up event listeners
+    if (instance.on) {
+      instance.on("accountsChanged", () => window.location.reload());
+      instance.on("chainChanged", () => window.location.reload());
+      instance.on("disconnect", () => disconnectWallet());
+    }
 
+    // Display wallet info
     walletAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
     userAvatar.textContent = userAddress.slice(2, 4).toUpperCase();
 
+    // Check network
     const net = await provider.getNetwork();
-    if (net.chainId !== BSC_CHAIN_ID) return showNetworkWarning();
+    if (net.chainId !== BSC_CHAIN_ID) {
+      return showNetworkWarning();
+    }
 
+    // Check token balance
     const token = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
     const [balance, decimals] = await Promise.all([
       token.balanceOf(userAddress),
@@ -91,34 +95,55 @@ async function connectWallet() {
     ]);
 
     const kly = parseFloat(ethers.utils.formatUnits(balance, decimals));
-    if (kly < 100) return showLowBalance(kly);
+    if (kly < 100) {
+      return showLowBalance(kly);
+    }
 
+    // Success
     connectSection.style.display = 'none';
     appContent.style.display = 'block';
-    showNotification("Wallet connected", "success");
+    showNotification("Wallet connected successfully", "success");
     updateProgress();
+
   } catch (e) {
-    showNotification(`Connect error: ${e.message}`, "error");
-    walletStatus.innerHTML = `<div style="color: var(--danger); text-align:center;">${e.message}</div>`;
+    console.error("Connection error:", e);
+    let errorMsg = e.message;
+    
+    // Handle specific errors
+    if (e.code === 4001) {
+      errorMsg = "Connection rejected by user";
+    } else if (e.code === -32002) {
+      errorMsg = "Connection request already pending";
+    } else if (!window.ethereum) {
+      errorMsg = "No Ethereum provider found. Install MetaMask or another wallet.";
+    }
+
+    showNotification(`Connection failed: ${errorMsg}`, "error");
+    walletStatus.innerHTML = `
+      <div style="color: var(--danger); text-align:center;">
+        <i class="fas fa-exclamation-circle"></i> ${errorMsg}
+      </div>`;
   } finally {
     connectBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
   }
 }
 
-function showNetworkWarning() {
-  walletStatus.innerHTML = `
-    <div style="color: orange; text-align: center;">
-      <i class="fas fa-exclamation-triangle"></i> Switch to BNB Chain
-      <button onclick="addBscNetwork()" class="btn">Add BSC</button>
-    </div>`;
-}
-
-function showLowBalance(kly) {
-  walletStatus.innerHTML = `
-    <div style="color: red; text-align: center;">
-      Insufficient KLY (${kly.toFixed(2)}/100)
-      <a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" class="btn" target="_blank">Buy KLY</a>
-    </div>`;
+// Network Switching Functions
+async function switchToBscNetwork() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0x38' }] // BSC chain ID in hex
+    });
+    showNotification("Switched to BSC", "success");
+    setTimeout(() => location.reload(), 1000);
+  } catch (switchError) {
+    if (switchError.code === 4902) {
+      await addBscNetwork();
+    } else {
+      showNotification("Failed to switch network: " + switchError.message, "error");
+    }
+  }
 }
 
 async function addBscNetwork() {
@@ -133,13 +158,43 @@ async function addBscNetwork() {
         blockExplorerUrls: ['https://bscscan.com']
       }]
     });
-    showNotification("BSC added", "success");
+    showNotification("BSC added successfully", "success");
     setTimeout(() => location.reload(), 2000);
   } catch (err) {
     showNotification("Failed to add BSC: " + err.message, "error");
   }
 }
 
+function showNetworkWarning() {
+  walletStatus.innerHTML = `
+    <div style="color: var(--warning); text-align: center; margin-top: 1rem;">
+      <i class="fas fa-exclamation-triangle"></i> Please switch to BNB Chain
+      <div style="margin-top: 0.5rem;">
+        <button onclick="switchToBscNetwork()" class="btn btn-sm" style="margin-right: 0.5rem;">
+          Switch Network
+        </button>
+        <button onclick="addBscNetwork()" class="btn btn-outline btn-sm">
+          Add BSC
+        </button>
+      </div>
+    </div>`;
+}
+
+function showLowBalance(kly) {
+  walletStatus.innerHTML = `
+    <div style="color: var(--danger); text-align: center;">
+      <i class="fas fa-exclamation-circle"></i> Insufficient KLY (${kly.toFixed(2)}/100)
+      <div style="margin-top: 0.5rem;">
+        <a href="https://pancakeswap.finance/swap?outputCurrency=${KLY_TOKEN_ADDRESS}" 
+           class="btn btn-sm" 
+           target="_blank">
+          Buy KLY
+        </a>
+      </div>
+    </div>`;
+}
+
+// Disconnect Wallet
 function disconnectWallet() {
   web3Modal?.clearCachedProvider();
   connectSection.style.display = 'block';
@@ -147,6 +202,7 @@ function disconnectWallet() {
   showNotification("Wallet disconnected", "success");
 }
 
+// Module Navigation
 function showModule(id) {
   document.querySelectorAll('.module').forEach(m => m.style.display = 'none');
   const mod = document.getElementById(id);
@@ -175,6 +231,7 @@ function showModule(id) {
   }
 }
 
+// Progress Tracking
 function updateProgress() {
   const total = 5;
   const done = completedModules.length;
@@ -190,6 +247,7 @@ function updateProgress() {
   }
 }
 
+// NFT Minting
 async function mintCertificate() {
   if (!signer) return showNotification("Connect wallet first", "error");
 
@@ -217,13 +275,14 @@ async function mintCertificate() {
     showNotification("NFT Certificate minted successfully!", "success");
   } catch (err) {
     showNotification(`Minting failed: ${err.message}`, "error");
-    mintStatus.innerHTML = `<div style="color: red;">Error: ${err.message}</div>`;
+    mintStatus.innerHTML = `<div style="color: var(--danger);">Error: ${err.message}</div>`;
     mintBtn.disabled = false;
     mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
     mintBtn.classList.remove('pulse');
   }
 }
 
+// UI Helpers
 function showNotification(msg, type = "info") {
   const notif = document.createElement('div');
   notif.className = `notification ${type}`;
@@ -248,16 +307,18 @@ function launchConfetti() {
   }
 }
 
+// Initialize
 window.addEventListener('load', async () => {
-  createParticles();
   await initWeb3Modal();
   if (web3Modal.cachedProvider) await connectWallet();
   showModule("module1");
 });
 
+// Make functions available globally
 window.connectWallet = connectWallet;
 window.disconnectWallet = disconnectWallet;
 window.mintCertificate = mintCertificate;
 window.showModule = showModule;
+window.switchToBscNetwork = switchToBscNetwork;
 window.addBscNetwork = addBscNetwork;
 </script>
