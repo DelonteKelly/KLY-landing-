@@ -5,7 +5,7 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 
 // Constants
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const STAKING_CONTRACT_ADDRESS = "0xREPLACE_WITH_STAKING_CONTRACT"; // Replace with actual staking contract
+const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 const BSC_CHAIN_ID = 56;
 
 const KLY_TOKEN_ABI = [
