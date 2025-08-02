@@ -97,6 +97,8 @@ export async function connectWallet() {
         resetConnectButton();
     }
 }
+document.getElementById("stake-button").innerHTML = '<i class="fas fa-lock"></i> STAKE TOKENS';
+document.getElementById("stake-button").onclick = stakeTokens;
 
 // Load token and staking balances
 async function loadBalances() {
