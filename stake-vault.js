@@ -150,7 +150,8 @@ export async function stakeTokens() {
             return;
         }
         
-        const amount = parseFloat(elements.stakeSlider.value);
+       const percentage = parseFloat(elements.stakeSlider.value);
+const amount = (percentage / 100) * state.klyBalance;
         if (amount <= 0 || amount > state.klyBalance) {
             showNotification("Invalid stake amount", "error");
             return;
