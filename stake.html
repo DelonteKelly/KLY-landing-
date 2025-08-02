@@ -209,6 +209,9 @@
         <button id="claim-button" class="stake-button" disabled>
           CLAIM REWARDS
         </button>
+        <button id="withdraw-button" class="stake-button" disabled>
+  WITHDRAW STAKE
+</button>
       </div>
     </div>
   </div>
@@ -710,15 +713,16 @@ tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
 }
 
 function updateUI() {
-  if (isWalletConnected) {
-    stakeButton.textContent = "STAKE KLY";
-    stakeButton.disabled = false;
-    claimButton.disabled = false;
-  } else {
-    stakeButton.textContent = "CONNECT WALLET";
-    stakeButton.disabled = false;
-    claimButton.disabled = true;
-  }
+if (isWalletConnected) {
+  stakeButton.textContent = "STAKE KLY";
+  stakeButton.disabled = false;
+  claimButton.disabled = false;
+  withdrawButton.disabled = false;
+} else {
+  stakeButton.textContent = "CONNECT WALLET";
+  stakeButton.disabled = false;
+  claimButton.disabled = true;
+  withdrawButton.disabled = true;
 }
 
 async function updateBalances() {
@@ -813,6 +817,33 @@ async function handleClaim() {
   }
 }
 
+  async function handleWithdraw() {
+  if (!isWalletConnected) return connectWallet();
+  try {
+    withdrawButton.disabled = true;
+    statusMessage.textContent = "Withdrawing stake...";
+
+    // Vault visual feedback
+    activateVault(3000);
+    pulseVaultGlow();
+    scaleVaultOrb();
+
+    const tx = await stakingContract.withdrawStake();
+    await tx.wait();
+    
+    await updateBalances();
+    statusMessage.textContent = "Stake withdrawn!";
+    showConfettiEffect();
+
+    withdrawButton.disabled = false;
+    setTimeout(() => (statusMessage.textContent = ""), 3000);
+  } catch (error) {
+    console.error("Withdraw error:", error);
+    statusMessage.textContent = error?.data?.message || error.message || "Withdraw failed";
+    withdrawButton.disabled = false;
+  }
+}
+ const withdrawButton = document.getElementById('withdraw-button');
 // Bind Events
 stakeButton.addEventListener('click', () => {
   isWalletConnected ? handleStake() : connectWallet();
@@ -825,6 +856,7 @@ window.addEventListener("load", () => {
   initThreeJS();
   updateStakeAmount();
 });
+  withdrawButton.addEventListener('click', handleWithdraw);
 </script>
 </body>
 </html>
