@@ -239,63 +239,80 @@ let scene, camera, renderer, vault, particles, rings = [];
 let isVaultActive = false;
 
 // ABI - Replace with your actual ABI
-const ABI = [
-  // ERC20 ABI (partial)
+const tokenABI = [
   {
     "constant": true,
-    "inputs": [{"name": "_owner", "type": "address"}],
     "name": "balanceOf",
+    "inputs": [{"name": "_owner", "type": "address"}],
     "outputs": [{"name": "balance", "type": "uint256"}],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "view"
   },
   {
     "constant": false,
+    "name": "approve",
     "inputs": [
       {"name": "_spender", "type": "address"},
       {"name": "_value", "type": "uint256"}
     ],
-    "name": "approve",
     "outputs": [{"name": "", "type": "bool"}],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "nonpayable"
   },
   {
     "constant": true,
+    "name": "allowance",
     "inputs": [
       {"name": "_owner", "type": "address"},
       {"name": "_spender", "type": "address"}
     ],
-    "name": "allowance",
     "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function"
-  },
-  // Staking Contract ABI (partial)
+    "type": "function",
+    "stateMutability": "view"
+  }
+];
+
+// Staking Contract ABI
+const stakingABI = [
   {
     "constant": true,
-    "inputs": [{"name": "_user", "type": "address"}],
     "name": "stakedBalance",
+    "inputs": [{"name": "_user", "type": "address"}],
     "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "view"
   },
   {
     "constant": true,
-    "inputs": [{"name": "_user", "type": "address"}],
     "name": "calculateRewards",
+    "inputs": [{"name": "_user", "type": "address"}],
     "outputs": [{"name": "", "type": "uint256"}],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "view"
   },
   {
     "constant": false,
-    "inputs": [{"name": "_amount", "type": "uint256"}],
     "name": "stake",
+    "inputs": [{"name": "_amount", "type": "uint256"}],
     "outputs": [],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "nonpayable"
   },
   {
     "constant": false,
-    "inputs": [],
     "name": "claimRewards",
+    "inputs": [],
     "outputs": [],
-    "type": "function"
+    "type": "function",
+    "stateMutability": "nonpayable"
+  },
+  {
+    "constant": false,
+    "name": "withdrawStake",
+    "inputs": [],
+    "outputs": [],
+    "type": "function",
+    "stateMutability": "nonpayable"
   }
 ];
 
@@ -673,8 +690,8 @@ async function connectWallet() {
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    stakingContract = new ethers.Contract(contractAddress, ABI, signer);
-    tokenContract = new ethers.Contract(tokenAddress, ABI, signer);
+    stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
+tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
     isWalletConnected = true;
 
     await updateBalances();
