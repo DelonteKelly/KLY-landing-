@@ -1,4 +1,4 @@
-<script>
+<script type="module">
 import { ethers } from "./ethers.min.js"; // Make sure ethers is available locally or via CDN
 import Web3Modal from "./web3modal.js";
 import WalletConnectProvider from "@walletconnect/web3-provider";
@@ -24,9 +24,11 @@ const connectBtn = document.getElementById('connect-btn');
 const walletStatus = document.getElementById('wallet-status');
 const walletAddress = document.getElementById('wallet-address');
 const userAvatar = document.getElementById('user-avatar');
-const progressBar = document.getElementById('progress const mintStatus = document.getElementById('mint-status');
+const progressBar = document.getElementById('progress');
+const mintStatus = document.getElementById('mint-status');
+const progressText = document.getElementById('progress-text');
+const mintBtn = document.getElementById('mint-btn');
 
-// Particle background
 function createParticles() {
   const particlesContainer = document.getElementById('particles');
   if (!particlesContainer) return;
@@ -235,7 +237,6 @@ function launchConfetti() {
   }
 }
 
-// Auto-init on load
 window.addEventListener('load', async () => {
   createParticles();
   await initWeb3Modal();
