@@ -1,6 +1,7 @@
 // ===========================
 // 🔗 Contract Setup
 // ===========================
+<script>
 const ethers = window.ethers;
 let provider, signer, userAddress;
 let tokenContract, stakingContract;
@@ -386,3 +387,4 @@ window.addEventListener("load", () => {
   updateStakeAmount();
   bindEvents();
 });
+</script>
