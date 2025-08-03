@@ -427,216 +427,173 @@
     </div>
 
     <!-- Control Panel -->
-    <div class="control-panel">
-      <div class="connection-status" id="connection-status">
-        <div class="connection-dot"></div>
-        <span>DISCONNECTED</span>
-      </div>
+  <div class="control-panel">
+  <div class="connection-status" id="connection-status">
+    <div class="connection-dot"></div>
+    <span id="walletAddress">DISCONNECTED</span>
+  </div>
 
-      <div class="panel-section">
-        <h1><i class="fas fa-vault"></i> KLY STAKING VAULT</h1>
-        <div class="balance-display">WALLET BALANCE: <span id="wallet-balance">0</span> KLY</div>
-      </div>
+  <div class="panel-section">
+    <h1><i class="fas fa-vault"></i> KLY STAKING VAULT</h1>
+    <div class="balance-display">WALLET BALANCE: <span id="wallet-balance">0</span> KLY</div>
+  </div>
 
-      <div class="panel-section">
-        <h2><i class="fas fa-coins"></i> STAKE TOKENS</h2>
-        <div class="slider-container">
-          <input type="range" id="stake-slider" min="0" max="100" value="50" step="1">
-          <div class="slider-labels">
-            <span>0%</span>
-            <span>100%</span>
-          </div>
-        </div>
-        <div class="reward-counter"><span id="apy-display">12.5</span>%</div>
-       <button id="connect-btn" class="stake-button"><i class="fas fa-wallet"></i> Connect Wallet</button>
-        <div class="status-message" id="status-message"></div>
-      </div>
-
-      <div class="panel-section">
-        <h2><i class="fas fa-chart-line"></i> YOUR POSITION</h2>
-        <div class="balance-display">STAKED: <span id="staked-amount">0</span> KLY</div>
-        <div class="balance-display">REWARDS: <span id="reward-amount">0</span> KLY</div>
-        <div class="button-group">
-          <button id="claim-button" class="stake-button" disabled>
-            <i class="fas fa-gift"></i> CLAIM
-          </button>
-          <button id="withdraw-button" class="stake-button" disabled>
-            <i class="fas fa-wallet"></i> WITHDRAW
-          </button>
-        </div>
-        </main>
+  <div class="panel-section">
+    <h2><i class="fas fa-coins"></i> STAKE TOKENS</h2>
+    <div class="slider-container">
+      <input type="range" id="stake-slider" min="0" max="100" value="50" step="1">
+      <div class="slider-labels">
+        <span>0%</span>
+        <span>100%</span>
       </div>
     </div>
+    <div class="reward-counter"><span id="apy-display">12.5</span>%</div>
+    <button id="connectWalletBtn" class="stake-button"><i class="fas fa-wallet"></i> Connect Wallet</button>
+    <div class="status-message" id="status-message"></div>
   </div>
-   
-  <script>
-// ==============================
-// 🔗 Config & Setup
-// ==============================
-import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js';
 
-const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-const contractABI = [
-  {
-    inputs: [{ internalType: "address", name: "owner", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function"
-  }
+  <div class="panel-section">
+    <h2><i class="fas fa-chart-line"></i> YOUR POSITION</h2>
+    <div class="balance-display">STAKED: <span id="staked-amount">0</span> KLY</div>
+    <div class="balance-display">REWARDS: <span id="reward-amount">0</span> KLY</div>
+    <div class="button-group">
+      <button id="claim-button" class="stake-button" disabled>
+        <i class="fas fa-gift"></i> CLAIM
+      </button>
+      <button id="withdraw-button" class="stake-button" disabled>
+        <i class="fas fa-wallet"></i> WITHDRAW
+      </button>
+    </div>
+  </div>
+</div>
+   
+<script>
+const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
+
+const KLY_TOKEN_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address, uint256) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)"
 ];
 
-let userAddress;
+const STAKING_ABI = [
+  "function stake(uint256) public",
+  "function withdraw(uint256) public",
+  "function claimRewards() public",
+  "function getStaked(address) view returns (uint256)",
+  "function getRewards(address) view returns (uint256)"
+];
 
-// ==============================
-// 🔌 Wallet Connection
-// ==============================
+let provider, signer, userAddress, klyToken, stakingContract;
+
 async function connectWallet() {
   if (!window.ethereum) {
-    alert("MetaMask not found. Please install it.");
+    alert("MetaMask not detected.");
     return;
   }
 
-  // ✅ BNB Chain Check
   const bnbChainId = '0x38';
-  const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+  const chainId = await ethereum.request({ method: 'eth_chainId' });
   if (chainId !== bnbChainId) {
     alert("Please switch to BNB Smart Chain.");
     return;
   }
 
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
     userAddress = accounts[0];
 
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
+    stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+
     const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-    document.getElementById('connectWalletBtn').classList.add('hidden');
     document.getElementById('walletAddress').textContent = shortened;
-    document.getElementById('walletAddress').classList.remove('hidden');
+    document.getElementById('connection-status').classList.add('connected');
+
+    await updateBalances();
   } catch (err) {
-    console.error("Wallet connect error:", err);
+    console.error(err);
   }
 }
 
-// ==============================
-// 🧿 NFT Access Gate
-// ==============================
-async function checkNFTAccess() {
-  if (!userAddress) {
-    alert("Connect your wallet first.");
-    return;
+function formatKLY(value) {
+  return ethers.utils.formatUnits(value, 18).slice(0, 8);
+}
+
+async function updateBalances() {
+  const balance = await klyToken.balanceOf(userAddress);
+  const staked = await stakingContract.getStaked(userAddress);
+  const rewards = await stakingContract.getRewards(userAddress);
+
+  document.getElementById('wallet-balance').textContent = formatKLY(balance);
+  document.getElementById('staked-amount').textContent = formatKLY(staked);
+  document.getElementById('reward-amount').textContent = formatKLY(rewards);
+
+  document.getElementById('claim-button').disabled = rewards.eq(0);
+  document.getElementById('withdraw-button').disabled = staked.eq(0);
+}
+
+async function stakeTokens() {
+  const percent = document.getElementById('stake-slider').value;
+  const rawBalance = await klyToken.balanceOf(userAddress);
+  const stakeAmount = rawBalance.mul(percent).div(100);
+
+  const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+  if (allowance.lt(stakeAmount)) {
+    const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+    await approveTx.wait();
   }
 
+  const tx = await stakingContract.stake(stakeAmount);
+  await tx.wait();
+  showStatus("✅ Stake successful.");
+  await updateBalances();
+}
+
+async function claimRewards() {
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
-    const balance = await contract.balanceOf(userAddress);
-
-    if (balance.gt(0)) {
-      unlockVault();
-    } else {
-      alert("Access denied. You don’t hold the Key of Ascension NFT.");
-    }
-  } catch (error) {
-    console.error("Contract interaction failed:", error);
-    alert("There was an error checking your NFT access.");
+    const tx = await stakingContract.claimRewards();
+    await tx.wait();
+    showStatus("🎉 Rewards claimed.");
+    await updateBalances();
+  } catch (err) {
+    console.error(err);
+    showStatus("⚠️ Claim failed.");
   }
 }
 
-function unlockVault() {
-  document.getElementById('vaultItems').style.display = 'grid';
-  document.querySelector('.door-overlay').style.display = 'none';
+async function withdrawTokens() {
+  try {
+    const staked = await stakingContract.getStaked(userAddress);
+    const tx = await stakingContract.withdraw(staked);
+    await tx.wait();
+    showStatus("🏁 Withdrawal complete.");
+    await updateBalances();
+  } catch (err) {
+    console.error(err);
+    showStatus("⚠️ Withdrawal failed.");
+  }
+}
+
+function showStatus(msg) {
+  const el = document.getElementById('status-message');
+  el.textContent = msg;
+  el.style.opacity = 1;
   setTimeout(() => {
-    document.getElementById('vaultItems').scrollIntoView({ behavior: 'smooth' });
-  }, 500);
+    el.style.opacity = 0;
+    el.textContent = "";
+  }, 3000);
 }
 
-// ==============================
-// ✨ Golden Particles Animation
-// ==============================
-function generateParticles(count = 50) {
-  const particlesContainer = document.getElementById('particles');
-  for (let i = 0; i < count; i++) {
-    const p = document.createElement('div');
-    p.classList.add('particle');
-    const size = Math.random() * 5 + 1;
-    p.style.width = `${size}px`;
-    p.style.height = `${size}px`;
-    p.style.left = `${Math.random() * 100}%`;
-    p.style.top = `${Math.random() * 100}%`;
-    p.style.animationDelay = `${Math.random() * 5}s`;
-    p.style.animationDuration = `${Math.random() * 10 + 10}s`;
-    particlesContainer.appendChild(p);
-  }
-
-  const particles = document.querySelectorAll('.particle');
-  particles.forEach(p => {
-    setInterval(() => {
-      const moveX = (Math.random() - 0.5) * 20;
-      const moveY = (Math.random() - 0.5) * 20;
-      p.style.transform = `translate(${moveX}px, ${moveY}px)`;
-      p.style.opacity = Math.random() * 0.5 + 0.3;
-    }, 2000);
-  });
-}
-
-// ==============================
-// 🌌 Three.js Scene Setup
-// ==============================
-function initThreeJS() {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({
-    canvas: document.getElementById('threejs-canvas'),
-    alpha: true
-  });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
-  const material = new THREE.MeshBasicMaterial({
-    color: 0xD4AF37,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.3
-  });
-  const knot = new THREE.Mesh(geometry, material);
-  scene.add(knot);
-
-  camera.position.z = 30;
-
-  function animate() {
-    requestAnimationFrame(animate);
-    knot.rotation.x += 0.001;
-    knot.rotation.y += 0.002;
-    renderer.render(scene, camera);
-  }
-
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-}
-
-// ==============================
-// 🎮 Bind Events
-// ==============================
-function bindEvents() {
-  document.getElementById('connectWalletBtn')?.addEventListener('click', connectWallet);
-  document.getElementById('unlockBtn')?.addEventListener('click', checkNFTAccess);
-}
-
-// ==============================
-// 🚀 Init
-// ==============================
-window.addEventListener('DOMContentLoaded', () => {
-  generateParticles();
-  initThreeJS();
-  bindEvents();
-});
+window.onload = function () {
+  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+  document.getElementById('stake-slider').addEventListener('change', stakeTokens);
+  document.getElementById('claim-button').addEventListener('click', claimRewards);
+  document.getElementById('withdraw-button').addEventListener('click', withdrawTokens);
+};
 </script>
 </body>
 </html>
