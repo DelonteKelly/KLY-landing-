@@ -452,6 +452,11 @@
     <div class="status-message" id="status-message"></div>
   </div>
 
+<div class="balance-display">
+  STAKE AMOUNT: <span id="calculated-stake">0</span> KLY
+</div>
+<button id="stake-button" class="stake-button"><i class="fas fa-lock"></i> STAKE</button>
+    
   <div class="panel-section">
     <h2><i class="fas fa-chart-line"></i> YOUR POSITION</h2>
     <div class="balance-display">STAKED: <span id="staked-amount">0</span> KLY</div>
@@ -553,6 +558,13 @@ async function stakeTokens() {
   await updateBalances();
 }
 
+async function updateStakeAmount() {
+  const percent = document.getElementById('stake-slider').value;
+  const rawBalance = await klyToken.balanceOf(userAddress);
+  const stakeAmount = rawBalance.mul(percent).div(100);
+  document.getElementById('calculated-stake').textContent = formatKLY(stakeAmount);
+}
+  
 async function claimRewards() {
   try {
     const tx = await stakingContract.claimRewards();
@@ -589,11 +601,13 @@ function showStatus(msg) {
 }
 
 window.onload = function () {
-  document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
-  document.getElementById('stake-slider').addEventListener('change', stakeTokens);
+ document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+  document.getElementById('stake-slider').addEventListener('input', updateStakeAmount);
+  document.getElementById('stake-button').addEventListener('click', stakeTokens);
   document.getElementById('claim-button').addEventListener('click', claimRewards);
   document.getElementById('withdraw-button').addEventListener('click', withdrawTokens);
 };
+
 </script>
 </body>
 </html>
