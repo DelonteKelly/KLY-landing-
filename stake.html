@@ -79,6 +79,18 @@
       flex-direction: column;
       padding: 2rem;
     }
+    #holographic-display::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(120deg, transparent, rgba(0, 240, 255, 0.1), transparent);
+  transform: rotate(25deg);
+  animation: shine 8s linear infinite;
+  pointer-events: none;
+}
 
     /* VAULT CHARGE ORB STYLES */
     .vault-charge-cell {
@@ -389,6 +401,23 @@
       gap: 1rem;
       margin-top: 1rem;
     }
+    .stake-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  animation: borderMove 3s linear infinite;
+}
+
+@keyframes borderMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
 
     /* Status Elements */
     .status-message {
@@ -489,6 +518,15 @@
       100% { opacity: 0.5; transform: scale(1); }
     }
 
+    @keyframes orb-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0,240,255,0.4), 0 0 30px rgba(0,240,255,0.6);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0,240,255,0.8), 0 0 40px rgba(123,45,255,0.4);
+  }
+}
+
     /* Responsive */
     @media (max-width: 1024px) {
       #app-container {
@@ -534,6 +572,11 @@
         height: 50px;
       }
     }
+    .orb-glow {
+  animation-name: orb-glow;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
   </style>
 </head>
 <body>
@@ -884,6 +927,13 @@
 
 async function updateVaultCharge() {
   const orb = document.getElementById('vaultChargeOrb');
+
+// Add class
+orb.classList.add('orb-glow');
+
+// Set animation duration dynamically
+const duration = 3 - (chargePercent / 50); // e.g. 1.5s if chargePercent is 75
+orb.style.animationDuration = `${duration}s`;
   const chargeDisplay = document.getElementById('chargeLevel');
   
   try {
