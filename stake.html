@@ -663,125 +663,147 @@
   </div>
 
   
-     <script>
-    const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
+ <script>
+  const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+  const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
-    const KLY_TOKEN_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function approve(address, uint256) returns (bool)",
-      "function allowance(address owner, address spender) view returns (uint256)"
-    ];
+  const KLY_TOKEN_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function approve(address, uint256) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)"
+  ];
 
-    const STAKING_ABI = [
-      "function stake(uint256) public",
-      "function withdraw(uint256) public",
-      "function claimRewards() public",
-      "function getStaked(address) view returns (uint256)",
-      "function getRewards(address) view returns (uint256)",
-      "function totalStaked() view returns (uint256)"
-    ];
+  const STAKING_ABI = [
+    "function stake(uint256) public",
+    "function withdraw(uint256) public",
+    "function claimRewards() public",
+    "function getStaked(address) view returns (uint256)",
+    "function getRewards(address) view returns (uint256)",
+    "function totalStaked() view returns (uint256)"
+  ];
 
-    let provider, signer, userAddress, klyToken, stakingContract, cachedStakeAmount;
-    let stakeChart;
+  let provider, signer, userAddress, klyToken, stakingContract, cachedStakeAmount;
+  let stakeChart;
 
- async function connectWallet() {
-  if (!window.ethereum) return alert("MetaMask not detected.");
+  async function connectWallet() {
+    if (!window.ethereum) return alert("MetaMask not detected.");
 
-  try {
-    const bnbChainId = '0x38';
-    const chainId = await ethereum.request({ method: 'eth_chainId' });
+    try {
+      const bnbChainId = '0x38';
+      const chainId = await ethereum.request({ method: 'eth_chainId' });
 
-    if (chainId !== bnbChainId) {
-      await ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: bnbChainId }]
-      });
+      if (chainId !== bnbChainId) {
+        await ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: bnbChainId }]
+        });
+      }
+
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      userAddress = accounts[0];
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
+      stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+
+      const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+      document.getElementById('walletAddress').textContent = shortened;
+      document.getElementById('connection-status').classList.add('connected');
+      document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
+
+      await Promise.all([
+        updateBalances?.(),
+        updateVisualization?.(),
+        updateVaultCharge?.()
+      ]);
+
+      initChart?.();
+
+      ethereum.on("accountsChanged", () => window.location.reload());
+      ethereum.on("chainChanged", () => window.location.reload());
+
+    } catch (err) {
+      console.error("⚠️ Wallet connection error:", err);
+      alert("Wallet connection failed: " + err.message);
     }
-
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    userAddress = accounts[0];
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
-    klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
-    stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
-    const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-    document.getElementById('walletAddress').textContent = shortened;
-    document.getElementById('connection-status').classList.add('connected');
-    document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
-
-    await Promise.all([
-      updateBalances?.(),
-      updateVisualization?.(),
-      updateVaultCharge?.()
-    ]);
-    initChart?.();
-
-    ethereum.on("accountsChanged", () => window.location.reload());
-    ethereum.on("chainChanged", () => window.location.reload());
-
-  } catch (err) {
-    console.error("⚠️ Wallet connection error:", err);
-    alert("Wallet connection failed: " + err.message);
   }
-}
 
-    function formatKLY(value) {
-      return ethers.utils.formatUnits(value, 18).slice(0, 8);
-    }
+  function formatKLY(value) {
+    return ethers.utils.formatUnits(value, 18).slice(0, 8);
+  }
 
-    function initChart() {
-      const ctx = document.getElementById('stakeChart').getContext('2d');
-      
-      stakeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Your Stake', 'Other Stakers'],
-          datasets: [{
-            data: [0, 100], // Initial dummy data
-            backgroundColor: [
-              'rgba(0, 240, 255, 0.8)',
-              'rgba(123, 45, 255, 0.4)'
-            ],
-            borderColor: [
-              'rgba(0, 240, 255, 1)',
-              'rgba(123, 45, 255, 0.7)'
-            ],
-            borderWidth: 1,
-            cutout: '70%'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: 'white',
-                font: {
-                  family: 'Rajdhani',
-                  size: 12
-                }
-              }
-            },
-            tooltip: {
-              enabled: true,
-              bodyFont: {
-                family: 'Rajdhani'
-              }
+  function initChart() {
+    const ctx = document.getElementById('stakeChart').getContext('2d');
+
+    stakeChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Your Stake', 'Other Stakers'],
+        datasets: [{
+          data: [0, 100],
+          backgroundColor: ['rgba(0, 240, 255, 0.8)', 'rgba(123, 45, 255, 0.4)'],
+          borderColor: ['rgba(0, 240, 255, 1)', 'rgba(123, 45, 255, 0.7)'],
+          borderWidth: 1,
+          cutout: '70%'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: 'white',
+              font: { family: 'Rajdhani', size: 12 }
             }
           },
-          animation: {
-            animateScale: true,
-            animateRotate: true
+          tooltip: {
+            enabled: true,
+            bodyFont: { family: 'Rajdhani' }
           }
+        },
+        animation: {
+          animateScale: true,
+          animateRotate: true
         }
-      });
-    }
+      }
+    });
+  }
 
-    async function updateVisualization() {
+  async function updateVaultCharge() {
+    const orb = document.getElementById('vaultChargeOrb');
+    const chargeDisplay = document.getElementById('chargeLevel');
+
+    try {
+      const [staked, totalStaked] = await Promise.all([
+        stakingContract.getStaked(userAddress),
+        stakingContract.totalStaked()
+      ]);
+
+      const stakedAmount = parseFloat(ethers.utils.formatUnits(staked, 18));
+      const totalAmount = parseFloat(ethers.utils.formatUnits(totalStaked, 18));
+      const yourShare = totalAmount > 0 ? (stakedAmount / totalAmount) * 100 : 0;
+
+      const chargePercent = Math.min(100, Math.floor((stakedAmount * 0.4) + (yourShare * 0.6)));
+
+      chargeDisplay.textContent = `${chargePercent}%`;
+
+      orb.className = 'pulse-orb';
+      if (chargePercent < 30) orb.classList.add('low-charge');
+      else if (chargePercent < 70) orb.classList.add('medium-charge');
+      else orb.classList.add('high-charge');
+
+      const duration = 3 - (chargePercent / 50);
+      orb.style.animationDuration = `${duration}s`;
+      orb.classList.add('orb-glow');
+
+    } catch (err) {
+      console.error("Error updating vault charge:", err);
+    }
+  }
+
+async function updateVisualization() {
       if (!userAddress) return;
       
       try {
@@ -918,110 +940,21 @@
       }, 3000);
     }
 
-    window.onload = function () {
-      document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
-      document.getElementById('stake-slider').addEventListener('input', updateStakeAmount);
-      document.getElementById('stake-button').addEventListener('click', stakeTokens);
+  window.onload = function () {
+    document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+    document.getElementById('stake-slider').addEventListener('input', updateStakeAmount);
+    document.getElementById('stake-button').addEventListener('click', stakeTokens);
+    document.getElementById('confirmStakeBtn').addEventListener('click', confirmStakeExecution);
+    document.getElementById('cancelStakeBtn').addEventListener('click', () => {
+      document.getElementById("stakeModal").style.display = "none";
+    });
+    document.getElementById('claim-button').addEventListener('click', claimRewards);
+    document.getElementById('withdraw-button').addEventListener('click', withdrawTokens);
 
-// Add this at the end of your existing JavaScript, right before window.onload:
-
-async function updateVaultCharge() {
-  const orb = document.getElementById('vaultChargeOrb');
-
-// Add class
-orb.classList.add('orb-glow');
-
-// Set animation duration dynamically
-const duration = 3 - (chargePercent / 50); // e.g. 1.5s if chargePercent is 75
-orb.style.animationDuration = `${duration}s`;
-  const chargeDisplay = document.getElementById('chargeLevel');
-  
-  try {
-    // Get all required data from contract
-    const [staked, totalStaked] = await Promise.all([
-      stakingContract.getStaked(userAddress),
-      stakingContract.totalStaked()
-    ]);
-    
-    const stakedAmount = parseFloat(ethers.utils.formatUnits(staked, 18));
-    const totalAmount = parseFloat(ethers.utils.formatUnits(totalStaked, 18));
-    const yourShare = totalAmount > 0 ? (stakedAmount / totalAmount) * 100 : 0;
-    
-    // Calculate charge percentage (adjust formula as needed)
-    const chargePercent = Math.min(100, Math.floor(
-      (stakedAmount * 0.4) + (yourShare * 0.6)
-    ));
-    
-    // Update display
-    chargeDisplay.textContent = `${chargePercent}%`;
-    
-    // Update orb state
-    orb.className = 'pulse-orb';
-    if (chargePercent < 30) {
-      orb.classList.add('low-charge');
-    } else if (chargePercent < 70) {
-      orb.classList.add('medium-charge');
-    } else {
-      orb.classList.add('high-charge');
-    }
-    
-    // Adjust pulse intensity
-    orb.style.animationDuration = `${3 - (chargePercent/50)}s`;
-    
-  } catch (err) {
-    console.error("Error updating vault charge:", err);
-  }
-}
-
-// Modify your existing functions to call updateVaultCharge:
-
-async function connectWallet() {
-  // ... existing code ...
-  await Promise.all([updateBalances(), updateVisualization(), updateVaultCharge()]);
-}
-
-async function confirmStakeExecution() {
-  try {
-    // ... existing code ...
-    await tx.wait();
-    showStatus("✅ Stake successful.");
-    await Promise.all([updateBalances(), updateVisualization(), updateVaultCharge()]);
-  } catch (err) {
-    // ... existing error handling ...
-  }
-}
-
-async function withdrawTokens() {
-  try {
-    // ... existing code ...
-    await tx.wait();
-    showStatus("🏁 Withdrawal complete.");
-    await Promise.all([updateBalances(), updateVisualization(), updateVaultCharge()]);
-  } catch (err) {
-    // ... existing error handling ...
-  }
-}
-
-async function claimRewards() {
-  try {
-    // ... existing code ...
-    await tx.wait();
-    showStatus("🎉 Rewards claimed.");
-    await Promise.all([updateBalances(), updateVaultCharge()]);
-  } catch (err) {
-    // ... existing error handling ...
-  }
-}
-
-// Add to your window.onload:
-window.onload = function() {
-  // ... existing event listeners ...
-  
-  // Add periodic refresh (optional)
-  setInterval(() => {
-    if (userAddress) updateVaultCharge();
-  }, 30000); // Updates every 30 seconds
-};
-  </script>
+    setInterval(() => {
+      if (userAddress) updateVaultCharge();
+    }, 30000);
+  };
+</script>
 </body>
 </html>
