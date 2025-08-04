@@ -663,7 +663,7 @@
   </div>
 
   
- <script>
+<script>
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
@@ -686,20 +686,35 @@
   let stakeChart;
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("MetaMask not detected.");
+    if (!window.ethereum) {
+      showStatus("⚠️ Please install MetaMask");
+      return;
+    }
 
     try {
       const bnbChainId = '0x38';
       const chainId = await ethereum.request({ method: 'eth_chainId' });
 
       if (chainId !== bnbChainId) {
-        await ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: bnbChainId }]
-        });
+        try {
+          await ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: bnbChainId }]
+          });
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            showStatus("⚠️ Please add Binance Smart Chain to MetaMask");
+            return;
+          }
+          throw switchError;
+        }
       }
 
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length === 0) {
+        throw new Error("No accounts found");
+      }
+
       userAddress = accounts[0];
       provider = new ethers.providers.Web3Provider(window.ethereum);
       signer = provider.getSigner();
@@ -712,19 +727,21 @@
       document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
 
       await Promise.all([
-        updateBalances?.(),
-        updateVisualization?.(),
-        updateVaultCharge?.()
+        updateBalances().catch(e => console.error("Balance update failed:", e)),
+        updateVisualization().catch(e => console.error("Visualization update failed:", e)),
+        updateVaultCharge().catch(e => console.error("Vault charge update failed:", e))
       ]);
 
-      initChart?.();
+      initChart();
 
       ethereum.on("accountsChanged", () => window.location.reload());
       ethereum.on("chainChanged", () => window.location.reload());
 
     } catch (err) {
-      console.error("⚠️ Wallet connection error:", err);
-      alert("Wallet connection failed: " + err.message);
+      let errorMsg = "Connection failed: ";
+      errorMsg += err.code === 4001 ? "Request rejected" : err.message;
+      showStatus(errorMsg);
+      console.error(err);
     }
   }
 
@@ -772,27 +789,40 @@
   }
 
   async function updateVaultCharge() {
+    if (!userAddress) return;
+    
     const orb = document.getElementById('vaultChargeOrb');
     const chargeDisplay = document.getElementById('chargeLevel');
 
     try {
-      const [staked, totalStaked] = await Promise.all([
+      const [staked, totalStaked, rewards] = await Promise.all([
         stakingContract.getStaked(userAddress),
-        stakingContract.totalStaked()
+        stakingContract.totalStaked(),
+        stakingContract.getRewards(userAddress)
       ]);
 
       const stakedAmount = parseFloat(ethers.utils.formatUnits(staked, 18));
       const totalAmount = parseFloat(ethers.utils.formatUnits(totalStaked, 18));
+      const rewardAmount = parseFloat(ethers.utils.formatUnits(rewards, 18));
       const yourShare = totalAmount > 0 ? (stakedAmount / totalAmount) * 100 : 0;
 
-      const chargePercent = Math.min(100, Math.floor((stakedAmount * 0.4) + (yourShare * 0.6)));
+      // Enhanced charge calculation
+      const chargePercent = Math.min(100, Math.floor(
+        (Math.log1p(stakedAmount) * 15) + // Logarithmic scale for amount
+        (yourShare * 0.7) +               // Weighted share
+        (rewardAmount / (stakedAmount || 1)) // Reward ratio
+      ));
 
       chargeDisplay.textContent = `${chargePercent}%`;
 
       orb.className = 'pulse-orb';
-      if (chargePercent < 30) orb.classList.add('low-charge');
-      else if (chargePercent < 70) orb.classList.add('medium-charge');
-      else orb.classList.add('high-charge');
+      if (chargePercent < 30) {
+        orb.classList.add('low-charge');
+      } else if (chargePercent < 70) {
+        orb.classList.add('medium-charge');
+      } else {
+        orb.classList.add('high-charge');
+      }
 
       const duration = 3 - (chargePercent / 50);
       orb.style.animationDuration = `${duration}s`;
@@ -803,142 +833,175 @@
     }
   }
 
-async function updateVisualization() {
-      if (!userAddress) return;
+  async function updateVisualization() {
+    if (!userAddress) return;
+    
+    try {
+      const [yourStake, totalStaked] = await Promise.all([
+        stakingContract.getStaked(userAddress),
+        stakingContract.totalStaked()
+      ]);
+
+      const yourStakeFormatted = parseFloat(ethers.utils.formatUnits(yourStake, 18));
+      const othersStakeFormatted = parseFloat(ethers.utils.formatUnits(totalStaked.sub(yourStake), 18));
       
-      try {
-        const [yourStake, totalStaked] = await Promise.all([
-          stakingContract.getStaked(userAddress),
-          stakingContract.totalStaked()
-        ]);
-
-        // Update chart
-        const yourStakeFormatted = parseFloat(ethers.utils.formatUnits(yourStake, 18));
-        const othersStakeFormatted = parseFloat(ethers.utils.formatUnits(totalStaked.sub(yourStake), 18));
-        
-        stakeChart.data.datasets[0].data = [
-          yourStakeFormatted,
-          othersStakeFormatted > 0 ? othersStakeFormatted : 0.1 // Ensure chart renders even if 0
-        ];
-        stakeChart.update();
-        
-        // Update data grid
-        document.getElementById('visual-apy').textContent = document.getElementById('apy-display').textContent + '%';
-        document.getElementById('visual-total').textContent = formatKLY(totalStaked) + ' KLY';
-        
-        const sharePercentage = totalStaked.gt(0) 
-          ? (yourStake.mul(10000).div(totalStaked).toNumber() / 100) 
-          : 0;
-        document.getElementById('visual-share').textContent = sharePercentage.toFixed(2) + '%';
-        
-      } catch (err) {
-        console.error("Visualization update error:", err);
-      }
+      stakeChart.data.datasets[0].data = [
+        yourStakeFormatted,
+        othersStakeFormatted > 0 ? othersStakeFormatted : 0.1
+      ];
+      stakeChart.update();
+      
+      document.getElementById('visual-total').textContent = formatKLY(totalStaked) + ' KLY';
+      
+      const sharePercentage = totalStaked.gt(0) 
+        ? (yourStake.mul(10000).div(totalStaked).toNumber() / 100) 
+        : 0;
+      document.getElementById('visual-share').textContent = sharePercentage.toFixed(2) + '%';
+      
+    } catch (err) {
+      console.error("Visualization update error:", err);
     }
-
-   async function updateBalances() {
-  if (!userAddress || !klyToken || !stakingContract) {
-    console.warn("Wallet or contracts not initialized.");
-    return;
   }
 
-  try {
-    const [balance, staked, rewards] = await Promise.all([
-      klyToken.balanceOf(userAddress),
-      stakingContract.getStaked(userAddress),
-      stakingContract.getRewards(userAddress)
-    ]);
+  async function updateBalances() {
+    if (!userAddress || !klyToken || !stakingContract) {
+      console.warn("Wallet or contracts not initialized.");
+      return;
+    }
 
-    console.log("🔍 Raw Balance:", balance.toString());
-    console.log("🔍 Staked:", staked.toString());
-    console.log("🔍 Rewards:", rewards.toString());
+    try {
+      const [balance, staked, rewards] = await Promise.all([
+        klyToken.balanceOf(userAddress),
+        stakingContract.getStaked(userAddress),
+        stakingContract.getRewards(userAddress)
+      ]);
 
-    document.getElementById('wallet-balance').textContent = formatKLY(balance);
-    document.getElementById('staked-amount').textContent = formatKLY(staked);
-    document.getElementById('reward-amount').textContent = formatKLY(rewards);
+      document.getElementById('wallet-balance').textContent = formatKLY(balance);
+      document.getElementById('staked-amount').textContent = formatKLY(staked);
+      document.getElementById('reward-amount').textContent = formatKLY(rewards);
 
-    document.getElementById('claim-button').disabled = rewards.eq(0);
-    document.getElementById('withdraw-button').disabled = staked.eq(0);
+      document.getElementById('claim-button').disabled = rewards.eq(0);
+      document.getElementById('withdraw-button').disabled = staked.eq(0);
 
-    await updateVisualization?.(); // safe optional chaining
-  } catch (err) {
-    console.error("⚠️ updateBalances() error:", err);
-    showStatus("Error fetching balances.");
+      await Promise.all([
+        updateVisualization(),
+        updateVaultCharge()
+      ]);
+    } catch (err) {
+      console.error("⚠️ updateBalances() error:", err);
+      showStatus("Error fetching balances.");
+    }
   }
-}
 
-    async function updateStakeAmount() {
-      if (!userAddress) return;
-      const percent = document.getElementById('stake-slider').value;
-      const rawBalance = await klyToken.balanceOf(userAddress);
-      const stakeAmount = rawBalance.mul(percent).div(100);
-      document.getElementById('calculated-stake').textContent = formatKLY(stakeAmount);
-    }
+  async function updateStakeAmount() {
+    if (!userAddress) return;
+    const percent = document.getElementById('stake-slider').value;
+    const rawBalance = await klyToken.balanceOf(userAddress);
+    const stakeAmount = rawBalance.mul(percent).div(100);
+    document.getElementById('calculated-stake').textContent = formatKLY(stakeAmount);
+  }
 
-    async function stakeTokens() {
-      if (!userAddress) return;
-      const percent = document.getElementById('stake-slider').value;
-      const rawBalance = await klyToken.balanceOf(userAddress);
-      cachedStakeAmount = rawBalance.mul(percent).div(100);
+  async function stakeTokens() {
+    if (!userAddress) return;
+    const percent = document.getElementById('stake-slider').value;
+    const rawBalance = await klyToken.balanceOf(userAddress);
+    cachedStakeAmount = rawBalance.mul(percent).div(100);
 
-      document.getElementById("modal-stake-amount").textContent = formatKLY(cachedStakeAmount);
-      document.getElementById("stakeModal").style.display = "flex";
-    }
+    document.getElementById("modal-stake-amount").textContent = formatKLY(cachedStakeAmount);
+    document.getElementById("stakeModal").style.display = "flex";
+  }
 
-    async function confirmStakeExecution() {
-      try {
-        const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
-        if (allowance.lt(cachedStakeAmount)) {
-          const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-          await approveTx.wait();
-        }
-
-        const tx = await stakingContract.stake(cachedStakeAmount);
-        await tx.wait();
-        showStatus("✅ Stake successful.");
-        await updateBalances();
-      } catch (err) {
-        console.error(err);
-        showStatus("⚠️ Staking failed.");
-      } finally {
-        document.getElementById("stakeModal").style.display = "none";
+  async function confirmStakeExecution() {
+    const confirmBtn = document.getElementById('confirmStakeBtn');
+    try {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing';
+      
+      const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+      if (allowance.lt(cachedStakeAmount)) {
+        const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+        await approveTx.wait();
       }
-    }
 
-    async function claimRewards() {
-      try {
-        const tx = await stakingContract.claimRewards();
-        await tx.wait();
-        showStatus("🎉 Rewards claimed.");
-        await updateBalances();
-      } catch (err) {
-        console.error(err);
-        showStatus("⚠️ Claim failed.");
-      }
+      const tx = await stakingContract.stake(cachedStakeAmount);
+      await tx.wait();
+      
+      showStatus("✅ Stake successful.");
+      await Promise.all([
+        updateBalances(),
+        updateVisualization(),
+        updateVaultCharge()
+      ]);
+      
+    } catch (err) {
+      console.error(err);
+      showStatus("⚠️ Staking failed: " + (err.reason || err.message));
+    } finally {
+      document.getElementById("stakeModal").style.display = "none";
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = 'Confirm';
     }
+  }
 
-    async function withdrawTokens() {
-      try {
-        const staked = await stakingContract.getStaked(userAddress);
-        const tx = await stakingContract.withdraw(staked);
-        await tx.wait();
-        showStatus("🏁 Withdrawal complete.");
-        await updateBalances();
-      } catch (err) {
-        console.error(err);
-        showStatus("⚠️ Withdrawal failed.");
-      }
+  async function claimRewards() {
+    const btn = document.getElementById('claim-button');
+    try {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Claiming';
+      
+      const tx = await stakingContract.claimRewards();
+      await tx.wait();
+      
+      showStatus("🎉 Rewards claimed.");
+      await Promise.all([
+        updateBalances(),
+        updateVaultCharge()
+      ]);
+      
+    } catch (err) {
+      console.error(err);
+      showStatus("⚠️ Claim failed: " + (err.reason || err.message));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-gift"></i> CLAIM';
     }
+  }
 
-    function showStatus(msg) {
-      const el = document.getElementById('status-message');
-      el.textContent = msg;
-      el.style.opacity = 1;
-      setTimeout(() => {
-        el.style.opacity = 0;
-        el.textContent = "";
-      }, 3000);
+  async function withdrawTokens() {
+    const btn = document.getElementById('withdraw-button');
+    try {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Withdrawing';
+      
+      const staked = await stakingContract.getStaked(userAddress);
+      const tx = await stakingContract.withdraw(staked);
+      await tx.wait();
+      
+      showStatus("🏁 Withdrawal complete.");
+      await Promise.all([
+        updateBalances(),
+        updateVisualization(),
+        updateVaultCharge()
+      ]);
+      
+    } catch (err) {
+      console.error(err);
+      showStatus("⚠️ Withdrawal failed: " + (err.reason || err.message));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wallet"></i> WITHDRAW';
     }
+  }
+
+  function showStatus(msg) {
+    const el = document.getElementById('status-message');
+    el.textContent = msg;
+    el.style.opacity = 1;
+    setTimeout(() => {
+      el.style.opacity = 0;
+      el.textContent = "";
+    }, 3000);
+  }
 
   window.onload = function () {
     document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
