@@ -10,620 +10,799 @@
   <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root {
-      --primary: #00f0ff;
-      --secondary: #7b2dff;
-      --accent: #ff2d7b;
-      --bg-dark: #0a0a20;
-      --bg-light: #1a1a3a;
-      --panel-glow: 0 0 15px rgba(0, 240, 255, 0.3);
-      --text-glow: 0 0 8px rgba(0, 240, 255, 0.7);
-    }
+ :root {
+  --primary: #00f0ff;
+  --secondary: #7b2dff;
+  --accent: #ff2d7b;
+  --bg-dark: #0a0a20;
+  --bg-light: #1a1a3a;
+  --panel-glow: 0 0 15px rgba(0, 240, 255, 0.3);
+  --text-glow: 0 0 8px rgba(0, 240, 255, 0.7);
+}
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-      background: radial-gradient(ellipse at center, var(--bg-dark) 0%, #000000 100%);
-      font-family: 'Rajdhani', sans-serif;
-      color: white;
-      scrollbar-width: none;
-    }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background: radial-gradient(ellipse at center, var(--bg-dark) 0%, #000000 100%);
+  font-family: 'Rajdhani', sans-serif;
+  color: white;
+  scrollbar-width: none;
+}
 
-    body::-webkit-scrollbar {
-      display: none;
-    }
+body::-webkit-scrollbar {
+  display: none;
+}
 
-    #vanta-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      opacity: 0.7;
-    }
 
-    #app-container {
-      width: 100vw;
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      position: relative;
-      overflow: hidden;
-    }
+/* ========================
+   LAYOUT STRUCTURE
+   ======================== */
+#app-container {
+  width: 100vw;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
 
-    #visualization-container {
-      position: relative;
-      width: 100%;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
+#visualization-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
 
-    #holographic-display {
-      width: 80%;
-      height: 80%;
-      position: relative;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, rgba(0, 240, 255, 0) 70%);
-      box-shadow: 0 0 100px rgba(0, 240, 255, 0.1);
-    }
+.control-panel {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 10;
+  overflow-y: auto;
+  height: 100vh;
+  background: rgba(10, 10, 32, 0.7);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(0, 240, 255, 0.2);
+}
 
-    #particles-js {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
 
-    .control-panel {
-      padding: 2rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      z-index: 10;
-      overflow-y: auto;
-      height: 100vh;
-      background: rgba(10, 10, 32, 0.7);
-      backdrop-filter: blur(10px);
-      border-left: 1px solid rgba(0, 240, 255, 0.2);
-    }
+/* ========================
+   VISUALIZATION AREA
+   ======================== */
+#vanta-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.7;
+}
 
-    .panel-section {
-      background: linear-gradient(145deg, rgba(26, 26, 58, 0.7) 0%, rgba(10, 10, 32, 0.9) 100%);
-      border: 1px solid rgba(0, 240, 255, 0.2);
-      border-radius: 16px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      box-shadow: var(--panel-glow);
-      position: relative;
-      overflow: hidden;
-    }
+#holographic-display {
+  width: 80%;
+  height: 80%;
+  position: relative;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, rgba(0, 240, 255, 0) 70%);
+  box-shadow: 0 0 100px rgba(0, 240, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+}
 
-    .panel-section::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(
-        to bottom right,
-        transparent 0%,
-        rgba(0, 240, 255, 0.05) 50%,
-        transparent 100%
-      );
-      transform: rotate(30deg);
-      animation: shine 6s infinite linear;
-    }
+/* Chart Styles */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 60%;
+  margin-bottom: 1rem;
+}
 
-    @keyframes shine {
-      0% { transform: translateX(-100%) rotate(30deg); }
-      100% { transform: translateX(100%) rotate(30deg); }
-    }
+#stakeChart {
+  filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.3));
+}
 
-    h1, h2 {
-      margin-top: 0;
-      font-family: 'Orbitron', sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-    }
+/* Data Grid */
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: auto;
+}
 
-    h1 {
-      font-size: 2.5rem;
-      background: linear-gradient(90deg, var(--primary), var(--secondary));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      text-shadow: var(--text-glow);
-      margin-bottom: 1.5rem;
-      font-weight: 900;
-    }
+.data-cell {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
 
-    h2 {
-      color: var(--primary);
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-      position: relative;
-      display: inline-block;
-    }
+.data-label {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.5rem;
+}
 
-    h2::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background: linear-gradient(90deg, var(--primary), transparent);
-    }
+.data-value {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--primary);
+  font-size: 1.2rem;
+  text-shadow: var(--text-glow);
+}
 
-    .balance-display {
-      font-size: 1.5rem;
-      margin: 1.5rem 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 700;
-    }
 
-    .balance-display span {
-      font-family: 'Orbitron', sans-serif;
-      color: var(--primary);
-      font-size: 1.8rem;
-    }
+/* ========================
+   UI COMPONENTS
+   ======================== */
+/* Panel Sections */
+.panel-section {
+  background: linear-gradient(145deg, rgba(26, 26, 58, 0.7) 0%, rgba(10, 10, 32, 0.9) 100%);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--panel-glow);
+  position: relative;
+  overflow: hidden;
+}
 
-    .stake-amount {
-      display: flex;
-      flex-direction: column;
-      margin: 2rem 0;
-    }
+/* Typography */
+h1, h2 {
+  margin-top: 0;
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
 
-    .slider-container {
-      position: relative;
-      margin: 1.5rem 0;
-    }
+h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: var(--text-glow);
+  margin-bottom: 1.5rem;
+  font-weight: 900;
+}
 
-    input[type="range"] {
-      width: 100%;
-      -webkit-appearance: none;
-      height: 12px;
-      background: rgba(0, 240, 255, 0.1);
-      border-radius: 6px;
-      outline: none;
-      margin: 1rem 0;
-      border: 1px solid rgba(0, 240, 255, 0.3);
-    }
+h2 {
+  color: var(--primary);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  display: inline-block;
+}
 
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 24px;
-      height: 24px;
-      background: var(--primary);
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
-      border: 2px solid white;
-      transform: scale(1);
-      transition: transform 0.2s ease;
-    }
+h2::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+}
 
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-    }
+/* Balance Displays */
+.balance-display {
+  font-size: 1.5rem;
+  margin: 1.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
 
-    .slider-labels {
-      display: flex;
-      justify-content: space-between;
-      font-family: 'Orbitron', sans-serif;
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 0.9rem;
-    }
+.balance-display span {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--primary);
+  font-size: 1.8rem;
+}
 
-    .reward-counter {
-      font-size: 2.5rem;
-      text-align: center;
-      margin: 2rem 0;
-      font-family: 'Orbitron', sans-serif;
-      color: var(--primary);
-      text-shadow: var(--text-glow);
-      position: relative;
-    }
+/* Slider */
+.slider-container {
+  position: relative;
+  margin: 1.5rem 0;
+}
 
-    .reward-counter::before {
-      content: 'ESTIMATED APY';
-      position: absolute;
-      top: -20px;
-      left: 0;
-      width: 100%;
-      font-size: 0.9rem;
-      color: rgba(255, 255, 255, 0.7);
-      text-shadow: none;
-    }
+input[type="range"] {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 12px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: 6px;
+  outline: none;
+  margin: 1rem 0;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+}
 
-    .stake-button {
-      padding: 1.2rem 2.5rem;
-      background: linear-gradient(45deg, var(--primary), var(--secondary));
-      border: none;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: black;
-      cursor: pointer;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
-      transition: all 0.3s ease;
-      margin: 1rem 0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      z-index: 1;
-    }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+  border: 2px solid white;
+  transform: scale(1);
+  transition: transform 0.2s ease;
+}
 
-    .stake-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: all 0.5s ease;
-      z-index: -1;
-    }
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Orbitron', sans-serif;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
 
-    .stake-button:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.8);
-    }
+/* Buttons */
+.stake-button {
+  padding: 1.2rem 2.5rem;
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  border: none;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: black;
+  cursor: pointer;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+  transition: all 0.3s ease;
+  margin: 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  z-index: 1;
+}
 
-    .stake-button:hover::before {
-      left: 100%;
-    }
+.button-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
 
-    .stake-button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-    }
+/* Status Elements */
+.status-message {
+  min-height: 24px;
+  color: var(--accent);
+  margin-top: 1rem;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+}
 
-    .status-message {
-      min-height: 24px;
-      color: var(--accent);
-      margin-top: 1rem;
-      text-align: center;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.9rem;
-    }
+.connection-status {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  color: var(--primary);
+  z-index: 100;
+}
 
-    .button-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
+.network-indicator {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  background: rgba(0, 240, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: var(--primary);
+  border: 1px solid rgba(0, 240, 255, 0.5);
+}
 
-    .button-group button {
-      margin: 0;
-    }
 
-    .token-animation {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: radial-gradient(circle, var(--primary), var(--secondary));
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 100;
-      opacity: 0;
-      box-shadow: 0 0 10px var(--primary);
-    }
+/* ========================
+   ANIMATIONS & EFFECTS
+   ======================== */
+/* Panel Shine Effect */
+.panel-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    transparent 0%,
+    rgba(0, 240, 255, 0.05) 50%,
+    transparent 100%
+  );
+  transform: rotate(30deg);
+  animation: shine 6s infinite linear;
+}
 
-    .connection-status {
-      position: absolute;
-      top: 2rem;
-      right: 2rem;
-      display: flex;
-      align-items: center;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.9rem;
-      color: var(--primary);
-      z-index: 100;
-    }
+/* Holographic Effects */
+#holographic-display::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(123, 45, 255, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  border-radius: inherit;
+}
 
-    .connection-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background-color: #ff2d7b;
-      margin-right: 8px;
-      animation: pulse 2s infinite;
-    }
+/* Button Hover Effects */
+.stake-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: all 0.5s ease;
+  z-index: -1;
+}
 
-    @keyframes pulse {
-      0% { opacity: 0.5; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.2); }
-      100% { opacity: 0.5; transform: scale(1); }
-    }
+/* Keyframe Animations */
+@keyframes shine {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  100% { transform: translateX(100%) rotate(30deg); }
+}
 
-    .connected .connection-dot {
-      background-color: #00ff88;
-    }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
 
-    .network-indicator {
-      position: absolute;
-      top: 2rem;
-      left: 2rem;
-      background: rgba(0, 240, 255, 0.2);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.8rem;
-      color: var(--primary);
-      border: 1px solid rgba(0, 240, 255, 0.5);
-    }
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
 
-    @media (max-width: 1024px) {
-      #app-container {
-        grid-template-columns: 1fr;
-        grid-template-rows: 50vh auto;
-      }
+@keyframes pulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.5; transform: scale(1); }
+}
 
-      .control-panel {
-        height: auto;
-        border-left: none;
-        border-top: 1px solid rgba(0, 240, 255, 0.2);
-      }
 
-      #visualization-container {
-        height: 50vh;
-      }
-    }
+/* ========================
+   INTERACTIVE STATES
+   ======================== */
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
 
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 2rem;
-      }
+.stake-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.8);
+}
 
-      .panel-section {
-        padding: 1.5rem;
-      }
+.stake-button:hover::before {
+  left: 100%;
+}
 
-      .button-group {
-        grid-template-columns: 1fr;
-      }
-    }
+.stake-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
 
-    /* Holographic effect for the visualization container */
-    .holographic-line {
-      position: absolute;
-      background: rgba(0, 240, 255, 0.1);
-      animation: scan 8s linear infinite;
-    }
+.connected .connection-dot {
+  background-color: #00ff88;
+}
 
-    @keyframes scan {
-      0% { top: 0%; height: 0px; opacity: 0; }
-      5% { height: 2px; opacity: 0.5; }
-      50% { opacity: 0.2; }
-      100% { top: 100%; height: 0px; opacity: 0; }
-    }
+
+/* ========================
+   MODAL STYLES
+   ======================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 32, 0.9);
+  backdrop-filter: blur(6px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-box {
+  background: #111930;
+  border: 1px solid var(--primary);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+
+/* ========================
+   RESPONSIVE ADJUSTMENTS
+   ======================== */
+@media (max-width: 1024px) {
+  #app-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: 50vh auto;
+  }
+
+  .control-panel {
+    height: auto;
+    border-left: none;
+    border-top: 1px solid rgba(0, 240, 255, 0.2);
+  }
+
+  #visualization-container {
+    height: 50vh;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .panel-section {
+    padding: 1.5rem;
+  }
+
+  .button-group {
+    grid-template-columns: 1fr;
+  }
+
+  .data-grid {
+    grid-template-columns: 1fr;
+  }
+}
   </style>
 </head>
 <body>
   <div id="vanta-bg"></div>
   <div id="app-container">
-    <!-- 3D Visualization Area -->
     <div id="visualization-container">
-      <div id="holographic-display"></div>
-      <div id="particles-js"></div>
+      <div id="holographic-display">
+        <div class="chart-container">
+          <canvas id="stakeChart"></canvas>
+        </div>
+        <div class="data-grid">
+          <div class="data-cell">
+            <span class="data-label">Current APY</span>
+            <span class="data-value" id="visual-apy">0%</span>
+          </div>
+          <div class="data-cell">
+            <span class="data-label">Total Staked</span>
+            <span class="data-value" id="visual-total">0 KLY</span>
+          </div>
+          <div class="data-cell">
+            <span class="data-label">Your Share</span>
+            <span class="data-value" id="visual-share">0%</span>
+          </div>
+        </div>
+      </div>
       <div class="network-indicator" id="network-indicator">NETWORK: DISCONNECTED</div>
     </div>
 
-    <!-- Control Panel -->
-  <div class="control-panel">
-  <div class="connection-status" id="connection-status">
-    <div class="connection-dot"></div>
-    <span id="walletAddress">DISCONNECTED</span>
-  </div>
+    <div class="control-panel">
+      <div class="connection-status" id="connection-status">
+        <div class="connection-dot"></div>
+        <span id="walletAddress">DISCONNECTED</span>
+      </div>
 
-  <div class="panel-section">
-    <h1><i class="fas fa-vault"></i> KLY STAKING VAULT</h1>
-    <div class="balance-display">WALLET BALANCE: <span id="wallet-balance">0</span> KLY</div>
-  </div>
+      <div class="panel-section">
+        <h1><i class="fas fa-vault"></i> KLY STAKING VAULT</h1>
+        <div class="balance-display">WALLET BALANCE: <span id="wallet-balance">0</span> KLY</div>
+      </div>
 
-  <div class="panel-section">
-    <h2><i class="fas fa-coins"></i> STAKE TOKENS</h2>
-    <div class="slider-container">
-      <input type="range" id="stake-slider" min="0" max="100" value="50" step="1">
-      <div class="slider-labels">
-        <span>0%</span>
-        <span>100%</span>
+      <div class="panel-section">
+        <h2><i class="fas fa-coins"></i> STAKE TOKENS</h2>
+        <div class="slider-container">
+          <input type="range" id="stake-slider" min="0" max="100" value="50" step="1">
+          <div class="slider-labels"><span>0%</span><span>100%</span></div>
+        </div>
+        <div class="reward-counter"><span id="apy-display">12.5</span>%</div>
+        <button id="connectWalletBtn" class="stake-button"><i class="fas fa-wallet"></i> Connect Wallet</button>
+        <div class="status-message" id="status-message"></div>
+      </div>
+
+      <div class="balance-display">
+        STAKE AMOUNT: <span id="calculated-stake">0</span> KLY
+      </div>
+      <button id="stake-button" class="stake-button"><i class="fas fa-lock"></i> STAKE</button>
+
+      <div class="panel-section">
+        <h2><i class="fas fa-chart-line"></i> YOUR POSITION</h2>
+        <div class="balance-display">STAKED: <span id="staked-amount">0</span> KLY</div>
+        <div class="balance-display">REWARDS: <span id="reward-amount">0</span> KLY</div>
+        <div class="button-group">
+          <button id="claim-button" class="stake-button" disabled><i class="fas fa-gift"></i> CLAIM</button>
+          <button id="withdraw-button" class="stake-button" disabled><i class="fas fa-wallet"></i> WITHDRAW</button>
+        </div>
       </div>
     </div>
-    <div class="reward-counter"><span id="apy-display">12.5</span>%</div>
-    <button id="connectWalletBtn" class="stake-button"><i class="fas fa-wallet"></i> Connect Wallet</button>
-    <div class="status-message" id="status-message"></div>
   </div>
 
-<div class="balance-display">
-  STAKE AMOUNT: <span id="calculated-stake">0</span> KLY
-</div>
-<button id="stake-button" class="stake-button"><i class="fas fa-lock"></i> STAKE</button>
-    
-  <div class="panel-section">
-    <h2><i class="fas fa-chart-line"></i> YOUR POSITION</h2>
-    <div class="balance-display">STAKED: <span id="staked-amount">0</span> KLY</div>
-    <div class="balance-display">REWARDS: <span id="reward-amount">0</span> KLY</div>
-    <div class="button-group">
-      <button id="claim-button" class="stake-button" disabled>
-        <i class="fas fa-gift"></i> CLAIM
-      </button>
-      <button id="withdraw-button" class="stake-button" disabled>
-        <i class="fas fa-wallet"></i> WITHDRAW
-      </button>
+  <!-- Stake Confirmation Modal -->
+  <div id="stakeModal" style="display:none;" class="modal-overlay">
+    <div class="modal-box">
+      <h2>Confirm Stake</h2>
+      <p>You are about to stake <strong><span id="modal-stake-amount">0</span> KLY</strong>.</p>
+      <div class="modal-actions">
+        <button id="confirmStakeBtn" class="stake-button">Confirm</button>
+        <button id="cancelStakeBtn" class="stake-button" style="background: #333; color: white;">Cancel</button>
+      </div>
     </div>
   </div>
-</div>
-   
-<script>
-const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
-const KLY_TOKEN_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function approve(address, uint256) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
-];
+  <script>
+    const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+    const STAKING_CONTRACT_ADDRESS = "0x7bBa73C25cf5384b58DBA280eCB49c9749437823";
 
-const STAKING_ABI = [
-  "function stake(uint256) public",
-  "function withdraw(uint256) public",
-  "function claimRewards() public",
-  "function getStaked(address) view returns (uint256)",
-  "function getRewards(address) view returns (uint256)"
-];
+    const KLY_TOKEN_ABI = [
+      "function balanceOf(address) view returns (uint256)",
+      "function approve(address, uint256) returns (bool)",
+      "function allowance(address owner, address spender) view returns (uint256)"
+    ];
 
-let provider, signer, userAddress, klyToken, stakingContract;
+    const STAKING_ABI = [
+      "function stake(uint256) public",
+      "function withdraw(uint256) public",
+      "function claimRewards() public",
+      "function getStaked(address) view returns (uint256)",
+      "function getRewards(address) view returns (uint256)",
+      "function totalStaked() view returns (uint256)"
+    ];
 
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("MetaMask not detected.");
-    return;
-  }
+    let provider, signer, userAddress, klyToken, stakingContract, cachedStakeAmount;
+    let stakeChart;
 
-  const bnbChainId = '0x38';
-  const chainId = await ethereum.request({ method: 'eth_chainId' });
-  if (chainId !== bnbChainId) {
-    alert("Please switch to BNB Smart Chain.");
-    return;
-  }
+    async function connectWallet() {
+      if (!window.ethereum) return alert("MetaMask not detected.");
+      const bnbChainId = '0x38';
+      const chainId = await ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== bnbChainId) return alert("Please switch to BNB Smart Chain.");
 
-  try {
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    userAddress = accounts[0];
+      try {
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
+        stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
 
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
-    klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
-    stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+        const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        document.getElementById('walletAddress').textContent = shortened;
+        document.getElementById('connection-status').classList.add('connected');
+        document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
 
-    const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-    document.getElementById('walletAddress').textContent = shortened;
-    document.getElementById('connection-status').classList.add('connected');
+        await Promise.all([updateBalances(), updateVisualization()]);
+        initChart();
 
-    await updateBalances();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function formatKLY(value) {
-  return ethers.utils.formatUnits(value, 18).slice(0, 8);
-}
-
-async function updateNetworkIndicator() {
-  if (typeof window.ethereum !== 'undefined') {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const network = await provider.getNetwork();
-
-    const indicator = document.getElementById('network-indicator');
-    if (network.chainId === 56) {
-      indicator.textContent = 'NETWORK: BSC MAINNET';
-      indicator.style.color = '#00ffcc';
-    } else {
-      indicator.textContent = 'NETWORK: WRONG NETWORK';
-      indicator.style.color = '#ff4444';
+        ethereum.on("accountsChanged", () => window.location.reload());
+        ethereum.on("chainChanged", () => window.location.reload());
+      } catch (err) {
+        console.error(err);
+      }
     }
-  }
-}
-  
-async function updateBalances() {
-  const balance = await klyToken.balanceOf(userAddress);
-  const staked = await stakingContract.getStaked(userAddress);
-  const rewards = await stakingContract.getRewards(userAddress);
 
-  document.getElementById('wallet-balance').textContent = formatKLY(balance);
-  document.getElementById('staked-amount').textContent = formatKLY(staked);
-  document.getElementById('reward-amount').textContent = formatKLY(rewards);
+    function formatKLY(value) {
+      return ethers.utils.formatUnits(value, 18).slice(0, 8);
+    }
 
-  document.getElementById('claim-button').disabled = rewards.eq(0);
-  document.getElementById('withdraw-button').disabled = staked.eq(0);
-}
+    function initChart() {
+      const ctx = document.getElementById('stakeChart').getContext('2d');
+      
+      stakeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Your Stake', 'Other Stakers'],
+          datasets: [{
+            data: [0, 100], // Initial dummy data
+            backgroundColor: [
+              'rgba(0, 240, 255, 0.8)',
+              'rgba(123, 45, 255, 0.4)'
+            ],
+            borderColor: [
+              'rgba(0, 240, 255, 1)',
+              'rgba(123, 45, 255, 0.7)'
+            ],
+            borderWidth: 1,
+            cutout: '70%'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: 'white',
+                font: {
+                  family: 'Rajdhani',
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              enabled: true,
+              bodyFont: {
+                family: 'Rajdhani'
+              }
+            }
+          },
+          animation: {
+            animateScale: true,
+            animateRotate: true
+          }
+        }
+      });
+    }
 
-async function stakeTokens() {
-  const percent = document.getElementById('stake-slider').value;
-  const rawBalance = await klyToken.balanceOf(userAddress);
-  const stakeAmount = rawBalance.mul(percent).div(100);
+    async function updateVisualization() {
+      if (!userAddress) return;
+      
+      try {
+        const [yourStake, totalStaked] = await Promise.all([
+          stakingContract.getStaked(userAddress),
+          stakingContract.totalStaked()
+        ]);
 
-  const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
-  if (allowance.lt(stakeAmount)) {
-    const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-    await approveTx.wait();
-  }
+        // Update chart
+        const yourStakeFormatted = parseFloat(ethers.utils.formatUnits(yourStake, 18));
+        const othersStakeFormatted = parseFloat(ethers.utils.formatUnits(totalStaked.sub(yourStake), 18));
+        
+        stakeChart.data.datasets[0].data = [
+          yourStakeFormatted,
+          othersStakeFormatted > 0 ? othersStakeFormatted : 0.1 // Ensure chart renders even if 0
+        ];
+        stakeChart.update();
+        
+        // Update data grid
+        document.getElementById('visual-apy').textContent = document.getElementById('apy-display').textContent + '%';
+        document.getElementById('visual-total').textContent = formatKLY(totalStaked) + ' KLY';
+        
+        const sharePercentage = totalStaked.gt(0) 
+          ? (yourStake.mul(10000).div(totalStaked).toNumber() / 100) 
+          : 0;
+        document.getElementById('visual-share').textContent = sharePercentage.toFixed(2) + '%';
+        
+      } catch (err) {
+        console.error("Visualization update error:", err);
+      }
+    }
 
-  const tx = await stakingContract.stake(stakeAmount);
-  await tx.wait();
-  showStatus("✅ Stake successful.");
-  await updateBalances();
-}
+    async function updateBalances() {
+      if (!userAddress) return;
+      const [balance, staked, rewards] = await Promise.all([
+        klyToken.balanceOf(userAddress),
+        stakingContract.getStaked(userAddress),
+        stakingContract.getRewards(userAddress)
+      ]);
 
-async function updateStakeAmount() {
-  const percent = document.getElementById('stake-slider').value;
-  const rawBalance = await klyToken.balanceOf(userAddress);
-  const stakeAmount = rawBalance.mul(percent).div(100);
-  document.getElementById('calculated-stake').textContent = formatKLY(stakeAmount);
-}
-  
-async function claimRewards() {
-  try {
-    const tx = await stakingContract.claimRewards();
-    await tx.wait();
-    showStatus("🎉 Rewards claimed.");
-    await updateBalances();
-  } catch (err) {
-    console.error(err);
-    showStatus("⚠️ Claim failed.");
-  }
-}
+      document.getElementById('wallet-balance').textContent = formatKLY(balance);
+      document.getElementById('staked-amount').textContent = formatKLY(staked);
+      document.getElementById('reward-amount').textContent = formatKLY(rewards);
+      document.getElementById('claim-button').disabled = rewards.eq(0);
+      document.getElementById('withdraw-button').disabled = staked.eq(0);
+      
+      await updateVisualization();
+    }
 
-async function withdrawTokens() {
-  try {
-    const staked = await stakingContract.getStaked(userAddress);
-    const tx = await stakingContract.withdraw(staked);
-    await tx.wait();
-    showStatus("🏁 Withdrawal complete.");
-    await updateBalances();
-  } catch (err) {
-    console.error(err);
-    showStatus("⚠️ Withdrawal failed.");
-  }
-}
+    async function updateStakeAmount() {
+      if (!userAddress) return;
+      const percent = document.getElementById('stake-slider').value;
+      const rawBalance = await klyToken.balanceOf(userAddress);
+      const stakeAmount = rawBalance.mul(percent).div(100);
+      document.getElementById('calculated-stake').textContent = formatKLY(stakeAmount);
+    }
 
-function showStatus(msg) {
-  const el = document.getElementById('status-message');
-  el.textContent = msg;
-  el.style.opacity = 1;
-  setTimeout(() => {
-    el.style.opacity = 0;
-    el.textContent = "";
-  }, 3000);
-}
+    async function stakeTokens() {
+      if (!userAddress) return;
+      const percent = document.getElementById('stake-slider').value;
+      const rawBalance = await klyToken.balanceOf(userAddress);
+      cachedStakeAmount = rawBalance.mul(percent).div(100);
 
-window.onload = function () {
- document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
-  document.getElementById('stake-slider').addEventListener('input', updateStakeAmount);
-  document.getElementById('stake-button').addEventListener('click', stakeTokens);
-  document.getElementById('claim-button').addEventListener('click', claimRewards);
-  document.getElementById('withdraw-button').addEventListener('click', withdrawTokens);
-};
+      document.getElementById("modal-stake-amount").textContent = formatKLY(cachedStakeAmount);
+      document.getElementById("stakeModal").style.display = "flex";
+    }
 
-</script>
+    async function confirmStakeExecution() {
+      try {
+        const allowance = await klyToken.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+        if (allowance.lt(cachedStakeAmount)) {
+          const approveTx = await klyToken.approve(STAKING_CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+          await approveTx.wait();
+        }
+
+        const tx = await stakingContract.stake(cachedStakeAmount);
+        await tx.wait();
+        showStatus("✅ Stake successful.");
+        await updateBalances();
+      } catch (err) {
+        console.error(err);
+        showStatus("⚠️ Staking failed.");
+      } finally {
+        document.getElementById("stakeModal").style.display = "none";
+      }
+    }
+
+    async function claimRewards() {
+      try {
+        const tx = await stakingContract.claimRewards();
+        await tx.wait();
+        showStatus("🎉 Rewards claimed.");
+        await updateBalances();
+      } catch (err) {
+        console.error(err);
+        showStatus("⚠️ Claim failed.");
+      }
+    }
+
+    async function withdrawTokens() {
+      try {
+        const staked = await stakingContract.getStaked(userAddress);
+        const tx = await stakingContract.withdraw(staked);
+        await tx.wait();
+        showStatus("🏁 Withdrawal complete.");
+        await updateBalances();
+      } catch (err) {
+        console.error(err);
+        showStatus("⚠️ Withdrawal failed.");
+      }
+    }
+
+    function showStatus(msg) {
+      const el = document.getElementById('status-message');
+      el.textContent = msg;
+      el.style.opacity = 1;
+      setTimeout(() => {
+        el.style.opacity = 0;
+        el.textContent = "";
+      }, 3000);
+    }
+
+    window.onload = function () {
+      document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+      document.getElementById('stake-slider').addEventListener('input', updateStakeAmount);
+      document.getElementById('stake-button').addEventListener('click', stakeTokens);
+      document.getElementById('confirmStakeBtn').addEventListener('click', confirmStakeExecution);
+      document.getElementById('cancelStakeBtn').addEventListener('click', () => {
+        document.getElementById("stakeModal").style.display = "none";
+      });
+      document.getElementById('claim-button').addEventListener('click', claimRewards);
+      document.getElementById('withdraw-button').addEventListener('click', withdrawTokens);
+    };
+  </script>
 </body>
 </html>
