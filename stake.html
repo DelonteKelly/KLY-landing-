@@ -642,34 +642,47 @@
     let provider, signer, userAddress, klyToken, stakingContract, cachedStakeAmount;
     let stakeChart;
 
-    async function connectWallet() {
-      if (!window.ethereum) return alert("MetaMask not detected.");
-      const bnbChainId = '0x38';
-      const chainId = await ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== bnbChainId) return alert("Please switch to BNB Smart Chain.");
+ async function connectWallet() {
+  if (!window.ethereum) return alert("MetaMask not detected.");
 
-      try {
-        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        userAddress = accounts[0];
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
-        stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+  try {
+    const bnbChainId = '0x38';
+    const chainId = await ethereum.request({ method: 'eth_chainId' });
 
-        const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('walletAddress').textContent = shortened;
-        document.getElementById('connection-status').classList.add('connected');
-        document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
-
-        await Promise.all([updateBalances(), updateVisualization()]);
-        initChart();
-
-        ethereum.on("accountsChanged", () => window.location.reload());
-        ethereum.on("chainChanged", () => window.location.reload());
-      } catch (err) {
-        console.error(err);
-      }
+    if (chainId !== bnbChainId) {
+      await ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: bnbChainId }]
+      });
     }
+
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    userAddress = accounts[0];
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    klyToken = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, signer);
+    stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+
+    const shortened = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+    document.getElementById('walletAddress').textContent = shortened;
+    document.getElementById('connection-status').classList.add('connected');
+    document.getElementById('network-indicator').textContent = "NETWORK: BSC MAINNET";
+
+    await Promise.all([
+      updateBalances?.(),
+      updateVisualization?.(),
+      updateVaultCharge?.()
+    ]);
+    initChart?.();
+
+    ethereum.on("accountsChanged", () => window.location.reload());
+    ethereum.on("chainChanged", () => window.location.reload());
+
+  } catch (err) {
+    console.error("⚠️ Wallet connection error:", err);
+    alert("Wallet connection failed: " + err.message);
+  }
+}
 
     function formatKLY(value) {
       return ethers.utils.formatUnits(value, 18).slice(0, 8);
