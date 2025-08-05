@@ -6,7 +6,6 @@
     <title>Web3 Oracle Scrolls</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <style>
         :root {
             --parchment: #f5e9d9;
@@ -613,10 +612,10 @@
                         <div id="walletInfo">
                             <div class="network-info">
                                 <div class="network-indicator" id="networkIndicator"></div>
-                                <span id="networkName">Ethereum Mainnet</span>
+                                <span id="networkName">Binance Smart Chain</span>
                             </div>
                             <p>Connected Wallet: <span class="wallet-address" id="walletAddress">Not connected</span></p>
-                            <p class="token-balance">Balance: <span id="tokenBalance">0</span> <span id="tokenSymbol">ETH</span></p>
+                            <p class="token-balance">Balance: <span id="tokenBalance">0</span> <span id="tokenSymbol">BNB</span></p>
                         </div>
                         <div id="nftSection">
                             <h4>Your Oracle NFTs</h4>
@@ -633,485 +632,520 @@
         </div>
     </div>
 
-   <script>
-    // Enhanced Oracle messages with Web3 themes
-    const messages = [
-        {
-            text: "The blockchain whispers of a coming transformation. Prepare your wallet for unexpected abundance.",
-            rarity: "common",
-            web3: true
-        },
-        {
-            text: "When the gas fees are low and the moon is in retrograde, your transaction shall find favor.",
-            rarity: "uncommon",
-            web3: true
-        },
-        {
-            text: "A smart contract in your future bears unexpected fruit. Verify all variables before signing.",
-            rarity: "rare",
-            web3: true
-        },
-        {
-            text: "The DAO of your destiny votes unanimously: the path forward is decentralized.",
-            rarity: "epic",
-            web3: true
-        },
-        {
-            text: "Beware the 51st hour, when whales may surface to test your resolve.",
-            rarity: "legendary",
-            web3: true
-        },
-        {
-            text: "Your seed phrase holds more power than you know. Guard it as the dragons guard their gold.",
-            rarity: "mythic",
-            web3: true
-        },
-        {
-            text: "The merge is coming, and with it, a new era for your digital assets.",
-            rarity: "rare",
-            web3: true
-        },
-        {
-            text: "Look to Layer 2 for solutions when the mainnet grows congested.",
-            rarity: "uncommon",
-            web3: true
-        },
-        {
-            text: "The NFTs in your collection will soon reveal their true utility.",
-            rarity: "epic",
-            web3: true
-        },
-        {
-            text: "A cross-chain bridge appears in your future. Tread carefully and verify all contracts.",
-            rarity: "rare",
-            web3: true
-        },
-        {
-            text: "The oracle nodes speak as one: your verification is imminent.",
-            rarity: "legendary",
-            web3: true
-        },
-        {
-            text: "When the bear market ends, your patience will be rewarded sevenfold.",
-            rarity: "mythic",
-            web3: true
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script>
+        // Enhanced Oracle messages with Web3 themes
+        const messages = [
+            {
+                text: "The blockchain whispers of a coming transformation. Prepare your wallet for unexpected abundance.",
+                rarity: "common",
+                web3: true
+            },
+            {
+                text: "When the gas fees are low and the moon is in retrograde, your transaction shall find favor.",
+                rarity: "uncommon",
+                web3: true
+            },
+            {
+                text: "A smart contract in your future bears unexpected fruit. Verify all variables before signing.",
+                rarity: "rare",
+                web3: true
+            },
+            {
+                text: "The DAO of your destiny votes unanimously: the path forward is decentralized.",
+                rarity: "epic",
+                web3: true
+            },
+            {
+                text: "Beware the 51st hour, when whales may surface to test your resolve.",
+                rarity: "legendary",
+                web3: true
+            },
+            {
+                text: "Your seed phrase holds more power than you know. Guard it as the dragons guard their gold.",
+                rarity: "mythic",
+                web3: true
+            },
+            {
+                text: "The merge is coming, and with it, a new era for your digital assets.",
+                rarity: "rare",
+                web3: true
+            },
+            {
+                text: "Look to Layer 2 for solutions when the mainnet grows congested.",
+                rarity: "uncommon",
+                web3: true
+            },
+            {
+                text: "The NFTs in your collection will soon reveal their true utility.",
+                rarity: "epic",
+                web3: true
+            },
+            {
+                text: "A cross-chain bridge appears in your future. Tread carefully and verify all contracts.",
+                rarity: "rare",
+                web3: true
+            },
+            {
+                text: "The oracle nodes speak as one: your verification is imminent.",
+                rarity: "legendary",
+                web3: true
+            },
+            {
+                text: "When the bear market ends, your patience will be rewarded sevenfold.",
+                rarity: "mythic",
+                web3: true
+            }
+        ];
+        
+        // Web3 and wallet state
+        let web3;
+        let provider;
+        let accounts = [];
+        let chainId;
+        let walletConnected = false;
+        
+        // BSC Network configurations
+        const BSC_MAINNET = {
+            chainId: '0x38', // 56 in decimal
+            chainName: 'Binance Smart Chain Mainnet',
+            nativeCurrency: {
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
+            },
+            rpcUrls: ['https://bsc-dataseed.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com']
+        };
+        
+        // Check if Web3 provider is installed
+        function isWeb3Installed() {
+            return typeof window.ethereum !== 'undefined';
         }
-    ];
-    
-    // Web3 and wallet state
-    let web3;
-    let provider;
-    let accounts = [];
-    let chainId;
-    let walletConnected = false;
-    
-    // Generate constellation with more complexity
-    function createConstellation() {
-        const container = document.getElementById('constellation');
-        const starCount = 100;
-        
-        // Create stars
-        for (let i = 0; i < starCount; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            star.style.left = `${Math.random() * 100}%`;
-            star.style.top = `${Math.random() * 100}%`;
-            star.style.animationDelay = `${Math.random() * 3}s`;
-            star.style.width = `${1 + Math.random() * 3}px`;
-            star.style.height = star.style.width;
-            
-            // Randomize star colors slightly
-            const hue = 200 + Math.random() * 40;
-            const saturation = 70 + Math.random() * 30;
-            star.style.backgroundColor = `hsl(${hue}, ${saturation}%, 80%)`;
-            
-            container.appendChild(star);
+
+        // Switch to BSC network
+        async function switchToBSC() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [BSC_MAINNET]
+                });
+                return true;
+            } catch (switchError) {
+                console.error('Failed to switch to BSC:', switchError);
+                return false;
+            }
         }
-        
-        // Connect stars to form constellations
-        const stars = document.querySelectorAll('.star');
-        const connections = Math.floor(starCount / 2);
-        
-        for (let i = 0; i < connections; i++) {
-            const star1 = stars[Math.floor(Math.random() * stars.length)];
-            const star2 = stars[Math.floor(Math.random() * stars.length)];
+
+        // Initialize Web3 with BSC connection
+        async function initWeb3() {
+            if (!isWeb3Installed()) {
+                alert('Please install MetaMask or a Web3 wallet extension!');
+                document.getElementById('connectWallet').textContent = "Install Wallet";
+                document.getElementById('connectWallet').onclick = () => {
+                    window.open('https://metamask.io/', '_blank');
+                };
+                return;
+            }
             
-            const distance = Math.sqrt(
-                Math.pow(parseFloat(star2.style.left) - parseFloat(star1.style.left), 2) + 
-                Math.pow(parseFloat(star2.style.top) - parseFloat(star1.style.top), 2)
-            );
-            
-            // Only connect relatively close stars
-            if (distance < 20) {
-                const line = document.createElement('div');
-                line.style.position = 'absolute';
+            try {
+                document.getElementById('connectWallet').textContent = "Connecting...";
+                document.getElementById('connectWallet').disabled = true;
                 
-                // Random line color based on distance
+                provider = window.ethereum;
+                try {
+                    // Request account access
+                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    
+                    // Check if we're on BSC, if not prompt to switch
+                    if (chainId !== BSC_MAINNET.chainId) {
+                        const shouldSwitch = confirm("This dapp works on Binance Smart Chain. Switch to BSC now?");
+                        if (shouldSwitch) {
+                            const switched = await switchToBSC();
+                            if (!switched) {
+                                alert("Please switch to BSC manually in your wallet");
+                            }
+                            // Refresh chainId after switching
+                            chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                        }
+                    }
+                    
+                    // Initialize Web3
+                    web3 = new Web3(window.ethereum);
+                    
+                    // Update UI
+                    updateWalletInfo(accounts[0], chainId);
+                    walletConnected = true;
+                    
+                    // Set up event listeners
+                    setupEventListeners();
+                    
+                    // Load additional wallet data
+                    loadWalletData(accounts[0], chainId);
+                    
+                } catch (error) {
+                    console.error("User denied account access", error);
+                    resetWalletConnection();
+                }
+            } catch (error) {
+                console.error("Error connecting to wallet:", error);
+                resetWalletConnection();
+            }
+        }
+        
+        // Update wallet information in the UI
+        function updateWalletInfo(address, chainId) {
+            const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+            document.getElementById('walletAddress').textContent = shortenedAddress;
+            document.getElementById('walletAddress').setAttribute('title', address);
+            
+            document.getElementById('connectWallet').textContent = "Connected";
+            document.getElementById('connectWallet').style.background = "linear-gradient(135deg, #4CAF50, #2E7D32)";
+            document.getElementById('connectWallet').disabled = false;
+            
+            // Update network info
+            updateNetworkInfo(chainId);
+        }
+        
+        // Update network information with BSC support
+        function updateNetworkInfo(chainId) {
+            const networkIndicator = document.getElementById('networkIndicator');
+            const networkName = document.getElementById('networkName');
+            
+            const networks = {
+                '0x1': { name: 'Ethereum Mainnet', color: '#29b6af' },
+                '0x38': { name: 'BSC Mainnet', color: '#F0B90B' } // BSC Mainnet
+            };
+            
+            if (networks[chainId]) {
+                networkName.textContent = networks[chainId].name;
+                networkIndicator.style.backgroundColor = networks[chainId].color;
+                networkIndicator.style.boxShadow = `0 0 10px ${networks[chainId].color}`;
+            } else {
+                networkName.textContent = `Unsupported Network (${chainId})`;
+                networkIndicator.style.backgroundColor = '#ff5722';
+                networkIndicator.style.boxShadow = '0 0 10px #ff5722';
+            }
+        }
+        
+        // Load wallet data (balance, NFTs, etc.)
+        async function loadWalletData(address, chainId) {
+            try {
+                // Show loading state
+                document.getElementById('tokenBalance').textContent = "Loading...";
+                
+                // Get balance
+                const balance = await web3.eth.getBalance(address);
+                const balanceInEth = web3.utils.fromWei(balance, 'ether');
+                document.getElementById('tokenBalance').textContent = parseFloat(balanceInEth).toFixed(4);
+                
+                // Show Web3 section
+                const web3Section = document.getElementById('web3Section');
+                web3Section.classList.add('visible');
+                
+                // For demo purposes, we'll use mock NFTs
+                loadMockNFTs();
+                
+                // Create floating tokens
+                createFloatingTokens();
+                
+            } catch (error) {
+                console.error("Error loading wallet data:", error);
+                document.getElementById('tokenBalance').textContent = "Error";
+            }
+        }
+
+        // Load mock NFTs for demonstration
+        function loadMockNFTs() {
+            const nftGallery = document.getElementById('nftGallery');
+            nftGallery.innerHTML = '';
+            
+            const nfts = [
+                { emoji: "🔮", name: "Oracle's Crystal Ball", rarity: "rare" },
+                { emoji: "🌌", name: "Galactic Smart Contract", rarity: "epic" },
+                { emoji: "⚡", name: "Lightning Network Token", rarity: "uncommon" },
+                { emoji: "♞", name: "Knight's DAO Badge", rarity: "legendary" },
+                { emoji: "♛", name: "Crypto Queen NFT", rarity: "mythic" }
+            ];
+            
+            nfts.forEach(nft => {
+                const nftItem = document.createElement('div');
+                nftItem.className = 'nft-item';
+                nftItem.innerHTML = `
+                    ${nft.emoji}
+                    <div class="nft-tooltip">${nft.name}<br>Rarity: ${nft.rarity}</div>
+                `;
+                nftGallery.appendChild(nftItem);
+            });
+        }
+        
+        // Set up Ethereum event listeners
+        function setupEventListeners() {
+            if (provider) {
+                // Accounts changed
+                provider.on('accountsChanged', (newAccounts) => {
+                    accounts = newAccounts;
+                    if (newAccounts.length > 0) {
+                        updateWalletInfo(newAccounts[0], chainId);
+                        loadWalletData(newAccounts[0], chainId);
+                    } else {
+                        // Wallet disconnected
+                        resetWalletConnection();
+                    }
+                });
+                
+                // Chain changed
+                provider.on('chainChanged', (newChainId) => {
+                    // Handle chain change
+                    chainId = newChainId;
+                    updateNetworkInfo(newChainId);
+                    if (accounts.length > 0) {
+                        loadWalletData(accounts[0], newChainId);
+                    }
+                    
+                    // If switched away from BSC, suggest switching back
+                    if (newChainId !== BSC_MAINNET.chainId) {
+                        alert("Please switch back to Binance Smart Chain for full functionality");
+                    }
+                });
+            }
+        }
+        
+        // Reset wallet connection
+        function resetWalletConnection() {
+            walletConnected = false;
+            accounts = [];
+            document.getElementById('walletAddress').textContent = "Not connected";
+            document.getElementById('connectWallet').textContent = "Connect Web3 Wallet";
+            document.getElementById('connectWallet').style.background = "linear-gradient(135deg, var(--magic-purple), var(--magic-blue))";
+            document.getElementById('connectWallet').disabled = false;
+            document.getElementById('tokenBalance').textContent = "0";
+            document.getElementById('nftGallery').innerHTML = "";
+        }
+        
+        // Generate constellation with more complexity
+        function createConstellation() {
+            const container = document.getElementById('constellation');
+            const starCount = 100;
+            
+            // Create stars
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.animationDelay = `${Math.random() * 3}s`;
+                star.style.width = `${1 + Math.random() * 3}px`;
+                star.style.height = star.style.width;
+                
+                // Randomize star colors slightly
                 const hue = 200 + Math.random() * 40;
-                line.style.backgroundColor = `hsla(${hue}, 70%, 70%, 0.3)`;
-                line.style.height = '1px';
+                const saturation = 70 + Math.random() * 30;
+                star.style.backgroundColor = `hsl(${hue}, ${saturation}%, 80%)`;
                 
+                container.appendChild(star);
+            }
+            
+            // Connect stars to form constellations
+            const stars = document.querySelectorAll('.star');
+            const connections = Math.floor(starCount / 2);
+            
+            for (let i = 0; i < connections; i++) {
+                const star1 = stars[Math.floor(Math.random() * stars.length)];
+                const star2 = stars[Math.floor(Math.random() * stars.length)];
+                
+                const distance = Math.sqrt(
+                    Math.pow(parseFloat(star2.style.left) - parseFloat(star1.style.left), 2) + 
+                    Math.pow(parseFloat(star2.style.top) - parseFloat(star1.style.top), 2)
+                );
+                
+                // Only connect relatively close stars
+                if (distance < 20) {
+                    I'll complete the Web3 Oracle Scrolls with BSC wallet connection. Here's the continuation of the JavaScript code and the remaining functionality:
+
+```javascript
+                // Create connection line
+                const line = document.createElement('div');
+                line.className = 'constellation-line';
+                
+                // Position and style the line
                 const x1 = parseFloat(star1.style.left);
                 const y1 = parseFloat(star1.style.top);
                 const x2 = parseFloat(star2.style.left);
                 const y2 = parseFloat(star2.style.top);
                 
-                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-                
-                line.style.width = `${length}%`;
+                line.style.position = 'absolute';
                 line.style.left = `${x1}%`;
                 line.style.top = `${y1}%`;
+                line.style.width = `${distance}%`;
+                line.style.height = '1px';
+                line.style.backgroundColor = `rgba(79, 195, 247, ${0.1 + Math.random() * 0.2})`;
                 line.style.transformOrigin = '0 0';
-                line.style.transform = `rotate(${angle}deg)`;
+                line.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`;
                 line.style.zIndex = '0';
                 
                 container.appendChild(line);
             }
         }
-    }
-    
-    // Create floating tokens animation
-    function createFloatingTokens() {
-        const container = document.getElementById('floatingTokens');
-        const tokens = ['Ξ', '♦', '♠', '♣', '♥', '∞', '⚡', '♞', '♛', '★'];
         
-        for (let i = 0; i < 15; i++) {
-            const token = document.createElement('div');
-            token.className = 'token';
-            token.textContent = tokens[Math.floor(Math.random() * tokens.length)];
-            token.style.left = `${Math.random() * 100}%`;
-            token.style.animationDelay = `${Math.random() * 15}s`;
+        // Create floating tokens animation
+        function createFloatingTokens() {
+            const container = document.getElementById('floatingTokens');
+            container.innerHTML = '';
             
-            // Random color
-            const colors = ['#d4af37', '#4fc3f7', '#9c27b0', '#ffffff'];
-            token.style.color = colors[Math.floor(Math.random() * colors.length)];
+            const tokenTypes = ['₿', 'Ξ', '◆', '♢', '♚', '⚡', '♞', '♛'];
             
-            container.appendChild(token);
+            for (let i = 0; i < 15; i++) {
+                const token = document.createElement('div');
+                token.className = 'token';
+                token.textContent = tokenTypes[Math.floor(Math.random() * tokenTypes.length)];
+                token.style.left = `${5 + Math.random() * 90}%`;
+                token.style.animationDelay = `${Math.random() * 15}s`;
+                token.style.animationDuration = `${10 + Math.random() * 20}s`;
+                
+                // Randomize token colors
+                const colors = ['#4fc3f7', '#9c27b0', '#d4af37', '#4CAF50', '#FF5722'];
+                token.style.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                container.appendChild(token);
+            }
         }
-    }
-    
-    // Create confetti effect
-    function createConfetti() {
-        const colors = ['#d4af37', '#4fc3f7', '#9c27b0', '#ffffff'];
         
-        for (let i = 0; i < 100; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.left = `${Math.random() * 100}%`;
-            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            confetti.style.animationDelay = `${Math.random() * 2}s`;
-            confetti.style.width = `${5 + Math.random() * 10}px`;
-            confetti.style.height = `${5 + Math.random() * 10}px`;
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#4fc3f7', '#9c27b0', '#d4af37', '#4CAF50', '#FF5722'];
             
-            document.body.appendChild(confetti);
-            
-            // Remove confetti after animation
-            setTimeout(() => {
-                confetti.remove();
-            }, 3000);
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = `${Math.random() * 0.5}s`;
+                confetti.style.width = `${5 + Math.random() * 10}px`;
+                confetti.style.height = `${5 + Math.random() * 10}px`;
+                
+                document.body.appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }
         }
-    }
-    
-    // Check if MetaMask is installed
-    function isMetaMaskInstalled() {
-        return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
-    }
-    
-    // Initialize Web3 with wallet connection 
-// --- 1. BSC Chain Info & Switcher ---
-const BSC_MAINNET = {
-    chainId: '0x38',
-    chainName: 'BNB Smart Chain Mainnet',
-    nativeCurrency: {
-        name: 'BNB',
-        symbol: 'BNB',
-        decimals: 18
-    },
-    rpcUrls: ['https://bsc-dataseed.binance.org/'],
-    blockExplorerUrls: ['https://bscscan.com']
-};
-
-async function addOrSwitchChain(config) {
-    try {
-        await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [config]
-        });
-    } catch (err) {
-        console.error("Failed to switch to BSC:", err);
-    }
-}
-
-// --- 2. Init Web3 Wallet (with BNB Support) ---
-async function initWeb3() {
-    if (!window.ethereum || !window.ethereum.isMetaMask) {
-        alert('Please install MetaMask to use this feature!');
-        document.getElementById('connectWallet').textContent = "Install MetaMask";
-        document.getElementById('connectWallet').onclick = () => {
-            window.open('https://metamask.io/', '_blank');
-        };
-        return;
-    }
-
-    try {
-        document.getElementById('connectWallet').textContent = "Connecting...";
-        document.getElementById('connectWallet').disabled = true;
-
-        provider = window.ethereum;
-        accounts = await provider.request({ method: 'eth_requestAccounts' });
-        chainId = await provider.request({ method: 'eth_chainId' });
-
-        // ✅ Ensure on BSC
-        if (chainId !== '0x38') {
-            await addOrSwitchChain(BSC_MAINNET);
-            chainId = await provider.request({ method: 'eth_chainId' });
-        }
-
-        web3 = new Web3(provider);
-        walletConnected = true;
-
-        updateWalletInfo(accounts[0], chainId);
-        setupEventListeners();
-        loadWalletData(accounts[0], chainId);
-    } catch (err) {
-        console.error("Connection failed:", err);
-        resetWalletConnection();
-    }
-}
-
-// --- 3. Update Wallet Info (BNB-aware) ---
-function updateWalletInfo(address, chainId) {
-    const short = `${address.slice(0, 6)}...${address.slice(-4)}`;
-    document.getElementById('walletAddress').textContent = short;
-    document.getElementById('walletAddress').title = address;
-    document.getElementById('connectWallet').textContent = "Connected";
-    document.getElementById('connectWallet').style.background = "linear-gradient(135deg, #4CAF50, #2E7D32)";
-    document.getElementById('connectWallet').disabled = false;
-    updateNetworkInfo(chainId);
-}
-
-// --- 4. Show Network Info (Includes BSC) ---
-function updateNetworkInfo(chainId) {
-    const names = {
-        '0x1': 'Ethereum Mainnet',
-        '0x5': 'Goerli Testnet',
-        '0xaa36a7': 'Sepolia Testnet',
-        '0x89': 'Polygon Mainnet',
-        '0x13881': 'Mumbai Testnet',
-        '0xa4b1': 'Arbitrum One',
-        '0xa': 'Optimism',
-        '0x38': 'BNB Smart Chain'
-    };
-
-    const colors = {
-        '0x1': '#29b6af',
-        '0x5': '#f6c343',
-        '0xaa36a7': '#8a2be2',
-        '0x89': '#8247e5',
-        '0x13881': '#8a2be2',
-        '0xa4b1': '#2d374b',
-        '0xa': '#ff0420',
-        '0x38': '#f0b90b'
-    };
-
-    const name = names[chainId] || `Unknown (${chainId})`;
-    const color = colors[chainId] || '#ff5722';
-
-    document.getElementById('networkName').textContent = name;
-    document.getElementById('networkIndicator').style.backgroundColor = color;
-    document.getElementById('networkIndicator').style.boxShadow = `0 0 10px ${color}`;
-}
-
-// --- 5. Load Wallet Data (Balance + NFTs) ---
-async function loadWalletData(address, chainId) {
-    try {
-        document.getElementById('tokenBalance').textContent = "Loading...";
-
-        const balance = await web3.eth.getBalance(address);
-        const bnb = web3.utils.fromWei(balance, 'ether');
-        document.getElementById('tokenBalance').textContent = parseFloat(bnb).toFixed(4);
-
-        // ✅ Update token symbol if on BSC
-        const symbol = (chainId === '0x38') ? 'BNB' : 'ETH';
-        document.getElementById('tokenSymbol').textContent = symbol;
-
-        document.getElementById('web3Section').classList.add('visible');
-        loadMockNFTs();
-        createFloatingTokens();
-    } catch (err) {
-        console.error("Balance error:", err);
-        document.getElementById('tokenBalance').textContent = "Error";
-    }
-}
-    
-    // Load mock NFTs for demonstration
-    function loadMockNFTs() {
-        const nftGallery = document.getElementById('nftGallery');
-        nftGallery.innerHTML = '';
         
-        const nfts = [
-            { emoji: "🔮", name: "Oracle's Crystal Ball", rarity: "rare" },
-            { emoji: "🌌", name: "Galactic Smart Contract", rarity: "epic" },
-            { emoji: "⚡", name: "Lightning Network Token", rarity: "uncommon" },
-            { emoji: "♞", name: "Knight's DAO Badge", rarity: "legendary" },
-            { emoji: "♛", name: "Crypto Queen NFT", rarity: "mythic" }
-        ];
-        
-        nfts.forEach(nft => {
-            const nftItem = document.createElement('div');
-            nftItem.className = 'nft-item';
-            nftItem.innerHTML = `
-                ${nft.emoji}
-                <div class="nft-tooltip">${nft.name}<br>Rarity: ${nft.rarity}</div>
-            `;
-            nftGallery.appendChild(nftItem);
-        });
-    }
-    
-    // Set up Ethereum event listeners
-    function setupEventListeners() {
-        if (provider) {
-            // Accounts changed
-            provider.on('accountsChanged', (newAccounts) => {
-                accounts = newAccounts;
-                if (newAccounts.length > 0) {
-                    updateWalletInfo(newAccounts[0], chainId);
-                    loadWalletData(newAccounts[0], chainId);
-                } else {
-                    // Wallet disconnected
-                    resetWalletConnection();
-                }
-            });
-            
-            // Chain changed
-            provider.on('chainChanged', (newChainId) => {
-                chainId = newChainId;
-                updateNetworkInfo(newChainId);
-                if (accounts.length > 0) {
-                    loadWalletData(accounts[0], newChainId);
-                }
-            });
+        // Get a random oracle message
+        function getRandomMessage() {
+            const randomIndex = Math.floor(Math.random() * messages.length);
+            return messages[randomIndex];
         }
-    }
-    
-    // Reset wallet connection
-    function resetWalletConnection() {
-        walletConnected = false;
-        accounts = [];
-        document.getElementById('walletAddress').textContent = "Not connected";
-        document.getElementById('connectWallet').textContent = "Connect Web3 Wallet";
-        document.getElementById('connectWallet').style.background = "linear-gradient(135deg, var(--magic-purple), var(--magic-blue))";
-        document.getElementById('connectWallet').disabled = false;
-        document.getElementById('tokenBalance').textContent = "0";
-        document.getElementById('nftGallery').innerHTML = "";
-    }
-    
-    // Unfurl the scroll with enhanced animation
-    function unfurlScroll() {
-        const scroll = document.getElementById('oracleScroll');
-        setTimeout(() => {
+        
+        // Display oracle message
+        function displayOracleMessage() {
+            const messageElement = document.getElementById('oracleMessage');
+            const consultButton = document.getElementById('consultButton');
+            const tryAgainButton = document.getElementById('tryAgain');
+            
+            // Disable button during animation
+            consultButton.disabled = true;
+            consultButton.textContent = "Consulting the Oracle...";
+            
+            // Hide previous message if any
+            messageElement.classList.remove('revealed');
+            
+            // Show scroll if hidden
+            const scroll = document.getElementById('oracleScroll');
             scroll.classList.add('active');
-        }, 500);
-    }
-    
-    // Display a random oracle message with enhanced effects
-    function displayOracleMessage() {
-        const randomMessageObj = messages[Math.floor(Math.random() * messages.length)];
-        const messageElement = document.getElementById('oracleMessage');
-        
-        // Apply rarity styling
-        messageElement.className = 'oracle-message';
-        messageElement.classList.add('revealed');
-        messageElement.classList.add(`rarity-${randomMessageObj.rarity}`);
-        
-        // Typewriter effect
-        const text = randomMessageObj.text;
-        let i = 0;
-        messageElement.textContent = '';
-        
-        const typing = setInterval(() => {
-            if (i < text.length) {
-                messageElement.textContent += text.charAt(i);
-                i++;
-            } else {
-                clearInterval(typing);
+            
+            setTimeout(() => {
+                // Get random message
+                const message = getRandomMessage();
+                messageElement.textContent = message.text;
                 
-                // Show Web3 section for messages marked with web3: true
-                if (randomMessageObj.web3) {
-                    const web3Section = document.getElementById('web3Section');
-                    web3Section.classList.add('visible');
-                    
-                    // Initialize Web3 if not already connected
-                    if (!walletConnected) {
-                        initWeb3();
-                    }
+                // Add rarity class
+                messageElement.className = 'oracle-message revealed';
+                messageElement.classList.add(message.rarity);
+                
+                // Show try again button
+                tryAgainButton.style.display = 'block';
+                
+                // Re-enable consult button (hidden by try again)
+                consultButton.disabled = false;
+                consultButton.textContent = "Invoke the Oracle";
+                
+                // If Web3 is connected, show mint button for rare messages
+                if (walletConnected && (message.rarity === 'rare' || message.rarity === 'epic' || message.rarity === 'legendary' || message.rarity === 'mythic')) {
+                    document.getElementById('mintScroll').style.display = 'block';
+                } else {
+                    document.getElementById('mintScroll').style.display = 'none';
                 }
                 
-                document.getElementById('consultButton').style.display = 'none';
-                document.getElementById('tryAgain').style.display = 'block';
-                
-                // Create confetti for rare or better messages
-                if (['rare', 'epic', 'legendary', 'mythic'].includes(randomMessageObj.rarity)) {
+                // Create confetti for rare messages
+                if (message.rarity === 'epic' || message.rarity === 'legendary' || message.rarity === 'mythic') {
                     createConfetti();
                 }
-            }
-        }, 30);
-    }
-    
-    // Event listeners
-    document.addEventListener('DOMContentLoaded', () => {
-        createConstellation();
-        unfurlScroll();
-        
-        document.getElementById('consultButton').addEventListener('click', displayOracleMessage);
-        
-        document.getElementById('connectWallet').addEventListener('click', initWeb3);
-        
-        document.getElementById('tryAgain').addEventListener('click', () => {
-            document.getElementById('oracleMessage').className = 'oracle-message';
-            document.getElementById('oracleMessage').style.display = 'none';
-            document.getElementById('web3Section').classList.remove('visible');
-            document.getElementById('consultButton').style.display = 'block';
-            document.getElementById('tryAgain').style.display = 'none';
-        });
-        
-        document.getElementById('mintScroll').addEventListener('click', () => {
-            const messageElement = document.getElementById('oracleMessage');
-            if (!walletConnected) {
-                alert("Please connect your wallet first!");
-                initWeb3();
-                return;
-            }
-            
-            if (messageElement.textContent) {
-                alert(`In a full implementation, this would mint an NFT of your prophecy:\n\n"${messageElement.textContent}"\n\non the blockchain!`);
-                createConfetti();
-            } else {
-                alert("First consult the Oracle to receive a prophecy worth minting!");
-            }
-        });
-        
-        // Add subtle parallax effect
-        document.addEventListener('mousemove', (e) => {
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
-            
-            const scroll = document.getElementById('oracleScroll');
-            scroll.style.transform = `rotateX(${15 - y * 10}deg) rotateY(${-10 + x * 20}deg)`;
-            
-            const phoenix = document.querySelector('.phoenix');
-            const dragon = document.querySelector('.dragon');
-            
-            phoenix.style.transform = `translate(${x * 20 - 10}px, ${y * 20 - 10}px)`;
-            dragon.style.transform = `translate(${-x * 20 + 10}px, ${-y * 20 + 10}px)`;
-        });
-        
-        // Check if wallet is already connected
-        if (window.ethereum && window.ethereum.selectedAddress) {
-            initWeb3();
+                
+            }, 1500);
         }
-    });
-</script>
+        
+        // Mint NFT function (simulated)
+        async function mintNFT() {
+            const mintButton = document.getElementById('mintScroll');
+            mintButton.disabled = true;
+            mintButton.textContent = "Minting...";
+            
+            try {
+                // Simulate minting process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Show success
+                alert("Your prophecy has been minted as a rare NFT!");
+                createConfetti();
+                
+                // Add to mock NFTs
+                const newNFT = {
+                    emoji: "📜",
+                    name: "Oracle's Prophecy Scroll",
+                    rarity: "rare"
+                };
+                
+                const nftGallery = document.getElementById('nftGallery');
+                const nftItem = document.createElement('div');
+                nftItem.className = 'nft-item';
+                nftItem.innerHTML = `
+                    ${newNFT.emoji}
+                    <div class="nft-tooltip">${newNFT.name}<br>Rarity: ${newNFT.rarity}</div>
+                `;
+                nftGallery.insertBefore(nftItem, nftGallery.firstChild);
+                
+            } catch (error) {
+                console.error("Error minting NFT:", error);
+                alert("Failed to mint NFT. Please try again.");
+            } finally {
+                mintButton.disabled = false;
+                mintButton.textContent = "Mint Your Prophecy as NFT";
+            }
+        }
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Create constellation background
+            createConstellation();
+            
+            // Set up event listeners for buttons
+            document.getElementById('consultButton').addEventListener('click', displayOracleMessage);
+            document.getElementById('connectWallet').addEventListener('click', initWeb3);
+            document.getElementById('tryAgain').addEventListener('click', () => {
+                document.getElementById('oracleMessage').classList.remove('revealed');
+                document.getElementById('tryAgain').style.display = 'none';
+            });
+            document.getElementById('mintScroll').addEventListener('click', mintNFT);
+            
+            // Show scroll after short delay
+            setTimeout(() => {
+                document.getElementById('oracleScroll').classList.add('active');
+            }, 500);
+        });
+    </script>
 </body>
 </html>
