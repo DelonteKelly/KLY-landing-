@@ -1670,69 +1670,73 @@
     
     // Mint certificate
     async function mintCertificate() {
-      if (!signer) {
-        showNotification("Please connect your wallet first", "error");
-        return;
-      }
-      
-      try {
-        mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        mintBtn.disabled = true;
-        
-        const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-        const gasEstimate = await nftContract.estimateGas.mintTo(
-          userAddress, 
-          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4"
-        );
-        
-        const tx = await nftContract.mintTo(
-          userAddress,
-          "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4",
-          { gasLimit: gasEstimate.mul(120).div(100) }
-        );
-        
-        mintStatus.innerHTML = `
-          <div style="color: var(--accent); text-align: center;">
-            <i class="fas fa-spinner fa-spin"></i> Transaction submitted...
-            <div style="margin-top: 0.5rem;">
-              <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--accent)">
-                <i class="fas fa-external-link-alt"></i> View on BscScan
-              </a>
-            </div>
-          </div>
-        `;
-        
-        await tx.wait();
-        
-        // Success
-        mintStatus.innerHTML = `
-          <div style="color: var(--success); text-align: center;">
-            <i class="fas fa-check-circle"></i> Certificate minted successfully!
-          </div>
-        `;
-        mintBtn.style.display = 'none';
-        
-        // Celebrate!
-        launchConfetti();
-        showNotification("NFT Certificate minted successfully!", "success");
-        
-        // Update menu item
-        document.querySelectorAll('.menu-item').forEach(item => {
-          const icon = item.querySelector('.menu-icon i');
-          icon.className = 'fas fa-check-circle';
-        });
-      } catch (error) {
-        console.error("Minting error:", error);
-        showNotification(`Minting failed: ${error.message}`, "error");
-        mintStatus.innerHTML = `
-          <div style="color: var(--danger); text-align: center;">
-            <i class="fas fa-times-circle"></i> Error: ${error.message}
-          </div>
-        `;
-        mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
-        mintBtn.disabled = false;
-      }
+  if (!signer) {
+    showNotification("Please connect your wallet first", "error");
+    return;
+  }
+
+  try {
+    const userAddress = await signer.getAddress();
+    const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+    const tokenURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
+
+    mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    mintBtn.disabled = true;
+
+    let gasEstimate;
+    try {
+      gasEstimate = await nftContract.estimateGas.mintTo(userAddress, tokenURI);
+    } catch (gasError) {
+      console.error("Gas estimation failed:", gasError);
+      showNotification("Gas estimation failed — check if you're authorized to mint.", "error");
+      mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
+      mintBtn.disabled = false;
+      return;
     }
+
+    const tx = await nftContract.mintTo(userAddress, tokenURI, {
+      gasLimit: gasEstimate.mul(120).div(100)
+    });
+
+    mintStatus.innerHTML = `
+      <div style="color: var(--accent); text-align: center;">
+        <i class="fas fa-spinner fa-spin"></i> Transaction submitted...
+        <div style="margin-top: 0.5rem;">
+          <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" style="color: var(--accent)">
+            <i class="fas fa-external-link-alt"></i> View on BscScan
+          </a>
+        </div>
+      </div>
+    `;
+
+    await tx.wait();
+
+    mintStatus.innerHTML = `
+      <div style="color: var(--success); text-align: center;">
+        <i class="fas fa-check-circle"></i> Certificate minted successfully!
+      </div>
+    `;
+    mintBtn.style.display = 'none';
+    launchConfetti();
+    showNotification("NFT Certificate minted successfully!", "success");
+
+    document.querySelectorAll('.menu-item').forEach(item => {
+      const icon = item.querySelector('.menu-icon i');
+      icon.className = 'fas fa-check-circle';
+    });
+
+  } catch (error) {
+    console.error("Minting error:", error);
+    showNotification(`Minting failed: ${error.message}`, "error");
+    mintStatus.innerHTML = `
+      <div style="color: var(--danger); text-align: center;">
+        <i class="fas fa-times-circle"></i> Error: ${error.message}
+      </div>
+    `;
+    mintBtn.innerHTML = '<i class="fas fa-certificate"></i> Try Again';
+    mintBtn.disabled = false;
+  }
+}
     
     // Show notification
     function showNotification(message, type = 'info', title = '') {
