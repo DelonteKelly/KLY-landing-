@@ -817,134 +817,132 @@
         return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
     }
     
-    // Initialize Web3 with wallet connection
-    async function initWeb3() {
-        if (!isMetaMaskInstalled()) {
-            alert('Please install MetaMask to use this feature!');
-            document.getElementById('connectWallet').textContent = "Install MetaMask";
-            document.getElementById('connectWallet').onclick = () => {
-                window.open('https://metamask.io/', '_blank');
-            };
-            return;
-        }
-        
-        try {
-            document.getElementById('connectWallet').textContent = "Connecting...";
-            document.getElementById('connectWallet').disabled = true;
-            
-            // Modern dapp browsers
-            if (window.ethereum) {
-                provider = window.ethereum;
-                try {
-                    // Request account access
-                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                    
-                    // Initialize Web3
-                    web3 = new Web3(window.ethereum);
-                    
-                    // Update UI
-                    updateWalletInfo(accounts[0], chainId);
-                    walletConnected = true;
-                    
-                    // Set up event listeners
-                    setupEventListeners();
-                    
-                    // Load additional wallet data
-                    loadWalletData(accounts[0], chainId);
-                    
-                } catch (error) {
-                    console.error("User denied account access", error);
-                    resetWalletConnection();
-                }
-            } else {
-                console.log('Non-Ethereum browser detected. Consider trying MetaMask!');
-                resetWalletConnection();
-            }
-        } catch (error) {
-            console.error("Error connecting to wallet:", error);
-            resetWalletConnection();
-        }
+    // Initialize Web3 with wallet connection 
+// --- 1. BSC Chain Info & Switcher ---
+const BSC_MAINNET = {
+    chainId: '0x38',
+    chainName: 'BNB Smart Chain Mainnet',
+    nativeCurrency: {
+        name: 'BNB',
+        symbol: 'BNB',
+        decimals: 18
+    },
+    rpcUrls: ['https://bsc-dataseed.binance.org/'],
+    blockExplorerUrls: ['https://bscscan.com']
+};
+
+async function addOrSwitchChain(config) {
+    try {
+        await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [config]
+        });
+    } catch (err) {
+        console.error("Failed to switch to BSC:", err);
     }
-    
-    // Update wallet information in the UI
-    function updateWalletInfo(address, chainId) {
-        const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-        document.getElementById('walletAddress').textContent = shortenedAddress;
-        document.getElementById('walletAddress').setAttribute('title', address);
-        
-        document.getElementById('connectWallet').textContent = "Connected";
-        document.getElementById('connectWallet').style.background = "linear-gradient(135deg, #4CAF50, #2E7D32)";
-        document.getElementById('connectWallet').disabled = false;
-        
-        // Update network info
-        updateNetworkInfo(chainId);
-    }
-    
-    // Update network information
-    function updateNetworkInfo(chainId) {
-        const networkIndicator = document.getElementById('networkIndicator');
-        const networkName = document.getElementById('networkName');
-        
-        // Common chain IDs
-        const networks = {
-            '0x1': 'Ethereum Mainnet',
-            '0x5': 'Goerli Testnet',
-            '0xaa36a7': 'Sepolia Testnet',
-            '0x89': 'Polygon Mainnet',
-            '0x13881': 'Mumbai Testnet',
-            '0xa4b1': 'Arbitrum One',
-            '0xa': 'Optimism'
+}
+
+// --- 2. Init Web3 Wallet (with BNB Support) ---
+async function initWeb3() {
+    if (!window.ethereum || !window.ethereum.isMetaMask) {
+        alert('Please install MetaMask to use this feature!');
+        document.getElementById('connectWallet').textContent = "Install MetaMask";
+        document.getElementById('connectWallet').onclick = () => {
+            window.open('https://metamask.io/', '_blank');
         };
-        
-        const colors = {
-            '0x1': '#29b6af', // Ethereum
-            '0x5': '#f6c343', // Goerli
-            '0xaa36a7': '#8a2be2', // Sepolia
-            '0x89': '#8247e5', // Polygon
-            '0x13881': '#8a2be2', // Mumbai
-            '0xa4b1': '#2d374b', // Arbitrum
-            '0xa': '#ff0420'   // Optimism
-        };
-        
-        if (networks[chainId]) {
-            networkName.textContent = networks[chainId];
-            networkIndicator.style.backgroundColor = colors[chainId] || '#4CAF50';
-            networkIndicator.style.boxShadow = `0 0 10px ${colors[chainId] || '#4CAF50'}`;
-        } else {
-            networkName.textContent = `Unknown Network (${chainId})`;
-            networkIndicator.style.backgroundColor = '#ff5722';
-            networkIndicator.style.boxShadow = '0 0 10px #ff5722';
-        }
+        return;
     }
-    
-    // Load wallet data (balance, NFTs, etc.)
-    async function loadWalletData(address, chainId) {
-        try {
-            // Show loading state
-            document.getElementById('tokenBalance').textContent = "Loading...";
-            
-            // Get balance
-            const balance = await web3.eth.getBalance(address);
-            const balanceInEth = web3.utils.fromWei(balance, 'ether');
-            document.getElementById('tokenBalance').textContent = parseFloat(balanceInEth).toFixed(4);
-            
-            // Show Web3 section
-            const web3Section = document.getElementById('web3Section');
-            web3Section.classList.add('visible');
-            
-            // For demo purposes, we'll use mock NFTs
-            // In a real app, you would query an NFT API or smart contract
-            loadMockNFTs();
-            
-            // Create floating ETH symbol
-            createFloatingTokens();
-            
-        } catch (error) {
-            console.error("Error loading wallet data:", error);
-            document.getElementById('tokenBalance').textContent = "Error";
+
+    try {
+        document.getElementById('connectWallet').textContent = "Connecting...";
+        document.getElementById('connectWallet').disabled = true;
+
+        provider = window.ethereum;
+        accounts = await provider.request({ method: 'eth_requestAccounts' });
+        chainId = await provider.request({ method: 'eth_chainId' });
+
+        // ✅ Ensure on BSC
+        if (chainId !== '0x38') {
+            await addOrSwitchChain(BSC_MAINNET);
+            chainId = await provider.request({ method: 'eth_chainId' });
         }
+
+        web3 = new Web3(provider);
+        walletConnected = true;
+
+        updateWalletInfo(accounts[0], chainId);
+        setupEventListeners();
+        loadWalletData(accounts[0], chainId);
+    } catch (err) {
+        console.error("Connection failed:", err);
+        resetWalletConnection();
     }
+}
+
+// --- 3. Update Wallet Info (BNB-aware) ---
+function updateWalletInfo(address, chainId) {
+    const short = `${address.slice(0, 6)}...${address.slice(-4)}`;
+    document.getElementById('walletAddress').textContent = short;
+    document.getElementById('walletAddress').title = address;
+    document.getElementById('connectWallet').textContent = "Connected";
+    document.getElementById('connectWallet').style.background = "linear-gradient(135deg, #4CAF50, #2E7D32)";
+    document.getElementById('connectWallet').disabled = false;
+    updateNetworkInfo(chainId);
+}
+
+// --- 4. Show Network Info (Includes BSC) ---
+function updateNetworkInfo(chainId) {
+    const names = {
+        '0x1': 'Ethereum Mainnet',
+        '0x5': 'Goerli Testnet',
+        '0xaa36a7': 'Sepolia Testnet',
+        '0x89': 'Polygon Mainnet',
+        '0x13881': 'Mumbai Testnet',
+        '0xa4b1': 'Arbitrum One',
+        '0xa': 'Optimism',
+        '0x38': 'BNB Smart Chain'
+    };
+
+    const colors = {
+        '0x1': '#29b6af',
+        '0x5': '#f6c343',
+        '0xaa36a7': '#8a2be2',
+        '0x89': '#8247e5',
+        '0x13881': '#8a2be2',
+        '0xa4b1': '#2d374b',
+        '0xa': '#ff0420',
+        '0x38': '#f0b90b'
+    };
+
+    const name = names[chainId] || `Unknown (${chainId})`;
+    const color = colors[chainId] || '#ff5722';
+
+    document.getElementById('networkName').textContent = name;
+    document.getElementById('networkIndicator').style.backgroundColor = color;
+    document.getElementById('networkIndicator').style.boxShadow = `0 0 10px ${color}`;
+}
+
+// --- 5. Load Wallet Data (Balance + NFTs) ---
+async function loadWalletData(address, chainId) {
+    try {
+        document.getElementById('tokenBalance').textContent = "Loading...";
+
+        const balance = await web3.eth.getBalance(address);
+        const bnb = web3.utils.fromWei(balance, 'ether');
+        document.getElementById('tokenBalance').textContent = parseFloat(bnb).toFixed(4);
+
+        // ✅ Update token symbol if on BSC
+        const symbol = (chainId === '0x38') ? 'BNB' : 'ETH';
+        document.getElementById('tokenSymbol').textContent = symbol;
+
+        document.getElementById('web3Section').classList.add('visible');
+        loadMockNFTs();
+        createFloatingTokens();
+    } catch (err) {
+        console.error("Balance error:", err);
+        document.getElementById('tokenBalance').textContent = "Error";
+    }
+}
     
     // Load mock NFTs for demonstration
     function loadMockNFTs() {
