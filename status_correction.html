@@ -551,23 +551,33 @@ async function hasValidKLYMembership(address) {
 }
 
 
-  async function connectWallet() {
-    try {
-      if (!window.ethereum) throw new Error("MetaMask or compatible wallet required.");
+// Your original function
+async function connectWallet() {
+  try {
+    if (!window.ethereum) throw new Error("MetaMask or compatible wallet required.");
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
-      const address = await signer.getAddress();
-      const balance = await provider.getBalance(address);
-      const formatted = ethers.utils.formatEther(balance);
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const address = await signer.getAddress();
+    const balance = await provider.getBalance(address);
+    const formatted = ethers.utils.formatEther(balance);
 
-      walletAddress.textContent = address.slice(0, 6) + "..." + address.slice(-4);
-      walletBalance.textContent = `💰 BNB Balance: ${Number(formatted).toFixed(4)} BNB`;
-      walletInfo.classList.remove("hidden");
-      connectBtn.classList.add("hidden");
-      logToTerminal("Wallet connected: " + address);
+    walletAddress.textContent = address.slice(0, 6) + "..." + address.slice(-4);
+    walletBalance.textContent = `💰 BNB Balance: ${Number(formatted).toFixed(4)} BNB`;
+    walletInfo.classList.remove("hidden");
+    connectBtn.classList.add("hidden");
+    logToTerminal("Wallet connected: " + address);
+  } catch (err) {
+    logToTerminal("❌ Wallet connection failed: " + err.message);
+  }
+}
 
+// Bind after DOM loaded
+document.addEventListener("DOMContentLoaded", () => {
+  const connectBtn = document.getElementById("connectWallet");
+  connectBtn.onclick = connectWallet;
+});
       // Verify signature
       await verifySignature();
 
