@@ -411,9 +411,9 @@
 <footer>
   <p>© <span id="currentYear"></span> Tamaquah Nation | Sovereign Technology Division</p>
 </footer>
-
 <script>
-  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+
+ const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const TOKEN_ID = 3;
   const SOVEREIGN_TOKENS = {
     "Diamond Core": "0xDA76d35742190283E340dbeE2038ecc978a56950",
@@ -549,12 +549,12 @@ async function hasValidKLYMembership(address) {
   const contract = new ethers.Contract(MEMBERSHIP_LOCK, MEMBERSHIP_ABI, provider);
   return await contract.getHasValidKey(address);
 }
-  
-  // Wallet connection logic
+
+
   async function connectWallet() {
     try {
       if (!window.ethereum) throw new Error("MetaMask or compatible wallet required.");
-      
+
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
@@ -567,42 +567,48 @@ async function hasValidKLYMembership(address) {
       walletInfo.classList.remove("hidden");
       connectBtn.classList.add("hidden");
       logToTerminal("Wallet connected: " + address);
-      
-      // Verify signature for enhanced security
-      await verifySignature();
-      
-     // Check for sovereignty tokens
-const hasToken = await checkSovereignTokens(address, provider);
-const hasMembership = await hasValidKLYMembership(address);
 
-if (hasToken || hasMembership) {
-  if (hasMembership) {
-    nftStatus.textContent = "✅ Premium Membership (100 KLY) Detected";
-    logToTerminal("✅ Premium Unlock Protocol key detected");
-  } else {
-    nftStatus.textContent = "✅ Sovereignty NFT Token Detected";
-    logToTerminal("✅ Sovereignty NFT token access granted");
+      // Verify signature
+      await verifySignature();
+
+      // Check token + membership access
+      const hasToken = await checkSovereignTokens(address, provider);
+      const hasMembership = await hasValidKLYMembership(address);
+
+      if (hasToken || hasMembership) {
+        if (hasMembership) {
+          nftStatus.textContent = "✅ Premium Membership (100 KLY) Detected";
+          logToTerminal("✅ Premium Unlock Protocol key detected");
+        } else {
+          nftStatus.textContent = "✅ Sovereignty NFT Token Detected";
+          logToTerminal("✅ Sovereignty NFT token access granted");
+        }
+
+        vaultContent.classList.remove("hidden");
+        successMsg.textContent = "Access granted. Welcome, sovereign.";
+        successMsg.classList.remove("hidden");
+        vaultContent.style.opacity = "1";
+      } else {
+        nftStatus.textContent = "❌ No valid access token or membership key.";
+        errorMsg.textContent = "Access denied. Please hold a Sovereignty NFT or Premium Membership.";
+        errorMsg.classList.remove("hidden");
+      }
+
+    } catch (err) {
+      logToTerminal("❌ Wallet connection failed: " + err.message);
+    }
   }
 
-  vaultContent.classList.remove("hidden");
-  successMsg.textContent = "Access granted. Welcome, sovereign.";
-  successMsg.classList.remove("hidden");
-  vaultContent.style.opacity = "1";
-} else {
-  nftStatus.textContent = "❌ No valid access token or membership key.";
-  errorMsg.textContent = "Access denied. Please hold a Sovereignty NFT or Premium Membership.";
-  errorMsg.classList.remove("hidden");
-}
-  // Enhanced token checking
+  // ✅ Moved outside connectWallet
   async function checkSovereignTokens(address, provider) {
     let hasToken = false;
-    
+
     for (const [name, contractAddress] of Object.entries(SOVEREIGN_TOKENS)) {
       try {
         const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
         const contract = new ethers.Contract(contractAddress, abi, provider);
         const balance = await contract.balanceOf(address, TOKEN_ID);
-        
+
         if (balance.gt(0)) {
           logToTerminal(`Detected ${name} token`);
           hasToken = true;
@@ -611,178 +617,9 @@ if (hasToken || hasMembership) {
         logToTerminal(`Error checking ${name} token: ${err.message}`);
       }
     }
-    
+
     return hasToken;
   }
-
-  // Cryptographic signature verification
-  async function verifySignature() {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const message = "I am verifying my sovereignty on Tamaquah Nexus";
-      const signature = await signer.signMessage(message);
-      
-      logToTerminal("Signature verified: " + signature.slice(0, 10) + "...");
-      return true;
-    } catch (err) {
-      logToTerminal("Verification error: " + err.message);
-      return false;
-    }
-  }
-
-  function disconnectWallet() {
-    walletInfo.classList.add("hidden");
-    vaultContent.classList.add("hidden");
-    connectBtn.classList.remove("hidden");
-    errorMsg.classList.add("hidden");
-    successMsg.classList.add("hidden");
-    logToTerminal("Wallet disconnected.");
-  }
-
-  // Terminal functionality
-  const terminalCommands = {
-    help: () => "Available commands: help, status, verify, documents, clear",
-    status: async () => {
-      if (!window.ethereum) return "Status: Wallet not connected";
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const block = await provider.getBlockNumber();
-      const network = await provider.getNetwork();
-      return `Status: Connected to ${network.name} at block ${block}`;
-    },
-    verify: async () => {
-      const verified = await verifySignature();
-      return verified ? "Verification successful" : "Verification failed";
-    },
-    documents: () => "Accessing sovereign document vault...",
-    clear: () => {
-      terminalOutput.innerHTML = "";
-      return "Terminal cleared";
-    }
-  };
-
-  terminalInput.addEventListener('keypress', async (e) => {
-    if(e.key === 'Enter') {
-      const command = e.target.value.trim();
-      addTerminalLine(`> ${command}`);
-      
-      if(terminalCommands[command]) {
-        const response = await terminalCommands[command]();
-        addTerminalLine(response);
-      } else {
-        addTerminalLine("Command not recognized. Type 'help' for options.");
-      }
-      
-      e.target.value = "";
-    }
-  });
-
-  function addTerminalLine(text) {
-    const line = document.createElement("div");
-    line.textContent = text;
-    terminalOutput.appendChild(line);
-    terminalOutput.scrollTop = terminalOutput.scrollHeight;
-  }
-
-  function logToTerminal(message) {
-    addTerminalLine("> " + message);
-  }
-
-  // AI Assistant functionality
-  document.getElementById("openAssistant").onclick = () => {
-    document.getElementById("assistantModal").classList.remove("hidden");
-    logToTerminal("AI Sovereignty Guide activated");
-  };
-
-  document.querySelector(".close-btn").onclick = () => {
-    document.getElementById("assistantModal").classList.add("hidden");
-  };
-
-  document.getElementById("sendQuery").onclick = async () => {
-    const query = document.getElementById("userQuery").value;
-    if(!query) return;
-    
-    addChatMessage("user", query);
-    document.getElementById("userQuery").value = "";
-    
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "Under Tamaquah sovereignty principles, this matter would be handled through...",
-        "The ancestral protocols suggest that this situation requires...",
-        "Our decentralized governance framework provides for this case in section 3.2...",
-        "This question touches on our sovereign rights under international law...",
-        "The digital sovereignty framework would approach this by..."
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      addChatMessage("ai", randomResponse);
-    }, 1000);
-  };
-
-  function addChatMessage(sender, message) {
-    const chatHistory = document.getElementById("chatHistory");
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `chat-message ${sender}`;
-    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${message}`;
-    chatHistory.appendChild(messageDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-  }
-
-      async function purchaseMembership() {
-  try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-
-    const unlock = new ethers.Contract(
-      MEMBERSHIP_LOCK,
-      ["function purchase(uint256,address,address,address,bytes) payable"],
-      signer
-    );
-
-    const buyer = await signer.getAddress();
-    const price = ethers.utils.parseUnits("100", 18); // 100 KLY
-
-    const tx = await unlock.purchase(
-      [price], // key price
-      [buyer], // recipient
-      [buyer], // referrer (can be address(0))
-      [buyer], // key manager
-      ["0x"]   // data
-    );
-
-    logToTerminal("⏳ Purchase pending...");
-    await tx.wait();
-    logToTerminal("✅ Membership purchased!");
-  } catch (err) {
-    logToTerminal("❌ Purchase failed: " + err.message);
-  }
-}
-
-  // Button event listeners
-  connectBtn.onclick = connectWallet;
-  disconnectBtn.onclick = disconnectWallet;
-  document.getElementById("claimDid").onclick = () => {
-    document.getElementById("didProgress").classList.remove("hidden");
-    const progress = document.querySelector("#didProgress progress");
-    let value = 0;
-    const interval = setInterval(() => {
-      value += 10;
-      progress.value = value;
-      if(value >= 100) {
-        clearInterval(interval);
-        logToTerminal("DID minting complete!");
-        document.getElementById("didProgress").classList.add("hidden");
-      }
-    }, 300);
-    logToTerminal("Initiating DID minting process...");
-  };
-  document.getElementById("viewDid").onclick = () => logToTerminal("Viewing DID document...");
-  document.getElementById("accessVault").onclick = () => logToTerminal("Accessing encrypted vault...");
-  document.getElementById("uploadDoc").onclick = () => logToTerminal("Preparing document upload...");
-  document.getElementById("askQuestion").onclick = () => {
-    document.getElementById("assistantModal").classList.remove("hidden");
-    document.getElementById("userQuery").focus();
-  };
 </script>
 </body>
 </html>
