@@ -1,12 +1,12 @@
+<!-- Save as sovereign-nexus.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>⚡ Sovereign Nexus | Tamaquah Nation</title>
   <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@finsweet/web3-connect@1.0.0/dist/web3-connect.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;700&display=swap" rel="stylesheet"/>
   <style>
     :root {
       --primary: #00f0ff;
@@ -16,24 +16,43 @@
       --error: #ff3860;
       --success: #2dff9e;
     }
-    
+
     body {
       background: radial-gradient(circle at center, #0a0a30 0%, #000010 100%);
       color: var(--text);
       font-family: 'Rajdhani', sans-serif;
       margin: 0;
       padding: 0;
-      min-height: 100vh;
       overflow-x: hidden;
     }
-    
+
     .cyber-glowing {
-      text-shadow: 0 0 10px var(--primary), 0 0 20px rgba(0, 240, 255, 0.5);
+      animation: glitch 2s infinite;
     }
-    
+
+    @keyframes glitch {
+      0%, 100% { text-shadow: 0 0 10px var(--primary); }
+      20% { text-shadow: -2px 0 red; }
+      40% { text-shadow: 2px 0 cyan; }
+      60% { text-shadow: -1px 0 lime; }
+      80% { text-shadow: 1px 0 yellow; }
+    }
+
+    #introOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: black;
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.8rem;
+    }
+
     .container {
       max-width: 1000px;
-      margin: 2rem auto;
+      margin: 3rem auto;
       background: rgba(10, 10, 30, 0.8);
       backdrop-filter: blur(10px);
       padding: 2.5rem;
@@ -41,533 +60,266 @@
       border: 1px solid var(--primary);
       box-shadow: 0 0 30px rgba(0, 240, 255, 0.2),
                   inset 0 0 20px rgba(0, 240, 255, 0.1);
-      position: relative;
-      overflow: hidden;
     }
-    
-    .container::before {
-      content: "";
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, transparent 70%);
-      animation: pulse 15s infinite linear;
-      pointer-events: none;
-    }
-    
-    h1, h2, h3 {
-      font-family: 'Orbitron', sans-serif;
-      color: var(--primary);
-      letter-spacing: 1px;
-    }
-    
+
     h1 {
+      font-family: 'Orbitron', sans-serif;
       font-size: 2.5rem;
+      color: var(--primary);
       margin-bottom: 1rem;
     }
-    
+
     .hidden { display: none; }
-    
-    .vault-content {
-      margin-top: 3rem;
-      animation: fadeIn 1s ease-out;
+
+    .wallet-info, .success-message, .error-message {
+      margin-top: 1rem;
     }
-    
-    button, .btn {
-      padding: 12px 28px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-      color: black;
+
+    .wallet-info {
+      padding: 1.5rem;
+      background: rgba(123, 45, 255, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       border: none;
       border-radius: 6px;
+      color: #000;
       font-weight: bold;
       cursor: pointer;
-      transition: all 0.3s ease;
-      margin: 0.5rem;
-      font-family: 'Orbitron', sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      position: relative;
-      overflow: hidden;
-      z-index: 1;
+      margin: 0.5rem 0;
+      transition: 0.3s ease;
     }
-    
-    button:hover, .btn:hover {
+
+    .btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4);
     }
-    
-    button::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+
+    .vault-content {
+      margin-top: 2rem;
+      animation: fadeInScale 1.2s ease-out;
       opacity: 0;
-      transition: opacity 0.3s ease;
-      z-index: -1;
+      animation-fill-mode: forwards;
     }
-    
-    button:hover::after {
-      opacity: 1;
+
+    @keyframes fadeInScale {
+      0% { opacity: 0; transform: scale(0.95); }
+      100% { opacity: 1; transform: scale(1); }
     }
-    
-    .wallet-info {
-      margin: 1.5rem 0;
-      padding: 1.5rem;
-      background: rgba(123, 45, 255, 0.1);
-      border-radius: 8px;
-      border: 1px solid var(--accent);
-      display: inline-block;
-      backdrop-filter: blur(5px);
-    }
-    
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(0, 240, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s linear infinite;
-      margin-left: 10px;
-    }
-    
-    .error-message {
-      color: var(--error);
-      margin: 1rem 0;
-      font-weight: bold;
-    }
-    
-    .success-message {
-      color: var(--success);
-      margin: 1rem 0;
-      font-weight: bold;
-    }
-    
+
     .document-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 2rem;
-      margin-top: 3rem;
+      gap: 1.5rem;
+      margin-top: 2rem;
     }
-    
+
     .document-card {
       background: rgba(20, 20, 50, 0.6);
+      padding: 1.5rem;
       border: 1px solid var(--accent);
       border-radius: 12px;
-      padding: 2rem;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(5px);
-      position: relative;
-      overflow: hidden;
+      backdrop-filter: blur(6px);
     }
-    
-    .document-card:hover {
-      transform: translateY(-8px);
-      border-color: var(--primary);
-      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.2);
-    }
-    
-    .document-card::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, transparent 100%);
-      pointer-events: none;
-    }
-    
+
     .document-icon {
-      font-size: 3rem;
-      margin-bottom: 1.5rem;
+      font-size: 2.5rem;
       color: var(--primary);
-      filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.5));
+      margin-bottom: 1rem;
     }
-    
-    .sovereign-badge {
-      display: inline-block;
-      padding: 0.3rem 0.8rem;
-      background: rgba(45, 255, 158, 0.2);
-      border: 1px solid var(--success);
-      border-radius: 20px;
-      font-size: 0.8rem;
-      margin-top: 1rem;
-      color: var(--success);
-    }
-    
-    footer {
-      margin-top: 5rem;
-      font-size: 0.9rem;
-      color: rgba(224, 224, 255, 0.5);
-      text-align: center;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    @keyframes pulse {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    /* Cyber Terminal Effect */
+
     .cyber-terminal {
+      margin-top: 2rem;
       background: rgba(0, 0, 20, 0.8);
+      padding: 1rem;
+      font-family: monospace;
       border: 1px solid var(--primary);
       border-radius: 8px;
-      padding: 1.5rem;
-      font-family: monospace;
-      color: var(--primary);
-      margin-top: 2rem;
       max-height: 300px;
       overflow-y: auto;
     }
-    
-    .cyber-terminal::before {
-      content: ">_";
-      margin-right: 10px;
-      color: var(--accent);
+
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      color: rgba(224, 224, 255, 0.4);
     }
-    
-    /* Responsive Adjustments */
+
+    #assistantModal {
+      position: fixed;
+      top: 15%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0a0a30;
+      padding: 2rem;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      box-shadow: 0 0 20px var(--primary);
+      max-width: 600px;
+      width: 90%;
+      z-index: 10000;
+    }
+
     @media (max-width: 768px) {
-      .container {
-        padding: 1.5rem;
-        margin: 1rem;
-      }
-      
-      h1 {
-        font-size: 2rem;
-      }
-      
-      .document-grid {
-        grid-template-columns: 1fr;
-      }
+      .container { padding: 1.5rem; }
+      h1 { font-size: 2rem; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1 class="cyber-glowing">⚡ SOVEREIGN NEXUS</h1>
-    <p>Access the <strong>Decentralized Sovereignty Protocol</strong> with your Diamond Core NFT.</p>
-    
-    <!-- Wallet Connect Section -->
-    <div id="walletConnectSection">
-      <button id="connectWallet">
-        <span id="connectText">ACTIVATE WALLET</span>
-        <span id="connectSpinner" class="loading hidden"></span>
-      </button>
-      <div id="errorMessage" class="error-message hidden"></div>
-      <div id="successMessage" class="success-message hidden"></div>
-    </div>
-    
-    <!-- Wallet Connected Info -->
-    <div id="walletConnectedInfo" class="wallet-info hidden">
-      <p>🛡️ <strong>Identity Verified:</strong> <span id="walletAddress"></span></p>
-      <p id="sovereignStatus">🔒 <span id="nftStatus">Checking Sovereignty Badge...</span></p>
-      <button id="disconnectWallet">DISCONNECT</button>
+
+<!-- Intro Overlay -->
+<div id="introOverlay">
+  <h1 class="cyber-glowing">Decrypting Sovereign Nexus...</h1>
+</div>
+
+<div class="container">
+  <h1 class="cyber-glowing">⚡ SOVEREIGN NEXUS</h1>
+  <p>Access the <strong>Decentralized Sovereignty Protocol</strong> with your Diamond Core NFT.</p>
+
+  <div id="walletConnectSection">
+    <button id="connectWallet" class="btn">ACTIVATE WALLET</button>
+    <div id="errorMessage" class="error-message hidden" style="color: var(--error); font-weight:bold;"></div>
+    <div id="successMessage" class="success-message hidden" style="color: var(--success); font-weight:bold;"></div>
+  </div>
+
+  <div id="walletConnectedInfo" class="wallet-info hidden">
+    <p>🛡️ <strong>Wallet:</strong> <span id="walletAddress"></span></p>
+    <p id="walletBalance"></p>
+    <p id="nftStatus">🔒 Checking Sovereignty Badge...</p>
+    <button id="disconnectWallet" class="btn">DISCONNECT</button>
+  </div>
+
+  <div id="vaultContent" class="vault-content hidden">
+    <h2>🔓 SOVEREIGN VAULT UNLOCKED</h2>
+    <p>Welcome, recognized sovereign. Access your tools below:</p>
+
+    <div class="document-grid">
+      <div class="document-card">
+        <div class="document-icon">🪪</div>
+        <h3>Sovereign ID</h3>
+        <p>Claim your decentralized identity (DID)</p>
+        <button id="claimDid" class="btn">MINT ID</button>
+      </div>
+      <div class="document-card">
+        <div class="document-icon">🔐</div>
+        <h3>Encrypted Vault</h3>
+        <p>Secure storage for sovereign documents</p>
+        <button id="accessVault" class="btn">UNLOCK</button>
+      </div>
+      <div class="document-card">
+        <div class="document-icon">🤖</div>
+        <h3>AI Sovereignty Guide</h3>
+        <p>Chat-based document assistant</p>
+        <button id="openAssistant" class="btn">CHAT</button>
+      </div>
     </div>
 
-    <!-- Vault Content (Hidden Until Auth) -->
-    <div id="vaultContent" class="vault-content hidden">
-      <h2>🔓 SOVEREIGN VAULT UNLOCKED</h2>
-      <p>Welcome, recognized sovereign. Access your tools below:</p>
-      
-      <div class="document-grid">
-        <!-- Sovereign Identity -->
-        <div class="document-card">
-          <div class="document-icon">🪪</div>
-          <h3>Sovereign ID</h3>
-          <p>Claim your decentralized identity (DID)</p>
-          <button id="claimDid" class="btn">MINT ID</button>
-          <div id="didStatus" class="sovereign-badge hidden">DID: Not Registered</div>
-        </div>
-        
-        <!-- Encrypted Vault -->
-        <div class="document-card">
-          <div class="document-icon">🔐</div>
-          <h3>Encrypted Vault</h3>
-          <p>Secure storage for sovereign documents</p>
-          <button id="accessVault" class="btn">UNLOCK</button>
-        </div>
-        
-        <!-- AI Assistant -->
-        <div class="document-card">
-          <div class="document-icon">🤖</div>
-          <h3>AI Sovereignty Guide</h3>
-          <p>Chat-based document assistant</p>
-          <button id="openAssistant" class="btn">CHAT</button>
-        </div>
-      </div>
-      
-      <!-- Cyber Terminal (Debug Console) -->
-      <div class="cyber-terminal" id="cyberTerminal">
-        > Initializing Sovereign Nexus Protocol...
-      </div>
+    <div class="cyber-terminal" id="cyberTerminal">
+      > Initializing Sovereign Nexus Protocol...
     </div>
   </div>
-  
-  <footer>
-    <p>© <span id="currentYear"></span> Tamaquah Nation | Sovereign Technology Division</p>
-  </footer>
+</div>
 
-  <script>
-    // ====== CONFIGURATION ====== //
-    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-    const TOKEN_ID = 3;
-    const BNB_CHAIN_ID = "0x38"; // BNB Chain (56)
-    const ETH_CHAIN_ID = "0x1";  // Ethereum (1)
-    const POLYGON_CHAIN_ID = "0x89"; // Polygon (137)
-    
-    // ====== DOM ELEMENTS ====== //
-    const connectBtn = document.getElementById("connectWallet");
-    const connectText = document.getElementById("connectText");
-    const connectSpinner = document.getElementById("connectSpinner");
-    const errorMsg = document.getElementById("errorMessage");
-    const successMsg = document.getElementById("successMessage");
-    const walletInfo = document.getElementById("walletConnectedInfo");
-    const walletAddress = document.getElementById("walletAddress");
-    const nftStatus = document.getElementById("nftStatus");
-    const disconnectBtn = document.getElementById("disconnectWallet");
-    const vaultContent = document.getElementById("vaultContent");
-    const cyberTerminal = document.getElementById("cyberTerminal");
-    const claimDidBtn = document.getElementById("claimDid");
-    const didStatus = document.getElementById("didStatus");
-    const accessVaultBtn = document.getElementById("accessVault");
-    const openAssistantBtn = document.getElementById("openAssistant");
+<!-- AI Modal -->
+<div id="assistantModal" class="hidden">
+  <h3 class="cyber-glowing">🧠 AI Sovereignty Guide</h3>
+  <p>Coming soon: Ask legal, spiritual, or tribal questions and get guidance from the AI embedded in Tamaquah code.</p>
+  <button onclick="document.getElementById('assistantModal').classList.add('hidden')" class="btn">CLOSE</button>
+</div>
 
-    // ====== INITIALIZATION ====== //
-    document.getElementById("currentYear").textContent = new Date().getFullYear();
-    
-    // Check if wallet is connected on page load
-    window.addEventListener('load', async () => {
-      logToTerminal("System booting...");
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        await initWalletConnection();
-      }
-    });
+<footer>
+  <p>© <span id="currentYear"></span> Tamaquah Nation | Sovereign Technology Division</p>
+</footer>
 
-    // ====== WALLET CONNECTION ====== //
-    async function initWalletConnection() {
-      try {
-        showLoading(true);
-        errorMsg.classList.add("hidden");
-        successMsg.classList.add("hidden");
-        
-        if (!window.ethereum) {
-          throw new Error("MetaMask or compatible wallet required.");
-        }
+<script>
+  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  const TOKEN_ID = 3;
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await switchToChain(BNB_CHAIN_ID); // Default to BNB Chain
-        
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        const ensName = await provider.lookupAddress(address); // Check for ENS
-        
-        // Display connected wallet
-        const displayAddress = ensName || `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-        walletAddress.textContent = displayAddress;
-        walletInfo.classList.remove("hidden");
-        connectBtn.classList.add("hidden");
-        
-        logToTerminal(`Wallet connected: ${address}`);
-        logToTerminal("Verifying sovereignty credentials...");
+  const connectBtn = document.getElementById("connectWallet");
+  const disconnectBtn = document.getElementById("disconnectWallet");
+  const walletAddress = document.getElementById("walletAddress");
+  const walletBalance = document.getElementById("walletBalance");
+  const nftStatus = document.getElementById("nftStatus");
+  const successMsg = document.getElementById("successMessage");
+  const errorMsg = document.getElementById("errorMessage");
+  const walletInfo = document.getElementById("walletConnectedInfo");
+  const vaultContent = document.getElementById("vaultContent");
+  const cyberTerminal = document.getElementById("cyberTerminal");
 
-        // Check NFT ownership
-        const ownsNFT = await checkNFTOwnership(provider, address);
-        if (ownsNFT) {
-          nftStatus.textContent = "✅ Valid Sovereignty Badge Detected";
-          vaultContent.classList.remove("hidden");
-          successMsg.textContent = "Access granted. Welcome, sovereign.";
-          successMsg.classList.remove("hidden");
-          logToTerminal("Sovereign authentication successful.");
-          
-          // Check for DID (Decentralized Identity)
-          await checkDID(address);
-        } else {
-          throw new Error("Access denied. Diamond Core NFT required.");
-        }
-      } catch (err) {
-        console.error(err);
-        errorMsg.textContent = err.message;
-        errorMsg.classList.remove("hidden");
-        logToTerminal(`ERROR: ${err.message}`);
-        if (window.ethereum && window.ethereum.selectedAddress) {
-          await disconnectWallet();
-        }
-      } finally {
-        showLoading(false);
-      }
-    }
+  document.getElementById("currentYear").textContent = new Date().getFullYear();
 
-    // ====== CHAIN MANAGEMENT ====== //
-    async function switchToChain(chainId) {
-      try {
-        const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
-        
-        if (currentChain !== chainId) {
-          logToTerminal(`Switching to chain ID: ${chainId}`);
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId }],
-          });
-        }
-      } catch (switchError) {
-        if (switchError.code === 4902) {
-          logToTerminal("Chain not added. Attempting to add...");
-          await addChain(chainId);
-        } else {
-          throw switchError;
-        }
-      }
-    }
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById("introOverlay").style.display = "none";
+    }, 2000);
+  });
 
-    async function addChain(chainId) {
-      const chainParams = {
-        "0x38": { // BNB Chain
-          chainName: "BNB Smart Chain",
-          nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-          rpcUrls: ["https://bsc-dataseed.binance.org/"],
-          blockExplorerUrls: ["https://bscscan.com"]
-        },
-        "0x1": { // Ethereum
-          chainName: "Ethereum Mainnet",
-          nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-          rpcUrls: ["https://mainnet.infura.io/v3/"],
-          blockExplorerUrls: ["https://etherscan.io"]
-        },
-        "0x89": { // Polygon
-          chainName: "Polygon Mainnet",
-          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-          rpcUrls: ["https://polygon-rpc.com/"],
-          blockExplorerUrls: ["https://polygonscan.com"]
-        }
-      };
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) throw new Error("MetaMask required.");
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      const balance = await provider.getBalance(address);
+      const formatted = ethers.utils.formatEther(balance);
 
-      if (!chainParams[chainId]) throw new Error("Unsupported chain");
+      walletAddress.textContent = address.slice(0, 6) + "..." + address.slice(-4);
+      walletBalance.textContent = `💰 BNB Balance: ${Number(formatted).toFixed(4)} BNB`;
+      walletInfo.classList.remove("hidden");
+      connectBtn.classList.add("hidden");
+      logToTerminal("Wallet connected: " + address);
       
-      try {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId,
-            ...chainParams[chainId]
-          }]
-        });
-        logToTerminal(`Chain added: ${chainParams[chainId].chainName}`);
-      } catch (err) {
-        throw new Error(`Failed to add chain: ${err.message}`);
-      }
-    }
+      const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
+      const nftBalance = await contract.balanceOf(address, TOKEN_ID);
 
-    // ====== NFT & DID VERIFICATION ====== //
-    async function checkNFTOwnership(provider, address) {
-      try {
-        const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
-        const balance = await contract.balanceOf(address, TOKEN_ID);
-        return balance.gt(0);
-      } catch (err) {
-        logToTerminal(`NFT Check Error: ${err.message}`);
-        return false;
-      }
-    }
-
-    async function checkDID(address) {
-      // In a real app, check for .bit / ENS / other DID
-      didStatus.classList.remove("hidden");
-      didStatus.textContent = `DID: ${address.substring(0, 8)}... (Unregistered)`;
-      logToTerminal("No decentralized identity found. Ready to mint.");
-    }
-
-    // ====== UI FUNCTIONS ====== //
-    function showLoading(loading) {
-      if (loading) {
-        connectText.classList.add("hidden");
-        connectSpinner.classList.remove("hidden");
+      if (nftBalance.gt(0)) {
+        nftStatus.textContent = "✅ Valid Sovereignty Badge Detected";
+        vaultContent.classList.remove("hidden");
+        successMsg.textContent = "Access granted. Welcome, sovereign.";
+        successMsg.classList.remove("hidden");
+        vaultContent.style.opacity = "1";
       } else {
-        connectText.classList.remove("hidden");
-        connectSpinner.classList.add("hidden");
-      }
-    }
-
-    function logToTerminal(message) {
-      cyberTerminal.innerHTML += `<div>> ${message}</div>`;
-      cyberTerminal.scrollTop = cyberTerminal.scrollHeight;
-    }
-
-    async function disconnectWallet() {
-      walletInfo.classList.add("hidden");
-      vaultContent.classList.add("hidden");
-      connectBtn.classList.remove("hidden");
-      errorMsg.classList.add("hidden");
-      logToTerminal("Wallet disconnected.");
-    }
-
-    // ====== EVENT LISTENERS ====== //
-    connectBtn.onclick = async () => {
-      if (!window.ethereum) {
-        errorMsg.textContent = "Please install MetaMask or a Web3 wallet.";
+        nftStatus.textContent = "❌ Sovereignty Badge not found.";
+        errorMsg.textContent = "Access denied. Diamond Core NFT required.";
         errorMsg.classList.remove("hidden");
-        return;
       }
-      
-      try {
-        showLoading(true);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        await initWalletConnection();
-      } catch (err) {
-        errorMsg.textContent = err.message;
-        errorMsg.classList.remove("hidden");
-        logToTerminal(`Connection failed: ${err.message}`);
-        showLoading(false);
-      }
-    };
-
-    disconnectBtn.onclick = disconnectWallet;
-    
-    claimDidBtn.onclick = () => {
-      logToTerminal("Initiating DID minting process...");
-      alert("DID minting feature coming soon!");
-    };
-    
-    accessVaultBtn.onclick = () => {
-      logToTerminal("Accessing encrypted vault...");
-      alert("Secure vault feature in development!");
-    };
-    
-    openAssistantBtn.onclick = () => {
-      logToTerminal("Initializing AI assistant...");
-      alert("AI sovereignty guide coming soon!");
-    };
-
-    // ====== WALLET EVENT LISTENERS ====== //
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', async (accounts) => {
-        if (accounts.length === 0) {
-          await disconnectWallet();
-        } else {
-          await initWalletConnection();
-        }
-      });
-      
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.classList.remove("hidden");
+      logToTerminal("ERROR: " + err.message);
     }
-  </script>
+  }
+
+  function disconnectWallet() {
+    walletInfo.classList.add("hidden");
+    vaultContent.classList.add("hidden");
+    connectBtn.classList.remove("hidden");
+    errorMsg.classList.add("hidden");
+    successMsg.classList.add("hidden");
+    logToTerminal("Wallet disconnected.");
+  }
+
+  function logToTerminal(message) {
+    cyberTerminal.innerHTML += `<div>> ${message}</div>`;
+    cyberTerminal.scrollTop = cyberTerminal.scrollHeight;
+  }
+
+  connectBtn.onclick = connectWallet;
+  disconnectBtn.onclick = disconnectWallet;
+  document.getElementById("claimDid").onclick = () => logToTerminal("DID minting feature coming soon!");
+  document.getElementById("accessVault").onclick = () => logToTerminal("Vault access coming soon!");
+  document.getElementById("openAssistant").onclick = () => {
+    document.getElementById("assistantModal").classList.remove("hidden");
+    logToTerminal("AI Sovereignty Guide loading...");
+  };
+</script>
 </body>
 </html>
