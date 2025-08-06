@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Status Correction Portal | Tamaquah Nation</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.10/dist/index.js"></script>
+  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -205,7 +203,8 @@
     // Configuration
     const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
     const TOKEN_ID = 3;
-const NETWORK_ID = 56; // BNB Smart Chain
+    const BNB_CHAIN_ID = "0x38"; // BNB Smart Chain (56 in decimal)
+    const BNB_RPC_URL = "https://bsc-dataseed.binance.org/";
     
     // DOM Elements
     const connectBtn = document.getElementById("connectWallet");
@@ -233,13 +232,15 @@ const NETWORK_ID = 56; // BNB Smart Chain
         showLoading(true);
         errorMsg.classList.add("hidden");
         
+        // Check if MetaMask is installed
+        if (!window.ethereum) {
+          throw new Error("Please install MetaMask to connect your wallet");
+        }
+        
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         
-        // Check network
-        const network = await provider.getNetwork();
-        if (network.chainId !== NETWORK_ID) {
-          throw new Error(`Please switch to Ethereum Mainnet`);
-        }
+        // Check network and switch to BNB Chain if needed
+        await switchToBNBChain();
         
         const signer = provider.getSigner();
         const address = await signer.getAddress();
@@ -268,6 +269,55 @@ const NETWORK_ID = 56; // BNB Smart Chain
       }
     }
     
+    // Switch to BNB Chain if not already on it
+    async function switchToBNBChain() {
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        
+        if (chainId !== BNB_CHAIN_ID) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: BNB_CHAIN_ID }],
+            });
+          } catch (switchError) {
+            // This error code indicates that the chain has not been added to MetaMask
+            if (switchError.code === 4902) {
+              await addBNBChain();
+            } else {
+              throw switchError;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to switch to BNB Chain:", err);
+        throw new Error("Please switch to BNB Smart Chain to continue");
+      }
+    }
+    
+    // Add BNB Chain to MetaMask if not present
+    async function addBNBChain() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: BNB_CHAIN_ID,
+            chainName: 'BNB Smart Chain',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'BNB',
+              decimals: 18
+            },
+            rpcUrls: [BNB_RPC_URL],
+            blockExplorerUrls: ['https://bscscan.com/']
+          }]
+        });
+      } catch (err) {
+        console.error("Failed to add BNB Chain:", err);
+        throw new Error("Failed to add BNB Smart Chain to your wallet");
+      }
+    }
+    
     // Check NFT ownership
     async function checkNFTOwnership(provider, address) {
       try {
@@ -284,7 +334,7 @@ const NETWORK_ID = 56; // BNB Smart Chain
     // Connect wallet button handler
     connectBtn.onclick = async () => {
       if (!window.ethereum) {
-        errorMsg.textContent = "Please install MetaMask or another Ethereum wallet";
+        errorMsg.textContent = "Please install MetaMask to connect your wallet";
         errorMsg.classList.remove("hidden");
         return;
       }
@@ -309,16 +359,10 @@ const NETWORK_ID = 56; // BNB Smart Chain
     // Disconnect wallet
     async function disconnectWallet() {
       try {
-        // In a real dApp, you might want to implement more thorough disconnection
         walletInfo.classList.add("hidden");
         vaultContent.classList.add("hidden");
         connectBtn.classList.remove("hidden");
         errorMsg.classList.add("hidden");
-        
-        // Reset provider if needed
-        if (window.ethereum && window.ethereum.disconnect) {
-          await window.ethereum.disconnect();
-        }
       } catch (err) {
         console.error("Error disconnecting wallet:", err);
       }
