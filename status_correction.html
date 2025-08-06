@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Correction Portal | Tamaquah Nation</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.10/dist/index.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #d4af37;
+      --secondary: #1a1a1a;
+      --accent: #5a3921;
+      --text: #f5f5f5;
+      --error: #c13c3c;
+    }
+    
+    body {
+      background: var(--secondary);
+      color: var(--text);
+      font-family: 'Cinzel', serif;
+      text-align: center;
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      background-image: url('https://example.com/tribal-pattern.png');
+      background-size: cover;
+      background-attachment: fixed;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(13, 13, 13, 0.9);
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+      border: 1px solid var(--primary);
+    }
+    
+    h1, h2 {
+      font-family: 'Cinzel Decorative', serif;
+      color: var(--primary);
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    }
+    
+    .hidden { display: none; }
+    
+    .vault-content {
+      margin-top: 3rem;
+      animation: fadeIn 1s ease-in-out;
+    }
+    
+    button, .btn {
+      padding: 12px 24px;
+      background: var(--primary);
+      color: var(--secondary);
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 0.5rem;
+      font-family: 'Cinzel', serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    button:hover, .btn:hover {
+      background: #e6c350;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .wallet-info {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: rgba(90, 57, 33, 0.2);
+      border-radius: 4px;
+      display: inline-block;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+    }
+    
+    .error-message {
+      color: var(--error);
+      margin: 1rem 0;
+    }
+    
+    .document-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    
+    .document-card {
+      background: rgba(26, 26, 26, 0.7);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: transform 0.3s ease;
+    }
+    
+    .document-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+    }
+    
+    .document-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+    
+    footer {
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: rgba(245, 245, 245, 0.6);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 600px) {
+      .container {
+        padding: 1rem;
+      }
+      
+      .document-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔒 Status Correction Portal</h1>
+    <p>You must own the <strong>Diamond Core Certificate</strong> to access these sacred documents.</p>
+    
+    <div id="walletConnectSection">
+      <button id="connectWallet">
+        <span id="connectText">Connect Wallet</span>
+        <span id="connectSpinner" class="loading hidden"></span>
+      </button>
+      <div id="errorMessage" class="error-message hidden"></div>
+    </div>
+    
+    <div id="walletConnectedInfo" class="wallet-info hidden">
+      <p>Connected: <span id="walletAddress"></span></p>
+      <button id="disconnectWallet">Disconnect</button>
+    </div>
+
+    <div id="vaultContent" class="vault-content hidden">
+      <h2>Welcome to the Status Correction Chamber</h2>
+      <p>Access your sacred documents below:</p>
+      
+      <div class="document-grid">
+        <div class="document-card">
+          <div class="document-icon">📜</div>
+          <h3>Declaration Packet</h3>
+          <p>Complete documentation for status correction</p>
+          <a href="/downloads/StatusCorrectionPacket.pdf" target="_blank" class="btn">Download</a>
+        </div>
+        
+        <div class="document-card">
+          <div class="document-icon">🪪</div>
+          <h3>Tribal ID</h3>
+          <p>Claim your official identification</p>
+          <a href="/mint-id.html" class="btn">Claim ID</a>
+        </div>
+        
+        <div class="document-card">
+          <div class="document-icon">📚</div>
+          <h3>School of the Scrolls</h3>
+          <p>Educational resources</p>
+          <a href="/school-of-the-scrolls.html" class="btn">Enter</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>© <span id="currentYear"></span> Tamaquah Nation. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // Configuration
+    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+    const TOKEN_ID = 3;
+    const NETWORK_ID = 1; // Mainnet
+    
+    // DOM Elements
+    const connectBtn = document.getElementById("connectWallet");
+    const connectText = document.getElementById("connectText");
+    const connectSpinner = document.getElementById("connectSpinner");
+    const errorMsg = document.getElementById("errorMessage");
+    const walletInfo = document.getElementById("walletConnectedInfo");
+    const walletAddress = document.getElementById("walletAddress");
+    const disconnectBtn = document.getElementById("disconnectWallet");
+    const vaultContent = document.getElementById("vaultContent");
+    
+    // Set current year in footer
+    document.getElementById("currentYear").textContent = new Date().getFullYear();
+    
+    // Check if wallet is connected on page load
+    window.addEventListener('load', async () => {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        await initWalletConnection();
+      }
+    });
+    
+    // Initialize wallet connection
+    async function initWalletConnection() {
+      try {
+        showLoading(true);
+        errorMsg.classList.add("hidden");
+        
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Check network
+        const network = await provider.getNetwork();
+        if (network.chainId !== NETWORK_ID) {
+          throw new Error(`Please switch to Ethereum Mainnet`);
+        }
+        
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        
+        // Display connected wallet
+        walletAddress.textContent = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+        walletInfo.classList.remove("hidden");
+        connectBtn.classList.add("hidden");
+        
+        // Check NFT ownership
+        const ownsNFT = await checkNFTOwnership(provider, address);
+        if (ownsNFT) {
+          vaultContent.classList.remove("hidden");
+        } else {
+          throw new Error("Access denied. You must own the Diamond Core NFT (Token ID 3).");
+        }
+      } catch (err) {
+        console.error(err);
+        errorMsg.textContent = err.message;
+        errorMsg.classList.remove("hidden");
+        if (window.ethereum && window.ethereum.selectedAddress) {
+          await disconnectWallet();
+        }
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    // Check NFT ownership
+    async function checkNFTOwnership(provider, address) {
+      try {
+        const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
+        const balance = await contract.balanceOf(address, TOKEN_ID);
+        return balance.gt(0);
+      } catch (err) {
+        console.error("Error checking NFT balance:", err);
+        return false;
+      }
+    }
+    
+    // Connect wallet button handler
+    connectBtn.onclick = async () => {
+      if (!window.ethereum) {
+        errorMsg.textContent = "Please install MetaMask or another Ethereum wallet";
+        errorMsg.classList.remove("hidden");
+        return;
+      }
+      
+      try {
+        showLoading(true);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        await initWalletConnection();
+      } catch (err) {
+        console.error(err);
+        errorMsg.textContent = err.message;
+        errorMsg.classList.remove("hidden");
+        showLoading(false);
+      }
+    };
+    
+    // Disconnect wallet button handler
+    disconnectBtn.onclick = async () => {
+      await disconnectWallet();
+    };
+    
+    // Disconnect wallet
+    async function disconnectWallet() {
+      try {
+        // In a real dApp, you might want to implement more thorough disconnection
+        walletInfo.classList.add("hidden");
+        vaultContent.classList.add("hidden");
+        connectBtn.classList.remove("hidden");
+        errorMsg.classList.add("hidden");
+        
+        // Reset provider if needed
+        if (window.ethereum && window.ethereum.disconnect) {
+          await window.ethereum.disconnect();
+        }
+      } catch (err) {
+        console.error("Error disconnecting wallet:", err);
+      }
+    }
+    
+    // Show/hide loading state
+    function showLoading(loading) {
+      if (loading) {
+        connectText.classList.add("hidden");
+        connectSpinner.classList.remove("hidden");
+      } else {
+        connectText.classList.remove("hidden");
+        connectSpinner.classList.add("hidden");
+      }
+    }
+    
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', async (accounts) => {
+        if (accounts.length === 0) {
+          await disconnectWallet();
+        } else {
+          await initWalletConnection();
+        }
+      });
+      
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
+    }
+  </script>
+</body>
+</html>
