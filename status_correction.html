@@ -400,6 +400,9 @@
       <button id="sendQuery" class="btn">SEND</button>
     </div>
   </div>
+
+<button class="btn" onclick="purchaseMembership()">BUY PREMIUM ACCESS (100 KLY)</button>
+  
   <div class="modal-footer">
     <small>Powered by Tamaquah Sovereign AI</small>
   </div>
@@ -537,6 +540,16 @@
     }, 2000);
   });
 
+// Unlock Protocol Premium Membership Lock
+const MEMBERSHIP_LOCK = "0x80223E8130A987F8b50199259CCCcA8F3EaCceb2";
+const MEMBERSHIP_ABI = ["function getHasValidKey(address) view returns (bool)"];
+
+async function hasValidKLYMembership(address) {
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const contract = new ethers.Contract(MEMBERSHIP_LOCK, MEMBERSHIP_ABI, provider);
+  return await contract.getHasValidKey(address);
+}
+  
   // Wallet connection logic
   async function connectWallet() {
     try {
@@ -559,25 +572,26 @@
       await verifySignature();
       
       // Check for sovereignty tokens
-      const hasToken = await checkSovereignTokens(address, provider);
-      
-      if (hasToken) {
-        nftStatus.textContent = "✅ Valid Sovereignty Token Detected";
-        vaultContent.classList.remove("hidden");
-        successMsg.textContent = "Access granted. Welcome, sovereign.";
-        successMsg.classList.remove("hidden");
-        vaultContent.style.opacity = "1";
-      } else {
-        nftStatus.textContent = "❌ No valid sovereignty token found.";
-        errorMsg.textContent = "Access denied. Valid token required.";
-        errorMsg.classList.remove("hidden");
-      }
-    } catch (err) {
-      errorMsg.textContent = err.message;
-      errorMsg.classList.remove("hidden");
-      logToTerminal("ERROR: " + err.message);
-    }
+      const hasMembership = await hasValidKLYMembership(address);
+
+if (hasToken || hasMembership) {
+  if (hasMembership) {
+    nftStatus.textContent = "✅ Premium Membership (100 KLY) Detected";
+    logToTerminal("✅ Premium Unlock Protocol key detected");
+  } else {
+    nftStatus.textContent = "✅ Sovereignty NFT Token Detected";
+    logToTerminal("✅ Sovereignty NFT token access granted");
   }
+
+  vaultContent.classList.remove("hidden");
+  successMsg.textContent = "Access granted. Welcome, sovereign.";
+  successMsg.classList.remove("hidden");
+  vaultContent.style.opacity = "1";
+} else {
+  nftStatus.textContent = "❌ No valid access token or membership key.";
+  errorMsg.textContent = "Access denied. Please hold a Sovereignty NFT or Premium Membership.";
+  errorMsg.classList.remove("hidden");
+}
 
   // Enhanced token checking
   async function checkSovereignTokens(address, provider) {
@@ -713,6 +727,36 @@
     chatHistory.appendChild(messageDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
   }
+
+      async function purchaseMembership() {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+
+    const unlock = new ethers.Contract(
+      MEMBERSHIP_LOCK,
+      ["function purchase(uint256,address,address,address,bytes) payable"],
+      signer
+    );
+
+    const buyer = await signer.getAddress();
+    const price = ethers.utils.parseUnits("100", 18); // 100 KLY
+
+    const tx = await unlock.purchase(
+      [price], // key price
+      [buyer], // recipient
+      [buyer], // referrer (can be address(0))
+      [buyer], // key manager
+      ["0x"]   // data
+    );
+
+    logToTerminal("⏳ Purchase pending...");
+    await tx.wait();
+    logToTerminal("✅ Membership purchased!");
+  } catch (err) {
+    logToTerminal("❌ Purchase failed: " + err.message);
+  }
+}
 
   // Button event listeners
   connectBtn.onclick = connectWallet;
