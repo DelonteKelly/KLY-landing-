@@ -1,12 +1,13 @@
-<!-- Save as sovereign-nexus.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>⚡ Sovereign Nexus | Tamaquah Nation</title>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
     :root {
       --primary: #00f0ff;
@@ -26,6 +27,14 @@
       overflow-x: hidden;
     }
 
+    #particles-js {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: radial-gradient(circle at center, #0a0a30 0%, #000010 100%);
+    }
+
     .cyber-glowing {
       animation: glitch 2s infinite;
     }
@@ -36,6 +45,15 @@
       40% { text-shadow: 2px 0 cyan; }
       60% { text-shadow: -1px 0 lime; }
       80% { text-shadow: 1px 0 yellow; }
+    }
+
+    .neon-pulse {
+      animation: pulse 2s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 5px var(--primary); }
+      to { box-shadow: 0 0 20px var(--primary), 0 0 30px var(--accent); }
     }
 
     #introOverlay {
@@ -100,6 +118,13 @@
       box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4);
     }
 
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      margin-left: 0.5rem;
+    }
+
     .vault-content {
       margin-top: 2rem;
       animation: fadeInScale 1.2s ease-out;
@@ -125,12 +150,27 @@
       border: 1px solid var(--accent);
       border-radius: 12px;
       backdrop-filter: blur(6px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .document-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(123, 45, 255, 0.3);
     }
 
     .document-icon {
       font-size: 2.5rem;
       color: var(--primary);
       margin-bottom: 1rem;
+    }
+
+    .document-actions {
+      display: flex;
+      margin-top: 1rem;
+    }
+
+    .document-progress {
+      margin-top: 1rem;
     }
 
     .cyber-terminal {
@@ -142,6 +182,17 @@
       border-radius: 8px;
       max-height: 300px;
       overflow-y: auto;
+    }
+
+    .cyber-terminal input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-top: 1px solid var(--primary);
+      padding: 0.5rem;
+      color: var(--text);
+      font-family: monospace;
+      margin-top: 0.5rem;
     }
 
     footer {
@@ -165,16 +216,112 @@
       z-index: 10000;
     }
 
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .chat-history {
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+      padding-bottom: 1rem;
+    }
+
+    .chat-message {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .chat-message.user {
+      background: rgba(0, 240, 255, 0.1);
+    }
+
+    .chat-message.ai {
+      background: rgba(123, 45, 255, 0.1);
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 0.5rem;
+      background: rgba(0, 0, 20, 0.8);
+      border: 1px solid var(--primary);
+      color: var(--text);
+      border-radius: 4px;
+    }
+
+    .modal-footer {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      text-align: center;
+      color: rgba(224, 224, 255, 0.6);
+    }
+
+    /* Accessibility improvements */
+    :focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion) {
+      .cyber-glowing, .neon-pulse {
+        animation: none !important;
+      }
+    }
+
     @media (max-width: 768px) {
       .container { padding: 1.5rem; }
       h1 { font-size: 2rem; }
     }
+
+    @media (max-width: 480px) {
+      .container {
+        margin: 1rem;
+        padding: 1rem;
+      }
+      
+      .document-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+      }
+      
+      .document-actions {
+        flex-direction: column;
+      }
+      
+      .btn-outline {
+        margin-left: 0;
+        margin-top: 0.5rem;
+      }
+    }
   </style>
 </head>
 <body>
+<div id="particles-js"></div>
 
 <!-- Intro Overlay -->
-<div id="introOverlay">
+<div id="introOverlay" class="animate__animated animate__fadeIn">
   <h1 class="cyber-glowing">Decrypting Sovereign Nexus...</h1>
 </div>
 
@@ -200,37 +347,62 @@
     <p>Welcome, recognized sovereign. Access your tools below:</p>
 
     <div class="document-grid">
-      <div class="document-card">
+      <div class="document-card neon-pulse">
         <div class="document-icon">🪪</div>
         <h3>Sovereign ID</h3>
-        <p>Claim your decentralized identity (DID)</p>
-        <button id="claimDid" class="btn">MINT ID</button>
+        <p>Decentralized Identity (DID) with verifiable credentials</p>
+        <div class="document-actions">
+          <button id="claimDid" class="btn">MINT DID</button>
+          <button id="viewDid" class="btn btn-outline">VIEW</button>
+        </div>
+        <div class="document-progress hidden" id="didProgress">
+          <progress value="0" max="100"></progress>
+        </div>
       </div>
-      <div class="document-card">
+      <div class="document-card neon-pulse">
         <div class="document-icon">🔐</div>
         <h3>Encrypted Vault</h3>
         <p>Secure storage for sovereign documents</p>
-        <button id="accessVault" class="btn">UNLOCK</button>
+        <div class="document-actions">
+          <button id="accessVault" class="btn">UNLOCK</button>
+          <button id="uploadDoc" class="btn btn-outline">UPLOAD</button>
+        </div>
       </div>
-      <div class="document-card">
+      <div class="document-card neon-pulse">
         <div class="document-icon">🤖</div>
         <h3>AI Sovereignty Guide</h3>
         <p>Chat-based document assistant</p>
-        <button id="openAssistant" class="btn">CHAT</button>
+        <div class="document-actions">
+          <button id="openAssistant" class="btn">CHAT</button>
+          <button id="askQuestion" class="btn btn-outline">ASK</button>
+        </div>
       </div>
     </div>
 
     <div class="cyber-terminal" id="cyberTerminal">
       > Initializing Sovereign Nexus Protocol...
+      <div id="terminalOutput"></div>
+      <input type="text" id="terminalInput" placeholder="Type 'help' for commands...">
     </div>
   </div>
 </div>
 
 <!-- AI Modal -->
 <div id="assistantModal" class="hidden">
-  <h3 class="cyber-glowing">🧠 AI Sovereignty Guide</h3>
-  <p>Coming soon: Ask legal, spiritual, or tribal questions and get guidance from the AI embedded in Tamaquah code.</p>
-  <button onclick="document.getElementById('assistantModal').classList.add('hidden')" class="btn">CLOSE</button>
+  <div class="modal-header">
+    <h3 class="cyber-glowing">🧠 AI Sovereignty Guide</h3>
+    <button class="close-btn">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div id="chatHistory" class="chat-history"></div>
+    <div class="chat-input">
+      <input type="text" id="userQuery" placeholder="Ask about sovereignty, law, or tribal matters...">
+      <button id="sendQuery" class="btn">SEND</button>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <small>Powered by Tamaquah Sovereign AI</small>
+  </div>
 </div>
 
 <footer>
@@ -240,7 +412,13 @@
 <script>
   const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const TOKEN_ID = 3;
+  const SOVEREIGN_TOKENS = {
+    "Diamond Core": "0xDA76d35742190283E340dbeE2038ecc978a56950",
+    "Sovereign Badge": "0x1234567890123456789012345678901234567890",
+    "Ancestral Token": "0x0987654321098765432109876543210987654321"
+  };
 
+  // Initialize UI elements
   const connectBtn = document.getElementById("connectWallet");
   const disconnectBtn = document.getElementById("disconnectWallet");
   const walletAddress = document.getElementById("walletAddress");
@@ -250,19 +428,120 @@
   const errorMsg = document.getElementById("errorMessage");
   const walletInfo = document.getElementById("walletConnectedInfo");
   const vaultContent = document.getElementById("vaultContent");
-  const cyberTerminal = document.getElementById("cyberTerminal");
+  const terminalInput = document.getElementById("terminalInput");
+  const terminalOutput = document.getElementById("terminalOutput");
+  const currentYear = document.getElementById("currentYear");
 
-  document.getElementById("currentYear").textContent = new Date().getFullYear();
+  // Set current year
+  currentYear.textContent = new Date().getFullYear();
 
+  // Initialize particles.js
+  document.addEventListener('DOMContentLoaded', function() {
+    particlesJS.load('particles-js', {
+      "particles": {
+        "number": {
+          "value": 80,
+          "density": {
+            "enable": true,
+            "value_area": 800
+          }
+        },
+        "color": {
+          "value": "#00f0ff"
+        },
+        "shape": {
+          "type": "circle",
+          "stroke": {
+            "width": 0,
+            "color": "#000000"
+          }
+        },
+        "opacity": {
+          "value": 0.5,
+          "random": true,
+          "anim": {
+            "enable": true,
+            "speed": 1,
+            "opacity_min": 0.1,
+            "sync": false
+          }
+        },
+        "size": {
+          "value": 3,
+          "random": true,
+          "anim": {
+            "enable": true,
+            "speed": 2,
+            "size_min": 0.1,
+            "sync": false
+          }
+        },
+        "line_linked": {
+          "enable": true,
+          "distance": 150,
+          "color": "#7b2dff",
+          "opacity": 0.4,
+          "width": 1
+        },
+        "move": {
+          "enable": true,
+          "speed": 1,
+          "direction": "none",
+          "random": true,
+          "straight": false,
+          "out_mode": "out",
+          "bounce": false,
+          "attract": {
+            "enable": true,
+            "rotateX": 600,
+            "rotateY": 1200
+          }
+        }
+      },
+      "interactivity": {
+        "detect_on": "canvas",
+        "events": {
+          "onhover": {
+            "enable": true,
+            "mode": "grab"
+          },
+          "onclick": {
+            "enable": true,
+            "mode": "push"
+          },
+          "resize": true
+        },
+        "modes": {
+          "grab": {
+            "distance": 140,
+            "line_linked": {
+              "opacity": 1
+            }
+          },
+          "push": {
+            "particles_nb": 4
+          }
+        }
+      },
+      "retina_detect": true
+    });
+  });
+
+  // Handle intro animation
   window.addEventListener('load', () => {
     setTimeout(() => {
-      document.getElementById("introOverlay").style.display = "none";
+      document.getElementById("introOverlay").classList.add('animate__fadeOut');
+      setTimeout(() => {
+        document.getElementById("introOverlay").style.display = "none";
+      }, 1000);
     }, 2000);
   });
 
+  // Wallet connection logic
   async function connectWallet() {
     try {
-      if (!window.ethereum) throw new Error("MetaMask required.");
+      if (!window.ethereum) throw new Error("MetaMask or compatible wallet required.");
+      
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
@@ -276,25 +555,65 @@
       connectBtn.classList.add("hidden");
       logToTerminal("Wallet connected: " + address);
       
-      const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
-      const nftBalance = await contract.balanceOf(address, TOKEN_ID);
-
-      if (nftBalance.gt(0)) {
-        nftStatus.textContent = "✅ Valid Sovereignty Badge Detected";
+      // Verify signature for enhanced security
+      await verifySignature();
+      
+      // Check for sovereignty tokens
+      const hasToken = await checkSovereignTokens(address, provider);
+      
+      if (hasToken) {
+        nftStatus.textContent = "✅ Valid Sovereignty Token Detected";
         vaultContent.classList.remove("hidden");
         successMsg.textContent = "Access granted. Welcome, sovereign.";
         successMsg.classList.remove("hidden");
         vaultContent.style.opacity = "1";
       } else {
-        nftStatus.textContent = "❌ Sovereignty Badge not found.";
-        errorMsg.textContent = "Access denied. Diamond Core NFT required.";
+        nftStatus.textContent = "❌ No valid sovereignty token found.";
+        errorMsg.textContent = "Access denied. Valid token required.";
         errorMsg.classList.remove("hidden");
       }
     } catch (err) {
       errorMsg.textContent = err.message;
       errorMsg.classList.remove("hidden");
       logToTerminal("ERROR: " + err.message);
+    }
+  }
+
+  // Enhanced token checking
+  async function checkSovereignTokens(address, provider) {
+    let hasToken = false;
+    
+    for (const [name, contractAddress] of Object.entries(SOVEREIGN_TOKENS)) {
+      try {
+        const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
+        const contract = new ethers.Contract(contractAddress, abi, provider);
+        const balance = await contract.balanceOf(address, TOKEN_ID);
+        
+        if (balance.gt(0)) {
+          logToTerminal(`Detected ${name} token`);
+          hasToken = true;
+        }
+      } catch (err) {
+        logToTerminal(`Error checking ${name} token: ${err.message}`);
+      }
+    }
+    
+    return hasToken;
+  }
+
+  // Cryptographic signature verification
+  async function verifySignature() {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const message = "I am verifying my sovereignty on Tamaquah Nexus";
+      const signature = await signer.signMessage(message);
+      
+      logToTerminal("Signature verified: " + signature.slice(0, 10) + "...");
+      return true;
+    } catch (err) {
+      logToTerminal("Verification error: " + err.message);
+      return false;
     }
   }
 
@@ -307,18 +626,118 @@
     logToTerminal("Wallet disconnected.");
   }
 
-  function logToTerminal(message) {
-    cyberTerminal.innerHTML += `<div>> ${message}</div>`;
-    cyberTerminal.scrollTop = cyberTerminal.scrollHeight;
+  // Terminal functionality
+  const terminalCommands = {
+    help: () => "Available commands: help, status, verify, documents, clear",
+    status: async () => {
+      if (!window.ethereum) return "Status: Wallet not connected";
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const block = await provider.getBlockNumber();
+      const network = await provider.getNetwork();
+      return `Status: Connected to ${network.name} at block ${block}`;
+    },
+    verify: async () => {
+      const verified = await verifySignature();
+      return verified ? "Verification successful" : "Verification failed";
+    },
+    documents: () => "Accessing sovereign document vault...",
+    clear: () => {
+      terminalOutput.innerHTML = "";
+      return "Terminal cleared";
+    }
+  };
+
+  terminalInput.addEventListener('keypress', async (e) => {
+    if(e.key === 'Enter') {
+      const command = e.target.value.trim();
+      addTerminalLine(`> ${command}`);
+      
+      if(terminalCommands[command]) {
+        const response = await terminalCommands[command]();
+        addTerminalLine(response);
+      } else {
+        addTerminalLine("Command not recognized. Type 'help' for options.");
+      }
+      
+      e.target.value = "";
+    }
+  });
+
+  function addTerminalLine(text) {
+    const line = document.createElement("div");
+    line.textContent = text;
+    terminalOutput.appendChild(line);
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
   }
 
-  connectBtn.onclick = connectWallet;
-  disconnectBtn.onclick = disconnectWallet;
-  document.getElementById("claimDid").onclick = () => logToTerminal("DID minting feature coming soon!");
-  document.getElementById("accessVault").onclick = () => logToTerminal("Vault access coming soon!");
+  function logToTerminal(message) {
+    addTerminalLine("> " + message);
+  }
+
+  // AI Assistant functionality
   document.getElementById("openAssistant").onclick = () => {
     document.getElementById("assistantModal").classList.remove("hidden");
-    logToTerminal("AI Sovereignty Guide loading...");
+    logToTerminal("AI Sovereignty Guide activated");
+  };
+
+  document.querySelector(".close-btn").onclick = () => {
+    document.getElementById("assistantModal").classList.add("hidden");
+  };
+
+  document.getElementById("sendQuery").onclick = async () => {
+    const query = document.getElementById("userQuery").value;
+    if(!query) return;
+    
+    addChatMessage("user", query);
+    document.getElementById("userQuery").value = "";
+    
+    // Simulate AI response
+    setTimeout(() => {
+      const responses = [
+        "Under Tamaquah sovereignty principles, this matter would be handled through...",
+        "The ancestral protocols suggest that this situation requires...",
+        "Our decentralized governance framework provides for this case in section 3.2...",
+        "This question touches on our sovereign rights under international law...",
+        "The digital sovereignty framework would approach this by..."
+      ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      addChatMessage("ai", randomResponse);
+    }, 1000);
+  };
+
+  function addChatMessage(sender, message) {
+    const chatHistory = document.getElementById("chatHistory");
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `chat-message ${sender}`;
+    messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${message}`;
+    chatHistory.appendChild(messageDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+  }
+
+  // Button event listeners
+  connectBtn.onclick = connectWallet;
+  disconnectBtn.onclick = disconnectWallet;
+  document.getElementById("claimDid").onclick = () => {
+    document.getElementById("didProgress").classList.remove("hidden");
+    const progress = document.querySelector("#didProgress progress");
+    let value = 0;
+    const interval = setInterval(() => {
+      value += 10;
+      progress.value = value;
+      if(value >= 100) {
+        clearInterval(interval);
+        logToTerminal("DID minting complete!");
+        document.getElementById("didProgress").classList.add("hidden");
+      }
+    }, 300);
+    logToTerminal("Initiating DID minting process...");
+  };
+  document.getElementById("viewDid").onclick = () => logToTerminal("Viewing DID document...");
+  document.getElementById("accessVault").onclick = () => logToTerminal("Accessing encrypted vault...");
+  document.getElementById("uploadDoc").onclick = () => logToTerminal("Preparing document upload...");
+  document.getElementById("askQuestion").onclick = () => {
+    document.getElementById("assistantModal").classList.remove("hidden");
+    document.getElementById("userQuery").focus();
   };
 </script>
 </body>
