@@ -3,133 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Status Correction Portal | Tamaquah Nation</title>
+  <title>⚡ Sovereign Nexus | Tamaquah Nation</title>
   <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@finsweet/web3-connect@1.0.0/dist/web3-connect.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #d4af37;
-      --secondary: #1a1a1a;
-      --accent: #5a3921;
-      --text: #f5f5f5;
-      --error: #c13c3c;
+      --primary: #00f0ff;
+      --secondary: #0a0a20;
+      --accent: #7b2dff;
+      --text: #e0e0ff;
+      --error: #ff3860;
+      --success: #2dff9e;
     }
     
     body {
-      background: var(--secondary);
+      background: radial-gradient(circle at center, #0a0a30 0%, #000010 100%);
       color: var(--text);
-      font-family: 'Cinzel', serif;
-      text-align: center;
+      font-family: 'Rajdhani', sans-serif;
       margin: 0;
-      padding: 2rem;
+      padding: 0;
       min-height: 100vh;
-      background-image: url('https://example.com/tribal-pattern.png');
-      background-size: cover;
-      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+    
+    .cyber-glowing {
+      text-shadow: 0 0 10px var(--primary), 0 0 20px rgba(0, 240, 255, 0.5);
     }
     
     .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: rgba(13, 13, 13, 0.9);
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+      max-width: 1000px;
+      margin: 2rem auto;
+      background: rgba(10, 10, 30, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 2.5rem;
+      border-radius: 16px;
       border: 1px solid var(--primary);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.2),
+                  inset 0 0 20px rgba(0, 240, 255, 0.1);
+      position: relative;
+      overflow: hidden;
     }
     
-    h1, h2 {
-      font-family: 'Cinzel Decorative', serif;
+    .container::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, transparent 70%);
+      animation: pulse 15s infinite linear;
+      pointer-events: none;
+    }
+    
+    h1, h2, h3 {
+      font-family: 'Orbitron', sans-serif;
       color: var(--primary);
-      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+      letter-spacing: 1px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
     }
     
     .hidden { display: none; }
     
     .vault-content {
       margin-top: 3rem;
-      animation: fadeIn 1s ease-in-out;
+      animation: fadeIn 1s ease-out;
     }
     
     button, .btn {
-      padding: 12px 24px;
-      background: var(--primary);
-      color: var(--secondary);
+      padding: 12px 28px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: black;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s ease;
       margin: 0.5rem;
-      font-family: 'Cinzel', serif;
+      font-family: 'Orbitron', sans-serif;
       text-transform: uppercase;
       letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
     }
     
     button:hover, .btn:hover {
-      background: #e6c350;
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4);
+    }
+    
+    button::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: -1;
+    }
+    
+    button:hover::after {
+      opacity: 1;
     }
     
     .wallet-info {
-      margin: 1rem 0;
-      padding: 1rem;
-      background: rgba(90, 57, 33, 0.2);
-      border-radius: 4px;
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: rgba(123, 45, 255, 0.1);
+      border-radius: 8px;
+      border: 1px solid var(--accent);
       display: inline-block;
+      backdrop-filter: blur(5px);
     }
     
     .loading {
       display: inline-block;
       width: 20px;
       height: 20px;
-      border: 3px solid rgba(255, 255, 255, 0.3);
+      border: 3px solid rgba(0, 240, 255, 0.3);
       border-radius: 50%;
       border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
+      animation: spin 1s linear infinite;
       margin-left: 10px;
     }
     
     .error-message {
       color: var(--error);
       margin: 1rem 0;
+      font-weight: bold;
+    }
+    
+    .success-message {
+      color: var(--success);
+      margin: 1rem 0;
+      font-weight: bold;
     }
     
     .document-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-top: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
     }
     
     .document-card {
-      background: rgba(26, 26, 26, 0.7);
+      background: rgba(20, 20, 50, 0.6);
       border: 1px solid var(--accent);
-      border-radius: 8px;
-      padding: 1.5rem;
-      transition: transform 0.3s ease;
+      border-radius: 12px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+      position: relative;
+      overflow: hidden;
     }
     
     .document-card:hover {
-      transform: translateY(-5px);
+      transform: translateY(-8px);
       border-color: var(--primary);
+      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.2);
+    }
+    
+    .document-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, transparent 100%);
+      pointer-events: none;
     }
     
     .document-icon {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
+      font-size: 3rem;
+      margin-bottom: 1.5rem;
       color: var(--primary);
+      filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.5));
+    }
+    
+    .sovereign-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      background: rgba(45, 255, 158, 0.2);
+      border: 1px solid var(--success);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+      color: var(--success);
     }
     
     footer {
-      margin-top: 3rem;
-      font-size: 0.8rem;
-      color: rgba(245, 245, 245, 0.6);
+      margin-top: 5rem;
+      font-size: 0.9rem;
+      color: rgba(224, 224, 255, 0.5);
+      text-align: center;
     }
     
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
     
@@ -137,9 +217,39 @@
       to { transform: rotate(360deg); }
     }
     
-    @media (max-width: 600px) {
+    @keyframes pulse {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Cyber Terminal Effect */
+    .cyber-terminal {
+      background: rgba(0, 0, 20, 0.8);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      padding: 1.5rem;
+      font-family: monospace;
+      color: var(--primary);
+      margin-top: 2rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .cyber-terminal::before {
+      content: ">_";
+      margin-right: 10px;
+      color: var(--accent);
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
       .container {
-        padding: 1rem;
+        padding: 1.5rem;
+        margin: 1rem;
+      }
+      
+      h1 {
+        font-size: 2rem;
       }
       
       .document-grid {
@@ -150,117 +260,151 @@
 </head>
 <body>
   <div class="container">
-    <h1>🔒 Status Correction Portal</h1>
-    <p>You must own the <strong>Diamond Core Certificate</strong> to access these sacred documents.</p>
+    <h1 class="cyber-glowing">⚡ SOVEREIGN NEXUS</h1>
+    <p>Access the <strong>Decentralized Sovereignty Protocol</strong> with your Diamond Core NFT.</p>
     
+    <!-- Wallet Connect Section -->
     <div id="walletConnectSection">
       <button id="connectWallet">
-        <span id="connectText">Connect Wallet</span>
+        <span id="connectText">ACTIVATE WALLET</span>
         <span id="connectSpinner" class="loading hidden"></span>
       </button>
       <div id="errorMessage" class="error-message hidden"></div>
+      <div id="successMessage" class="success-message hidden"></div>
     </div>
     
+    <!-- Wallet Connected Info -->
     <div id="walletConnectedInfo" class="wallet-info hidden">
-      <p>Connected: <span id="walletAddress"></span></p>
-      <button id="disconnectWallet">Disconnect</button>
+      <p>🛡️ <strong>Identity Verified:</strong> <span id="walletAddress"></span></p>
+      <p id="sovereignStatus">🔒 <span id="nftStatus">Checking Sovereignty Badge...</span></p>
+      <button id="disconnectWallet">DISCONNECT</button>
     </div>
 
+    <!-- Vault Content (Hidden Until Auth) -->
     <div id="vaultContent" class="vault-content hidden">
-      <h2>Welcome to the Status Correction Chamber</h2>
-      <p>Access your sacred documents below:</p>
+      <h2>🔓 SOVEREIGN VAULT UNLOCKED</h2>
+      <p>Welcome, recognized sovereign. Access your tools below:</p>
       
       <div class="document-grid">
-        <div class="document-card">
-          <div class="document-icon">📜</div>
-          <h3>Declaration Packet</h3>
-          <p>Complete documentation for status correction</p>
-          <a href="/downloads/StatusCorrectionPacket.pdf" target="_blank" class="btn">Download</a>
-        </div>
-        
+        <!-- Sovereign Identity -->
         <div class="document-card">
           <div class="document-icon">🪪</div>
-          <h3>Tribal ID</h3>
-          <p>Claim your official identification</p>
-          <a href="/mint-id.html" class="btn">Claim ID</a>
+          <h3>Sovereign ID</h3>
+          <p>Claim your decentralized identity (DID)</p>
+          <button id="claimDid" class="btn">MINT ID</button>
+          <div id="didStatus" class="sovereign-badge hidden">DID: Not Registered</div>
         </div>
         
+        <!-- Encrypted Vault -->
         <div class="document-card">
-          <div class="document-icon">📚</div>
-          <h3>School of the Scrolls</h3>
-          <p>Educational resources</p>
-          <a href="/school-of-the-scrolls.html" class="btn">Enter</a>
+          <div class="document-icon">🔐</div>
+          <h3>Encrypted Vault</h3>
+          <p>Secure storage for sovereign documents</p>
+          <button id="accessVault" class="btn">UNLOCK</button>
         </div>
+        
+        <!-- AI Assistant -->
+        <div class="document-card">
+          <div class="document-icon">🤖</div>
+          <h3>AI Sovereignty Guide</h3>
+          <p>Chat-based document assistant</p>
+          <button id="openAssistant" class="btn">CHAT</button>
+        </div>
+      </div>
+      
+      <!-- Cyber Terminal (Debug Console) -->
+      <div class="cyber-terminal" id="cyberTerminal">
+        > Initializing Sovereign Nexus Protocol...
       </div>
     </div>
   </div>
   
   <footer>
-    <p>© <span id="currentYear"></span> Tamaquah Nation. All rights reserved.</p>
+    <p>© <span id="currentYear"></span> Tamaquah Nation | Sovereign Technology Division</p>
   </footer>
 
   <script>
-    // Configuration
+    // ====== CONFIGURATION ====== //
     const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
     const TOKEN_ID = 3;
-    const BNB_CHAIN_ID = "0x38"; // BNB Smart Chain (56 in decimal)
-    const BNB_RPC_URL = "https://bsc-dataseed.binance.org/";
+    const BNB_CHAIN_ID = "0x38"; // BNB Chain (56)
+    const ETH_CHAIN_ID = "0x1";  // Ethereum (1)
+    const POLYGON_CHAIN_ID = "0x89"; // Polygon (137)
     
-    // DOM Elements
+    // ====== DOM ELEMENTS ====== //
     const connectBtn = document.getElementById("connectWallet");
     const connectText = document.getElementById("connectText");
     const connectSpinner = document.getElementById("connectSpinner");
     const errorMsg = document.getElementById("errorMessage");
+    const successMsg = document.getElementById("successMessage");
     const walletInfo = document.getElementById("walletConnectedInfo");
     const walletAddress = document.getElementById("walletAddress");
+    const nftStatus = document.getElementById("nftStatus");
     const disconnectBtn = document.getElementById("disconnectWallet");
     const vaultContent = document.getElementById("vaultContent");
-    
-    // Set current year in footer
+    const cyberTerminal = document.getElementById("cyberTerminal");
+    const claimDidBtn = document.getElementById("claimDid");
+    const didStatus = document.getElementById("didStatus");
+    const accessVaultBtn = document.getElementById("accessVault");
+    const openAssistantBtn = document.getElementById("openAssistant");
+
+    // ====== INITIALIZATION ====== //
     document.getElementById("currentYear").textContent = new Date().getFullYear();
     
     // Check if wallet is connected on page load
     window.addEventListener('load', async () => {
+      logToTerminal("System booting...");
       if (window.ethereum && window.ethereum.selectedAddress) {
         await initWalletConnection();
       }
     });
-    
-    // Initialize wallet connection
+
+    // ====== WALLET CONNECTION ====== //
     async function initWalletConnection() {
       try {
         showLoading(true);
         errorMsg.classList.add("hidden");
+        successMsg.classList.add("hidden");
         
-        // Check if MetaMask is installed
         if (!window.ethereum) {
-          throw new Error("Please install MetaMask to connect your wallet");
+          throw new Error("MetaMask or compatible wallet required.");
         }
-        
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Check network and switch to BNB Chain if needed
-        await switchToBNBChain();
+        await switchToChain(BNB_CHAIN_ID); // Default to BNB Chain
         
         const signer = provider.getSigner();
         const address = await signer.getAddress();
+        const ensName = await provider.lookupAddress(address); // Check for ENS
         
         // Display connected wallet
-        walletAddress.textContent = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+        const displayAddress = ensName || `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+        walletAddress.textContent = displayAddress;
         walletInfo.classList.remove("hidden");
         connectBtn.classList.add("hidden");
         
+        logToTerminal(`Wallet connected: ${address}`);
+        logToTerminal("Verifying sovereignty credentials...");
+
         // Check NFT ownership
         const ownsNFT = await checkNFTOwnership(provider, address);
         if (ownsNFT) {
+          nftStatus.textContent = "✅ Valid Sovereignty Badge Detected";
           vaultContent.classList.remove("hidden");
+          successMsg.textContent = "Access granted. Welcome, sovereign.";
+          successMsg.classList.remove("hidden");
+          logToTerminal("Sovereign authentication successful.");
+          
+          // Check for DID (Decentralized Identity)
+          await checkDID(address);
         } else {
-          throw new Error("Access denied. You must own the Diamond Core NFT (Token ID 3).");
+          throw new Error("Access denied. Diamond Core NFT required.");
         }
       } catch (err) {
         console.error(err);
         errorMsg.textContent = err.message;
         errorMsg.classList.remove("hidden");
+        logToTerminal(`ERROR: ${err.message}`);
         if (window.ethereum && window.ethereum.selectedAddress) {
           await disconnectWallet();
         }
@@ -268,57 +412,68 @@
         showLoading(false);
       }
     }
-    
-    // Switch to BNB Chain if not already on it
-    async function switchToBNBChain() {
+
+    // ====== CHAIN MANAGEMENT ====== //
+    async function switchToChain(chainId) {
       try {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
         
-        if (chainId !== BNB_CHAIN_ID) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BNB_CHAIN_ID }],
-            });
-          } catch (switchError) {
-            // This error code indicates that the chain has not been added to MetaMask
-            if (switchError.code === 4902) {
-              await addBNBChain();
-            } else {
-              throw switchError;
-            }
-          }
+        if (currentChain !== chainId) {
+          logToTerminal(`Switching to chain ID: ${chainId}`);
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId }],
+          });
         }
-      } catch (err) {
-        console.error("Failed to switch to BNB Chain:", err);
-        throw new Error("Please switch to BNB Smart Chain to continue");
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          logToTerminal("Chain not added. Attempting to add...");
+          await addChain(chainId);
+        } else {
+          throw switchError;
+        }
       }
     }
-    
-    // Add BNB Chain to MetaMask if not present
-    async function addBNBChain() {
+
+    async function addChain(chainId) {
+      const chainParams = {
+        "0x38": { // BNB Chain
+          chainName: "BNB Smart Chain",
+          nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+          rpcUrls: ["https://bsc-dataseed.binance.org/"],
+          blockExplorerUrls: ["https://bscscan.com"]
+        },
+        "0x1": { // Ethereum
+          chainName: "Ethereum Mainnet",
+          nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+          rpcUrls: ["https://mainnet.infura.io/v3/"],
+          blockExplorerUrls: ["https://etherscan.io"]
+        },
+        "0x89": { // Polygon
+          chainName: "Polygon Mainnet",
+          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+          rpcUrls: ["https://polygon-rpc.com/"],
+          blockExplorerUrls: ["https://polygonscan.com"]
+        }
+      };
+
+      if (!chainParams[chainId]) throw new Error("Unsupported chain");
+      
       try {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId: BNB_CHAIN_ID,
-            chainName: 'BNB Smart Chain',
-            nativeCurrency: {
-              name: 'BNB',
-              symbol: 'BNB',
-              decimals: 18
-            },
-            rpcUrls: [BNB_RPC_URL],
-            blockExplorerUrls: ['https://bscscan.com/']
+            chainId,
+            ...chainParams[chainId]
           }]
         });
+        logToTerminal(`Chain added: ${chainParams[chainId].chainName}`);
       } catch (err) {
-        console.error("Failed to add BNB Chain:", err);
-        throw new Error("Failed to add BNB Smart Chain to your wallet");
+        throw new Error(`Failed to add chain: ${err.message}`);
       }
     }
-    
-    // Check NFT ownership
+
+    // ====== NFT & DID VERIFICATION ====== //
     async function checkNFTOwnership(provider, address) {
       try {
         const abi = ["function balanceOf(address owner, uint256 id) view returns (uint256)"];
@@ -326,49 +481,19 @@
         const balance = await contract.balanceOf(address, TOKEN_ID);
         return balance.gt(0);
       } catch (err) {
-        console.error("Error checking NFT balance:", err);
+        logToTerminal(`NFT Check Error: ${err.message}`);
         return false;
       }
     }
-    
-    // Connect wallet button handler
-    connectBtn.onclick = async () => {
-      if (!window.ethereum) {
-        errorMsg.textContent = "Please install MetaMask to connect your wallet";
-        errorMsg.classList.remove("hidden");
-        return;
-      }
-      
-      try {
-        showLoading(true);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        await initWalletConnection();
-      } catch (err) {
-        console.error(err);
-        errorMsg.textContent = err.message;
-        errorMsg.classList.remove("hidden");
-        showLoading(false);
-      }
-    };
-    
-    // Disconnect wallet button handler
-    disconnectBtn.onclick = async () => {
-      await disconnectWallet();
-    };
-    
-    // Disconnect wallet
-    async function disconnectWallet() {
-      try {
-        walletInfo.classList.add("hidden");
-        vaultContent.classList.add("hidden");
-        connectBtn.classList.remove("hidden");
-        errorMsg.classList.add("hidden");
-      } catch (err) {
-        console.error("Error disconnecting wallet:", err);
-      }
+
+    async function checkDID(address) {
+      // In a real app, check for .bit / ENS / other DID
+      didStatus.classList.remove("hidden");
+      didStatus.textContent = `DID: ${address.substring(0, 8)}... (Unregistered)`;
+      logToTerminal("No decentralized identity found. Ready to mint.");
     }
-    
-    // Show/hide loading state
+
+    // ====== UI FUNCTIONS ====== //
     function showLoading(loading) {
       if (loading) {
         connectText.classList.add("hidden");
@@ -378,8 +503,58 @@
         connectSpinner.classList.add("hidden");
       }
     }
+
+    function logToTerminal(message) {
+      cyberTerminal.innerHTML += `<div>> ${message}</div>`;
+      cyberTerminal.scrollTop = cyberTerminal.scrollHeight;
+    }
+
+    async function disconnectWallet() {
+      walletInfo.classList.add("hidden");
+      vaultContent.classList.add("hidden");
+      connectBtn.classList.remove("hidden");
+      errorMsg.classList.add("hidden");
+      logToTerminal("Wallet disconnected.");
+    }
+
+    // ====== EVENT LISTENERS ====== //
+    connectBtn.onclick = async () => {
+      if (!window.ethereum) {
+        errorMsg.textContent = "Please install MetaMask or a Web3 wallet.";
+        errorMsg.classList.remove("hidden");
+        return;
+      }
+      
+      try {
+        showLoading(true);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        await initWalletConnection();
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.classList.remove("hidden");
+        logToTerminal(`Connection failed: ${err.message}`);
+        showLoading(false);
+      }
+    };
+
+    disconnectBtn.onclick = disconnectWallet;
     
-    // Listen for account changes
+    claimDidBtn.onclick = () => {
+      logToTerminal("Initiating DID minting process...");
+      alert("DID minting feature coming soon!");
+    };
+    
+    accessVaultBtn.onclick = () => {
+      logToTerminal("Accessing encrypted vault...");
+      alert("Secure vault feature in development!");
+    };
+    
+    openAssistantBtn.onclick = () => {
+      logToTerminal("Initializing AI assistant...");
+      alert("AI sovereignty guide coming soon!");
+    };
+
+    // ====== WALLET EVENT LISTENERS ====== //
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', async (accounts) => {
         if (accounts.length === 0) {
