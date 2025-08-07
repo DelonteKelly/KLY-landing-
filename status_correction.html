@@ -432,9 +432,8 @@
 <script>
   const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const DIAMOND_TOKEN_ID = 3;
-  const SOVEREIGN_TOKEN_ID = 4;
+  const SOVEREIGN_TOKEN_ID = 5;
 
-  // Metadata URIs
   const DIAMOND_URI = "ipfs://bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
   const SOVEREIGN_URI = "ipfs://bafybeifaxqwjruycz5bznll5jkykb43ixmsc2mlvvnip7pva34psb63ufm";
 
@@ -458,7 +457,6 @@
   const sovereignImage = document.getElementById("sovereignImage");
   const sovereignProgress = document.getElementById("sovereignProgress");
 
-  // Modal elements
   const assistantModal = document.getElementById("assistantModal");
   const openAssistantBtn = document.getElementById("openAssistant");
   const closeModalBtn = document.querySelector(".close-btn");
@@ -468,37 +466,79 @@
     connectBtn.onclick = connectWallet;
     disconnectBtn.onclick = disconnectWallet;
     mintBtn.onclick = mintDiamondNFT;
-    sovereignMintBtn.onclick = mintSovereignNFT;
-    
-    // Modal handlers
+
+    // Sovereign NFT mint button
+    sovereignMintBtn.onclick = async () => {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const userAddress = await signer.getAddress();
+
+        const contract = new ethers.Contract(
+          NFT_CONTRACT,
+          ["function mintTo(address to, string memory uri) public"],
+          signer
+        );
+
+        await mintSovereignNFT(contract, userAddress, SOVEREIGN_URI);
+      } catch (err) {
+        logToTerminal("❌ Error preparing Sovereign mint: " + err.message);
+      }
+    };
+
+    // Modal open/close
     openAssistantBtn?.addEventListener("click", () => {
       assistantModal.classList.remove("hidden");
     });
-
     closeModalBtn?.addEventListener("click", () => {
       assistantModal.classList.add("hidden");
     });
 
-    // Terminal input handler
+    // Terminal input
     terminalInput?.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         const command = terminalInput.value;
         logToTerminal("User: " + command);
         terminalInput.value = "";
-        
+
         if (command.toLowerCase() === "help") {
           logToTerminal("Available commands: connect, disconnect, mint, verify");
         }
       }
     });
+
+    // Load particles background
+    particlesJS.load('particles-js', {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: "#00f0ff" },
+        shape: { type: "circle", stroke: { width: 0, color: "#000000" } },
+        opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+        size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 0.1, sync: false } },
+        line_linked: { enable: true, distance: 150, color: "#7b2dff", opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 1, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: true, rotateX: 600, rotateY: 1200 } }
+      },
+      interactivity: {
+        detect_on: "canvas",
+        events: { onhover: { enable: true, mode: "grab" }, onclick: { enable: true, mode: "push" }, resize: true },
+        modes: { grab: { distance: 140, line_linked: { opacity: 1 } }, push: { particles_nb: 4 } }
+      },
+      retina_detect: true
+    });
   });
 
-  // Helper function to convert IPFS URI to gateway URL
+  // Overlay fade-out
+  window.addEventListener('load', () => {
+    const overlay = document.getElementById("introOverlay");
+    overlay.classList.add('animate__animated', 'animate__fadeOut');
+    setTimeout(() => { overlay.style.display = "none"; }, 1000);
+  });
+
+  // Convert IPFS URI to URL
   function ipfsToUrl(ipfsUri) {
-    if (ipfsUri.startsWith("ipfs://")) {
-      return "https://ipfs.io/ipfs/" + ipfsUri.replace("ipfs://", "");
-    }
-    return ipfsUri;
+    return ipfsUri.startsWith("ipfs://")
+      ? "https://ipfs.io/ipfs/" + ipfsUri.replace("ipfs://", "")
+      : ipfsUri;
   }
 
   async function connectWallet() {
@@ -533,7 +573,6 @@
         // Show Sovereign ID section
         sovereignSection.classList.remove("hidden");
         sovereignImage.src = ipfsToUrl(SOVEREIGN_URI);
-
       } else {
         nftStatus.textContent = "❌ No valid Diamond Core NFT.";
         errorMsg.textContent = "Access denied. You must mint the Diamond Core NFT.";
@@ -541,7 +580,6 @@
         mintSection.classList.remove("hidden");
         logToTerminal("❌ NFT not found. Prompting mint option.");
       }
-
     } catch (err) {
       logToTerminal("❌ Wallet connection failed: " + err.message);
     }
@@ -583,42 +621,32 @@
       logToTerminal("✅ Diamond Core NFT minted!");
       mintSection.classList.add("hidden");
       await connectWallet();
-
     } catch (err) {
       logToTerminal("❌ Diamond minting failed: " + err.message);
     }
   }
 
   async function mintSovereignNFT(contract, userAddress, metadataUri) {
-  try {
-    console.log("📦 Minting Sovereign NFT to:", userAddress);
-    console.log("🌐 Metadata URI:", metadataUri);
+    try {
+      console.log("📦 Minting Sovereign NFT to:", userAddress);
+      console.log("🌐 Metadata URI:", metadataUri);
 
-    const gasEstimate = await contract.estimateGas.mintTo(userAddress, metadataUri);
-    console.log("⛽ Estimated gas:", gasEstimate.toString());
+      const gasEstimate = await contract.estimateGas.mintTo(userAddress, metadataUri);
+      const tx = await contract.mintTo(userAddress, metadataUri, {
+        gasLimit: gasEstimate.mul(2),
+      });
 
-    const tx = await contract.mintTo(userAddress, metadataUri, {
-      gasLimit: gasEstimate.mul(2), // double it just in case
-    });
-
-    console.log("🚀 Transaction sent:", tx.hash);
-    await tx.wait();
-    console.log("✅ Sovereign NFT minted successfully!");
-
-  } catch (error) {
-    console.error("❌ Minting failed:");
-    if (error?.error?.message) {
-      console.error("↪", error.error.message);
-    } else if (error?.message) {
-      console.error("↪", error.message);
-    } else {
-      console.error(error);
+      console.log("🚀 Transaction sent:", tx.hash);
+      await tx.wait();
+      console.log("✅ Sovereign NFT minted successfully!");
+      logToTerminal("✅ Sovereign ID NFT minted!");
+    } catch (error) {
+      console.error("❌ Minting failed:");
+      console.error(error?.error?.message || error?.message || error);
+      const parsedError = error?.error?.data || error?.data || error;
+      console.error("🔍 Full error:", parsedError);
     }
-
-    const parsedError = error?.error?.data || error?.data || error;
-    console.error("🔍 Full error:", parsedError);
   }
-}
 
   async function verifySignature() {
     try {
@@ -654,34 +682,6 @@
 
   // Set current year
   document.getElementById("currentYear").textContent = new Date().getFullYear();
-
-  // Particles background
-  document.addEventListener('DOMContentLoaded', function () {
-    particlesJS.load('particles-js', {
-      particles: {
-        number: { value: 80, density: { enable: true, value_area: 800 } },
-        color: { value: "#00f0ff" },
-        shape: { type: "circle", stroke: { width: 0, color: "#000000" } },
-        opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-        size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 0.1, sync: false } },
-        line_linked: { enable: true, distance: 150, color: "#7b2dff", opacity: 0.4, width: 1 },
-        move: { enable: true, speed: 1, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: true, rotateX: 600, rotateY: 1200 } }
-      },
-      interactivity: {
-        detect_on: "canvas",
-        events: { onhover: { enable: true, mode: "grab" }, onclick: { enable: true, mode: "push" }, resize: true },
-        modes: { grab: { distance: 140, line_linked: { opacity: 1 } }, push: { particles_nb: 4 } }
-      },
-      retina_detect: true
-    });
-  });
-
-  // Intro overlay
-  window.addEventListener('load', () => {
-    const overlay = document.getElementById("introOverlay");
-    overlay.classList.add('animate__animated', 'animate__fadeOut');
-    setTimeout(() => { overlay.style.display = "none"; }, 1000);
-  });
 </script>
 </body>
 </html>
