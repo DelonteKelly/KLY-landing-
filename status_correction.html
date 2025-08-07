@@ -350,8 +350,6 @@
   <!-- Sovereign ID Section -->
   <div id="sovereignSection" class="hidden" style="margin-top: 1rem;">
     <h3>Sovereign ID</h3>
-    <img id="sovereignImage" src="" alt="Sovereign ID NFT" style="max-width: 300px; border: 2px solid var(--primary); border-radius: 12px;" />
-    <button id="mintSovereign" class="btn">MINT SOVEREIGN ID</button>
     <div class="document-progress hidden" id="sovereignProgress">
       <progress value="0" max="100"></progress>
     </div>
@@ -591,32 +589,36 @@
     }
   }
 
-  async function mintSovereignNFT() {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const userAddress = await signer.getAddress();
+  async function mintSovereignNFT(contract, userAddress, metadataUri) {
+  try {
+    console.log("📦 Minting Sovereign NFT to:", userAddress);
+    console.log("🌐 Metadata URI:", metadataUri);
 
-      const nftContract = new ethers.Contract(
-        NFT_CONTRACT,
-        ["function mintTo(address to, string memory uri) public"],
-        signer
-      );
+    const gasEstimate = await contract.estimateGas.mintTo(userAddress, metadataUri);
+    console.log("⛽ Estimated gas:", gasEstimate.toString());
 
-      logToTerminal("⏳ Minting Sovereign ID NFT...");
-      sovereignProgress.classList.remove("hidden");
+    const tx = await contract.mintTo(userAddress, metadataUri, {
+      gasLimit: gasEstimate.mul(2), // double it just in case
+    });
 
-      const tx = await nftContract.mintTo(userAddress, SOVEREIGN_URI);
-      await tx.wait();
+    console.log("🚀 Transaction sent:", tx.hash);
+    await tx.wait();
+    console.log("✅ Sovereign NFT minted successfully!");
 
-      logToTerminal("✅ Sovereign ID NFT minted successfully!");
-      sovereignProgress.classList.add("hidden");
-
-    } catch (err) {
-      logToTerminal("❌ Sovereign minting failed: " + err.message);
-      sovereignProgress.classList.add("hidden");
+  } catch (error) {
+    console.error("❌ Minting failed:");
+    if (error?.error?.message) {
+      console.error("↪", error.error.message);
+    } else if (error?.message) {
+      console.error("↪", error.message);
+    } else {
+      console.error(error);
     }
+
+    const parsedError = error?.error?.data || error?.data || error;
+    console.error("🔍 Full error:", parsedError);
   }
+}
 
   async function verifySignature() {
     try {
