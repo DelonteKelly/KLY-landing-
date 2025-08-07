@@ -335,6 +335,11 @@
     <div id="successMessage" class="success-message hidden" style="color: var(--success); font-weight:bold;"></div>
   </div>
 
+<!-- If user doesn't own the NFT -->
+<div id="mintSection" class="hidden" style="margin-top: 1rem;">
+  <button id="mintDiamond" class="btn">MINT DIAMOND CORE NFT</button>
+</div>
+  
   <div id="walletConnectedInfo" class="wallet-info hidden">
     <p>🛡️ <strong>Wallet:</strong> <span id="walletAddress"></span></p>
     <p id="walletBalance"></p>
@@ -344,6 +349,11 @@
 
   <div id="vaultContent" class="vault-content hidden">
     <h2>🔓 SOVEREIGN VAULT UNLOCKED</h2>
+    <!-- NFT Image -->
+<div id="nftImageContainer" style="margin-top: 2rem;">
+  <h3>Your Sovereign NFT</h3>
+  <img id="nftImage" src="" alt="Diamond Core NFT" style="max-width: 300px; border: 2px solid var(--primary); border-radius: 12px;" />
+</div>
     <p>Welcome, recognized sovereign. Access your tools below:</p>
 
     <div class="document-grid">
@@ -413,12 +423,11 @@
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script>
-  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Diamond NFT Contract
-  const DIAMOND_TOKEN_ID = 3; // Token ID for Diamond Core NFT
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Diamond NFT
+  const DIAMOND_TOKEN_ID = 3;
 
   // UI Elements
   const connectBtn = document.getElementById("connectWallet");
-  const buyBtn = document.getElementById("buyMembership");
   const disconnectBtn = document.getElementById("disconnectWallet");
   const walletInfo = document.getElementById("walletConnectedInfo");
   const walletAddress = document.getElementById("walletAddress");
@@ -428,10 +437,14 @@
   const errorMsg = document.getElementById("errorMessage");
   const vaultContent = document.getElementById("vaultContent");
   const terminalOutput = document.getElementById("terminalOutput");
+  const mintSection = document.getElementById("mintSection");
+  const mintBtn = document.getElementById("mintDiamond");
+  const nftImage = document.getElementById("nftImage");
 
   document.addEventListener("DOMContentLoaded", () => {
     connectBtn.onclick = connectWallet;
     disconnectBtn.onclick = disconnectWallet;
+    mintBtn.onclick = mintDiamondNFT;
   });
 
   async function connectWallet() {
@@ -461,11 +474,13 @@
         successMsg.classList.remove("hidden");
         vaultContent.style.opacity = "1";
         logToTerminal("✅ NFT ownership verified (Diamond Core)");
+        nftImage.src = "https://gateway.pinata.cloud/ipfs/bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
       } else {
         nftStatus.textContent = "❌ No valid Diamond Core NFT.";
         errorMsg.textContent = "Access denied. You must mint the Diamond Core NFT.";
         errorMsg.classList.remove("hidden");
-        logToTerminal("❌ Diamond Core NFT not found in wallet.");
+        mintSection.classList.remove("hidden");
+        logToTerminal("❌ NFT not found. Prompting mint option.");
       }
 
     } catch (err) {
@@ -490,6 +505,33 @@
     }
   }
 
+  async function mintDiamondNFT() {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const nftContract = new ethers.Contract(
+        NFT_CONTRACT,
+        ["function mintTo(address to, string memory uri) public"],
+        signer
+      );
+
+      const metadataURI = "ipfs://bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
+
+      logToTerminal("⏳ Minting NFT...");
+      const tx = await nftContract.mintTo(userAddress, metadataURI);
+      await tx.wait();
+
+      logToTerminal("✅ Diamond Core NFT minted!");
+      mintSection.classList.add("hidden");
+      await connectWallet();
+
+    } catch (err) {
+      logToTerminal("❌ Minting failed: " + err.message);
+    }
+  }
+
   async function verifySignature() {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -510,6 +552,7 @@
     connectBtn.classList.remove("hidden");
     successMsg.classList.add("hidden");
     errorMsg.classList.add("hidden");
+    mintSection.classList.add("hidden");
     logToTerminal("🔌 Wallet disconnected");
   }
 
@@ -523,7 +566,7 @@
   // Set current year
   document.getElementById("currentYear").textContent = new Date().getFullYear();
 
-  // Initialize particles.js
+  // Particles background
   document.addEventListener('DOMContentLoaded', function () {
     particlesJS.load('particles-js', {
       particles: {
@@ -537,21 +580,14 @@
       },
       interactivity: {
         detect_on: "canvas",
-        events: {
-          onhover: { enable: true, mode: "grab" },
-          onclick: { enable: true, mode: "push" },
-          resize: true
-        },
-        modes: {
-          grab: { distance: 140, line_linked: { opacity: 1 } },
-          push: { particles_nb: 4 }
-        }
+        events: { onhover: { enable: true, mode: "grab" }, onclick: { enable: true, mode: "push" }, resize: true },
+        modes: { grab: { distance: 140, line_linked: { opacity: 1 } }, push: { particles_nb: 4 } }
       },
       retina_detect: true
     });
   });
 
-  // Handle intro animation
+  // Intro overlay
   window.addEventListener('load', () => {
     const overlay = document.getElementById("introOverlay");
     overlay.classList.add('animate__animated', 'animate__fadeOut');
