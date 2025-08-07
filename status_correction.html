@@ -421,10 +421,14 @@
 <footer>
   <p>© <span id="currentYear"></span> Tamaquah Nation | Sovereign Technology Division</p>
 </footer>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script>
-  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Diamond NFT
+  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
   const DIAMOND_TOKEN_ID = 3;
+  const SOVEREIGN_TOKEN_ID = 4;
+
+  // Metadata URIs
+  const DIAMOND_URI = "ipfs://bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
+  const SOVEREIGN_URI = "ipfs://bafkreifyteokuqfezeiw63au2g2ejpag622axag3nffcpuhimmpbgal56e";
 
   // UI Elements
   const connectBtn = document.getElementById("connectWallet");
@@ -441,10 +445,16 @@
   const mintBtn = document.getElementById("mintDiamond");
   const nftImage = document.getElementById("nftImage");
 
+  const sovereignSection = document.getElementById("sovereignSection");
+  const sovereignMintBtn = document.getElementById("mintSovereign");
+  const sovereignImage = document.getElementById("sovereignImage");
+  const sovereignProgress = document.getElementById("sovereignProgress");
+
   document.addEventListener("DOMContentLoaded", () => {
     connectBtn.onclick = connectWallet;
     disconnectBtn.onclick = disconnectWallet;
     mintBtn.onclick = mintDiamondNFT;
+    sovereignMintBtn.onclick = mintSovereignNFT;
   });
 
   async function connectWallet() {
@@ -474,7 +484,12 @@
         successMsg.classList.remove("hidden");
         vaultContent.style.opacity = "1";
         logToTerminal("✅ NFT ownership verified (Diamond Core)");
-        nftImage.src = "https://gateway.pinata.cloud/ipfs/bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
+        nftImage.src = "https://gateway.pinata.cloud/ipfs/" + DIAMOND_URI.split("ipfs://")[1];
+
+        // Show Sovereign ID mint section
+        sovereignSection.classList.remove("hidden");
+        sovereignImage.src = "https://gateway.pinata.cloud/ipfs/" + SOVEREIGN_URI.split("ipfs://")[1];
+
       } else {
         nftStatus.textContent = "❌ No valid Diamond Core NFT.";
         errorMsg.textContent = "Access denied. You must mint the Diamond Core NFT.";
@@ -517,10 +532,8 @@
         signer
       );
 
-      const metadataURI = "ipfs://bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq";
-
-      logToTerminal("⏳ Minting NFT...");
-      const tx = await nftContract.mintTo(userAddress, metadataURI);
+      logToTerminal("⏳ Minting Diamond Core NFT...");
+      const tx = await nftContract.mintTo(userAddress, DIAMOND_URI);
       await tx.wait();
 
       logToTerminal("✅ Diamond Core NFT minted!");
@@ -528,7 +541,34 @@
       await connectWallet();
 
     } catch (err) {
-      logToTerminal("❌ Minting failed: " + err.message);
+      logToTerminal("❌ Diamond minting failed: " + err.message);
+    }
+  }
+
+  async function mintSovereignNFT() {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const nftContract = new ethers.Contract(
+        NFT_CONTRACT,
+        ["function mintTo(address to, string memory uri) public"],
+        signer
+      );
+
+      logToTerminal("⏳ Minting Sovereign ID NFT...");
+      sovereignProgress.classList.remove("hidden");
+
+      const tx = await nftContract.mintTo(userAddress, SOVEREIGN_URI);
+      await tx.wait();
+
+      logToTerminal("✅ Sovereign ID NFT minted successfully!");
+      sovereignProgress.classList.add("hidden");
+
+    } catch (err) {
+      logToTerminal("❌ Sovereign minting failed: " + err.message);
+      sovereignProgress.classList.add("hidden");
     }
   }
 
@@ -553,6 +593,7 @@
     successMsg.classList.add("hidden");
     errorMsg.classList.add("hidden");
     mintSection.classList.add("hidden");
+    sovereignSection.classList.add("hidden");
     logToTerminal("🔌 Wallet disconnected");
   }
 
