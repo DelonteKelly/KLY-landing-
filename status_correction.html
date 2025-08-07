@@ -335,10 +335,10 @@
     <div id="successMessage" class="success-message hidden" style="color: var(--success); font-weight:bold;"></div>
   </div>
 
-<!-- If user doesn't own the NFT -->
-<div id="mintSection" class="hidden" style="margin-top: 1rem;">
-  <button id="mintDiamond" class="btn">MINT DIAMOND CORE NFT</button>
-</div>
+  <!-- If user doesn't own the NFT -->
+  <div id="mintSection" class="hidden" style="margin-top: 1rem;">
+    <button id="mintDiamond" class="btn">MINT DIAMOND CORE NFT</button>
+  </div>
   
   <div id="walletConnectedInfo" class="wallet-info hidden">
     <p>🛡️ <strong>Wallet:</strong> <span id="walletAddress"></span></p>
@@ -347,13 +347,23 @@
     <button id="disconnectWallet" class="btn">DISCONNECT</button>
   </div>
 
+  <!-- Sovereign ID Section -->
+  <div id="sovereignSection" class="hidden" style="margin-top: 1rem;">
+    <h3>Sovereign ID</h3>
+    <img id="sovereignImage" src="" alt="Sovereign ID NFT" style="max-width: 300px; border: 2px solid var(--primary); border-radius: 12px;" />
+    <button id="mintSovereign" class="btn">MINT SOVEREIGN ID</button>
+    <div class="document-progress hidden" id="sovereignProgress">
+      <progress value="0" max="100"></progress>
+    </div>
+  </div>
+
   <div id="vaultContent" class="vault-content hidden">
     <h2>🔓 SOVEREIGN VAULT UNLOCKED</h2>
     <!-- NFT Image -->
-<div id="nftImageContainer" style="margin-top: 2rem;">
-  <h3>Your Sovereign NFT</h3>
-  <img id="nftImage" src="" alt="Diamond Core NFT" style="max-width: 300px; border: 2px solid var(--primary); border-radius: 12px;" />
-</div>
+    <div id="nftImageContainer" style="margin-top: 2rem;">
+      <h3>Your Sovereign NFT</h3>
+      <img id="nftImage" src="" alt="Diamond Core NFT" style="max-width: 300px; border: 2px solid var(--primary); border-radius: 12px;" />
+    </div>
     <p>Welcome, recognized sovereign. Access your tools below:</p>
 
     <div class="document-grid">
@@ -411,7 +421,7 @@
     </div>
   </div>
 
-<button id="buyMembership" class="btn" onclick="purchaseMembership()">BUY PREMIUM ACCESS (100 KLY)</button>
+  <button id="buyMembership" class="btn" onclick="purchaseMembership()">BUY PREMIUM ACCESS (100 KLY)</button>
   
   <div class="modal-footer">
     <small>Powered by Tamaquah Sovereign AI</small>
@@ -450,12 +460,48 @@
   const sovereignImage = document.getElementById("sovereignImage");
   const sovereignProgress = document.getElementById("sovereignProgress");
 
+  // Modal elements
+  const assistantModal = document.getElementById("assistantModal");
+  const openAssistantBtn = document.getElementById("openAssistant");
+  const closeModalBtn = document.querySelector(".close-btn");
+  const terminalInput = document.getElementById("terminalInput");
+
   document.addEventListener("DOMContentLoaded", () => {
     connectBtn.onclick = connectWallet;
     disconnectBtn.onclick = disconnectWallet;
     mintBtn.onclick = mintDiamondNFT;
     sovereignMintBtn.onclick = mintSovereignNFT;
+    
+    // Modal handlers
+    openAssistantBtn?.addEventListener("click", () => {
+      assistantModal.classList.remove("hidden");
+    });
+
+    closeModalBtn?.addEventListener("click", () => {
+      assistantModal.classList.add("hidden");
+    });
+
+    // Terminal input handler
+    terminalInput?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        const command = terminalInput.value;
+        logToTerminal("User: " + command);
+        terminalInput.value = "";
+        
+        if (command.toLowerCase() === "help") {
+          logToTerminal("Available commands: connect, disconnect, mint, verify");
+        }
+      }
+    });
   });
+
+  // Helper function to convert IPFS URI to gateway URL
+  function ipfsToUrl(ipfsUri) {
+    if (ipfsUri.startsWith("ipfs://")) {
+      return "https://ipfs.io/ipfs/" + ipfsUri.replace("ipfs://", "");
+    }
+    return ipfsUri;
+  }
 
   async function connectWallet() {
     try {
@@ -484,11 +530,11 @@
         successMsg.classList.remove("hidden");
         vaultContent.style.opacity = "1";
         logToTerminal("✅ NFT ownership verified (Diamond Core)");
-        nftImage.src = "https://gateway.pinata.cloud/ipfs/" + DIAMOND_URI.split("ipfs://")[1];
+        nftImage.src = ipfsToUrl(DIAMOND_URI);
 
-        // Show Sovereign ID mint section
+        // Show Sovereign ID section
         sovereignSection.classList.remove("hidden");
-        sovereignImage.src = "https://gateway.pinata.cloud/ipfs/" + SOVEREIGN_URI.split("ipfs://")[1];
+        sovereignImage.src = ipfsToUrl(SOVEREIGN_URI);
 
       } else {
         nftStatus.textContent = "❌ No valid Diamond Core NFT.";
@@ -505,12 +551,11 @@
 
   async function hasValidKLYMembership(address) {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const contract = new ethers.Contract(
-      NFT_CONTRACT,
     const ABI = [
-  "function ownerOf(uint256 tokenId) view returns (address)",
-  "function mintTo(address to, string memory uri) public"
-];
+      "function ownerOf(uint256 tokenId) view returns (address)",
+      "function mintTo(address to, string memory uri) public"
+    ];
+    const contract = new ethers.Contract(NFT_CONTRACT, ABI, provider);
 
     try {
       const owner = await contract.ownerOf(DIAMOND_TOKEN_ID);
