@@ -286,71 +286,207 @@
     throw lastErr ?? new Error("Fetch failed");
   }
 
-    async function connect(){
-      try {
-        connectBtn.disabled = true;
-        setStatus("warning", "Connecting…");
+   async function connect() {
+  try {
+    // Disable button during connection attempt
+    connectBtn.disabled = true;
+    setStatus("warning", "Connecting wallet...");
+    connectBtn.classList.add("loading");
 
-        const instance = await web3Modal.connect();
-        provider = instance;
-        ethersProvider = new ethers.providers.Web3Provider(provider, "any");
+    // Initialize Web3Modal connection
+    const instance = await web3Modal.connect();
+    provider = instance;
+    ethersProvider = new ethers.providers.Web3Provider(provider, "any");
 
-        await provider.request?.({ method: "eth_requestAccounts" });
+    // Request account access
+    await provider.request?.({ method: "eth_requestAccounts" });
 
-        await ensureBsc();
+    // Verify we're on the correct network (BSC in this case)
+    await ensureCorrectNetwork(BSC_CHAIN_ID);
 
-        // events
-        provider.on?.("chainChanged", ()=>window.location.reload());
-        provider.on?.("accountsChanged", acc=>{
-          if (!acc?.length) return handleDisconnect();
-          userAddr = acc[0]; addrEl.textContent = shorten(userAddr); updateUi();
-        });
-        provider.on?.("disconnect", handleDisconnect);
+    // Set up event listeners
+    provider.on?.("chainChanged", handleChainChanged);
+    provider.on?.("accountsChanged", handleAccountsChanged);
+    provider.on?.("disconnect", handleDisconnect);
 
-        signer = ethersProvider.getSigner();
-        userAddr = await signer.getAddress();
+    // Get signer and address
+    signer = ethersProvider.getSigner();
+    userAddr = await signer.getAddress();
 
-        addrEl.textContent = shorten(userAddr);
-        setStatus("success", "Connected");
-        connectBtn.textContent = "Connected";
+    // Update UI
+    addrEl.textContent = shorten(userAddr);
+    connectBtn.textContent = "Connected";
+    setStatus("success", "Wallet connected");
+    
+    // Show network indicator
+    networkIndicator.style.display = "inline-flex";
+    await updateNetworkIndicator();
+    
+    // Refresh all UI elements
+    await updateUi();
 
-        await updateUi();
-      } catch (e){
-        console.error(e);
-        setStatus("error", `Connection failed: ${e?.message || e}`);
-        connectBtn.textContent = "Connect Wallet";
-      } finally {
-        connectBtn.disabled = false;
-      }
+  } catch (error) {
+    console.error("Connection error:", error);
+    
+    // Special handling for specific errors
+    let errorMessage = "Connection failed";
+    if (error.code === 4001) {
+      errorMessage = "Connection rejected by user";
+    } else if (error.code === -32002) {
+      errorMessage = "Connection request already pending";
+    } else {
+      errorMessage = error?.message || error.toString();
     }
-
-    async function updateUi(){
-      try{
-        const net = await ethersProvider.getNetwork();
-        netEl.textContent = `${net.chainId} (${net.name || "unknown"})`;
-        const bal = await ethersProvider.getBalance(userAddr);
-        balEl.textContent = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
-      }catch(e){
-        console.error(e);
-      }
-    }
-
-    function handleDisconnect(){
+    
+    setStatus("error", errorMessage);
+    connectBtn.textContent = "Connect Wallet";
+    
+    // If we have a provider but connection failed, clear it
+    if (provider) {
       web3Modal?.clearCachedProvider?.();
-      provider = signer = ethersProvider = null;
-      userAddr = null;
-      addrEl.textContent = "—";
-      netEl.textContent  = "—";
-      balEl.textContent  = "—";
-      connectBtn.textContent = "Connect Wallet";
-      setStatus("warning", "Wallet disconnected.");
+      provider = null;
     }
+  } finally {
+    connectBtn.disabled = false;
+    connectBtn.classList.remove("loading");
+  }
+}
 
-    window.addEventListener("load", ()=>{
-      initWeb3Modal();
-      connectBtn.addEventListener("click", connect);
-      setStatus("", "");
-    });
+async function ensureCorrectNetwork(requiredChainId) {
+  if (!provider || !provider.request) return false;
+  
+  try {
+    const chainId = await provider.request({ method: 'eth_chainId' });
+    const parsedChainId = parseInt(chainId, 16);
+    
+    if (parsedChainId === requiredChainId) {
+      return true;
+    }
+    
+    // Attempt to switch networks
+    try {
+      await provider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${requiredChainId.toString(16)}` }],
+      });
+      return true;
+    } catch (switchError) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          // Add network configuration (example for BSC)
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: `0x${requiredChainId.toString(16)}`,
+              chainName: 'Binance Smart Chain',
+              nativeCurrency: {
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
+              },
+              rpcUrls: ['https://bsc-dataseed.binance.org/'],
+              blockExplorerUrls: ['https://bscscan.com/']
+            }],
+          });
+          return true;
+        } catch (addError) {
+          throw new Error("Failed to add network: " + addError.message);
+        }
+      }
+      throw new Error("Failed to switch network: " + switchError.message);
+    }
+  } catch (error) {
+    console.error("Network check failed:", error);
+    throw new Error(`Please connect to the correct network (Chain ID: ${requiredChainId})`);
+  }
+}
+
+async function updateNetworkIndicator() {
+  if (!ethersProvider || !userAddr) return;
+  
+  try {
+    const network = await ethersProvider.getNetwork();
+    networkName.textContent = getNetworkName(network.chainId);
+    
+    // Highlight if on wrong network
+    if (network.chainId === BSC_CHAIN_ID) {
+      networkIndicator.className = "network-indicator valid";
+    } else {
+      networkIndicator.className = "network-indicator invalid";
+    }
+  } catch (error) {
+    console.error("Failed to update network indicator:", error);
+    networkIndicator.className = "network-indicator invalid";
+    networkName.textContent = "Error";
+  }
+}
+
+function getNetworkName(chainId) {
+  const networks = {
+    1: "Ethereum",
+    56: "BSC",
+    137: "Polygon",
+    686: "KLY",
+    97: "BSC Testnet"
+  };
+  return networks[chainId] || `Chain ${chainId}`;
+}
+
+function handleChainChanged(chainId) {
+  // Reload when chain changes
+  window.location.reload();
+}
+
+function handleAccountsChanged(accounts) {
+  if (!accounts?.length) {
+    handleDisconnect();
+  } else {
+    userAddr = accounts[0];
+    addrEl.textContent = shorten(userAddr);
+    updateUi();
+  }
+}
+
+function handleDisconnect() {
+  web3Modal?.clearCachedProvider?.();
+  provider = signer = ethersProvider = null;
+  userAddr = null;
+  
+  // Reset UI
+  addrEl.textContent = "—";
+  networkIndicator.style.display = "none";
+  balanceDisplay.style.display = "none";
+  connectBtn.textContent = "Connect Wallet";
+  setStatus("warning", "Wallet disconnected");
+}
+
+async function updateUi() {
+  if (!ethersProvider || !userAddr) return;
+  
+  try {
+    // Update network indicator
+    await updateNetworkIndicator();
+    
+    // Update balance display
+    const balance = await ethersProvider.getBalance(userAddr);
+    balanceAmount.textContent = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
+    balanceDisplay.style.display = "flex";
+    
+    // Update NFT data
+    await refreshAll();
+  } catch (error) {
+    console.error("UI update failed:", error);
+    setStatus("error", "Failed to update wallet info");
+  }
+}
+
+// Initialize on load
+window.addEventListener("load", () => {
+  initWeb3Modal();
+  connectBtn.addEventListener("click", connect);
+  setStatus("", "");
+});
   // ------------ Helpers ------------
   async function load1155Meta(contractAddr, tokenId) {
     const c = new ethers.Contract(contractAddr, DROP1155_ABI, readProvider());
