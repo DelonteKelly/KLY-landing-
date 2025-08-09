@@ -5,160 +5,503 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Mint Exclusive & Rare NFTs | Tamaquah Nation</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.js"></script>
 <style>
-  :root{
-    --bg:#0A1A24; --bg2:#051018; --ink:#EAF7FF; --sub:#9CCBE3; --accent:#73E1FF; --gold:#e2c675;
-    --card:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12); --glow:0 0 24px rgba(115,225,255,.35);
-    --success:#4ade80; --error:#f87171; --warning:#fbbf24;
+  :root {
+    --bg: #0A1A24;
+    --bg2: #051018;
+    --ink: #EAF7FF;
+    --sub: #9CCBE3;
+    --accent: #73E1FF;
+    --gold: #e2c675;
+    --metamask: #f6851b;
+    --card: rgba(255,255,255,.06);
+    --stroke: rgba(255,255,255,.12);
+    --glow: 0 0 24px rgba(115,225,255,.35);
+    --success: #4ade80;
+    --error: #f87171;
+    --warning: #fbbf24;
   }
-  html,body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font-family:Inter,system-ui,Arial,sans-serif}
-  .wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-  .brand{font-weight:800;letter-spacing:.08em;font-size:1.2rem;color:var(--accent)}
-  .pill{border:1px solid var(--stroke);padding:6px 10px;border-radius:999px;color:var(--sub);font-size:.85rem;text-decoration:none;transition:all 0.2s ease}
-  .pill:hover{background:rgba(255,255,255,0.05);border-color:var(--accent)}
-  .hero{text-align:center;padding:10px 0 8px;margin-bottom:24px}
-  .hero h1{font-size:clamp(28px,5vw,48px);margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;background:linear-gradient(90deg, var(--accent), var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--sub);margin:0;max-width:600px;margin:0 auto;line-height:1.5}
-  .bar{display:flex;gap:10px;justify-content:center;margin:16px 0 24px;align-items:center;flex-wrap:wrap}
-  .btn{background:linear-gradient(90deg,var(--accent),#a9ffcb);color:#001018;border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer;box-shadow:var(--glow);transition:all .15s ease;position:relative;overflow:hidden}
-  .btn:hover{transform:translateY(-2px);box-shadow:0 0 32px rgba(115,225,255,0.5)}
-  .btn:disabled{opacity:0.7;cursor:not-allowed;transform:none !important}
-  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--stroke);box-shadow:none}
-  .btn.ghost:hover{background:rgba(255,255,255,0.05);border-color:var(--accent)}
-  .muted{color:var(--sub);font-size:0.9em}
-  .balance{display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.2);padding:6px 12px;border-radius:999px;font-size:0.9em}
-  .balance .currency{color:var(--accent);font-weight:600}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px}
-  @media (max-width:960px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:18px;box-shadow:0 16px 60px rgba(0,0,0,.35);transition:all 0.3s ease;position:relative}
-  .card:hover{transform:translateY(-4px);box-shadow:0 20px 80px rgba(0,0,0,0.5);border-color:rgba(115,225,255,0.3)}
-  .card h2{margin:0 0 8px;font-size:1.4rem}
-  .card .contract{font-size:0.85em;word-break:break-all}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
-  label{opacity:.9;font-size:0.9em}
-  select,input[type=number]{background:#0c1d27;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:10px 12px;font-family:inherit;transition:all 0.2s ease}
-  select:hover,input[type=number]:hover{border-color:var(--accent)}
-  select:focus,input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(115,225,255,0.2)}
-  .stat{display:flex;gap:8px;align-items:center;color:var(--sub);font-size:0.9em}
-  .price{font-weight:800;color:var(--ink)}
-  .preview{display:flex;gap:14px;margin-top:8px;align-items:flex-start}
-  .preview img{width:160px;height:160px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke);box-shadow:0 20px 60px rgba(0,0,0,.35);transition:all 0.3s ease;background:linear-gradient(45deg, #0c1d27, #0a2738)}
-  .preview img:hover{transform:scale(1.02);box-shadow:0 20px 80px rgba(0,0,0,0.6)}
-  .meta{flex:1}
-  h3{margin:0 0 6px;font-size:1.1rem}
-  .divider{height:1px;background:var(--stroke);margin:14px 0}
-  footer{margin:26px auto 10px;text-align:center;color:var(--sub);font-size:.9rem}
-  .status{min-height:24px;font-size:0.9em}
-  .status.success{color:var(--success)}
-  .status.error{color:var(--error)}
-  .status.warning{color:var(--warning)}
-  .loading{position:relative;color:transparent !important}
-  .loading:after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-  .tooltip{position:relative;cursor:help}
-  .tooltip:after{content:attr(data-tooltip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--bg2);color:var(--ink);padding:6px 10px;border-radius:6px;font-size:0.8em;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s;border:1px solid var(--stroke)}
-  .tooltip:hover:after{opacity:1}
-  .pulse{animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(115,225,255,0.4)}70%{box-shadow:0 0 0 10px rgba(115,225,255,0)}100%{box-shadow:0 0 0 0 rgba(115,225,255,0)}}
+  
+  html, body {
+    margin: 0;
+    background: linear-gradient(180deg, var(--bg), var(--bg2));
+    color: var(--ink);
+    font-family: 'Inter', system-ui, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .brand {
+    font-weight: 800;
+    letter-spacing: .08em;
+    font-size: 1.5rem;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(115,225,255,0.3);
+  }
+  
+  .hero {
+    text-align: center;
+    padding: 2rem 0;
+    margin-bottom: 3rem;
+  }
+  
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    margin: 0 0 1rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .hero p {
+    color: var(--sub);
+    margin: 0;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-size: 1.1rem;
+  }
+  
+  .wallet-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .btn {
+    background: linear-gradient(90deg, var(--metamask), #f8a34d);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(246, 133, 27, 0.3);
+  }
+  
+  .btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  
+  .wallet-info {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: rgba(0,0,0,0.2);
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+  }
+  
+  .wallet-address {
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+  
+  .balance {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .balance-amount {
+    font-weight: 600;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .card {
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 16px 60px rgba(0,0,0,.35);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+  }
+  
+  .card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+    border-color: rgba(115,225,255,0.3);
+  }
+  
+  .card h2 {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+  }
+  
+  .contract-address {
+    font-size: 0.85rem;
+    word-break: break-all;
+    color: var(--sub);
+    margin-bottom: 1rem;
+    display: block;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin: 1rem 0;
+  }
+  
+  label {
+    font-size: 0.95rem;
+    opacity: 0.9;
+  }
+  
+  select, input[type=number] {
+    background: #0c1d27;
+    color: var(--ink);
+    border: 1px solid var(--stroke);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    min-width: 100px;
+  }
+  
+  select:hover, input[type=number]:hover {
+    border-color: var(--accent);
+  }
+  
+  select:focus, input[type=number]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(115,225,255,0.2);
+  }
+  
+  .preview {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+    align-items: flex-start;
+  }
+  
+  .preview img {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--stroke);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    transition: all 0.3s ease;
+    background: linear-gradient(45deg, #0c1d27, #0a2738);
+  }
+  
+  .preview img:hover {
+    transform: scale(1.03);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+  }
+  
+  .meta {
+    flex: 1;
+  }
+  
+  .nft-name {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+  }
+  
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+  }
+  
+  .stat-label {
+    color: var(--sub);
+  }
+  
+  .stat-value {
+    font-weight: 600;
+  }
+  
+  .mint-btn {
+    background: linear-gradient(90deg, var(--accent), #a9ffcb);
+    color: #001018;
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 1rem;
+    transition: all 0.2s ease;
+  }
+  
+  .mint-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 32px rgba(115,225,255,0.5);
+  }
+  
+  .status {
+    min-height: 24px;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+  
+  .status.success {
+    color: var(--success);
+  }
+  
+  .status.error {
+    color: var(--error);
+  }
+  
+  .status.warning {
+    color: var(--warning);
+  }
+  
+  .loading {
+    position: relative;
+    color: transparent !important;
+  }
+  
+  .loading:after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  
+  footer {
+    margin-top: 3rem;
+    text-align: center;
+    color: var(--sub);
+    font-size: 0.9rem;
+    padding: 1rem;
+  }
+  
+  /* Network indicator */
+  .network-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.2);
+  }
+  
+  .network-indicator.valid {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--success);
+  }
+  
+  .network-indicator.invalid {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--error);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .wrap {
+      padding: 1.5rem;
+    }
+    
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .preview {
+      flex-direction: column;
+    }
+    
+    .preview img {
+      width: 100%;
+      height: auto;
+      max-height: 300px;
+    }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="brand">TAMAQUAH VAULT</div>
-    <a class="pill" href="/">← Back to Landing</a>
   </header>
 
   <section class="hero">
     <h1>Mint Exclusive & Rare NFTs</h1>
-    <p>Choose a collection, pick an ID (0–20), connect your wallet, and mint these unique digital artifacts.</p>
+    <p>Connect your MetaMask wallet to mint these unique digital artifacts from our collections.</p>
   </section>
 
-  <div class="bar">
-    <button id="connectBtn" class="btn ghost">Connect Wallet</button>
-    <span id="addr" class="muted"></span>
-    <div id="balanceDisplay" class="balance" style="display:none">
-      <span id="balanceAmount">0</span>
-      <span id="balanceCurrency" class="currency">BNB</span>
+  <div class="wallet-section">
+    <button id="connectBtn" class="btn">
+      <svg width="20" height="20" viewBox="0 0 40 37" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M36.0115 3.33203L22.2221 14.2493C21.2623 14.9929 19.7377 14.9929 18.7779 14.2493L4.9885 3.33203" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <path d="M26.2086 23.5947L23.3333 26.0413C21.4609 27.6545 18.5391 27.6545 16.6667 26.0413L13.7914 23.5947" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <rect x="1" y="1" width="38" height="35" rx="6" stroke="white" stroke-width="2"/>
+      </svg>
+      Connect MetaMask
+    </button>
+    
+    <div id="walletInfo" style="display: none;">
+      <div class="wallet-info">
+        <span id="walletAddress" class="wallet-address"></span>
+        <span class="network-indicator">
+          <span id="networkName">BSC</span>
+        </span>
+      </div>
+      <div class="wallet-info">
+        <span class="balance">
+          Balance: <span id="balanceAmount" class="balance-amount">0</span>
+          <span id="balanceCurrency">BNB</span>
+        </span>
+      </div>
     </div>
-  </div>
-  <div class="bar" style="margin-top:-10px">
-    <span id="connStatus" class="status muted" aria-live="polite"></span>
+    
+    <div id="connStatus" class="status"></div>
   </div>
 
   <section class="grid">
     <!-- Ancestral Mechs (BNB) -->
     <div class="card" id="mechsCard">
       <h2>Ancestral Mechs: Bloodline Codex</h2>
-      <div class="muted contract">Contract: <code>0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989</code> • Pays in BNB</div>
-      <div class="divider"></div>
-
-      <div class="row">
+      <span class="contract-address">Contract: 0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989</span>
+      
+      <div class="form-group">
         <label for="mechsTokenId">Token ID</label>
         <select id="mechsTokenId"></select>
-        <label for="mechsQty">Qty</label>
+        <label for="mechsQty">Quantity</label>
         <input id="mechsQty" type="number" min="1" max="10" value="1"/>
       </div>
 
       <div class="preview">
         <img id="mechsImg" alt="Preview" loading="lazy"/>
         <div class="meta">
-          <h3 id="mechsName">—</h3>
-          <div class="stat">Price/Token: <span id="mechsPrice" class="price">loading…</span></div>
-          <div class="stat">Currency: <span id="mechsCurrency" class="price">loading…</span></div>
-          <div class="stat">Supply: <span id="mechsSupply" class="price">—</span></div>
-          <div class="stat">Your Balance: <span id="mechsBalance" class="price">—</span></div>
+          <h3 id="mechsName" class="nft-name">—</h3>
+          <div class="stat">
+            <span class="stat-label">Price/Token:</span>
+            <span id="mechsPrice" class="stat-value">loading…</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Currency:</span>
+            <span id="mechsCurrency" class="stat-value">loading…</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Supply:</span>
+            <span id="mechsSupply" class="stat-value">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Your Balance:</span>
+            <span id="mechsBalance" class="stat-value">—</span>
+          </div>
         </div>
       </div>
 
-      <div class="row">
-        <button id="mechsMint" class="btn">Mint Mech</button>
-        <span id="mechsStatus" class="status muted"></span>
-      </div>
+      <button id="mechsMint" class="mint-btn">Mint Mech</button>
+      <div id="mechsStatus" class="status"></div>
     </div>
 
     <!-- Tribal Punk Cryptids (KLY) -->
     <div class="card" id="cryptidsCard">
       <h2>Tribal Punk Cryptids</h2>
-      <div class="muted contract">Contract: <code>0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11</code> • Pays in KLY (auto‑approve)</div>
-      <div class="divider"></div>
-
-      <div class="row">
+      <span class="contract-address">Contract: 0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11</span>
+      
+      <div class="form-group">
         <label for="cryptidTokenId">Token ID</label>
         <select id="cryptidTokenId"></select>
-        <label for="cryptidQty">Qty</label>
+        <label for="cryptidQty">Quantity</label>
         <input id="cryptidQty" type="number" min="1" max="10" value="1"/>
       </div>
 
       <div class="preview">
         <img id="cryptidImg" alt="Preview" loading="lazy"/>
         <div class="meta">
-          <h3 id="cryptidName">—</h3>
-          <div class="stat">Price/Token: <span id="cryptidPrice" class="price">loading…</span></div>
-          <div class="stat">Currency: <span id="cryptidCurrency" class="price">loading…</span></div>
-          <div class="stat">Supply: <span id="cryptidSupply" class="price">—</span></div>
-          <div class="stat">Your Balance: <span id="cryptidBalance" class="price">—</span></div>
+          <h3 id="cryptidName" class="nft-name">—</h3>
+          <div class="stat">
+            <span class="stat-label">Price/Token:</span>
+            <span id="cryptidPrice" class="stat-value">loading…</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Currency:</span>
+            <span id="cryptidCurrency" class="stat-value">loading…</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Supply:</span>
+            <span id="cryptidSupply" class="stat-value">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Your Balance:</span>
+            <span id="cryptidBalance" class="stat-value">—</span>
+          </div>
         </div>
       </div>
 
-      <div class="row">
-        <button id="cryptidMint" class="btn">Mint Cryptid</button>
-        <span id="cryptidStatus" class="status muted"></span>
-      </div>
+      <button id="cryptidMint" class="mint-btn">Mint Cryptid</button>
+      <div id="cryptidStatus" class="status"></div>
     </div>
   </section>
 
   <footer>They took the land. We took the future.</footer>
 </div>
-
-<script type="module">
+<script>
   // ------------ CONFIG ------------
-  const BSC_CHAIN = 56; // 97 for testnet
-  const CONTRACT_MECHS = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989";  // Drop1155
-  const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // Drop1155
-  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";        // ERC-20 (on BSC)
+  const BSC_CHAIN_ID = 56;
+  const CONTRACT_MECHS = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989";
+  const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11";
+  const KLY_TOKEN = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";       // ERC-20 (on BSC)
 
   // Optional price pins
   const FORCED_MECHS_PRICE_BNB = "0.0063"; // keep stable at ~$5, or null
@@ -214,171 +557,85 @@
   ];
 
   // ------------ DOM ------------
-  const $ = (id)=>document.getElementById(id);
-  const connectBtn = $("connectBtn"), addrEl = $("addr"), connStatus = $("connStatus");
-  const balanceDisplay = $("balanceDisplay"), balanceAmount = $("balanceAmount"), balanceCurrency = $("balanceCurrency");
+  // DOM Elements
+  const connectBtn = document.getElementById('connectBtn');
+  const walletInfo = document.getElementById('walletInfo');
+  const walletAddress = document.getElementById('walletAddress');
+  const networkName = document.getElementById('networkName');
+  const balanceAmount = document.getElementById('balanceAmount');
+  const balanceCurrency = document.getElementById('balanceCurrency');
+  const connStatus = document.getElementById('connStatus');
 
-  const mechs = {
-    sel:$("mechsTokenId"), qty:$("mechsQty"),
-    img:$("mechsImg"), name:$("mechsName"),
-    price:$("mechsPrice"), currency:$("mechsCurrency"), supply:$("mechsSupply"),
-    balance:$("mechsBalance"), mint:$("mechsMint"), status:$("mechsStatus")
-  };
-  const crypt = {
-    sel:$("cryptidTokenId"), qty:$("cryptidQty"),
-    img:$("cryptidImg"), name:$("cryptidName"),
-    price:$("cryptidPrice"), currency:$("cryptidCurrency"), supply:$("cryptidSupply"),
-    balance:$("cryptidBalance"), mint:$("cryptidMint"), status:$("cryptidStatus")
-  };
+  // Web3 Variables
+  let provider, signer, userAddress;
 
-  // Fill dropdowns
-  function fillOptions(sel, list){
-    sel.innerHTML = "";
-    list.forEach(x=>{
-      const o=document.createElement("option");
-      o.value = x.id; o.textContent = `${x.id} – ${x.name}`;
-      sel.appendChild(o);
-    });
-  }
-  fillOptions(mechs.sel, MECHS);
-  fillOptions(crypt.sel, CRYPTIDS);
-
-  // ------------ Web3 ------------
-  let web3Modal, provider, ethersProvider, signer, userAddr;
-
-  function initWeb3Modal(){
-    web3Modal = new window.Web3Modal.default({ 
-      cacheProvider: true,
-      theme: "dark",
-      providerOptions: {} 
-    });
-  }
-
-  function readProvider(){
-    return ethersProvider ?? new ethers.providers.JsonRpcProvider(READ_RPC);
-  }
-
-  function idToHex(n){ return n.toString(16).padStart(64, "0"); }
-
-  function ipfsHttp(url, gatewayIndex=0){
-    if (!url) return "";
-    if (!url.startsWith("ipfs://")) return url;
-    const cid = url.slice(7);
-    const gateways = [
-      "https://ipfs.io/ipfs/",
-      "https://cloudflare-ipfs.com/ipfs/",
-      "https://gateway.pinata.cloud/ipfs/"
-    ];
-    const path = cid;
-    return gateways[Math.min(gatewayIndex, gateways.length-1)] + path;
-  }
-
-  async function fetchJsonWithFallback(ipfsUrl){
-    let lastErr;
-    for (let i=0;i<3;i++){
-      const http = ipfsHttp(ipfsUrl, i);
-      try{
-        const r = await fetch(http);
-        if (!r.ok) throw new Error(`Fetch failed ${r.status}`);
-        return await r.json();
-      }catch(e){ lastErr = e; }
-    }
-    throw lastErr ?? new Error("Fetch failed");
-  }
-
-   async function connect() {
-  try {
-    // Disable button during connection attempt
-    connectBtn.disabled = true;
-    setStatus("warning", "Connecting wallet...");
-    connectBtn.classList.add("loading");
-
-    // Initialize Web3Modal connection
-    const instance = await web3Modal.connect();
-    provider = instance;
-    ethersProvider = new ethers.providers.Web3Provider(provider, "any");
-
-    // Request account access
-    await provider.request?.({ method: "eth_requestAccounts" });
-
-    // Verify we're on the correct network (BSC in this case)
-    await ensureCorrectNetwork(BSC_CHAIN_ID);
-
-    // Set up event listeners
-    provider.on?.("chainChanged", handleChainChanged);
-    provider.on?.("accountsChanged", handleAccountsChanged);
-    provider.on?.("disconnect", handleDisconnect);
-
-    // Get signer and address
-    signer = ethersProvider.getSigner();
-    userAddr = await signer.getAddress();
-
-    // Update UI
-    addrEl.textContent = shorten(userAddr);
-    connectBtn.textContent = "Connected";
-    setStatus("success", "Wallet connected");
-    
-    // Show network indicator
-    networkIndicator.style.display = "inline-flex";
-    await updateNetworkIndicator();
-    
-    // Refresh all UI elements
-    await updateUi();
-
-  } catch (error) {
-    console.error("Connection error:", error);
-    
-    // Special handling for specific errors
-    let errorMessage = "Connection failed";
-    if (error.code === 4001) {
-      errorMessage = "Connection rejected by user";
-    } else if (error.code === -32002) {
-      errorMessage = "Connection request already pending";
-    } else {
-      errorMessage = error?.message || error.toString();
-    }
-    
-    setStatus("error", errorMessage);
-    connectBtn.textContent = "Connect Wallet";
-    
-    // If we have a provider but connection failed, clear it
-    if (provider) {
-      web3Modal?.clearCachedProvider?.();
-      provider = null;
-    }
-  } finally {
-    connectBtn.disabled = false;
-    connectBtn.classList.remove("loading");
-  }
-}
-
-async function ensureCorrectNetwork(requiredChainId) {
-  if (!provider || !provider.request) return false;
-  
-  try {
-    const chainId = await provider.request({ method: 'eth_chainId' });
-    const parsedChainId = parseInt(chainId, 16);
-    
-    if (parsedChainId === requiredChainId) {
-      return true;
-    }
-    
-    // Attempt to switch networks
+  // ------------ WALLET CONNECTION ------------
+  async function connectWallet() {
     try {
-      await provider.request({
+      if (!window.ethereum) {
+        throw new Error('MetaMask not detected. Please install MetaMask first.');
+      }
+
+      connectBtn.disabled = true;
+      connectBtn.classList.add('loading');
+      connStatus.textContent = 'Connecting to MetaMask...';
+      connStatus.className = 'status warning';
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      userAddress = accounts[0];
+      
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+
+      await checkNetwork();
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      updateWalletUI();
+      connStatus.textContent = 'Connected to MetaMask';
+      connStatus.className = 'status success';
+
+      initializeNFTData();
+      
+    } catch (error) {
+      console.error('Connection error:', error);
+      connStatus.textContent = error.message;
+      connStatus.className = 'status error';
+      connectBtn.disabled = false;
+      connectBtn.classList.remove('loading');
+    }
+  }
+
+  async function checkNetwork() {
+    const network = await provider.getNetwork();
+    const networkIndicator = document.querySelector('.network-indicator');
+    
+    if (network.chainId === BSC_CHAIN_ID) {
+      networkName.textContent = 'BSC';
+      networkIndicator.className = 'network-indicator valid';
+      return true;
+    } else {
+      networkName.textContent = `Chain ${network.chainId}`;
+      networkIndicator.className = 'network-indicator invalid';
+      throw new Error(`Please switch to Binance Smart Chain (Chain ID: ${BSC_CHAIN_ID})`);
+    }
+  }
+
+  async function switchNetwork() {
+    try {
+      await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${requiredChainId.toString(16)}` }],
+        params: [{ chainId: `0x${BSC_CHAIN_ID.toString(16)}` }],
       });
       return true;
     } catch (switchError) {
-      // This error code indicates that the chain has not been added to MetaMask
       if (switchError.code === 4902) {
         try {
-          // Add network configuration (example for BSC)
-          await provider.request({
+          await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: `0x${requiredChainId.toString(16)}`,
+              chainId: `0x${BSC_CHAIN_ID.toString(16)}`,
               chainName: 'Binance Smart Chain',
               nativeCurrency: {
                 name: 'BNB',
@@ -387,106 +644,61 @@ async function ensureCorrectNetwork(requiredChainId) {
               },
               rpcUrls: ['https://bsc-dataseed.binance.org/'],
               blockExplorerUrls: ['https://bscscan.com/']
-            }],
+            }]
           });
           return true;
         } catch (addError) {
-          throw new Error("Failed to add network: " + addError.message);
+          throw new Error('Failed to add BSC network to MetaMask');
         }
       }
-      throw new Error("Failed to switch network: " + switchError.message);
+      throw new Error('Failed to switch to BSC network');
     }
-  } catch (error) {
-    console.error("Network check failed:", error);
-    throw new Error(`Please connect to the correct network (Chain ID: ${requiredChainId})`);
   }
-}
 
-async function updateNetworkIndicator() {
-  if (!ethersProvider || !userAddr) return;
-  
-  try {
-    const network = await ethersProvider.getNetwork();
-    networkName.textContent = getNetworkName(network.chainId);
+  function updateWalletUI() {
+    connectBtn.textContent = 'Connected';
+    walletInfo.style.display = 'flex';
+    walletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+    updateBalance();
+  }
+
+  async function updateBalance() {
+    if (!provider || !userAddress) return;
     
-    // Highlight if on wrong network
-    if (network.chainId === BSC_CHAIN_ID) {
-      networkIndicator.className = "network-indicator valid";
-    } else {
-      networkIndicator.className = "network-indicator invalid";
+    try {
+      const balance = await provider.getBalance(userAddress);
+      balanceAmount.textContent = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
+      balanceCurrency.textContent = 'BNB';
+    } catch (error) {
+      console.error('Error fetching balance:', error);
     }
-  } catch (error) {
-    console.error("Failed to update network indicator:", error);
-    networkIndicator.className = "network-indicator invalid";
-    networkName.textContent = "Error";
   }
-}
 
-function getNetworkName(chainId) {
-  const networks = {
-    1: "Ethereum",
-    56: "BSC",
-    137: "Polygon",
-    686: "KLY",
-    97: "BSC Testnet"
-  };
-  return networks[chainId] || `Chain ${chainId}`;
-}
-
-function handleChainChanged(chainId) {
-  // Reload when chain changes
-  window.location.reload();
-}
-
-function handleAccountsChanged(accounts) {
-  if (!accounts?.length) {
-    handleDisconnect();
-  } else {
-    userAddr = accounts[0];
-    addrEl.textContent = shorten(userAddr);
-    updateUi();
+  function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+      disconnectWallet();
+    } else if (accounts[0] !== userAddress) {
+      userAddress = accounts[0];
+      walletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+      updateBalance();
+    }
   }
-}
 
-function handleDisconnect() {
-  web3Modal?.clearCachedProvider?.();
-  provider = signer = ethersProvider = null;
-  userAddr = null;
-  
-  // Reset UI
-  addrEl.textContent = "—";
-  networkIndicator.style.display = "none";
-  balanceDisplay.style.display = "none";
-  connectBtn.textContent = "Connect Wallet";
-  setStatus("warning", "Wallet disconnected");
-}
-
-async function updateUi() {
-  if (!ethersProvider || !userAddr) return;
-  
-  try {
-    // Update network indicator
-    await updateNetworkIndicator();
-    
-    // Update balance display
-    const balance = await ethersProvider.getBalance(userAddr);
-    balanceAmount.textContent = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
-    balanceDisplay.style.display = "flex";
-    
-    // Update NFT data
-    await refreshAll();
-  } catch (error) {
-    console.error("UI update failed:", error);
-    setStatus("error", "Failed to update wallet info");
+  function handleChainChanged(chainId) {
+    window.location.reload();
   }
-}
 
-// Initialize on load
-window.addEventListener("load", () => {
-  initWeb3Modal();
-  connectBtn.addEventListener("click", connect);
-  setStatus("", "");
-});
+  function disconnectWallet() {
+    userAddress = null;
+    provider = null;
+    signer = null;
+    connectBtn.textContent = 'Connect MetaMask';
+    walletInfo.style.display = 'none';
+    connStatus.textContent = '';
+    connectBtn.disabled = false;
+    connectBtn.classList.remove('loading');
+  }
+
   // ------------ Helpers ------------
   async function load1155Meta(contractAddr, tokenId) {
     const c = new ethers.Contract(contractAddr, DROP1155_ABI, readProvider());
