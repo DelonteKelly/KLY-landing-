@@ -816,56 +816,57 @@ async function buySolCoin(humanQty = "1") {
 
   try {
     const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
-    await inspectClaim();
 
-    // 0) Fetch condition
+    // Optional: run the inspector if you added it earlier
+    if (typeof inspectClaim === "function") {
+      await inspectClaim();
+    }
+
+    // 1) Read active condition
     const condId = await drop.getActiveClaimConditionId();
     const cond = await drop.getClaimConditionById(condId);
-    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // in payment currency base units
-    const currencyAddr = cond.currency;
-    const startTs = Number(cond.startTimestamp || 0);
+    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // payment currency base units
+    const currencyAddr = cond.currency; // <-- use exactly as returned (could be 0xEeee... for native)
 
-    // 1) Quantity / decimals (drop token should implement ERC20)
+    // 2) Drop token decimals / qty
     const dropToken = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
     const dropDecimals = await dropToken.decimals();
     const qtyBase = ethers.utils.parseUnits(String(humanQty), dropDecimals);
 
-    // 2) Is native payment?
-    const NATIVE_ZERO = ethers.constants.AddressZero;
+    // 3) Native vs ERC-20 detection (for value/approval only)
     const isNative =
-      currencyAddr === NATIVE_ZERO ||
+      currencyAddr === ethers.constants.AddressZero ||
       (typeof currencyAddr === "string" &&
         currencyAddr.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
 
-    // 3) Preflight: compute total and check balances/allowance
+    // 4) Compute total and handle balances/allowance
     const scaleDrop = ethers.BigNumber.from(10).pow(dropDecimals);
-    const totalCost = pricePerToken.mul(qtyBase).div(scaleDrop); // payment currency base units (wei if native)
+    const totalCost = pricePerToken.mul(qtyBase).div(scaleDrop);
 
     let overrides = {};
     if (!pricePerToken.isZero()) {
       if (isNative) {
-        // Native payment; need enough BNB for value + gas
-        overrides = { value: totalCost };
+        // Need BNB value
         const myBNB = await provider.getBalance(userAddress);
         if (myBNB.lt(totalCost)) {
           return showNotification(
-            `Insufficient BNB for purchase. Need ${ethers.utils.formatEther(totalCost)} BNB`,
+            `Insufficient BNB. Need ${ethers.utils.formatEther(totalCost)} BNB`,
             "error"
           );
         }
+        overrides = { value: totalCost };
       } else {
-        // ERC20 payment; check token balance + allowance
+        // Need ERC-20 balance + allowance
         const payToken = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
-        const [payDec, myBal, allowance] = await Promise.all([
+        const [dec, bal, allowance] = await Promise.all([
           payToken.decimals(),
           payToken.balanceOf(userAddress),
           payToken.allowance(userAddress, SOL_DROP_ADDRESS)
         ]);
-
-        if (myBal.lt(totalCost)) {
+        if (bal.lt(totalCost)) {
           const sym = await safeSymbol(payToken);
           return showNotification(
-            `Insufficient ${sym} balance. Need ${ethers.utils.formatUnits(totalCost, payDec)} ${sym}`,
+            `Insufficient ${sym}. Need ${ethers.utils.formatUnits(totalCost, dec)} ${sym}`,
             "error"
           );
         }
@@ -876,20 +877,7 @@ async function buySolCoin(humanQty = "1") {
       }
     }
 
-    // 4) Extra context in console (helps debugging live)
-    console.log("[Buy] condition:", {
-      condId: condId.toString(),
-      startTimestamp: startTs,
-      pricePerToken: pricePerToken.toString(),
-      currency: currencyAddr,
-      quantityLimitPerWallet: cond.quantityLimitPerWallet?.toString?.(),
-      maxClaimableSupply: cond.maxClaimableSupply?.toString?.(),
-      supplyClaimed: cond.supplyClaimed?.toString?.(),
-    });
-    console.log("[Buy] qtyBase:", qtyBase.toString());
-    console.log("[Buy] isNative:", isNative, " totalCost:", totalCost.toString());
-
-    // 5) Allowlist proof (blank if public sale)
+    // 5) Allowlist proof (empty unless you actually have one)
     const allowlistProof = {
       proof: [],
       quantityLimitPerWallet: ethers.constants.Zero,
@@ -897,11 +885,11 @@ async function buySolCoin(humanQty = "1") {
       currency: ethers.constants.AddressZero
     };
 
-    // 6) Dry‑run (this is likely where your screenshot came from)
+    // 6) Dry-run
     await drop.callStatic.claim(
       userAddress,
       qtyBase,
-      isNative ? NATIVE_ZERO : currencyAddr,
+      currencyAddr,          // <-- keep EXACT currencyAddr from condition
       pricePerToken,
       allowlistProof,
       "0x",
@@ -912,7 +900,7 @@ async function buySolCoin(humanQty = "1") {
     const tx = await drop.claim(
       userAddress,
       qtyBase,
-      isNative ? NATIVE_ZERO : currencyAddr,
+      currencyAddr,          // <-- keep EXACT currencyAddr from condition
       pricePerToken,
       allowlistProof,
       "0x",
@@ -921,9 +909,10 @@ async function buySolCoin(humanQty = "1") {
     await tx.wait();
     showNotification("✅ SólCoin purchase confirmed!", "success", `${EXPLORER_URL}/tx/${tx.hash}`);
   } catch (err) {
-  const reason = await decodeRevert(err);
-  console.error("Buy SólCoin error:", err);
-  showNotification(`Buy SólCoin failed: ${reason}`, "error");
+    const reason = (typeof decodeRevert === "function") ? await decodeRevert(err) : (err.message || "reverted");
+    console.error("Buy SólCoin error:", err);
+    showNotification(`Buy SólCoin failed: ${reason}`, "error");
+  }
 }
 
   async function inspectClaim() {
