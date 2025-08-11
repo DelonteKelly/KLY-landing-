@@ -545,20 +545,21 @@
   const EXPLORER_URL = "https://bscscan.com";
   const TOKEN_SYMBOL = "KLY";
 
-  const TOKEN_ABI = [
-    "function symbol() view returns (string)",
-    "function decimals() view returns (uint8)",
-    "function balanceOf(address) view returns (uint256)",
-    "function mintTo(address to, uint256 amount)"
-  ];
-
-const DROP20_ABI = [
-  "function getActiveClaimConditionId() view returns (uint256)",
-  "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
-  "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+const TOKEN_ABI = [
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address) view returns (uint256)",
+  "function mintTo(address to, uint256 amount)"
 ];
 
+  const DROP20_ABI = [
+    "function getActiveClaimConditionId() view returns (uint256)",
+    "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
+    "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+  ];
 
+  // Handy constant for native BNB checks
+  const NATIVE_TOKEN_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
   let tokenDecimals = 18;
@@ -630,7 +631,7 @@ const DROP20_ABI = [
         return;
       }
 
-      contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
+     contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
       const code = await provider.getCode(CONTRACT_ADDRESS);
       if (!code || code === "0x") {
         return showNotification("Contract not found on BNB Chain", "error");
@@ -736,88 +737,58 @@ const DROP20_ABI = [
       getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
     }
   }
-async function buySolCoin(humanQty = "1") {
-  if (!signer) return showNotification("Please connect your wallet first", "error");
-  try {
-    showNotification("Preparing SólCoin purchase...", "warning");
-    txStatus.style.display = "block";
-    txHashLink.textContent = "Preparing transaction...";
-    txHashLink.href = "#";
-    txProgress.style.width = "10%";
 
-    const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
+  async function buySolCoin(humanQty = "1") {
+    if (!signer) return showNotification("Please connect your wallet first", "error");
+    try {
+      const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
+      const condId = await drop.getActiveClaimConditionId();
+      const cond = await drop.getClaimConditionById(condId);
+      const pricePerToken = ethers.BigNumber.from(cond.pricePerToken);
+      const currency = cond.currency;
 
-    // Active claim condition (price + currency)
-    const condId = await drop.getActiveClaimConditionId();
-    const cond   = await drop.getClaimConditionById(condId);
-    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // 1e18 scaled
-    const currency      = cond.currency;
+      // read token decimals from the drop token
+      const token = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
+      const decimals = await token.decimals();
 
-    // Read token decimals from the drop token itself
-    const token = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
-    const decimals = await token.decimals();
+      const qtyBase = ethers.utils.parseUnits(humanQty, decimals);
 
-    // Convert human quantity -> base units
-    const qtyBase = ethers.utils.parseUnits(humanQty, decimals);
+      const allowlistProof = {
+        proof: [],
+        quantityLimitPerWallet: ethers.constants.Zero,
+        pricePerToken: ethers.constants.Zero,
+        currency: ethers.constants.AddressZero
+      };
 
-    // Public sale: empty allowlist proof
-    const allowlistProof = {
-      proof: [],
-      quantityLimitPerWallet: ethers.constants.Zero,
-      pricePerToken: ethers.constants.Zero,
-      currency: ethers.constants.AddressZero
-    };
+      const isNative =
+        currency === ethers.constants.AddressZero ||
+        (typeof currency === "string" && currency.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
 
-    // Native vs ERC-20 currency
-    const isNative =
-      currency === ethers.constants.AddressZero ||
-      (typeof currency === "string" &&
-       currency.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
-
-    let overrides = {};
-    if (isNative && !pricePerToken.isZero()) {
-      // total = pricePerToken * humanQty / 10^decimals
-      const scale = ethers.BigNumber.from(10).pow(decimals);
-      const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
-      overrides = { value: total };
-    } else if (!isNative && !pricePerToken.isZero()) {
-      // If priced in an ERC-20, approve first (assumes 18-dec currency; tell me if different)
-      const payToken = new ethers.Contract(currency, ERC20_ABI, signer);
-      const scale = ethers.BigNumber.from(10).pow(decimals);
-      const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
-      const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
-      if (allowance.lt(total)) {
-        const txApprove = await payToken.approve(SOL_DROP_ADDRESS, total);
-        await txApprove.wait();
+      let overrides = {};
+      if (isNative && !pricePerToken.isZero()) {
+        const scale = ethers.BigNumber.from(10).pow(decimals);
+        overrides = { value: pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale) };
+      } else if (!isNative && !pricePerToken.isZero()) {
+        const payToken = new ethers.Contract(currency, ERC20_ABI, signer);
+        const scale = ethers.BigNumber.from(10).pow(decimals);
+        const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
+        const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
+        if (allowance.lt(total)) { 
+          const t = await payToken.approve(SOL_DROP_ADDRESS, total); 
+          await t.wait(); 
+        }
       }
+
+      await drop.callStatic.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
+      const tx = await drop.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
+      await tx.wait();
+      showNotification("✅ SólCoin purchase confirmed!", "success");
+    } catch (err) {
+      console.error("Buy SólCoin error:", err);
+      showNotification(`Buy SólCoin failed: ${err.message || "unknown error"}`, "error");
     }
-
-    // Preflight
-    await drop.callStatic.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
-
-    // Send
-    const tx = await drop.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
-
-    const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
-    txHashLink.textContent = formatAddress(tx.hash);
-    txHashLink.href = txUrl;
-    txProgress.style.width = "40%";
-
-    let p = 40; clearInterval(txInterval);
-    txInterval = setInterval(() => { p += 1; if (p < 90) txProgress.style.width = `${p}%`; }, 500);
-
-    await tx.wait();
-    clearInterval(txInterval);
-    txProgress.style.width = "100%";
-    showNotification("✅ SólCoin purchase confirmed!", "success");
-  } catch (err) {
-    clearInterval(txInterval);
-    console.error("Buy SólCoin error:", err);
-    showNotification(`Buy SólCoin failed: ${err.message || "unknown error"}`, "error");
-    txStatus.style.display = "none";
   }
-}
-  
+
   function viewOnExplorer() {
     window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
   }
@@ -884,14 +855,14 @@ async function buySolCoin(humanQty = "1") {
     connectBtn.addEventListener("click", connectWallet);
     getTokensButton.addEventListener("click", mintTokens);
     viewExplorer.addEventListener("click", viewOnExplorer);
-  }
-
+    
     document.body.addEventListener("click", (e) => {
-    if (e.target && e.target.id === "buySolBtn") {
-      console.log("[Buy SólCoin] click detected");
-      buySolCoin("1"); // change qty if you want
-    }
-  });
+      if (e.target && e.target.id === "buySolBtn") {
+        console.log("[Buy SólCoin] click detected");
+        buySolCoin("1"); // change qty if you want
+      }
+    });
+  }
 
   window.addEventListener('DOMContentLoaded', () => {
     initParticles();
