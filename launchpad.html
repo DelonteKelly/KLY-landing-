@@ -534,23 +534,40 @@
 <script src="https://unpkg.com/@walletconnect/web3-provider@2.0.0-beta.10/dist/umd/index.min.js"></script>
 
 <script>
+  /***********************
+   * Constants & Config  *
+   ***********************/
   const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
   const SOL_DROP_ADDRESS = "0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026";
   const BSC_CHAIN_ID = 56;
+  const EXPLORER_URL = "https://bscscan.com";
+  const TOKEN_SYMBOL = "KLY";
+
+  // Prefer multiple RPCs; we'll use the first in WalletConnect and the full list for addChain
   const RPC_URLS = [
     "https://bsc-dataseed.binance.org/",
     "https://bsc-dataseed1.defibit.io/",
     "https://bsc-dataseed1.ninicoin.io/"
   ];
-  const EXPLORER_URL = "https://bscscan.com";
-  const TOKEN_SYMBOL = "KLY";
 
-const TOKEN_ABI = [
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function mintTo(address to, uint256 amount)"
-];
+  // Handy constant for native BNB checks
+  const NATIVE_TOKEN_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+  // ---- Minimal ABIs ----
+  const TOKEN_ABI = [
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function balanceOf(address) view returns (uint256)",
+    "function mintTo(address to, uint256 amount)"
+  ];
+
+  const ERC20_ABI = [
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)",
+    "function balanceOf(address) view returns (uint256)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function approve(address spender, uint256 value) returns (bool)"
+  ];
 
   const DROP20_ABI = [
     "function getActiveClaimConditionId() view returns (uint256)",
@@ -558,13 +575,16 @@ const TOKEN_ABI = [
     "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
   ];
 
-  // Handy constant for native BNB checks
-  const NATIVE_TOKEN_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-
+  /***********************
+   * State               *
+   ***********************/
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
   let tokenDecimals = 18;
   let txInterval;
 
+  /***********************
+   * DOM Elements        *
+   ***********************/
   const connectBtn = document.getElementById("connectWallet");
   const buttonText = document.getElementById("buttonText");
   const walletStatus = document.getElementById("walletStatus");
@@ -584,34 +604,32 @@ const TOKEN_ABI = [
   const minutesEl = document.getElementById("minutes");
   const secondsEl = document.getElementById("seconds");
 
+  /***********************
+   * Web3Modal Setup     *
+   ***********************/
   function setupWeb3Modal() {
+    // Web3Modal v1 + WalletConnect v1 (UMD builds)
     const providerOptions = {
       walletconnect: {
-        package: WalletConnectProvider.default,
+        package: window.WalletConnectProvider?.default || window.WalletConnectProvider,
         options: {
-          projectId: "df8063092ef3c627437d698df0977bc1",
-          rpcMap: {
-            56: "https://bsc-dataseed.binance.org/",
-          },
-          chains: [56],
-          showQrModal: true,
-          metadata: {
-            name: "KLY Launchpad",
-            description: "KLY Token Launch Portal",
-            url: "https://kellylegacyestates.com",
-            icons: ["https://kellylegacyestates.com/icon.png"]
-          }
+          rpc: { [BSC_CHAIN_ID]: RPC_URLS[0] },
+          chainId: BSC_CHAIN_ID,
+          qrcode: true
         }
       }
     };
 
-    web3Modal = new Web3Modal.default({
+    web3Modal = new window.Web3Modal.default({
       cacheProvider: true,
       providerOptions,
       theme: "dark"
     });
   }
 
+  /***********************
+   * Connect Flow        *
+   ***********************/
   async function connectWallet() {
     try {
       showNotification("Connecting wallet...", "warning");
@@ -625,20 +643,26 @@ const TOKEN_ABI = [
 
       const network = await provider.getNetwork();
       if (network.chainId !== BSC_CHAIN_ID) {
-        showNotification("Please switch to BNB Chain", "error");
-        buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-        connectBtn.disabled = false;
-        return;
+        const switched = await ensureBscChain();
+        if (!switched) {
+          showNotification("Please switch to BNB Smart Chain (56)", "error");
+          buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+          connectBtn.disabled = false;
+          return;
+        }
       }
 
-     contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
+      contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
       const code = await provider.getCode(CONTRACT_ADDRESS);
       if (!code || code === "0x") {
-        return showNotification("Contract not found on BNB Chain", "error");
+        showNotification("Contract not found on BNB Chain", "error");
+        resetUiToDisconnected();
+        return;
       }
 
       walletStatus.textContent = formatAddress(userAddress);
       buttonText.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+      contractAddress.textContent = formatAddress(CONTRACT_ADDRESS);
 
       await loadTokenInfo();
       showNotification("Wallet connected successfully", "success");
@@ -646,8 +670,12 @@ const TOKEN_ABI = [
       if (externalProvider.on) {
         externalProvider.on("accountsChanged", handleAccountsChanged);
         externalProvider.on("chainChanged", () => window.location.reload());
+        externalProvider.on("disconnect", () => {
+          web3Modal.clearCachedProvider?.();
+          resetUiToDisconnected();
+          showNotification("Wallet disconnected", "error");
+        });
       }
-
     } catch (err) {
       console.error("Connection error:", err);
       showNotification("Connection failed", "error");
@@ -657,12 +685,38 @@ const TOKEN_ABI = [
     }
   }
 
+  async function ensureBscChain() {
+    if (!provider) return false;
+    const hexChainId = "0x" + BSC_CHAIN_ID.toString(16);
+    try {
+      await provider.send("wallet_switchEthereumChain", [{ chainId: hexChainId }]);
+      return true;
+    } catch (switchErr) {
+      // Add if not present
+      if (switchErr.code === 4902 || switchErr?.data?.originalError?.code === 4902) {
+        try {
+          await provider.send("wallet_addEthereumChain", [{
+            chainId: hexChainId,
+            chainName: "BNB Smart Chain",
+            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+            rpcUrls: RPC_URLS,
+            blockExplorerUrls: [EXPLORER_URL]
+          }]);
+          return true;
+        } catch (addErr) {
+          console.error("Add chain error:", addErr);
+          return false;
+        }
+      }
+      console.error("Switch chain error:", switchErr);
+      return false;
+    }
+  }
+
   function handleAccountsChanged(accounts) {
     if (!accounts.length) {
-      walletStatus.textContent = "Not connected";
-      buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-      tokenInfo.style.display = "none";
-      actionButtons.style.display = "none";
+      web3Modal.clearCachedProvider?.();
+      resetUiToDisconnected();
       showNotification("Wallet disconnected", "error");
     } else {
       userAddress = accounts[0];
@@ -672,6 +726,17 @@ const TOKEN_ABI = [
     }
   }
 
+  function resetUiToDisconnected() {
+    walletStatus.textContent = "Not connected";
+    buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
+    tokenInfo.style.display = "none";
+    actionButtons.style.display = "none";
+    txStatus.style.display = "none";
+  }
+
+  /***********************
+   * Token Info & Mint   *
+   ***********************/
   async function loadTokenInfo() {
     try {
       showNotification("Loading token information...", "warning");
@@ -705,11 +770,16 @@ const TOKEN_ABI = [
       txProgress.style.width = "10%";
 
       const mintAmount = ethers.utils.parseUnits("100", tokenDecimals);
-      const gasEstimate = await contract.estimateGas.mintTo(userAddress, mintAmount);
-      const tx = await contract.mintTo(userAddress, mintAmount, {
-        gasLimit: gasEstimate.mul(120).div(100)
-      });
 
+      let gasLimit;
+      try {
+        const est = await contract.estimateGas.mintTo(userAddress, mintAmount);
+        gasLimit = est.mul(120).div(100);
+      } catch {
+        gasLimit = ethers.BigNumber.from(250000); // safe-ish fallback
+      }
+
+      const tx = await contract.mintTo(userAddress, mintAmount, { gasLimit });
       const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
       txHashLink.textContent = formatAddress(tx.hash);
       txHashLink.href = txUrl;
@@ -726,11 +796,11 @@ const TOKEN_ABI = [
       txProgress.style.width = "100%";
       await loadTokenInfo();
       showNotification("Tokens minted successfully!", "success");
-
     } catch (err) {
       clearInterval(txInterval);
       console.error("Mint error:", err);
-      showNotification("Mint failed: " + (err.message || "unknown error"), "error");
+      const msg = (err && err.error && err.error.message) || err.message || "unknown error";
+      showNotification("Mint failed: " + msg, "error");
       txStatus.style.display = "none";
     } finally {
       getTokensButton.disabled = false;
@@ -738,21 +808,28 @@ const TOKEN_ABI = [
     }
   }
 
+  /***********************
+   * Claim / Buy Flow    *
+   ***********************/
   async function buySolCoin(humanQty = "1") {
     if (!signer) return showNotification("Please connect your wallet first", "error");
     try {
       const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
+
+      // 1) Active condition
       const condId = await drop.getActiveClaimConditionId();
       const cond = await drop.getClaimConditionById(condId);
-      const pricePerToken = ethers.BigNumber.from(cond.pricePerToken);
-      const currency = cond.currency;
+      const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // in payment currency base units
+      const currencyAddr = cond.currency;
 
-      // read token decimals from the drop token
-      const token = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
-      const decimals = await token.decimals();
+      // 2) Drop token decimals (quantity units)
+      const dropToken = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
+      const dropDecimals = await dropToken.decimals();
 
-      const qtyBase = ethers.utils.parseUnits(humanQty, decimals);
+      // 3) Quantity in base units of drop token
+      const qtyBase = ethers.utils.parseUnits(humanQty, dropDecimals);
 
+      // 4) Allowlist proof (empty)
       const allowlistProof = {
         proof: [],
         quantityLimitPerWallet: ethers.constants.Zero,
@@ -760,27 +837,54 @@ const TOKEN_ABI = [
         currency: ethers.constants.AddressZero
       };
 
+      // 5) Native or ERC20 payment?
+      const NATIVE_ZERO = ethers.constants.AddressZero;
       const isNative =
-        currency === ethers.constants.AddressZero ||
-        (typeof currency === "string" && currency.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
+        currencyAddr === NATIVE_ZERO ||
+        (typeof currencyAddr === "string" &&
+          currencyAddr.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
 
+      // 6) Compute total and approve if necessary
       let overrides = {};
-      if (isNative && !pricePerToken.isZero()) {
-        const scale = ethers.BigNumber.from(10).pow(decimals);
-        overrides = { value: pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale) };
-      } else if (!isNative && !pricePerToken.isZero()) {
-        const payToken = new ethers.Contract(currency, ERC20_ABI, signer);
-        const scale = ethers.BigNumber.from(10).pow(decimals);
-        const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
-        const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
-        if (allowance.lt(total)) { 
-          const t = await payToken.approve(SOL_DROP_ADDRESS, total); 
-          await t.wait(); 
+      if (!pricePerToken.isZero()) {
+        const scaleDrop = ethers.BigNumber.from(10).pow(dropDecimals);
+        if (isNative) {
+          // Total wei = pricePerToken * qtyBase / 10^dropDecimals
+          const totalWei = pricePerToken.mul(qtyBase).div(scaleDrop);
+          overrides = { value: totalWei };
+        } else {
+          // ERC20 payment token
+          const payToken = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
+          // pricePerToken already in payToken base units; compute total in same units
+          const totalCost = pricePerToken.mul(qtyBase).div(scaleDrop);
+          const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
+          if (allowance.lt(totalCost)) {
+            const approveTx = await payToken.approve(SOL_DROP_ADDRESS, totalCost);
+            await approveTx.wait();
+          }
         }
       }
 
-      await drop.callStatic.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
-      const tx = await drop.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
+      // 7) Dry run then send
+      await drop.callStatic.claim(
+        userAddress,
+        qtyBase,
+        isNative ? NATIVE_ZERO : currencyAddr,
+        pricePerToken,
+        allowlistProof,
+        "0x",
+        overrides
+      );
+
+      const tx = await drop.claim(
+        userAddress,
+        qtyBase,
+        isNative ? NATIVE_ZERO : currencyAddr,
+        pricePerToken,
+        allowlistProof,
+        "0x",
+        overrides
+      );
       await tx.wait();
       showNotification("✅ SólCoin purchase confirmed!", "success");
     } catch (err) {
@@ -789,6 +893,9 @@ const TOKEN_ABI = [
     }
   }
 
+  /***********************
+   * UI Helpers          *
+   ***********************/
   function viewOnExplorer() {
     window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
   }
@@ -819,16 +926,21 @@ const TOKEN_ABI = [
     }, 5000);
   }
 
+  /***********************
+   * Countdown (fixed)   *
+   ***********************/
   function startCountdown() {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 7);
+
+    let countdownInterval = null;
 
     const updateCountdown = () => {
       const now = new Date();
       const diff = targetDate - now;
 
       if (diff <= 0) {
-        clearInterval(countdownInterval);
+        if (countdownInterval) clearInterval(countdownInterval);
         daysEl.textContent = "00";
         hoursEl.textContent = "00";
         minutesEl.textContent = "00";
@@ -848,32 +960,24 @@ const TOKEN_ABI = [
     };
 
     updateCountdown();
-    const countdownInterval = setInterval(updateCountdown, 1000);
+    countdownInterval = setInterval(updateCountdown, 1000);
   }
 
+  /***********************
+   * Events & Init       *
+   ***********************/
   function setupEventListeners() {
     connectBtn.addEventListener("click", connectWallet);
     getTokensButton.addEventListener("click", mintTokens);
     viewExplorer.addEventListener("click", viewOnExplorer);
-    
+
     document.body.addEventListener("click", (e) => {
       if (e.target && e.target.id === "buySolBtn") {
         console.log("[Buy SólCoin] click detected");
-        buySolCoin("1"); // change qty if you want
+        buySolCoin("1"); // adjust quantity if desired
       }
     });
   }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    initParticles();
-    setupWeb3Modal();
-    setupEventListeners();
-    startCountdown();
-
-    if (window.Web3Modal && web3Modal && web3Modal.cachedProvider) {
-      connectWallet();
-    }
-  });
 
   function initParticles() {
     particlesJS('particles-js', {
@@ -898,6 +1002,18 @@ const TOKEN_ABI = [
       "retina_detect": true
     });
   }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initParticles();
+    setupWeb3Modal();
+    setupEventListeners();
+    startCountdown();
+
+    // Auto-connect if cached provider exists
+    if (web3Modal?.cachedProvider) {
+      connectWallet();
+    }
+  });
 </script>
 </body>
 </html>
