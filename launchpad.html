@@ -920,68 +920,99 @@ async function buySolCoin(humanQty = "1") {
     await tx.wait();
     showNotification("✅ SólCoin purchase confirmed!", "success", `${EXPLORER_URL}/tx/${tx.hash}`);
   } catch (err) {
-    const friendly = await decodeRevert(err, provider);
-    console.error("Buy SólCoin error:", err);
-    showNotification(`Buy SólCoin failed: ${friendly}`, "error");
+  const reason = await decodeRevert(err);
+  console.error("Buy SólCoin error:", err);
+  showNotification(`Buy SólCoin failed: ${reason}`, "error");
+}
+
+  async function inspectClaim() {
+  const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer || provider);
+  const condId = await drop.getActiveClaimConditionId();
+  const c = await drop.getClaimConditionById(condId);
+
+  const now = Math.floor(Date.now() / 1000);
+  const start = Number(c.startTimestamp);
+  const currency = c.currency;
+  const price = ethers.BigNumber.from(c.pricePerToken);
+  const qPerWallet = ethers.BigNumber.from(c.quantityLimitPerWallet || 0);
+  const maxSup = ethers.BigNumber.from(c.maxClaimableSupply || 0);
+  const claimed = ethers.BigNumber.from(c.supplyClaimed || 0);
+
+  console.table({
+    condId: condId.toString(),
+    startTimestamp: `${start} (${toDate(start)})`,
+    now: `${now} (${toDate(now)})`,
+    saleActive: now >= start,
+    currency,
+    pricePerToken_raw: price.toString(),
+    quantityLimitPerWallet: qPerWallet.toString(),
+    maxClaimableSupply: maxSup.toString(),
+    supplyClaimed: claimed.toString(),
+    merkleRoot: c.merkleRoot
+  });
+
+  // Quick hints:
+  if (now < start) {
+    showNotification("Sale not active yet (claim condition start in future).", "warning");
+  }
+  if (currency !== ethers.constants.AddressZero &&
+      currency.toLowerCase() !== NATIVE_TOKEN_SENTINEL.toLowerCase()) {
+    showNotification("Payment is ERC‑20 (not BNB). Ensure you hold that token & approve.", "warning");
+  }
+  if (maxSup.gt(0) && claimed.gte(maxSup)) {
+    showNotification("Sold out: supply claimed meets maxClaimableSupply.", "error");
   }
 }
 
-  async function safeSymbol(erc20) {
-  try { return await erc20.symbol(); } catch { return "TOKEN"; }
+function toDate(ts) {
+  if (!ts) return "0";
+  const d = new Date(Number(ts) * 1000 || Number(ts));
+  if (Number.isNaN(d.getTime())) return String(ts);
+  return d.toISOString();
 }
 
-// Best effort revert decoding (Error(string), Panic(uint256), and a few common custom errors)
-async function decodeRevert(error, provider) {
+function selectorOf(data) {
+  return typeof data === "string" && data.startsWith("0x") ? data.slice(0, 10) : null;
+}
+
+async function decodeRevert(error) {
   try {
-    // ethers v5 shapes: error.error?.data, error.data, error.receipt?.revertReason, etc.
-    const data =
-      error?.error?.data ||
-      error?.data ||
-      error?.receipt?.revertReason ||
-      error?.reason ||
-      error?.message;
-
-    if (typeof data === "string" && data.startsWith("0x")) {
-      // Error(string) selector 0x08c379a0
-      if (data.slice(0, 10) === "0x08c379a0") {
-        const reason = ethers.utils.defaultAbiCoder.decode(["string"], "0x" + data.slice(10));
-        return String(reason);
-      }
-      // Panic(uint256) selector 0x4e487b71
-      if (data.slice(0, 10) === "0x4e487b71") {
-        const [code] = ethers.utils.defaultAbiCoder.decode(["uint256"], "0x" + data.slice(10));
-        return `Panic: ${code.toString()}`;
-      }
-      // Try a set of common custom errors used by drop contracts
-      const possibleErrors = new ethers.utils.Interface([
-        "error NotAuthorized()",
-        "error NotInMerkleProof()",
-        "error NotEnoughTokens()",
-        "error ClaimInactive(uint256 start, uint256 nowTs)",
-        "error ExceedsMaxPerWallet(uint256 limit, uint256 requested)",
-        "error ExceedsMaxSupply(uint256 max, uint256 requested)",
-        "error InsufficientFunds()",
-        "error InvalidCurrency(address expected, address provided)"
-      ]);
-      try {
-        const parsed = possibleErrors.parseError(data);
-        if (parsed) {
-          const args = parsed.args && parsed.args.length ? ` ${parsed.args.map(a => a.toString()).join(", ")}` : "";
-          return `${parsed.name}${args}`;
-        }
-      } catch { /* ignore */ }
-      // Unknown selector; fall through
-      return `Reverted (data=${data.slice(0, 18)}…)`;
+    const data = error?.error?.data || error?.data || error?.receipt?.revertReason || error?.message || "";
+    const sel = selectorOf(data);
+    // Standard Error(string)
+    if (sel === "0x08c379a0") {
+      const [reason] = ethers.utils.defaultAbiCoder.decode(["string"], "0x" + data.slice(10));
+      return reason;
     }
-
-    // If it's a plain message
-    if (typeof data === "string") return data;
-
-    return "Transaction reverted";
+    // Panic(uint256)
+    if (sel === "0x4e487b71") {
+      const [code] = ethers.utils.defaultAbiCoder.decode(["uint256"], "0x" + data.slice(10));
+      return `Panic: ${code.toString()}`;
+    }
+    // Try some common custom errors used by drop contracts (names may vary per implementation)
+    const iface = new ethers.utils.Interface([
+      "error NotAuthorized()",
+      "error NotInMerkleProof()",
+      "error NotEnoughTokens()",
+      "error ClaimInactive(uint256,uint256)",
+      "error ExceedsMaxPerWallet(uint256,uint256)",
+      "error ExceedsMaxSupply(uint256,uint256)",
+      "error InvalidCurrency(address,address)",
+      "error InsufficientFunds()",
+      "error WrongPrice(uint256,uint256)"
+    ]);
+    try {
+      const parsed = iface.parseError(data);
+      if (parsed) return parsed.name + (parsed.args?.length ? ` ${parsed.args.map(a => a.toString()).join(", ")}` : "");
+    } catch {}
+    if (sel) return `Reverted (selector ${sel})`;
+    return typeof data === "string" ? data : "Transaction reverted";
   } catch {
     return "Transaction reverted";
   }
 }
+ await inspectClaim();
+  
   /***********************
    * UI Helpers          *
    ***********************/
