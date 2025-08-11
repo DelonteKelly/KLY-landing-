@@ -552,11 +552,13 @@
     "function mintTo(address to, uint256 amount)"
   ];
 
-const ERC20_ABI = [
-  "function decimals() view returns (uint8)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
+const DROP20_ABI = [
+  "function getActiveClaimConditionId() view returns (uint256)",
+  "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
+  "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
 ];
+
+
 
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
   let tokenDecimals = 18;
@@ -734,7 +736,6 @@ const ERC20_ABI = [
       getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint Tokens';
     }
   }
-
 async function buySolCoin(humanQty = "1") {
   if (!signer) return showNotification("Please connect your wallet first", "error");
   try {
@@ -746,20 +747,20 @@ async function buySolCoin(humanQty = "1") {
 
     const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
 
-    // read claim condition
+    // Active claim condition (price + currency)
     const condId = await drop.getActiveClaimConditionId();
     const cond   = await drop.getClaimConditionById(condId);
     const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // 1e18 scaled
     const currency      = cond.currency;
 
-    // read token decimals from the drop token itself
+    // Read token decimals from the drop token itself
     const token = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
     const decimals = await token.decimals();
 
-    // convert human quantity -> base units (wei of token)
+    // Convert human quantity -> base units
     const qtyBase = ethers.utils.parseUnits(humanQty, decimals);
 
-    // allowlistProof for public phase (empty / no override)
+    // Public sale: empty allowlist proof
     const allowlistProof = {
       proof: [],
       quantityLimitPerWallet: ethers.constants.Zero,
@@ -767,7 +768,7 @@ async function buySolCoin(humanQty = "1") {
       currency: ethers.constants.AddressZero
     };
 
-    // detect native vs ERC-20 currency
+    // Native vs ERC-20 currency
     const isNative =
       currency === ethers.constants.AddressZero ||
       (typeof currency === "string" &&
@@ -775,15 +776,13 @@ async function buySolCoin(humanQty = "1") {
 
     let overrides = {};
     if (isNative && !pricePerToken.isZero()) {
-      // total = pricePerToken (1e18) * humanQty / 10^decimals
+      // total = pricePerToken * humanQty / 10^decimals
       const scale = ethers.BigNumber.from(10).pow(decimals);
       const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
       overrides = { value: total };
     } else if (!isNative && !pricePerToken.isZero()) {
-      // pay in ERC-20 currency -> approve first
+      // If priced in an ERC-20, approve first (assumes 18-dec currency; tell me if different)
       const payToken = new ethers.Contract(currency, ERC20_ABI, signer);
-      // currency decimals may differ; pricePerToken is 1e18 regardless, so scale like above
-      // assume currency also uses 18 decimals (Thirdweb default). If not, tell me and I’ll adapt.
       const scale = ethers.BigNumber.from(10).pow(decimals);
       const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
       const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
@@ -793,34 +792,18 @@ async function buySolCoin(humanQty = "1") {
       }
     }
 
-    // preflight to catch clear reason messages
-    await drop.callStatic.claim(
-      userAddress,
-      qtyBase,
-      currency,
-      pricePerToken,
-      allowlistProof,
-      "0x",
-      overrides
-    );
+    // Preflight
+    await drop.callStatic.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
 
-    const tx = await drop.claim(
-      userAddress,
-      qtyBase,
-      currency,
-      pricePerToken,
-      allowlistProof,
-      "0x",
-      overrides
-    );
+    // Send
+    const tx = await drop.claim(userAddress, qtyBase, currency, pricePerToken, allowlistProof, "0x", overrides);
 
     const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
     txHashLink.textContent = formatAddress(tx.hash);
     txHashLink.href = txUrl;
     txProgress.style.width = "40%";
 
-    clearInterval(txInterval);
-    let p = 40;
+    let p = 40; clearInterval(txInterval);
     txInterval = setInterval(() => { p += 1; if (p < 90) txProgress.style.width = `${p}%`; }, 500);
 
     await tx.wait();
@@ -834,6 +817,7 @@ async function buySolCoin(humanQty = "1") {
     txStatus.style.display = "none";
   }
 }
+  
   function viewOnExplorer() {
     window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
   }
