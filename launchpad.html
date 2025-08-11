@@ -552,10 +552,10 @@
     "function mintTo(address to, uint256 amount)"
   ];
 
-const DROP20_ABI = [
-  "function getActiveClaimConditionId() view returns (uint256)",
-  "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
-  "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+const ERC20_ABI = [
+  "function decimals() view returns (uint8)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
@@ -735,7 +735,7 @@ const DROP20_ABI = [
     }
   }
 
- async function buySolCoin(quantity = "1") {
+async function buySolCoin(humanQty = "1") {
   if (!signer) return showNotification("Please connect your wallet first", "error");
   try {
     showNotification("Preparing SólCoin purchase...", "warning");
@@ -746,37 +746,73 @@ const DROP20_ABI = [
 
     const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
 
-    // Read active claim condition (price + currency)
+    // read claim condition
     const condId = await drop.getActiveClaimConditionId();
     const cond   = await drop.getClaimConditionById(condId);
-    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken);
+    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // 1e18 scaled
     const currency      = cond.currency;
 
-    // Are we paying in BNB?
-    const isNative =
-      currency === ethers.constants.AddressZero ||
-      (typeof currency === "string" && currency.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    // read token decimals from the drop token itself
+    const token = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
+    const decimals = await token.decimals();
 
-    // For public sale (with allowlist option), pass an "empty" allowlist proof
+    // convert human quantity -> base units (wei of token)
+    const qtyBase = ethers.utils.parseUnits(humanQty, decimals);
+
+    // allowlistProof for public phase (empty / no override)
     const allowlistProof = {
       proof: [],
-      quantityLimitPerWallet: ethers.BigNumber.from(0),
-      pricePerToken: ethers.BigNumber.from(0),
+      quantityLimitPerWallet: ethers.constants.Zero,
+      pricePerToken: ethers.constants.Zero,
       currency: ethers.constants.AddressZero
     };
 
-    // Total cost = pricePerToken * quantity  (quantity is a whole-token count here)
-    const qty = ethers.BigNumber.from(quantity);
+    // detect native vs ERC-20 currency
+    const isNative =
+      currency === ethers.constants.AddressZero ||
+      (typeof currency === "string" &&
+       currency.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+
     let overrides = {};
     if (isNative && !pricePerToken.isZero()) {
-      overrides = { value: pricePerToken.mul(qty) };
+      // total = pricePerToken (1e18) * humanQty / 10^decimals
+      const scale = ethers.BigNumber.from(10).pow(decimals);
+      const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
+      overrides = { value: total };
+    } else if (!isNative && !pricePerToken.isZero()) {
+      // pay in ERC-20 currency -> approve first
+      const payToken = new ethers.Contract(currency, ERC20_ABI, signer);
+      // currency decimals may differ; pricePerToken is 1e18 regardless, so scale like above
+      // assume currency also uses 18 decimals (Thirdweb default). If not, tell me and I’ll adapt.
+      const scale = ethers.BigNumber.from(10).pow(decimals);
+      const total = pricePerToken.mul(ethers.BigNumber.from(humanQty)).div(scale);
+      const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
+      if (allowance.lt(total)) {
+        const txApprove = await payToken.approve(SOL_DROP_ADDRESS, total);
+        await txApprove.wait();
+      }
     }
 
-    // Optional: static call to surface clear revert reasons before sending
-    await drop.callStatic.claim(userAddress, qty, currency, pricePerToken, allowlistProof, "0x", overrides);
+    // preflight to catch clear reason messages
+    await drop.callStatic.claim(
+      userAddress,
+      qtyBase,
+      currency,
+      pricePerToken,
+      allowlistProof,
+      "0x",
+      overrides
+    );
 
-    // Send the real tx
-    const tx = await drop.claim(userAddress, qty, currency, pricePerToken, allowlistProof, "0x", overrides);
+    const tx = await drop.claim(
+      userAddress,
+      qtyBase,
+      currency,
+      pricePerToken,
+      allowlistProof,
+      "0x",
+      overrides
+    );
 
     const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
     txHashLink.textContent = formatAddress(tx.hash);
@@ -794,7 +830,6 @@ const DROP20_ABI = [
   } catch (err) {
     clearInterval(txInterval);
     console.error("Buy SólCoin error:", err);
-    // Common causes: not active yet, insufficient funds, wrong network, allowlist-only phase, or quantity too high
     showNotification(`Buy SólCoin failed: ${err.message || "unknown error"}`, "error");
     txStatus.style.display = "none";
   }
