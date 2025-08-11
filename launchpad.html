@@ -811,88 +811,177 @@
   /***********************
    * Claim / Buy Flow    *
    ***********************/
-  async function buySolCoin(humanQty = "1") {
-    if (!signer) return showNotification("Please connect your wallet first", "error");
-    try {
-      const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
+async function buySolCoin(humanQty = "1") {
+  if (!signer) return showNotification("Please connect your wallet first", "error");
 
-      // 1) Active condition
-      const condId = await drop.getActiveClaimConditionId();
-      const cond = await drop.getClaimConditionById(condId);
-      const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // in payment currency base units
-      const currencyAddr = cond.currency;
+  try {
+    const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
 
-      // 2) Drop token decimals (quantity units)
-      const dropToken = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
-      const dropDecimals = await dropToken.decimals();
+    // 0) Fetch condition
+    const condId = await drop.getActiveClaimConditionId();
+    const cond = await drop.getClaimConditionById(condId);
+    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken); // in payment currency base units
+    const currencyAddr = cond.currency;
+    const startTs = Number(cond.startTimestamp || 0);
 
-      // 3) Quantity in base units of drop token
-      const qtyBase = ethers.utils.parseUnits(humanQty, dropDecimals);
+    // 1) Quantity / decimals (drop token should implement ERC20)
+    const dropToken = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
+    const dropDecimals = await dropToken.decimals();
+    const qtyBase = ethers.utils.parseUnits(String(humanQty), dropDecimals);
 
-      // 4) Allowlist proof (empty)
-      const allowlistProof = {
-        proof: [],
-        quantityLimitPerWallet: ethers.constants.Zero,
-        pricePerToken: ethers.constants.Zero,
-        currency: ethers.constants.AddressZero
-      };
+    // 2) Is native payment?
+    const NATIVE_ZERO = ethers.constants.AddressZero;
+    const isNative =
+      currencyAddr === NATIVE_ZERO ||
+      (typeof currencyAddr === "string" &&
+        currencyAddr.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
 
-      // 5) Native or ERC20 payment?
-      const NATIVE_ZERO = ethers.constants.AddressZero;
-      const isNative =
-        currencyAddr === NATIVE_ZERO ||
-        (typeof currencyAddr === "string" &&
-          currencyAddr.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
+    // 3) Preflight: compute total and check balances/allowance
+    const scaleDrop = ethers.BigNumber.from(10).pow(dropDecimals);
+    const totalCost = pricePerToken.mul(qtyBase).div(scaleDrop); // payment currency base units (wei if native)
 
-      // 6) Compute total and approve if necessary
-      let overrides = {};
-      if (!pricePerToken.isZero()) {
-        const scaleDrop = ethers.BigNumber.from(10).pow(dropDecimals);
-        if (isNative) {
-          // Total wei = pricePerToken * qtyBase / 10^dropDecimals
-          const totalWei = pricePerToken.mul(qtyBase).div(scaleDrop);
-          overrides = { value: totalWei };
-        } else {
-          // ERC20 payment token
-          const payToken = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
-          // pricePerToken already in payToken base units; compute total in same units
-          const totalCost = pricePerToken.mul(qtyBase).div(scaleDrop);
-          const allowance = await payToken.allowance(userAddress, SOL_DROP_ADDRESS);
-          if (allowance.lt(totalCost)) {
-            const approveTx = await payToken.approve(SOL_DROP_ADDRESS, totalCost);
-            await approveTx.wait();
-          }
+    let overrides = {};
+    if (!pricePerToken.isZero()) {
+      if (isNative) {
+        // Native payment; need enough BNB for value + gas
+        overrides = { value: totalCost };
+        const myBNB = await provider.getBalance(userAddress);
+        if (myBNB.lt(totalCost)) {
+          return showNotification(
+            `Insufficient BNB for purchase. Need ${ethers.utils.formatEther(totalCost)} BNB`,
+            "error"
+          );
+        }
+      } else {
+        // ERC20 payment; check token balance + allowance
+        const payToken = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
+        const [payDec, myBal, allowance] = await Promise.all([
+          payToken.decimals(),
+          payToken.balanceOf(userAddress),
+          payToken.allowance(userAddress, SOL_DROP_ADDRESS)
+        ]);
+
+        if (myBal.lt(totalCost)) {
+          const sym = await safeSymbol(payToken);
+          return showNotification(
+            `Insufficient ${sym} balance. Need ${ethers.utils.formatUnits(totalCost, payDec)} ${sym}`,
+            "error"
+          );
+        }
+        if (allowance.lt(totalCost)) {
+          const approveTx = await payToken.approve(SOL_DROP_ADDRESS, totalCost);
+          await approveTx.wait();
         }
       }
-
-      // 7) Dry run then send
-      await drop.callStatic.claim(
-        userAddress,
-        qtyBase,
-        isNative ? NATIVE_ZERO : currencyAddr,
-        pricePerToken,
-        allowlistProof,
-        "0x",
-        overrides
-      );
-
-      const tx = await drop.claim(
-        userAddress,
-        qtyBase,
-        isNative ? NATIVE_ZERO : currencyAddr,
-        pricePerToken,
-        allowlistProof,
-        "0x",
-        overrides
-      );
-      await tx.wait();
-      showNotification("✅ SólCoin purchase confirmed!", "success");
-    } catch (err) {
-      console.error("Buy SólCoin error:", err);
-      showNotification(`Buy SólCoin failed: ${err.message || "unknown error"}`, "error");
     }
-  }
 
+    // 4) Extra context in console (helps debugging live)
+    console.log("[Buy] condition:", {
+      condId: condId.toString(),
+      startTimestamp: startTs,
+      pricePerToken: pricePerToken.toString(),
+      currency: currencyAddr,
+      quantityLimitPerWallet: cond.quantityLimitPerWallet?.toString?.(),
+      maxClaimableSupply: cond.maxClaimableSupply?.toString?.(),
+      supplyClaimed: cond.supplyClaimed?.toString?.(),
+    });
+    console.log("[Buy] qtyBase:", qtyBase.toString());
+    console.log("[Buy] isNative:", isNative, " totalCost:", totalCost.toString());
+
+    // 5) Allowlist proof (blank if public sale)
+    const allowlistProof = {
+      proof: [],
+      quantityLimitPerWallet: ethers.constants.Zero,
+      pricePerToken: ethers.constants.Zero,
+      currency: ethers.constants.AddressZero
+    };
+
+    // 6) Dry‑run (this is likely where your screenshot came from)
+    await drop.callStatic.claim(
+      userAddress,
+      qtyBase,
+      isNative ? NATIVE_ZERO : currencyAddr,
+      pricePerToken,
+      allowlistProof,
+      "0x",
+      overrides
+    );
+
+    // 7) Send txn
+    const tx = await drop.claim(
+      userAddress,
+      qtyBase,
+      isNative ? NATIVE_ZERO : currencyAddr,
+      pricePerToken,
+      allowlistProof,
+      "0x",
+      overrides
+    );
+    await tx.wait();
+    showNotification("✅ SólCoin purchase confirmed!", "success", `${EXPLORER_URL}/tx/${tx.hash}`);
+  } catch (err) {
+    const friendly = await decodeRevert(err, provider);
+    console.error("Buy SólCoin error:", err);
+    showNotification(`Buy SólCoin failed: ${friendly}`, "error");
+  }
+}
+
+  async function safeSymbol(erc20) {
+  try { return await erc20.symbol(); } catch { return "TOKEN"; }
+}
+
+// Best effort revert decoding (Error(string), Panic(uint256), and a few common custom errors)
+async function decodeRevert(error, provider) {
+  try {
+    // ethers v5 shapes: error.error?.data, error.data, error.receipt?.revertReason, etc.
+    const data =
+      error?.error?.data ||
+      error?.data ||
+      error?.receipt?.revertReason ||
+      error?.reason ||
+      error?.message;
+
+    if (typeof data === "string" && data.startsWith("0x")) {
+      // Error(string) selector 0x08c379a0
+      if (data.slice(0, 10) === "0x08c379a0") {
+        const reason = ethers.utils.defaultAbiCoder.decode(["string"], "0x" + data.slice(10));
+        return String(reason);
+      }
+      // Panic(uint256) selector 0x4e487b71
+      if (data.slice(0, 10) === "0x4e487b71") {
+        const [code] = ethers.utils.defaultAbiCoder.decode(["uint256"], "0x" + data.slice(10));
+        return `Panic: ${code.toString()}`;
+      }
+      // Try a set of common custom errors used by drop contracts
+      const possibleErrors = new ethers.utils.Interface([
+        "error NotAuthorized()",
+        "error NotInMerkleProof()",
+        "error NotEnoughTokens()",
+        "error ClaimInactive(uint256 start, uint256 nowTs)",
+        "error ExceedsMaxPerWallet(uint256 limit, uint256 requested)",
+        "error ExceedsMaxSupply(uint256 max, uint256 requested)",
+        "error InsufficientFunds()",
+        "error InvalidCurrency(address expected, address provided)"
+      ]);
+      try {
+        const parsed = possibleErrors.parseError(data);
+        if (parsed) {
+          const args = parsed.args && parsed.args.length ? ` ${parsed.args.map(a => a.toString()).join(", ")}` : "";
+          return `${parsed.name}${args}`;
+        }
+      } catch { /* ignore */ }
+      // Unknown selector; fall through
+      return `Reverted (data=${data.slice(0, 18)}…)`;
+    }
+
+    // If it's a plain message
+    if (typeof data === "string") return data;
+
+    return "Transaction reverted";
+  } catch {
+    return "Transaction reverted";
+  }
+}
   /***********************
    * UI Helpers          *
    ***********************/
