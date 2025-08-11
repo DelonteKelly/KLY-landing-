@@ -552,10 +552,10 @@
     "function mintTo(address to, uint256 amount)"
   ];
 
- const DROP20_ABI = [
-  "function claim(address _receiver, uint256 _quantity) payable",
+const DROP20_ABI = [
   "function getActiveClaimConditionId() view returns (uint256)",
-  "function getClaimConditionById(uint256 id) view returns (uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,address metadata)"
+  "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
+  "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
 ];
 
   let web3Modal, externalProvider, provider, signer, contract, userAddress;
@@ -735,7 +735,7 @@
     }
   }
 
-  async function buySolCoin(quantity = "1") {
+ async function buySolCoin(quantity = "1") {
   if (!signer) return showNotification("Please connect your wallet first", "error");
   try {
     showNotification("Preparing SólCoin purchase...", "warning");
@@ -746,49 +746,59 @@
 
     const drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
 
-    // Read active condition to compute msg.value when priced in BNB
+    // Read active claim condition (price + currency)
     const condId = await drop.getActiveClaimConditionId();
-    const cond = await drop.getClaimConditionById(condId);
-    const pricePerToken = cond.pricePerToken;
-    const currency = cond.currency;
+    const cond   = await drop.getClaimConditionById(condId);
+    const pricePerToken = ethers.BigNumber.from(cond.pricePerToken);
+    const currency      = cond.currency;
 
-    let overrides = {};
+    // Are we paying in BNB?
     const isNative =
       currency === ethers.constants.AddressZero ||
-      (typeof currency === "string" &&
-       currency.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+      (typeof currency === "string" && currency.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
-    if (isNative && pricePerToken && !ethers.BigNumber.from(pricePerToken).isZero()) {
-      const total = ethers.BigNumber.from(pricePerToken).mul(ethers.BigNumber.from(quantity));
-      overrides = { value: total };
+    // For public sale (with allowlist option), pass an "empty" allowlist proof
+    const allowlistProof = {
+      proof: [],
+      quantityLimitPerWallet: ethers.BigNumber.from(0),
+      pricePerToken: ethers.BigNumber.from(0),
+      currency: ethers.constants.AddressZero
+    };
+
+    // Total cost = pricePerToken * quantity  (quantity is a whole-token count here)
+    const qty = ethers.BigNumber.from(quantity);
+    let overrides = {};
+    if (isNative && !pricePerToken.isZero()) {
+      overrides = { value: pricePerToken.mul(qty) };
     }
 
-    const tx = await drop.claim(userAddress, ethers.BigNumber.from(quantity), overrides);
+    // Optional: static call to surface clear revert reasons before sending
+    await drop.callStatic.claim(userAddress, qty, currency, pricePerToken, allowlistProof, "0x", overrides);
+
+    // Send the real tx
+    const tx = await drop.claim(userAddress, qty, currency, pricePerToken, allowlistProof, "0x", overrides);
 
     const txUrl = `${EXPLORER_URL}/tx/${tx.hash}`;
     txHashLink.textContent = formatAddress(tx.hash);
     txHashLink.href = txUrl;
-    txProgress.style.width = "35%";
+    txProgress.style.width = "40%";
 
     clearInterval(txInterval);
-    let progress = 35;
-    txInterval = setInterval(() => {
-      progress += 1;
-      if (progress < 90) txProgress.style.width = `${progress}%`;
-    }, 500);
+    let p = 40;
+    txInterval = setInterval(() => { p += 1; if (p < 90) txProgress.style.width = `${p}%`; }, 500);
 
     await tx.wait();
     clearInterval(txInterval);
     txProgress.style.width = "100%";
-    showNotification("✅ SólCoin purchased!", "success");
+    showNotification("✅ SólCoin purchase confirmed!", "success");
   } catch (err) {
     clearInterval(txInterval);
     console.error("Buy SólCoin error:", err);
-    showNotification("Buy SólCoin failed: " + (err.message || "unknown error"), "error");
+    // Common causes: not active yet, insufficient funds, wrong network, allowlist-only phase, or quantity too high
+    showNotification(`Buy SólCoin failed: ${err.message || "unknown error"}`, "error");
     txStatus.style.display = "none";
   }
 }
-  
   function viewOnExplorer() {
     window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank");
   }
