@@ -78,26 +78,17 @@
 </div>
 
 <script>
- const SUPABASE_URL = "https://mkutuyliszscfmexgqsj.supabase.co"; // Replace with your project URL
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rdXR1eWxpc3pzY2ZtZXhncXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Nzc0MTYsImV4cCI6MjA3MDU1MzQxNn0.PXLOzZZNy_8-G8LrWTiVC7lpXy6cv_i6zFNjUfmQPkU";
+  const SUPABASE_URL = "https://mkutuyliszscfmexgqsj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rdXR1eWxpc3pzY2ZtZXhncXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Nzc0MTYsImV4cCI6MjA3MDU1MzQxNn0.PXLOzZZNy_8-G8LrWTiVC7lpXy6cv_i6zFNjUfmQPkU";
+
   const getCfg = () => ({
-    url: localStorage.getItem('sb_url') || '',
-    key: localStorage.getItem('sb_key') || ''
+    url: localStorage.getItem('sb_url') || SUPABASE_URL,
+    key: localStorage.getItem('sb_key') || SUPABASE_ANON_KEY
   });
   const setCfg = (url, key) => {
     localStorage.setItem('sb_url', url.trim());
     localStorage.setItem('sb_key', key.trim());
   };
-
-  // === 1) Supabase client (re-init when config changes) ===
-  let sb = null;
-  function initClient() {
-    const { url, key } = getCfg();
-    if (!url || !key) return log('Paste your Supabase URL + anon key above.');
-    // v2 client
-    sb = window.supabase.createClient(url, key);
-    log('Supabase client ready.');
-  }
 
   // === 2) Small UI helpers ===
   const $ = (id)=>document.getElementById(id);
@@ -209,12 +200,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
   // === 6) Boot ===
   // preload config fields from localStorage
-  (function boot(){
-    const cfg = getCfg();
-    if (cfg.url) $('projectUrl').value = cfg.url;
-    if (cfg.key) $('anonKey').value = cfg.key;
-    if (cfg.url && cfg.key) { initClient(); }
-  })();
+  // === 6) Boot ===
+(function boot(){
+  const cfg = getCfg();
+  $('projectUrl').value = cfg.url;
+  $('anonKey').value = cfg.key;
+  initClient();              // <-- auto-init on first load
+})();
 </script>
 </body>
 </html>
