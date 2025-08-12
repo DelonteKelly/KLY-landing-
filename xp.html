@@ -78,24 +78,33 @@
 </div>
 
 <script>
-  const SUPABASE_URL = "https://mkutuyliszscfmexgqsj.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rdXR1eWxpc3pzY2ZtZXhncXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Nzc0MTYsImV4cCI6MjA3MDU1MzQxNn0.PXLOzZZNy_8-G8LrWTiVC7lpXy6cv_i6zFNjUfmQPkU";
+  // --- 0) Your defaults (used on first load and as fallbacks)
+  const DEFAULT_SUPABASE_URL = "https://mkutuyliszscfmexgqsj.supabase.co";
+  const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rdXR1eWxpc3pzY2ZtZXhncXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Nzc0MTYsImV4cCI6MjA3MDU1MzQxNn0.PXLOzZZNy_8-G8LrWTiVC7lpXy6cv_i6zFNjUfmQPkU";
 
+  // --- 1) Supabase client (global) + helpers for config
+  let sb = null; // <— this is the variable that was "missing" before
   const getCfg = () => ({
-    url: localStorage.getItem('sb_url') || SUPABASE_URL,
-    key: localStorage.getItem('sb_key') || SUPABASE_ANON_KEY
+    url: localStorage.getItem('sb_url') || DEFAULT_SUPABASE_URL,
+    key: localStorage.getItem('sb_key') || DEFAULT_SUPABASE_ANON_KEY
   });
   const setCfg = (url, key) => {
     localStorage.setItem('sb_url', url.trim());
     localStorage.setItem('sb_key', key.trim());
   };
+  function initClient(url, key){
+    if (!window.supabase) { log('Supabase library not loaded.'); return; }
+    sb = window.supabase.createClient(url, key);
+    log('Supabase client ready.');
+  }
 
-  // === 2) Small UI helpers ===
+  // --- 2) Small UI helpers
   const $ = (id)=>document.getElementById(id);
   const log = (m)=>{ $('log').textContent = m; };
   const short = (a)=> a ? a.slice(0,6)+'…'+a.slice(-4) : '';
+  const isAddr = (a)=> /^0x[a-fA-F0-9]{40}$/.test(a||'');
 
-  // Ranks (adjust as you like)
+  // --- 3) Ranks
   const RANKS = [
     { name: 'Initiate',       req: 100 },
     { name: 'Pathfinder',     req: 300 },
@@ -106,7 +115,7 @@
   function setBar(totalXp){
     let rank = RANKS[0], prevReq = 0;
     for (const r of RANKS) { if (totalXp >= r.req) { rank = r; prevReq = r.req; } else break; }
-    const span = rank.req - prevReq || 1;
+    const span = Math.max(1, rank.req - prevReq);
     const inLevel = Math.max(0, Math.min(span, totalXp - prevReq));
     const pct = Math.round((inLevel / span) * 100);
     $('xpFill').style.width = pct + '%';
@@ -116,12 +125,16 @@
     $('xpTotal').textContent = totalXp;
   }
 
-  // === 3) Data functions ===
+  // --- 4) Data functions
   async function loadClaims(limit=20) {
     if (!sb) return log('Supabase not ready.');
     const addr = $('addr').value.trim().toLowerCase();
-    let q = sb.from('xp_claims').select('id,addr,quest_id,in2,in4,in8,created_at').order('id', { ascending:false }).limit(limit);
-    if (addr) q = q.eq('addr', addr);
+    let q = sb.from('xp_claims')
+      .select('id,addr,quest_id,in2,in4,in8,created_at')
+      .order('id', { ascending:false })
+      .limit(limit);
+    if (isAddr(addr)) q = q.eq('addr', addr);
+
     const { data, error } = await q;
     if (error) { log('loadClaims error: ' + error.message); return; }
 
@@ -151,7 +164,7 @@
   async function loadXP() {
     if (!sb) return log('Supabase not ready.');
     const addr = $('addr').value.trim().toLowerCase();
-    if (!addr) { setBar(0); return; }
+    if (!isAddr(addr)) { setBar(0); return; }
     const { data, error } = await sb.from('xp_claims').select('in4').eq('addr', addr);
     if (error) { log('loadXP error: ' + error.message); setBar(0); return; }
     const total = (data || []).reduce((sum, r) => sum + (r.in4 || 0), 0);
@@ -164,15 +177,15 @@
     const addr = $('addr').value.trim();
     const quest = $('questId').value.trim() || 'q_demo';
     const xp = Number($('xpAmount').value || '25');
-    if (!addr) return log('Enter a wallet address first.');
-    const row = { addr: addr.toLowerCase(), quest_id: quest, in4: xp }; // in2/in8 default to 0
+    if (!isAddr(addr)) return log('Enter a valid wallet address first.');
+    const row = { addr: addr.toLowerCase(), quest_id: quest, in4: xp };
     const { error } = await sb.from('xp_claims').insert(row);
     if (error) { log('insert error: ' + error.message); return; }
     log(`Inserted claim ${quest} +${xp} XP`);
     await Promise.all([loadXP(), loadClaims()]);
   }
 
-  // === 4) Wallet helper (optional) ===
+  // --- 5) Wallet helper (optional)
   async function connectMM(){
     if (!window.ethereum) { log('Install MetaMask to auto-fill address.'); return; }
     try{
@@ -186,27 +199,27 @@
     }catch(e){ log('Wallet error: ' + (e?.message||e)); }
   }
 
-  // === 5) Wire UI ===
+  // --- 6) Wire UI
   $('saveCfg').onclick = () => {
     const url = $('projectUrl').value, key = $('anonKey').value;
     if (!url || !key) return log('Paste both URL and anon key.');
     setCfg(url, key);
-    initClient();
+    initClient(url, key);
+    // optional: refresh right away
+    loadClaims();
   };
   $('connect').onclick = connectMM;
   $('refreshXp').onclick = loadXP;
   $('addClaim').onclick = insertClaim;
   $('refreshClaims').onclick = ()=> loadClaims();
 
-  // === 6) Boot ===
-  // preload config fields from localStorage
-  // === 6) Boot ===
-(function boot(){
-  const cfg = getCfg();
-  $('projectUrl').value = cfg.url;
-  $('anonKey').value = cfg.key;
-  initClient();              // <-- auto-init on first load
-})();
+  // --- 7) Boot
+  (function boot(){
+    const cfg = getCfg();
+    $('projectUrl').value = cfg.url;
+    $('anonKey').value = cfg.key;
+    initClient(cfg.url, cfg.key);   // <-- initialize `sb` immediately
+  })();
 </script>
 </body>
 </html>
