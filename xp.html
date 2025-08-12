@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>KLY — XP Claims (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Supabase JS (v2) + Ethers (optional for MetaMask connect) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;background:#0b0d14;color:#e9e9f0;margin:0;padding:24px}
+    .wrap{max-width:900px;margin:0 auto}
+    .card{background:#121525;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:16px}
+    h1,h2{margin:0 0 12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    input,select{flex:1;min-width:180px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0f1220;color:#fff}
+    button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    .primary{background:linear-gradient(90deg,#6E44FF,#D4AF37);color:#0b0b0b}
+    .ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12)}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:14px}
+    th{opacity:.85}
+    .meta{opacity:.85;font-size:14px;margin-top:6px}
+    .bar{height:14px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+    .fill{height:100%;width:0%;background:linear-gradient(90deg,#6E44FF,#D4AF37);transition:width .25s}
+    .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>KLY — XP Claims (Supabase)</h1>
+    <div class="row">
+      <input id="projectUrl" placeholder="Supabase URL" />
+      <input id="anonKey" placeholder="Anon public key" />
+      <button id="saveCfg" class="ghost">Save</button>
+    </div>
+    <div class="meta">Tip: paste your values once and hit “Save” — they’ll persist in your browser.</div>
+  </div>
+
+  <div class="card">
+    <h2>Player</h2>
+    <div class="row">
+      <input id="addr" placeholder="0x… wallet address" />
+      <button id="connect" class="ghost">MetaMask</button>
+      <button id="refreshXp" class="ghost">Refresh XP</button>
+      <span class="pill">Total XP: <b id="xpTotal">0</b></span>
+    </div>
+    <div class="bar"><div id="xpFill" class="fill"></div></div>
+    <div class="meta"><b id="rankName">Initiate</b> — <span id="xpVal">0</span>/<span id="xpReq">100</span> XP</div>
+  </div>
+
+  <div class="card">
+    <h2>Add XP Claim</h2>
+    <div class="row">
+      <input id="questId" placeholder="quest id (e.g. q_connect)" />
+      <input id="xpAmount" type="number" step="1" min="0" placeholder="XP amount (uses in4)" />
+      <button id="addClaim" class="primary">Insert Row</button>
+    </div>
+    <div class="meta">Writes into <code>xp_claims</code> with columns: <code>addr</code>, <code>quest_id</code>, <code>in4</code>.</div>
+  </div>
+
+  <div class="card">
+    <h2>Recent Claims</h2>
+    <div class="row">
+      <button id="refreshClaims" class="ghost">Refresh</button>
+      <span class="pill">Rows loaded: <b id="rowCount">0</b></span>
+    </div>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Address</th><th>Quest</th><th>in2</th><th>in4</th><th>in8</th><th>Created</th></tr>
+      </thead>
+      <tbody id="claimsBody"><tr><td colspan="7">No data yet</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="log" class="meta"></div>
+</div>
+
+<script>
+  // === 0) Config store (so you don’t have to edit code) ===
+  const getCfg = () => ({
+    url: localStorage.getItem('sb_url') || '',
+    key: localStorage.getItem('sb_key') || ''
+  });
+  const setCfg = (url, key) => {
+    localStorage.setItem('sb_url', url.trim());
+    localStorage.setItem('sb_key', key.trim());
+  };
+
+  // === 1) Supabase client (re-init when config changes) ===
+  let sb = null;
+  function initClient() {
+    const { url, key } = getCfg();
+    if (!url || !key) return log('Paste your Supabase URL + anon key above.');
+    // v2 client
+    sb = window.supabase.createClient(url, key);
+    log('Supabase client ready.');
+  }
+
+  // === 2) Small UI helpers ===
+  const $ = (id)=>document.getElementById(id);
+  const log = (m)=>{ $('log').textContent = m; };
+  const short = (a)=> a ? a.slice(0,6)+'…'+a.slice(-4) : '';
+
+  // Ranks (adjust as you like)
+  const RANKS = [
+    { name: 'Initiate',       req: 100 },
+    { name: 'Pathfinder',     req: 300 },
+    { name: 'Keyholder',      req: 800 },
+    { name: 'Vault Guardian', req: 1500 },
+    { name: 'Master Builder', req: 2500 },
+  ];
+  function setBar(totalXp){
+    let rank = RANKS[0], prevReq = 0;
+    for (const r of RANKS) { if (totalXp >= r.req) { rank = r; prevReq = r.req; } else break; }
+    const span = rank.req - prevReq || 1;
+    const inLevel = Math.max(0, Math.min(span, totalXp - prevReq));
+    const pct = Math.round((inLevel / span) * 100);
+    $('xpFill').style.width = pct + '%';
+    $('rankName').textContent = rank.name;
+    $('xpVal').textContent = totalXp;
+    $('xpReq').textContent = rank.req;
+    $('xpTotal').textContent = totalXp;
+  }
+
+  // === 3) Data functions ===
+  async function loadClaims(limit=20) {
+    if (!sb) return log('Supabase not ready.');
+    const addr = $('addr').value.trim().toLowerCase();
+    let q = sb.from('xp_claims').select('id,addr,quest_id,in2,in4,in8,created_at').order('id', { ascending:false }).limit(limit);
+    if (addr) q = q.eq('addr', addr);
+    const { data, error } = await q;
+    if (error) { log('loadClaims error: ' + error.message); return; }
+
+    const tb = $('claimsBody');
+    tb.innerHTML = '';
+    if (!data || !data.length) {
+      tb.innerHTML = '<tr><td colspan="7">No rows found</td></tr>';
+      $('rowCount').textContent = '0';
+      return;
+    }
+    data.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.id}</td>
+        <td title="${r.addr}">${short(r.addr)}</td>
+        <td>${r.quest_id}</td>
+        <td>${r.in2 ?? 0}</td>
+        <td>${r.in4 ?? 0}</td>
+        <td>${r.in8 ?? 0}</td>
+        <td>${new Date(r.created_at).toLocaleString()}</td>`;
+      tb.appendChild(tr);
+    });
+    $('rowCount').textContent = data.length;
+    log('Loaded ' + data.length + ' rows.');
+  }
+
+  async function loadXP() {
+    if (!sb) return log('Supabase not ready.');
+    const addr = $('addr').value.trim().toLowerCase();
+    if (!addr) { setBar(0); return; }
+    const { data, error } = await sb.from('xp_claims').select('in4').eq('addr', addr);
+    if (error) { log('loadXP error: ' + error.message); setBar(0); return; }
+    const total = (data || []).reduce((sum, r) => sum + (r.in4 || 0), 0);
+    setBar(total);
+    log('XP total: ' + total);
+  }
+
+  async function insertClaim() {
+    if (!sb) return log('Supabase not ready.');
+    const addr = $('addr').value.trim();
+    const quest = $('questId').value.trim() || 'q_demo';
+    const xp = Number($('xpAmount').value || '25');
+    if (!addr) return log('Enter a wallet address first.');
+    const row = { addr: addr.toLowerCase(), quest_id: quest, in4: xp }; // in2/in8 default to 0
+    const { error } = await sb.from('xp_claims').insert(row);
+    if (error) { log('insert error: ' + error.message); return; }
+    log(`Inserted claim ${quest} +${xp} XP`);
+    await Promise.all([loadXP(), loadClaims()]);
+  }
+
+  // === 4) Wallet helper (optional) ===
+  async function connectMM(){
+    if (!window.ethereum) { log('Install MetaMask to auto-fill address.'); return; }
+    try{
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      const signer = provider.getSigner();
+      const addr = await signer.getAddress();
+      $('addr').value = addr;
+      log('Connected: ' + short(addr));
+      await Promise.all([loadXP(), loadClaims()]);
+    }catch(e){ log('Wallet error: ' + (e?.message||e)); }
+  }
+
+  // === 5) Wire UI ===
+  $('saveCfg').onclick = () => {
+    const url = $('projectUrl').value, key = $('anonKey').value;
+    if (!url || !key) return log('Paste both URL and anon key.');
+    setCfg(url, key);
+    initClient();
+  };
+  $('connect').onclick = connectMM;
+  $('refreshXp').onclick = loadXP;
+  $('addClaim').onclick = insertClaim;
+  $('refreshClaims').onclick = ()=> loadClaims();
+
+  // === 6) Boot ===
+  // preload config fields from localStorage
+  (function boot(){
+    const cfg = getCfg();
+    if (cfg.url) $('projectUrl').value = cfg.url;
+    if (cfg.key) $('anonKey').value = cfg.key;
+    if (cfg.url && cfg.key) { initClient(); }
+  })();
+</script>
+</body>
+</html>
