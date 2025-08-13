@@ -1,225 +1,487 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>KLY — XP Claims (Supabase)</title>
+  <title>KLY — XP Claims Dashboard (Supabase)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Supabase JS (v2) + Ethers (optional for MetaMask connect) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;background:#0b0d14;color:#e9e9f0;margin:0;padding:24px}
-    .wrap{max-width:900px;margin:0 auto}
-    .card{background:#121525;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:16px}
-    h1,h2{margin:0 0 12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-    input,select{flex:1;min-width:180px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0f1220;color:#fff}
-    button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
-    .primary{background:linear-gradient(90deg,#6E44FF,#D4AF37);color:#0b0b0b}
-    .ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12)}
-    table{width:100%;border-collapse:collapse;margin-top:8px}
-    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:14px}
-    th{opacity:.85}
-    .meta{opacity:.85;font-size:14px;margin-top:6px}
-    .bar{height:14px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
-    .fill{height:100%;width:0%;background:linear-gradient(90deg,#6E44FF,#D4AF37);transition:width .25s}
-    .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+    :root {
+      --primary:#6E44FF; --secondary:#D4AF37;
+      --bg-dark:#0b0d14; --bg-card:#121525; --bg-input:#0f1220;
+      --text-main:#e9e9f0; --text-muted:rgba(255,255,255,.6);
+      --border:rgba(255,255,255,.12);
+      --success:#4ade80; --warning:#facc15; --danger:#f87171; --info:#60a5fa;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg-dark);color:var(--text-main);line-height:1.5;min-height:100vh}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);transition:transform .2s,box-shadow .2s}
+    .card:hover{transform:translateY(-2px);box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
+    h1,h2{margin:0 0 16px;font-weight:700;line-height:1.2}
+    h1{font-size:28px;background:linear-gradient(90deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
+    h2{font-size:22px;color:var(--text-main);display:flex;align-items:center;gap:8px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;align-items:center}
+    .pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:14px;display:inline-flex;align-items:center;gap:6px}
+    input,select{flex:1;min-width:200px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:14px;transition:border-color .2s,box-shadow .2s}
+    input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(110,68,255,.2)}
+    button{padding:12px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;white-space:nowrap}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .primary{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#0b0b0b}
+    .ghost{background:rgba(255,255,255,.08);color:var(--text-main);border:1px solid var(--border)}
+    .ghost:hover:not(:disabled){background:rgba(255,255,255,.12)}
+    .danger{background:var(--danger);color:#fff}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+    th,td{padding:12px;border-bottom:1px solid var(--border);text-align:left}
+    th{opacity:.85;font-weight:600;color:var(--text-muted);text-transform:uppercase;font-size:13px;letter-spacing:.5px}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .meta{opacity:.85;font-size:14px;margin-top:8px;color:var(--text-muted)}
+    .bar{height:16px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin:12px 0}
+    .fill{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .5s cubic-bezier(.65,0,.35,1)}
+    .badge{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+    .badge-success{background:rgba(74,222,128,.15);color:var(--success)}
+    .status{display:inline-flex;align-items:center;gap:6px}
+    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+    .status-online{background:var(--success)} .status-offline{background:var(--danger)}
+    .toast{position:fixed;bottom:20px;right:20px;padding:16px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);transform:translateY(100px);opacity:0;transition:all .3s cubic-bezier(.68,-.55,.265,1.55);z-index:1000;max-width:400px;display:flex;align-items:center;gap:12px}
+    .toast.show{transform:translateY(0);opacity:1}
+    .toast-success{border-left:4px solid var(--success)}
+    .toast-error{border-left:4px solid var(--danger)}
+    .toast-warning{border-left:4px solid var(--warning)}
+    .toast-info{border-left:4px solid var(--info)}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-radius:50%;border-top-color:#fff;animation:spin 1s ease-in-out infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .tooltip{position:relative;display:inline-block}
+    .tooltip .tooltip-text{visibility:hidden;width:200px;background-color:var(--bg-card);color:var(--text-main);text-align:center;border-radius:6px;padding:8px;position:absolute;z-index:1;bottom:125%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity .3s;font-size:13px;border:1px solid var(--border);box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06)}
+    .tooltip:hover .tooltip-text{visibility:visible;opacity:1}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+    @media (max-width:768px){
+      .wrap{padding:16px}.card{padding:16px}h1{font-size:24px}h2{font-size:20px}
+      input,select,button{min-width:100%} table{font-size:13px} th,td{padding:8px}
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="card">
-    <h1>KLY — XP Claims (Supabase)</h1>
-    <div class="row">
-      <input id="projectUrl" placeholder="Supabase URL" />
-      <input id="anonKey" placeholder="Anon public key" />
-      <button id="saveCfg" class="ghost">Save</button>
+  <div class="card animate__animated animate__fadeIn">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <h1><i class="fas fa-trophy"></i> KLY XP Dashboard</h1>
+      <div class="status">
+        <span class="status-dot" id="connectionStatus"></span>
+        <span id="connectionText">Connecting...</span>
+      </div>
     </div>
-    <div class="meta">Tip: paste your values once and hit “Save” — they’ll persist in your browser.</div>
+    <div class="row">
+      <label for="projectUrl" class="sr-only">Supabase URL</label>
+      <input id="projectUrl" placeholder="https://your-project.supabase.co" />
+      <label for="anonKey" class="sr-only">Supabase anon key</label>
+      <input id="anonKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6Ik..." />
+      <button id="saveCfg" class="ghost" aria-label="Save configuration"><i class="fas fa-save"></i> Save Config</button>
+    </div>
+    <div class="meta">
+      <i class="fas fa-info-circle"></i> Configuration is saved in local storage.
+      <span class="pill"><i class="fas fa-database"></i> Supabase v2</span>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Player</h2>
+  <div class="card animate__animated animate__fadeIn animate__delay-1s">
+    <h2><i class="fas fa-user"></i> Player Profile</h2>
     <div class="row">
-      <input id="addr" placeholder="0x… wallet address" />
-      <button id="connect" class="ghost">MetaMask</button>
-      <button id="refreshXp" class="ghost">Refresh XP</button>
-      <span class="pill">Total XP: <b id="xpTotal">0</b></span>
+      <label for="addr" class="sr-only">Wallet address</label>
+      <input id="addr" placeholder="0x... wallet address" autocomplete="off" />
+      <button id="connect" class="ghost"><i class="fab fa-ethereum"></i> MetaMask</button>
+      <button id="refreshXp" class="ghost"><i class="fas fa-sync-alt"></i> Refresh XP</button>
+      <span class="pill"><i class="fas fa-star"></i> Total XP: <b id="xpTotal">0</b></span>
     </div>
-    <div class="bar"><div id="xpFill" class="fill"></div></div>
-    <div class="meta"><b id="rankName">Initiate</b> — <span id="xpVal">0</span>/<span id="xpReq">100</span> XP</div>
+    <div class="bar" aria-label="XP progress"><div id="xpFill" class="fill"></div></div>
+    <div class="row" style="justify-content: space-between;">
+      <div class="meta"><b id="rankName">Initiate</b> — <span id="xpVal">0</span>/<span id="xpReq">100</span> XP</div>
+      <div class="meta" id="nextRankInfo"></div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Add XP Claim</h2>
+  <div class="card animate__animated animate__fadeIn animate__delay-2s">
+    <h2><i class="fas fa-plus-circle"></i> Add XP Claim</h2>
     <div class="row">
-      <input id="questId" placeholder="quest id (e.g. q_connect)" />
-      <input id="xpAmount" type="number" step="1" min="0" placeholder="XP amount (uses in4)" />
-      <button id="addClaim" class="primary">Insert Row</button>
+      <div class="tooltip" style="flex:1;">
+        <label for="questId" class="sr-only">Quest ID</label>
+        <input id="questId" placeholder="quest_id (e.g., q_connect)" />
+        <span class="tooltip-text">Enter quest identifier (e.g., q_twitter_follow)</span>
+      </div>
+      <div class="tooltip" style="flex:1;">
+        <label for="xpAmount" class="sr-only">XP amount</label>
+        <input id="xpAmount" type="number" step="1" min="1" placeholder="XP amount (uses in4)" />
+        <span class="tooltip-text">XP amount stored in column “in4”</span>
+      </div>
+      <button id="addClaim" class="primary" disabled><i class="fas fa-plus"></i> Add Claim</button>
     </div>
-    <div class="meta">Writes into <code>xp_claims</code> with columns: <code>addr</code>, <code>quest_id</code>, <code>in4</code>.</div>
+    <div class="meta">
+      <i class="fas fa-code"></i> Writes to <code>xp_claims</code>: <code>addr</code>, <code>quest_id</code>, <code>in4</code>, <code>created_at</code>.
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Recent Claims</h2>
+  <div class="card animate__animated animate__fadeIn animate__delay-3s">
+    <h2><i class="fas fa-history"></i> Recent Claims</h2>
     <div class="row">
-      <button id="refreshClaims" class="ghost">Refresh</button>
-      <span class="pill">Rows loaded: <b id="rowCount">0</b></span>
+      <button id="refreshClaims" class="ghost"><i class="fas fa-sync-alt"></i> Refresh</button>
+      <button id="toggleFilter" class="ghost"><i class="fas fa-users"></i> Show All</button>
+      <label for="limitSelect" class="sr-only">Row limit</label>
+      <select id="limitSelect">
+        <option value="10">10 rows</option>
+        <option value="20" selected>20 rows</option>
+        <option value="50">50 rows</option>
+        <option value="100">100 rows</option>
+      </select>
+      <span class="pill"><i class="fas fa-list"></i> Rows: <b id="rowCount">0</b></span>
+      <span class="pill"><i class="fas fa-filter"></i> Filter: <b id="filterStatus">All</b></span>
     </div>
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Address</th><th>Quest</th><th>in2</th><th>in4</th><th>in8</th><th>Created</th></tr>
-      </thead>
-      <tbody id="claimsBody"><tr><td colspan="7">No data yet</td></tr></tbody>
-    </table>
+    <div class="table-responsive">
+      <table aria-describedby="claims table of recent XP claims">
+        <thead>
+          <tr>
+            <th>ID</th><th>Address</th><th>Quest</th><th>in2</th><th>in4 (XP)</th><th>in8</th><th>Created</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="claimsBody">
+          <tr><td colspan="8" style="text-align:center;padding:24px;">No data available. Connect to Supabase and load claims.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px;">
+      <button id="loadMore" class="ghost" style="display:none;"><i class="fas fa-arrow-down"></i> Load More</button>
+    </div>
   </div>
 
-  <div id="log" class="meta"></div>
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 </div>
 
 <script>
-  // --- 0) Your defaults (used on first load and as fallbacks)
+  // 0) Constants
   const DEFAULT_SUPABASE_URL = "https://mkutuyliszscfmexgqsj.supabase.co";
   const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rdXR1eWxpc3pzY2ZtZXhncXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Nzc0MTYsImV4cCI6MjA3MDU1MzQxNn0.PXLOzZZNy_8-G8LrWTiVC7lpXy6cv_i6zFNjUfmQPkU";
 
-  // --- 1) Supabase client (global) + helpers for config
-  let sb = null; // <— this is the variable that was "missing" before
+  const RANKS = [
+    { name:'Initiate',req:100,icon:'🧑‍🎓',color:'#6b7280' },
+    { name:'Pathfinder',req:300,icon:'🧭',color:'#3b82f6' },
+    { name:'Keyholder',req:800,icon:'🔑',color:'#8b5cf6' },
+    { name:'Vault Guardian',req:1500,icon:'🛡️',color:'#d946ef' },
+    { name:'Master Builder',req:2500,icon:'👑',color:'#f59e0b' },
+    { name:'Legend',req:5000,icon:'🌟',color:'#ec4899' }
+  ];
+
+  // 1) State
+  let sb = null, currentPage = 1, hasMoreData = false, currentFilter = 'all';
+
+  // 2) DOM utils
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e=document.createElement(tag); if(cls) e.className=cls; if(text!==undefined) e.textContent=text; return e; };
+
+  // 3) Toasts
+  function showToast(message, type='info', duration=5000){
+    const t = el('div',`toast toast-${type}`);
+    t.setAttribute('role','status'); t.tabIndex=0;
+    const icon = type==='success'?'check-circle':type==='error'?'times-circle':type==='warning'?'exclamation-circle':'info-circle';
+    t.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
+    $('toastContainer').appendChild(t);
+    setTimeout(()=>t.classList.add('show'),10);
+    if(duration>0){ setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); },duration); }
+    t.addEventListener('click',()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); });
+    t.addEventListener('keydown',e=>{ if(e.key==='Escape') t.click(); });
+    return t;
+  }
+
+  // 4) Config + Client
   const getCfg = () => ({
     url: localStorage.getItem('sb_url') || DEFAULT_SUPABASE_URL,
     key: localStorage.getItem('sb_key') || DEFAULT_SUPABASE_ANON_KEY
   });
-  const setCfg = (url, key) => {
-    localStorage.setItem('sb_url', url.trim());
-    localStorage.setItem('sb_key', key.trim());
-  };
-  function initClient(url, key){
-    if (!window.supabase) { log('Supabase library not loaded.'); return; }
-    sb = window.supabase.createClient(url, key);
-    log('Supabase client ready.');
+  const setCfg = (url,key)=>{ localStorage.setItem('sb_url',url.trim()); localStorage.setItem('sb_key',key.trim()); };
+
+  async function testConnection(url, key){
+    if(!window.supabase){ updateConnectionStatus(false,'Supabase library not loaded'); return false; }
+    try{
+      const c = window.supabase.createClient(url,key);
+      const { error } = await c.from('xp_claims').select('id',{ head:true, count:'exact' }).limit(1);
+      if(error){ updateConnectionStatus(false, error.message); return false; }
+      updateConnectionStatus(true,'Connected to Supabase'); return true;
+    }catch(e){ updateConnectionStatus(false, e.message || 'Connection error'); return false; }
   }
 
-  // --- 2) Small UI helpers
-  const $ = (id)=>document.getElementById(id);
-  const log = (m)=>{ $('log').textContent = m; };
-  const short = (a)=> a ? a.slice(0,6)+'…'+a.slice(-4) : '';
-  const isAddr = (a)=> /^0x[a-fA-F0-9]{40}$/.test(a||'');
+  function updateConnectionStatus(connected, message=''){
+    const dot=$('connectionStatus'), txt=$('connectionText');
+    if(connected){ dot.className='status-dot status-online'; txt.textContent='Connected to Supabase'; txt.style.color='var(--success)'; }
+    else{ dot.className='status-dot status-offline'; txt.textContent=message||'Disconnected'; txt.style.color='var(--danger)'; }
+  }
 
-  // --- 3) Ranks
-  const RANKS = [
-    { name: 'Initiate',       req: 100 },
-    { name: 'Pathfinder',     req: 300 },
-    { name: 'Keyholder',      req: 800 },
-    { name: 'Vault Guardian', req: 1500 },
-    { name: 'Master Builder', req: 2500 },
-  ];
+  async function initClient(url,key){
+    const ok = await testConnection(url,key);
+    if(!ok) return false;
+    sb = window.supabase.createClient(url,key);
+    subscribeRealtime();
+    showToast('Supabase client initialized', 'success');
+    loadClaims(); // initial
+    return true;
+  }
+
+  // 5) Ranks + Bar
   function setBar(totalXp){
-    let rank = RANKS[0], prevReq = 0;
-    for (const r of RANKS) { if (totalXp >= r.req) { rank = r; prevReq = r.req; } else break; }
-    const span = Math.max(1, rank.req - prevReq);
-    const inLevel = Math.max(0, Math.min(span, totalXp - prevReq));
-    const pct = Math.round((inLevel / span) * 100);
-    $('xpFill').style.width = pct + '%';
-    $('rankName').textContent = rank.name;
-    $('xpVal').textContent = totalXp;
-    $('xpReq').textContent = rank.req;
-    $('xpTotal').textContent = totalXp;
-  }
-
-  // --- 4) Data functions
-  async function loadClaims(limit=20) {
-    if (!sb) return log('Supabase not ready.');
-    const addr = $('addr').value.trim().toLowerCase();
-    let q = sb.from('xp_claims')
-      .select('id,addr,quest_id,in2,in4,in8,created_at')
-      .order('id', { ascending:false })
-      .limit(limit);
-    if (isAddr(addr)) q = q.eq('addr', addr);
-
-    const { data, error } = await q;
-    if (error) { log('loadClaims error: ' + error.message); return; }
-
-    const tb = $('claimsBody');
-    tb.innerHTML = '';
-    if (!data || !data.length) {
-      tb.innerHTML = '<tr><td colspan="7">No rows found</td></tr>';
-      $('rowCount').textContent = '0';
-      return;
+    let rank=RANKS[0], next=RANKS[1], prevReq=0;
+    for(let i=0;i<RANKS.length;i++){
+      if(totalXp >= RANKS[i].req){ rank=RANKS[i]; next=RANKS[i+1]||null; prevReq=RANKS[i].req; } else break;
     }
-    data.forEach(r=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.id}</td>
-        <td title="${r.addr}">${short(r.addr)}</td>
-        <td>${r.quest_id}</td>
-        <td>${r.in2 ?? 0}</td>
-        <td>${r.in4 ?? 0}</td>
-        <td>${r.in8 ?? 0}</td>
-        <td>${new Date(r.created_at).toLocaleString()}</td>`;
-      tb.appendChild(tr);
-    });
-    $('rowCount').textContent = data.length;
-    log('Loaded ' + data.length + ' rows.');
+    const span = next ? (next.req - rank.req) : 100;
+    const pct = Math.round(Math.max(0, Math.min(1, (totalXp - prevReq)/span)) * 100);
+    $('xpFill').style.width = pct + '%';
+    $('rankName').innerHTML = `<span style="color:${rank.color}">${rank.icon} ${rank.name}</span>`;
+    $('xpVal').textContent = totalXp;
+    $('xpReq').textContent = next ? next.req : 'MAX';
+    $('xpTotal').textContent = totalXp;
+    $('nextRankInfo').innerHTML = next ? `Next: <span style="color:${next.color}">${next.icon} ${next.name}</span> (need ${next.req-totalXp} more XP)` : `<span style="color:${rank.color}">Maximum rank achieved!</span>`;
   }
 
-  async function loadXP() {
-    if (!sb) return log('Supabase not ready.');
-    const addr = $('addr').value.trim().toLowerCase();
-    if (!isAddr(addr)) { setBar(0); return; }
-    const { data, error } = await sb.from('xp_claims').select('in4').eq('addr', addr);
-    if (error) { log('loadXP error: ' + error.message); setBar(0); return; }
-    const total = (data || []).reduce((sum, r) => sum + (r.in4 || 0), 0);
-    setBar(total);
-    log('XP total: ' + total);
+  // 6) Safe row builder (prevents XSS)
+  function appendClaimRow(r){
+    const tr = document.createElement('tr');
+    const td = (text)=>{ const t=document.createElement('td'); t.textContent=(text ?? '').toString(); return t; };
+
+    tr.appendChild(td(r.id));
+
+    const addrTd = el('td','tooltip');
+    const shortSpan = el('span','', short(r.addr));
+    const tip = el('span','tooltip-text', r.addr);
+    addrTd.append(shortSpan, tip); tr.appendChild(addrTd);
+
+    tr.appendChild(td(r.quest_id));
+    tr.appendChild(td(r.in2 ?? '-'));
+
+    const in4Td = document.createElement('td');
+    const badge = el('span','badge badge-success', (r.in4 ?? 0).toString());
+    in4Td.appendChild(badge); tr.appendChild(in4Td);
+
+    tr.appendChild(td(r.in8 ?? '-'));
+    tr.appendChild(td(formatDate(r.created_at)));
+
+    const actions = document.createElement('td');
+    const del = el('button','ghost'); del.style.cssText='padding:4px 8px;font-size:12px;'; del.innerHTML='<i class="fas fa-trash"></i>';
+    del.addEventListener('click',()=>deleteClaim(r.id));
+    actions.appendChild(del); tr.appendChild(actions);
+
+    return tr;
   }
 
-  async function insertClaim() {
-    if (!sb) return log('Supabase not ready.');
-    const addr = $('addr').value.trim();
-    const quest = $('questId').value.trim() || 'q_demo';
-    const xp = Number($('xpAmount').value || '25');
-    if (!isAddr(addr)) return log('Enter a valid wallet address first.');
-    const row = { addr: addr.toLowerCase(), quest_id: quest, in4: xp };
-    const { error } = await sb.from('xp_claims').insert(row);
-    if (error) { log('insert error: ' + error.message); return; }
-    log(`Inserted claim ${quest} +${xp} XP`);
-    await Promise.all([loadXP(), loadClaims()]);
+  // 7) Data ops
+  async function loadClaims(page=1, limit=null){
+    if(!sb){ showToast('Supabase client not initialized','error'); return; }
+    const loading = showToast('Loading claims...','info',0);
+    const limitValue = limit || parseInt($('limitSelect').value);
+    const addrInput = normalizeAddr($('addr').value);
+    try{
+      let q = sb.from('xp_claims').select('id,addr,quest_id,in2,in4,in8,created_at',{ count:'exact' })
+        .order('id',{ ascending:false }).range((page-1)*limitValue, page*limitValue-1);
+
+      if(addrInput && currentFilter!=='all'){ q = q.eq('addr', addrInput.toLowerCase()); }
+
+      const { data, error, count } = await q;
+      if(error) throw error;
+
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+
+      const tb=$('claimsBody');
+      if(page===1){ tb.innerHTML=''; currentPage=1; }
+
+      if(!data || !data.length){
+        if(page===1) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;">No claims found</td></tr>';
+        $('rowCount').textContent='0'; $('loadMore').style.display='none'; hasMoreData=false; return;
+      }
+
+      $('rowCount').textContent = count ?? data.length;
+      hasMoreData = count ? (count > page*limitValue) : (data.length===limitValue);
+      $('loadMore').style.display = hasMoreData ? 'inline-flex' : 'none';
+
+      data.forEach(r => tb.appendChild(appendClaimRow(r)));
+      showToast(`Loaded ${data.length} claims`,'success');
+    }catch(e){
+      console.error('loadClaims error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Failed to load claims: ${e.message}`,'error');
+    }
   }
 
-  // --- 5) Wallet helper (optional)
+  async function loadXP(){
+    if(!sb){ showToast('Supabase client not initialized','error'); return; }
+    const a = normalizeAddr($('addr').value);
+    if(!a){ setBar(0); showToast('Enter a valid wallet address','warning'); return; }
+    const loading = showToast('Calculating XP...','info',0);
+    try{
+      const { data, error } = await sb.from('xp_claims').select('in4').eq('addr', a.toLowerCase());
+      if(error) throw error;
+      const total = (data||[]).reduce((s,r)=>s+(r.in4||0),0);
+      setBar(total);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Total XP: ${total}`,'success');
+    }catch(e){
+      console.error('loadXP error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Failed to calculate XP: ${e.message}`,'error'); setBar(0);
+    }
+  }
+
+  async function insertClaim(){
+    if(!sb){ showToast('Supabase client not initialized','error'); return; }
+    const addrPretty = normalizeAddr($('addr').value);
+    const quest = ($('questId').value || '').trim() || 'q_demo';
+    const xp = Number($('xpAmount').value || '0');
+
+    if(!addrPretty){ showToast('Enter a valid wallet address','warning'); return; }
+    if(!(xp>0)){ showToast('XP amount must be greater than 0','warning'); return; }
+
+    const loading = showToast('Adding XP claim...','info',0);
+    const row = { addr: addrPretty.toLowerCase(), quest_id: quest, in4: xp, created_at: new Date().toISOString() };
+
+    try{
+      const { error } = await sb.from('xp_claims').insert(row);
+      if(error) throw error;
+
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Added ${xp} XP for ${short(addrPretty)} (${quest})`,'success');
+
+      $('questId').value=''; $('xpAmount').value=''; updateAddBtnState();
+      await Promise.all([loadXP(), loadClaims()]);
+    }catch(e){
+      console.error('insertClaim error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Failed to add claim: ${e.message}`,'error');
+    }
+  }
+
+  async function deleteClaim(id){
+    if(!confirm('Delete this XP claim?')) return;
+    if(!sb){ showToast('Supabase client not initialized','error'); return; }
+    const loading = showToast('Deleting claim...','info',0);
+    try{
+      const { error } = await sb.from('xp_claims').delete().eq('id', id);
+      if(error) throw error;
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast('Claim deleted','success');
+      await Promise.all([loadXP(), loadClaims()]);
+    }catch(e){
+      console.error('deleteClaim error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Failed to delete claim: ${e.message}`,'error');
+    }
+  }
+
+  // 8) Wallet
   async function connectMM(){
-    if (!window.ethereum) { log('Install MetaMask to auto-fill address.'); return; }
+    if(!window.ethereum){ showToast('MetaMask not detected','warning'); return; }
+    const loading = showToast('Connecting to MetaMask...','info',0);
     try{
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send('eth_requestAccounts', []);
       const signer = provider.getSigner();
       const addr = await signer.getAddress();
-      $('addr').value = addr;
-      log('Connected: ' + short(addr));
+      $('addr').value = ethers.utils.getAddress(addr);
+      localStorage.setItem('addr', $('addr').value);
+      currentFilter='user'; $('filterStatus').textContent='User Only'; $('toggleFilter').textContent='Show All';
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Connected: ${short(addr)}`,'success');
       await Promise.all([loadXP(), loadClaims()]);
-    }catch(e){ log('Wallet error: ' + (e?.message||e)); }
+    }catch(e){
+      console.error('connectMM error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Wallet error: ${e.message}`,'error');
+    }
   }
 
-  // --- 6) Wire UI
-  $('saveCfg').onclick = () => {
-    const url = $('projectUrl').value, key = $('anonKey').value;
-    if (!url || !key) return log('Paste both URL and anon key.');
-    setCfg(url, key);
-    initClient(url, key);
-    // optional: refresh right away
-    loadClaims();
-  };
-  $('connect').onclick = connectMM;
-  $('refreshXp').onclick = loadXP;
-  $('addClaim').onclick = insertClaim;
-  $('refreshClaims').onclick = ()=> loadClaims();
+  // 9) Utils
+  function normalizeAddr(a){ try{ return ethers.utils.getAddress((a||'').trim()); }catch{return null;} }
+  function isAddr(a){ return !!normalizeAddr(a); }
+  function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
+  function formatDate(iso){ const d=new Date(iso); return new Intl.DateTimeFormat([], {month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d); }
 
-  // --- 7) Boot
-  (function boot(){
+  // 10) Realtime (optional but enabled)
+  function subscribeRealtime(){
+    if(!sb) return;
+    const ch = sb.channel('xp_claims_changes');
+    ch.on('postgres_changes',{ event:'*', schema:'public', table:'xp_claims' }, () => {
+      clearTimeout(window._rt);
+      window._rt = setTimeout(()=>{ loadXP(); loadClaims(1); }, 300);
+    }).subscribe();
+  }
+
+  // 11) Events
+  function updateAddBtnState(){
+    const okAddr = isAddr($('addr').value);
+    const xpOk = Number($('xpAmount').value) > 0;
+    const questOk = ($('questId').value || '').trim().length > 0;
+    $('addClaim').disabled = !(okAddr && xpOk && questOk);
+  }
+
+  function setupEventListeners(){
+    $('saveCfg').addEventListener('click', async ()=>{
+      const url=$('projectUrl').value, key=$('anonKey').value;
+      if(!url || !key){ showToast('Provide both URL and anon key','warning'); return; }
+      $('saveCfg').disabled=true; $('saveCfg').innerHTML='<div class="spinner"></div> Saving...';
+      try{ const ok=await initClient(url,key); if(ok){ setCfg(url,key); showToast('Configuration saved','success'); } }
+      finally{ $('saveCfg').disabled=false; $('saveCfg').innerHTML='<i class="fas fa-save"></i> Save Config'; }
+    });
+
+    $('connect').addEventListener('click', connectMM);
+    $('refreshXp').addEventListener('click', loadXP);
+    $('addr').addEventListener('input', ()=>{ updateAddBtnState(); });
+    $('addr').addEventListener('change', ()=>{
+      const a = normalizeAddr($('addr').value);
+      if(a){ $('addr').value = a; localStorage.setItem('addr', a); loadXP(); loadClaims(); }
+      else{ setBar(0); }
+    });
+
+    $('addClaim').addEventListener('click', insertClaim);
+    $('refreshClaims').addEventListener('click', ()=>loadClaims());
+    $('limitSelect').addEventListener('change', ()=>loadClaims());
+    $('loadMore').addEventListener('click', ()=>{ currentPage++; loadClaims(currentPage); });
+
+    $('toggleFilter').addEventListener('click', ()=>{
+      currentFilter = (currentFilter==='all') ? 'user' : 'all';
+      $('filterStatus').textContent = currentFilter==='all' ? 'All' : 'User Only';
+      $('toggleFilter').textContent = currentFilter==='all' ? 'Show Mine' : 'Show All';
+      loadClaims(1);
+    });
+
+    ['questId','xpAmount'].forEach(id=>{
+      $(id).addEventListener('input', updateAddBtnState);
+      $(id).addEventListener('keydown', e=>{ if(e.ctrlKey && e.key==='Enter' && id==='questId') $('addClaim').click(); });
+    });
+
+    if(window.ethereum){
+      window.ethereum.on('accountsChanged', (accounts)=>{
+        if(accounts.length>0){
+          $('addr').value = ethers.utils.getAddress(accounts[0]);
+          localStorage.setItem('addr', $('addr').value);
+          loadXP(); loadClaims();
+        }else{ $('addr').value=''; localStorage.removeItem('addr'); setBar(0); }
+      });
+    }
+  }
+
+  // 12) Boot
+  async function boot(){
+    setupEventListeners();
     const cfg = getCfg();
-    $('projectUrl').value = cfg.url;
-    $('anonKey').value = cfg.key;
-    initClient(cfg.url, cfg.key);   // <-- initialize `sb` immediately
-  })();
+    $('projectUrl').value = cfg.url; $('anonKey').value = cfg.key;
+    await initClient(cfg.url, cfg.key);
+
+    const savedAddr = localStorage.getItem('addr');
+    if(savedAddr){ $('addr').value = savedAddr; await Promise.all([loadXP(), loadClaims()]); }
+
+    showToast('Dashboard initialized','success');
+  }
+
+  window.addEventListener('DOMContentLoaded', boot);
+  window.deleteClaim = deleteClaim;
 </script>
 </body>
 </html>
