@@ -141,7 +141,8 @@ const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1
 const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 (signature mint)
 const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // FYI
 
-const FORCED_MECHS_PRICE_BNB = null; // set to string like "0.0063" only if you want to override UI
+// optional UI override (use on-chain if null)
+const FORCED_MECHS_PRICE_BNB = null;
 
 /* ============== TOKEN LISTS ============== */
 const CRYPTIDS = [
@@ -173,13 +174,12 @@ const MECHS = [{ id:0, name:"Skybone Leviathan", uri:"ipfs://QmXZaUkWziGrd2ooyXd
 const MECHS_READ_ABI = [
   "function uri(uint256) view returns (string)",
   "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
-  // explicit tuple for ethers v6
-  "function getClaimConditionById(uint256 _tokenId, uint256 _conditionId) view returns (tuple(uint256 startTimestamp, uint256 maxClaimableSupply, uint256 supplyClaimed, uint256 quantityLimitPerWallet, bytes32 merkleRoot, uint256 pricePerToken, address currency, string metadata))"
+  "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))"
 ];
 const MECHS_CLAIM_ABI = [
-  "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,tuple(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+  "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
 ];
-// Custom errors for clean decoding
+// Custom errors (for readable reverts)
 const MECHS_ERROR_ABI = [
   "error DropNoActiveCondition()",
   "error DropClaimNotStarted(uint256 expected,uint256 actual)",
@@ -273,7 +273,7 @@ function populateSelect(selectEl, items, defaultId=0){
   selectEl.value = String(items.some(x => x.id === defaultId) ? defaultId : fallback);
 }
 
-/* ===== helpers to avoid “could not decode result data” ===== */
+/* ===== revert-friendly interface + helpers (core fix) ===== */
 const FULL_MECHS_IFACE = new ethers.Interface([
   ...MECHS_CLAIM_ABI,
   ...MECHS_ERROR_ABI
@@ -283,11 +283,11 @@ function prettyRevert(e){
   const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data;
   if (typeof data === "string" && data.startsWith("0x")){
     try {
-      const parsed = FULL_MECHS_IFACE.parseError(data); // v6 API
-      const args = Array.isArray(parsed?.args) && parsed.args.length
-        ? " " + JSON.stringify(parsed.args.map(a => (typeof a === "bigint" ? a.toString() : a)))
+      const dec = FULL_MECHS_IFACE.decodeErrorResult(data);
+      const args = Array.isArray(dec.args) && dec.args.length
+        ? " " + JSON.stringify(dec.args.map(a => (typeof a === "bigint" ? a.toString() : a)))
         : "";
-      return `${parsed?.name || "Error"}${args}`;
+      return `${dec.name}${args}`;
     } catch {}
   }
   return decodeErr(e);
@@ -296,12 +296,24 @@ function prettyRevert(e){
 // simulate without decoding success bytes
 async function simulateClaim({ to, value, args }){
   const data = FULL_MECHS_IFACE.encodeFunctionData("claim", args);
-  // signer.call is available in ethers v6
   try{
     await signer.call({ to, data, value });
   }catch(e){
     throw new Error(prettyRevert(e));
   }
+}
+
+// send raw tx (no ABI decoding on success path)
+async function sendRawClaim({ to, value, args }){
+  const data = FULL_MECHS_IFACE.encodeFunctionData("claim", args);
+  // estimate gas with a safety buffer; if estimation fails, go without it
+  let gasLimit;
+  try{
+    const est = await signer.estimateGas({ to, data, value });
+    gasLimit = (est * 115n) / 100n; // +15%
+  }catch{}
+  const tx = await signer.sendTransaction({ to, data, value, ...(gasLimit ? { gasLimit } : {}) });
+  return await tx.wait();
 }
 
 /* ============== Wallet ============== */
@@ -311,7 +323,7 @@ async function connectWallet(){
     connectBtn.disabled = true; connectBtn.classList.add('loading');
     setStatus('warning','Connecting to MetaMask…');
 
-    browserProvider = new ethers.BrowserProvider(window.ethereum);
+    browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
     await browserProvider.send('eth_requestAccounts',[]);
 
     const net = await browserProvider.getNetwork();
@@ -356,10 +368,7 @@ function handleAccountsChanged(acc){
   walletAddress.textContent = shorten(userAddr);
   updateBalance(); renderMech();
 }
-function handleChainChanged(){
-  if (window.ethereum) browserProvider = new ethers.BrowserProvider(window.ethereum);
-  updateNetworkIndicator(); updateBalance(); renderMech();
-}
+function handleChainChanged(){ if (window.ethereum) browserProvider = new ethers.BrowserProvider(window.ethereum,'any'); updateNetworkIndicator(); updateBalance(); renderMech(); }
 function disconnectWallet(){
   try{
     window.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
@@ -437,6 +446,7 @@ async function renderMech(){
       const qty = Math.max(1, Number(mechs.qty.value) || 1);
       mechs.mint.textContent = `Mint for ${trimEther(fmtEth(price * BigInt(qty)))} BNB (est.)`;
     } else {
+      // (we don't know decimals/symbol of ERC20 here; show raw)
       mechs.currency.textContent = 'ERC20';
       mechs.price.textContent = `${claim.pricePerToken.toString()} (raw units)`;
       const qty = Math.max(1, Number(mechs.qty.value) || 1);
@@ -504,35 +514,38 @@ async function mintMech(){
     const qty = Math.max(1, Number(mechs.qty.value) || 1);
 
     const claim = await readClaim(CONTRACT_MECHS, tokenId);
-    const isNative = (claim.currency === ethers.ZeroAddress);
+    const isNative = (claim.currency === ZERO);
 
     let pricePer = isNative
       ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
       : claim.pricePerToken;
 
-    const allowlist = makeAllowlistProof(pricePer, isNative ? ethers.ZeroAddress : claim.currency);
-    const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI], signer);
+    const currencyAddr = isNative ? ZERO : claim.currency;
+    const allowlist = makeAllowlistProof(pricePer, currencyAddr);
 
     if (isNative){
       const totalValue = pricePer * BigInt(qty);
       const userBalance = await browserProvider.getBalance(userAddr);
       if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
 
-      // simulate (no decode of success)
+      // 1) simulate (get readable reverts)
       await simulateClaim({
         to: CONTRACT_MECHS,
         value: totalValue,
-        args: [userAddr, tokenId, qty, ethers.ZeroAddress, pricePer, allowlist, "0x"]
+        args: [userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x"]
       });
 
-      // send real tx
-      const tx = await drop.claim(userAddr, tokenId, qty, ethers.ZeroAddress, pricePer, allowlist, "0x", { value: totalValue });
-      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
-      const rec = await tx.wait();
-      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
+      // 2) send raw tx (no result decoding at all)
+      setStatus(mechs.status,"warning","Sending transaction…");
+      const rec = await sendRawClaim({
+        to: CONTRACT_MECHS,
+        value: totalValue,
+        args: [userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x"]
+      });
+      setStatus(mechs.status,"success",`Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
     } else {
-      // ERC-20 route
-      const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
+      // ERC20 route
+      const erc20 = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
       const [decimals, symbol, balance, allowance] = await Promise.all([
         erc20.decimals(), erc20.symbol(), erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_MECHS)
       ]);
@@ -544,17 +557,21 @@ async function mintMech(){
         await txA.wait();
       }
 
-      // simulate with value:0
+      // simulate
       await simulateClaim({
         to: CONTRACT_MECHS,
         value: 0n,
-        args: [userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x"]
+        args: [userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x"]
       });
 
-      const tx = await drop.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n });
-      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
-      const rec = await tx.wait();
-      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
+      // send raw
+      setStatus(mechs.status,"warning","Sending transaction…");
+      const rec = await sendRawClaim({
+        to: CONTRACT_MECHS,
+        value: 0n,
+        args: [userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x"]
+      });
+      setStatus(mechs.status,"success",`Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
     }
 
     await renderMech();
@@ -583,7 +600,7 @@ connectBtn.addEventListener("click", connectWallet);
   if (window.ethereum){
     const acc = await window.ethereum.request({ method:'eth_accounts' });
     if (acc?.length){
-      browserProvider = new ethers.BrowserProvider(window.ethereum);
+      browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
       signer = await browserProvider.getSigner();
       userAddr = acc[0];
       connectBtn.textContent = 'Connected';
