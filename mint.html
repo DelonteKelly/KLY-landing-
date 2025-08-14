@@ -137,7 +137,7 @@
 const BSC_CHAIN_ID = 56;
 const READ_RPC = "https://bsc-dataseed.binance.org/";
 
-const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155
+const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155 (BNB)
 const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 (signature mint - preview only)
 const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // FYI
 
@@ -209,14 +209,22 @@ const MECHS_ERROR_ABI = [
 ];
 // (preview only) ERC721
 const ERC721_READ_ABI = [ "function tokenURI(uint256 tokenId) view returns (string)" ];
-// ERC20 helpers
-const ERC20_ABI = [
-  "function approve(address spender,uint256 amount) returns (bool)",
+
+/* ---------- ERC20 split ABIs + safe approve ---------- */
+const ERC20_READ_ABI = [
   "function allowance(address owner,address spender) view returns (uint256)",
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
   "function symbol() view returns (string)"
-];
+]; // reads only
+
+const ERC20_APPROVE_BOOL_ABI = [
+  "function approve(address spender,uint256 amount) returns (bool)"
+]; // standard approve
+
+const ERC20_APPROVE_NO_RET_IFACE = new ethers.Interface([
+  "function approve(address spender,uint256 amount)"
+]); // raw approve (no return)
 
 /* ============== DOM ============== */
 const connectBtn = document.getElementById('connectBtn');
@@ -253,6 +261,7 @@ const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
 const fmtEth = v => ethers.formatEther(v);
 const toWei  = s => ethers.parseEther(s);
 const trimEther = (s,dec=6)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
+function isZeroAddress(a){ return !!a && a.toLowerCase() === ZERO.toLowerCase(); }
 function decodeErr(e){
   if (e?.errorName) {
     const args = e?.errorArgs ? JSON.stringify(e.errorArgs, (_,v)=> typeof v==="bigint"?v.toString():v) : "";
@@ -452,7 +461,7 @@ async function renderMech(){
 
   try {
     const claim = await readClaim(CONTRACT_MECHS, id);
-    const isNative = (claim.currency === ZERO);
+    const isNative = isZeroAddress(claim.currency);
 
     if (isNative) {
       const price = FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
@@ -514,84 +523,92 @@ async function renderCryptid(){
   crypt.balance.textContent = "—";
 }
 
-/* ============== Mint (MECHS) ============== */
+/* ============== ERC-20 approve helper ============== */
+async function safeApprove(tokenAddr, spender, amount){
+  try {
+    const erc20Bool = new ethers.Contract(tokenAddr, ERC20_APPROVE_BOOL_ABI, signer);
+    const tx = await erc20Bool.approve(spender, amount);
+    return await tx.wait();
+  } catch (e) {
+    const msg = decodeErr(e);
+    if (/decode result/i.test(msg) || /could not decode/i.test(msg)) {
+      const data = ERC20_APPROVE_NO_RET_IFACE.encodeFunctionData("approve", [spender, amount]);
+      let gasLimit;
+      try {
+        const est = await signer.estimateGas({ to: tokenAddr, data });
+        gasLimit = (est * 120n) / 100n;
+      } catch {}
+      const tx = await signer.sendTransaction({ to: tokenAddr, data, ...(gasLimit ? { gasLimit } : {}) });
+      return await tx.wait();
+    }
+    throw e;
+  }
+}
+
+/* ============== Universal Drop1155 minter (BNB or ERC-20) ============== */
 const makeAllowlistProof = (pricePer, currency) =>
   ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
 
-async function mintMech(){
+async function mintDrop1155({ contractAddr, tokenId, qty, uiStatusEl }){
   try{
     if (!signer) { await connectWallet(); if (!signer) return; }
-    mechs.mint.disabled = true; mechs.mint.classList.add("loading");
-    setStatus(mechs.status, "warning", "Preparing transaction…");
+    setStatus(uiStatusEl, "warning", "Preparing transaction…");
 
-    const tokenId = Number(mechs.sel.value);
-    const qty = Math.max(1, Number(mechs.qty.value) || 1);
+    // 1) read active claim
+    const claim = await readClaim(contractAddr, tokenId);
+    const isNative = isZeroAddress(claim.currency);
+    const pricePer = claim.pricePerToken;
+    const totalQty = Math.max(1, Number(qty) || 1);
+    const totalCost = pricePer * BigInt(totalQty);
 
-    const claim = await readClaim(CONTRACT_MECHS, tokenId);
-    const isNative = (claim.currency === ZERO);
-
-    let pricePer = isNative
-      ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
-      : claim.pricePerToken;
-
+    // 2) build args (shared)
+    const receiver = userAddr;
     const currencyAddr = isNative ? ZERO : claim.currency;
     const allowlist = makeAllowlistProof(pricePer, currencyAddr);
+    const args = [receiver, tokenId, totalQty, currencyAddr, pricePer, allowlist, "0x"];
 
-    if (isNative){
-      const totalValue = pricePer * BigInt(qty);
-      const userBalance = await browserProvider.getBalance(userAddr);
-      if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
-
-      // (1) simulate to catch/format reverts
-      await simulateClaim({
-        to: CONTRACT_MECHS,
-        value: totalValue,
-        args: [userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x"]
-      });
-
-      // (2) send raw (no decode on success)
-      setStatus(mechs.status,"warning","Sending transaction…");
-      const rec = await sendRawClaim({
-        to: CONTRACT_MECHS,
-        value: totalValue,
-        args: [userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x"]
-      });
-      setStatus(mechs.status,"success",`Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
-    } else {
-      // ERC20 route
-      const erc20 = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
+    // 3) balances / approvals
+    if (!isNative){
+      const erc20 = new ethers.Contract(currencyAddr, ERC20_READ_ABI, signer);
       const [decimals, symbol, balance, allowance] = await Promise.all([
-        erc20.decimals(), erc20.symbol(), erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_MECHS)
+        erc20.decimals(), erc20.symbol(), erc20.balanceOf(userAddr), erc20.allowance(userAddr, contractAddr)
       ]);
-      const total = pricePer * BigInt(qty);
-      if (balance < total) throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
-      if (allowance < total){
-        setStatus(mechs.status, "warning", `Approving ${symbol}…`);
-        const txA = await erc20.approve(CONTRACT_MECHS, total);
-        await txA.wait();
+      if (balance < totalCost) {
+        throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(totalCost, decimals)} ${symbol}.`);
       }
-
-      // (1) simulate (no value for ERC20)
-      await simulateClaim({
-        to: CONTRACT_MECHS,
-        value: 0n,
-        args: [userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x"]
-      });
-
-      // (2) send raw
-      setStatus(mechs.status,"warning","Sending transaction…");
-      const rec = await sendRawClaim({
-        to: CONTRACT_MECHS,
-        value: 0n,
-        args: [userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x"]
-      });
-      setStatus(mechs.status,"success",`Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
+      if (allowance < totalCost) {
+        setStatus(uiStatusEl, "warning", `Approving ${symbol}…`);
+        await safeApprove(currencyAddr, contractAddr, totalCost);
+      }
+    } else {
+      const bnbBal = await browserProvider.getBalance(userAddr);
+      if (bnbBal < totalCost) throw new Error(`Insufficient BNB. Need ${ethers.formatEther(totalCost)} BNB.`);
     }
 
-    await renderMech();
+    // 4) simulate and send
+    await simulateClaim({ to: contractAddr, value: isNative ? totalCost : 0n, args });
+    setStatus(uiStatusEl, "warning", "Sending transaction…");
+    const rec = await sendRawClaim({ to: contractAddr, value: isNative ? totalCost : 0n, args });
+    setStatus(uiStatusEl, "success", `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
   } catch(e){
-    setStatus(mechs.status, "error", prettyRevert(e));
-    console.error('mintMech:', e);
+    setStatus(uiStatusEl, "error", prettyRevert(e));
+    console.error('mintDrop1155:', e);
+  }
+}
+
+/* ============== Mint (MECHS) ============== */
+async function mintMech(){
+  const tokenId = Number(mechs.sel.value);
+  const qty = Number(mechs.qty.value || 1);
+  mechs.mint.disabled = true; mechs.mint.classList.add("loading");
+  try {
+    await mintDrop1155({
+      contractAddr: CONTRACT_MECHS,  // Drop1155 (BNB)
+      tokenId,
+      qty,
+      uiStatusEl: mechs.status
+    });
+    await renderMech();
   } finally {
     mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
   }
