@@ -457,6 +457,7 @@ async function renderCryptid(){
 }
 
 /* ============== Mint (MECHS) ============== */
+/* ============== Mint (MECHS) — v6 staticCall + ERC20 { value: 0n } ============== */
 const makeAllowlistProof = (pricePer, currency) =>
   ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
 
@@ -469,31 +470,35 @@ async function mintMech(){
     const tokenId = Number(mechs.sel.value);
     const qty = Math.max(1, Number(mechs.qty.value) || 1);
 
+    // read claim (fresh)
     const claim = await readClaim(CONTRACT_MECHS, tokenId);
     const isNative = (claim.currency === ZERO);
+
     let pricePer = isNative
       ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
       : claim.pricePerToken;
 
-    // include custom errors in ABI so ethers can decode reverts
+    // include custom errors so reverts decode
     const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI], signer);
 
     if (isNative){
+      // -------- Native BNB path --------
       const totalValue = pricePer * BigInt(qty);
       const userBalance = await browserProvider.getBalance(userAddr);
       if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
 
       const allowlist = makeAllowlistProof(pricePer, ZERO);
 
-      // static call first to get clear revert message
-      await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue }).catch(e => { throw new Error(decodeErr(e)); });
+      // ✅ ethers v6: use staticCall
+      await drop.claim.staticCall(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue })
+        .catch(e => { throw new Error(decodeErr(e)); });
 
       const tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue });
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
       setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
     } else {
-      // ERC20 payment
+      // -------- ERC20 path --------
       const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
       const [decimals, symbol, balance, allowance] = await Promise.all([
         erc20.decimals(),
@@ -501,9 +506,11 @@ async function mintMech(){
         erc20.balanceOf(userAddr),
         erc20.allowance(userAddr, CONTRACT_MECHS)
       ]);
-      const total = pricePer * BigInt(qty);
-      if (balance < total) throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
 
+      const total = pricePer * BigInt(qty);
+      if (balance < total) {
+        throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
+      }
       if (allowance < total){
         setStatus(mechs.status, "warning", `Approving ${symbol}…`);
         const approveTx = await erc20.approve(CONTRACT_MECHS, total);
@@ -512,13 +519,13 @@ async function mintMech(){
 
       const allowlist = makeAllowlistProof(pricePer, claim.currency);
 
-      // static call with { value: 0 } so nodes don’t choke; now errors decode
-      await drop.callStatic.claim(
-        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0 }
+      // ✅ IMPORTANT: pass { value: 0n } so nodes don't try to decode a value transfer
+      await drop.claim.staticCall(
+        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n }
       ).catch(e => { throw new Error("ERC20 Mint failed: " + decodeErr(e)); });
 
       const tx = await drop.claim(
-        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0 }
+        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n }
       );
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
@@ -530,7 +537,8 @@ async function mintMech(){
     setStatus(mechs.status, "error", decodeErr(e));
     console.error('mintMech:', e);
   } finally {
-    mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
+    mechs.mint.disabled = false; 
+    mechs.mint.classList.remove("loading");
   }
 }
 
