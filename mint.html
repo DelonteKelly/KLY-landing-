@@ -178,7 +178,7 @@ const MECHS_READ_ABI = [
 const MECHS_CLAIM_ABI = [
   "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
 ];
-// ✨ Add custom errors so ethers can decode revert data
+// Custom errors (to decode clean revert reasons)
 const MECHS_ERROR_ABI = [
   "error DropNoActiveCondition()",
   "error DropClaimNotStarted(uint256 expected,uint256 actual)",
@@ -237,7 +237,6 @@ const fmtEth = v => ethers.formatEther(v);
 const toWei  = s => ethers.parseEther(s);
 const trimEther = (s,dec=6)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
 function decodeErr(e){
-  // ethers v6 custom error surface
   if (e?.errorName) {
     const args = e?.errorArgs ? JSON.stringify(e.errorArgs) : "";
     return `${e.errorName}${args && args!=="[]" ? " " + args : ""}`;
@@ -271,6 +270,36 @@ function populateSelect(selectEl, items, defaultId=0){
   }
   const fallback = items[0]?.id ?? 0;
   selectEl.value = String(items.some(x => x.id === defaultId) ? defaultId : fallback);
+}
+
+/* ===== helpers to avoid “could not decode result data” ===== */
+const FULL_MECHS_IFACE = new ethers.Interface([
+  ...MECHS_CLAIM_ABI,
+  ...MECHS_ERROR_ABI
+]);
+
+function prettyRevert(e){
+  const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data;
+  if (typeof data === "string" && data.startsWith("0x")){
+    try {
+      const dec = FULL_MECHS_IFACE.decodeErrorResult(data);
+      const args = Array.isArray(dec.args) && dec.args.length
+        ? " " + JSON.stringify(dec.args.map(a => (typeof a === "bigint" ? a.toString() : a)))
+        : "";
+      return `${dec.name}${args}`;
+    } catch {}
+  }
+  return decodeErr(e);
+}
+
+// simulate without decoding success bytes
+async function simulateClaim({ to, value, args }){
+  const data = FULL_MECHS_IFACE.encodeFunctionData("claim", args);
+  try{
+    await signer.call({ to, data, value });
+  }catch(e){
+    throw new Error(prettyRevert(e));
+  }
 }
 
 /* ============== Wallet ============== */
@@ -469,63 +498,55 @@ async function mintMech(){
     const tokenId = Number(mechs.sel.value);
     const qty = Math.max(1, Number(mechs.qty.value) || 1);
 
-    // read claim (fresh)
     const claim = await readClaim(CONTRACT_MECHS, tokenId);
-    const isNative = (claim.currency === ZERO);
+    const isNative = (claim.currency === ethers.ZeroAddress);
 
     let pricePer = isNative
       ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
       : claim.pricePerToken;
 
-    // include custom errors so reverts decode
+    const allowlist = makeAllowlistProof(pricePer, isNative ? ethers.ZeroAddress : claim.currency);
     const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI], signer);
 
     if (isNative){
-      // -------- Native BNB path --------
       const totalValue = pricePer * BigInt(qty);
       const userBalance = await browserProvider.getBalance(userAddr);
       if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
 
-      const allowlist = makeAllowlistProof(pricePer, ZERO);
+      // simulate (no decode of success)
+      await simulateClaim({
+        to: CONTRACT_MECHS,
+        value: totalValue,
+        args: [userAddr, tokenId, qty, ethers.ZeroAddress, pricePer, allowlist, "0x"]
+      });
 
-      // ✅ ethers v6: use staticCall
-      await drop.claim.staticCall(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue })
-        .catch(e => { throw new Error(decodeErr(e)); });
-
-      const tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue });
+      // send real tx
+      const tx = await drop.claim(userAddr, tokenId, qty, ethers.ZeroAddress, pricePer, allowlist, "0x", { value: totalValue });
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
       setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
     } else {
-      // -------- ERC20 path --------
+      // ERC‑20 route
       const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
       const [decimals, symbol, balance, allowance] = await Promise.all([
-        erc20.decimals(),
-        erc20.symbol(),
-        erc20.balanceOf(userAddr),
-        erc20.allowance(userAddr, CONTRACT_MECHS)
+        erc20.decimals(), erc20.symbol(), erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_MECHS)
       ]);
-
       const total = pricePer * BigInt(qty);
-      if (balance < total) {
-        throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
-      }
+      if (balance < total) throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
       if (allowance < total){
         setStatus(mechs.status, "warning", `Approving ${symbol}…`);
-        const approveTx = await erc20.approve(CONTRACT_MECHS, total);
-        await approveTx.wait();
+        const txA = await erc20.approve(CONTRACT_MECHS, total);
+        await txA.wait();
       }
 
-      const allowlist = makeAllowlistProof(pricePer, claim.currency);
+      // simulate with value:0
+      await simulateClaim({
+        to: CONTRACT_MECHS,
+        value: 0n,
+        args: [userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x"]
+      });
 
-      // ✅ IMPORTANT: pass { value: 0n } so nodes don't try to decode a value transfer
-      await drop.claim.staticCall(
-        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n }
-      ).catch(e => { throw new Error("ERC20 Mint failed: " + decodeErr(e)); });
-
-      const tx = await drop.claim(
-        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n }
-      );
+      const tx = await drop.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0n });
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
       setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
@@ -533,11 +554,10 @@ async function mintMech(){
 
     await renderMech();
   } catch(e){
-    setStatus(mechs.status, "error", decodeErr(e));
+    setStatus(mechs.status, "error", prettyRevert(e));
     console.error('mintMech:', e);
   } finally {
-    mechs.mint.disabled = false; 
-    mechs.mint.classList.remove("loading");
+    mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
   }
 }
 
