@@ -662,32 +662,54 @@
   }
 
   async function insertClaim(){
-    if(!sb){ showToast('Supabase client not initialized','error'); return; }
-    const addrPretty = normalizeAddr($('addr').value);
-    const quest = ($('questId').value || '').trim() || 'q_demo';
-    const xp = Number($('xpAmount').value || '0');
+  if(!sb){ showToast('Supabase client not initialized','error'); return; }
 
-    if(!addrPretty){ showToast('Enter a valid wallet address','warning'); return; }
-    if(!(xp>0)){ showToast('XP amount must be greater than 0','warning'); return; }
+  const addrPretty = normalizeAddr($('addr').value);
+  const quest = ($('questId').value || '').trim() || 'q_demo';
+  const xp = Number($('xpAmount').value || '0');
 
-    const loading = showToast('Adding XP claim...','info',0);
-    const row = { addr: addrPretty.toLowerCase(), quest_id: quest, in4: xp, created_at: new Date().toISOString() };
+  if(!addrPretty){ showToast('Enter a valid wallet address','warning'); return; }
+  if(!(xp>0)){ showToast('XP amount must be greater than 0','warning'); return; }
 
-    try{
+  const loading = showToast('Adding XP claim...','info',0);
+  const row = { addr: addrPretty.toLowerCase(), quest_id: quest, in4: xp, created_at: new Date().toISOString() };
+
+  try{
+    // Pre-check to avoid unique violation
+    const { data: exists, error: chkErr } = await sb
+      .from('xp_claims')
+      .select('id')
+      .eq('addr', row.addr)
+      .eq('quest_id', row.quest_id)
+      .limit(1);
+
+    if (chkErr) throw chkErr;
+
+    if (exists && exists.length) {
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast('Already claimed — no changes made','warning');
+    } else {
       const { error } = await sb.from('xp_claims').insert(row);
-      if(error) throw error;
-
+      if (error) throw error;
       loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
       showToast(`Added ${xp} XP for ${short(addrPretty)} (${quest})`,'success');
-
-      $('questId').value=''; $('xpAmount').value=''; updateAddBtnState();
-      await Promise.all([loadXP(), loadClaims(), loadLeaderboard(), loadAnalytics()]);
-    }catch(e){
-      console.error('insertClaim error:', e);
-      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
-      showToast(`Failed to add claim: ${e.message}`,'error');
     }
+
+    $('questId').value=''; $('xpAmount').value=''; updateAddBtnState();
+    await Promise.all([loadXP(), loadClaims(), loadLeaderboard(), loadAnalytics()]);
+  }catch(e){
+    // If the unique error still sneaks through, treat it as a no-op
+    if (String(e.message).includes('unique_claim_per_quest')) {
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast('Already claimed — skipped','warning');
+      await Promise.all([loadXP(), loadClaims(), loadLeaderboard(), loadAnalytics()]);
+      return;
+    }
+    console.error('insertClaim error:', e);
+    loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+    showToast(`Failed to add claim: ${e.message}`,'error');
   }
+}
 
   async function deleteClaim(id){
     if(!confirm('Delete this XP claim?')) return;
@@ -729,207 +751,86 @@
   }
 
   // 9) Mining Functions
-async function startMining(){
-  if (miningInterval) return;
+async function processMiningBatch(){
+  if(!sb) return;
 
-  miningStats = { processed: 0, xpDistributed: 0, startTime: Date.now(), total: null };
+  const batchSize = parseInt($('miningBatchSize').value) || 50;
+  const xpAmount  = parseInt($('miningXpAmount').value) || 10;
+  const questId   = ($('miningQuestId').value || 'q_mining').trim();
+  const addressList = getAddressList();
 
-  // If mining all users, pre-compute total distinct addresses
-  if (!getAddressList()) {
-    const { count, error } = await sb
-      .from('xp_claims')
-      .select('addr', { count: 'exact', head: true, distinct: true });
-    if (!error) miningStats.total = count || 0;
-  }
-
-  $('miningStatus').textContent = 'Running';
-  $('miningProcessed').textContent = '0';
-  $('startMining').disabled = true;
-  $('stopMining').disabled = false;
-  $('testMining').disabled = true;
-
-  addMiningLog('Starting mining process...', 'info');
-  addMiningLog(`Configuration: Batch ${$('miningBatchSize').value}, Delay ${$('miningDelay').value}ms, XP ${$('miningXpAmount').value}`, 'info');
-
-  const delay = parseInt($('miningDelay').value) || 1000;
-
-  await processMiningBatch(); // first batch now
-  miningInterval = setInterval(processMiningBatch, delay);
-}
-  
-  function addMiningLog(message, type='info'){
-    const log = $('miningLog');
-    const entry = el('div','log-entry');
-    const time = el('span','log-time', `[${new Date().toLocaleTimeString()}]`);
-    const msg = el('span',`log-${type}`, message);
-    
-    entry.appendChild(time);
-    entry.appendChild(msg);
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
-  }
-
-function updateMiningStats(){
-  $('statTotal').textContent = miningStats.processed;
-  $('statXp').textContent = miningStats.xpDistributed;
-
-  if (miningStats.startTime){
-    const elapsedMin = (Date.now() - miningStats.startTime) / 60000;
-    const speed = elapsedMin > 0 ? Math.round(miningStats.processed / elapsedMin) : 0;
-    $('statSpeed').textContent = speed;
-
-    const list = getAddressList();
-    const total = list ? list.length : (miningStats.total ?? 0);
-    if (total > 0){
-      const remaining = Math.max(0, total - miningStats.processed);
-      const estMin = speed > 0 ? Math.ceil(remaining / speed) : 0;
-      $('statTime').textContent = estMin ? `${estMin} min` : 'Calculating...';
+  try {
+    // 1) Figure out which addresses to process this batch
+    let addressesToProcess = [];
+    if (addressList === null) {
+      // Distinct addresses, stable order
+      const from = miningStats.processed;
+      const to   = miningStats.processed + batchSize - 1;
+      const { data, error } = await sb
+        .from('xp_claims')
+        .select('addr', { count: 'exact', distinct: true })
+        .order('addr', { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      addressesToProcess = (data || []).map(r => r.addr);
     } else {
-      $('statTime').textContent = 'N/A';
+      addressesToProcess = addressList.slice(miningStats.processed, miningStats.processed + batchSize);
     }
-  }
-}
 
-  function getAddressList(){
-    const input = ($('miningAddressList').value || '').trim();
-    if(!input) return null; // null means mine for all users
-    
-    return input.split(',')
-      .map(a => a.trim())
-      .filter(a => a.length > 0)
-      .map(a => {
-        try { return ethers.utils.getAddress(a); }
-        catch { return null; }
-      })
-      .filter(a => a !== null);
-  }
+    if (addressesToProcess.length === 0) {
+      addMiningLog('No more addresses to process. Mining complete.', 'success');
+      stopMining();
+      return;
+    }
 
-  async function processMiningBatch(){
-    if(!sb) return;
-    
-    const batchSize = parseInt($('miningBatchSize').value) || 50;
-    const xpAmount = parseInt($('miningXpAmount').value) || 10;
-    const questId = ($('miningQuestId').value || 'q_mining').trim();
-    const addressList = getAddressList();
-    
-    try {
-      // Get a batch of addresses to process
-  let addressesToProcess = [];
+    // 2) Pull existing claims for THIS quest to avoid duplicates
+    const lowerAddrs = addressesToProcess.map(a => a.toLowerCase());
+    const { data: existing, error: exErr } = await sb
+      .from('xp_claims')
+      .select('addr, quest_id')
+      .eq('quest_id', questId)
+      .in('addr', lowerAddrs);
 
-if (addressList === null) {
-  // Distinct addresses, stable order
-  const from = miningStats.processed;
-  const to   = miningStats.processed + batchSize - 1;
+    if (exErr) throw exErr;
 
-  const { data, error } = await sb
-    .from('xp_claims')
-    .select('addr', { count: 'exact', distinct: true })
-    .order('addr', { ascending: true })
-    .range(from, to);
+    const already = new Set((existing || []).map(r => `${r.addr}|${r.quest_id}`));
+    const freshAddrs = lowerAddrs.filter(a => !already.has(`${a}|${questId}`));
 
-  if (error) throw error;
-  addressesToProcess = (data || []).map(r => r.addr);
-} else {
-  addressesToProcess = addressList.slice(miningStats.processed, miningStats.processed + batchSize);
-}
-      
-      if(addressesToProcess.length === 0){
-        addMiningLog('No more addresses to process. Mining complete.', 'success');
-        stopMining();
-        return;
-      }
-      
-      // Prepare batch insert
-      const now = new Date().toISOString();
-      const claims = addressesToProcess.map(addr => ({
-        addr: addr.toLowerCase(),
-        quest_id: questId,
-        in4: xpAmount,
-        created_at: now
-      }));
-      
-      // Insert batch
-      const { error } = await sb.from('xp_claims').insert(claims);
-      if(error) throw error;
-      
-      // Update stats
+    if (freshAddrs.length === 0) {
+      addMiningLog('Batch skipped — all addresses already claimed this quest.', 'warning');
+      // Still move the window forward so we don’t get stuck
       miningStats.processed += addressesToProcess.length;
-      miningStats.xpDistributed += addressesToProcess.length * xpAmount;
-      
       $('miningProcessed').textContent = miningStats.processed;
       updateMiningStats();
-      
-      addMiningLog(`Processed ${addressesToProcess.length} addresses (${xpAmount} XP each)`, 'mining');
-      
-    } catch(e) {
-      console.error('Mining batch error:', e);
-      addMiningLog(`Error processing batch: ${e.message}`, 'error');
-      stopMining();
+      return;
     }
-  }
 
-  async function startMining(){
-    if(miningInterval) return;
-    
-    // Reset stats
-    miningStats = {
-      processed: 0,
-      xpDistributed: 0,
-      startTime: Date.now()
-    };
-    
-    $('miningStatus').textContent = 'Running';
-    $('miningProcessed').textContent = '0';
-    $('startMining').disabled = true;
-    $('stopMining').disabled = false;
-    $('testMining').disabled = true;
-    
-    addMiningLog('Starting mining process...', 'info');
-    addMiningLog(`Configuration: Batch ${$('miningBatchSize').value}, Delay ${$('miningDelay').value}ms, XP ${$('miningXpAmount').value}`, 'info');
-    
-    const delay = parseInt($('miningDelay').value) || 1000;
-    
-    // Process first batch immediately
-    await processMiningBatch();
-    
-    // Set up interval for subsequent batches
-    miningInterval = setInterval(async () => {
-      await processMiningBatch();
-    }, delay);
-  }
+    // 3) Insert only the fresh ones
+    const now = new Date().toISOString();
+    const claims = freshAddrs.map(addr => ({
+      addr,
+      quest_id: questId,
+      in4: xpAmount,
+      created_at: now
+    }));
 
-  function stopMining(){
-    if(miningInterval){
-      clearInterval(miningInterval);
-      miningInterval = null;
-    }
-    
-    $('miningStatus').textContent = 'Idle';
-    $('startMining').disabled = false;
-    $('stopMining').disabled = true;
-    $('testMining').disabled = false;
-    
-    addMiningLog('Mining stopped', 'info');
+    const { error } = await sb.from('xp_claims').insert(claims);
+    if (error) throw error;
+
+    // 4) Update stats/log
+    miningStats.processed     += addressesToProcess.length; // we advanced the window
+    miningStats.xpDistributed += freshAddrs.length * xpAmount;
+
+    $('miningProcessed').textContent = miningStats.processed;
     updateMiningStats();
-  }
 
-  async function testMining(){
-    addMiningLog('Starting test run...', 'info');
-    
-    const batchSize = parseInt($('miningBatchSize').value) || 50;
-    const xpAmount = parseInt($('miningXpAmount').value) || 10;
-    const questId = ($('miningQuestId').value || 'q_mining').trim();
-    const addressList = getAddressList() || ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
-    
-    addMiningLog(`Test would process ${Math.min(batchSize, addressList.length)} addresses`, 'info');
-    addMiningLog(`Each would receive ${xpAmount} XP for quest "${questId}"`, 'info');
-    addMiningLog('No actual database changes were made', 'success');
+    addMiningLog(`Processed ${freshAddrs.length}/${addressesToProcess.length} (skipped duplicates) — +${xpAmount} XP each`, 'mining');
+  } catch (e) {
+    console.error('Mining batch error:', e);
+    addMiningLog(`Error processing batch: ${e.message}`, 'error');
+    stopMining();
   }
-
-  function clearMiningLog(){
-    $('miningLog').innerHTML = '';
-    addMiningLog('Log cleared', 'info');
-  }
+}
 
   // 10) Utils
   function normalizeAddr(a){ try{ return ethers.utils.getAddress((a||'').trim()); }catch{return null;} }
