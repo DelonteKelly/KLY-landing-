@@ -45,7 +45,7 @@
     tr:hover td{background:rgba(255,255,255,.03)}
     .meta{opacity:.85;font-size:14px;margin-top:8px;color:var(--text-muted)}
     .bar{height:16px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin:12px 0}
-    .fill{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .5s cubic-bezier(.65,0,.35,1))}
+    .fill{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .5s cubic-bezier(.65,0,.35,1)}
     .badge{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
     .badge-success{background:rgba(74,222,128,.15);color:var(--success)}
     .badge-mining{background:var(--mining-bg);color:var(--mining)}
@@ -729,6 +729,34 @@
   }
 
   // 9) Mining Functions
+async function startMining(){
+  if (miningInterval) return;
+
+  miningStats = { processed: 0, xpDistributed: 0, startTime: Date.now(), total: null };
+
+  // If mining all users, pre-compute total distinct addresses
+  if (!getAddressList()) {
+    const { count, error } = await sb
+      .from('xp_claims')
+      .select('addr', { count: 'exact', head: true, distinct: true });
+    if (!error) miningStats.total = count || 0;
+  }
+
+  $('miningStatus').textContent = 'Running';
+  $('miningProcessed').textContent = '0';
+  $('startMining').disabled = true;
+  $('stopMining').disabled = false;
+  $('testMining').disabled = true;
+
+  addMiningLog('Starting mining process...', 'info');
+  addMiningLog(`Configuration: Batch ${$('miningBatchSize').value}, Delay ${$('miningDelay').value}ms, XP ${$('miningXpAmount').value}`, 'info');
+
+  const delay = parseInt($('miningDelay').value) || 1000;
+
+  await processMiningBatch(); // first batch now
+  miningInterval = setInterval(processMiningBatch, delay);
+}
+  
   function addMiningLog(message, type='info'){
     const log = $('miningLog');
     const entry = el('div','log-entry');
@@ -741,26 +769,26 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  function updateMiningStats(){
-    $('statTotal').textContent = miningStats.processed;
-    $('statXp').textContent = miningStats.xpDistributed;
-    
-    if(miningStats.startTime){
-      const elapsed = (Date.now() - miningStats.startTime) / 1000 / 60; // minutes
-      const speed = elapsed > 0 ? Math.round(miningStats.processed / elapsed) : 0;
-      $('statSpeed').textContent = speed;
-      
-      // Estimate remaining time if we have addresses to process
-      const addressList = getAddressList();
-      if(addressList.length > 0){
-        const remaining = addressList.length - miningStats.processed;
-        const estTime = speed > 0 ? Math.round(remaining / speed) : 0;
-        $('statTime').textContent = estTime > 0 ? `${estTime} min` : 'Calculating...';
-      } else {
-        $('statTime').textContent = 'N/A';
-      }
+function updateMiningStats(){
+  $('statTotal').textContent = miningStats.processed;
+  $('statXp').textContent = miningStats.xpDistributed;
+
+  if (miningStats.startTime){
+    const elapsedMin = (Date.now() - miningStats.startTime) / 60000;
+    const speed = elapsedMin > 0 ? Math.round(miningStats.processed / elapsedMin) : 0;
+    $('statSpeed').textContent = speed;
+
+    const list = getAddressList();
+    const total = list ? list.length : (miningStats.total ?? 0);
+    if (total > 0){
+      const remaining = Math.max(0, total - miningStats.processed);
+      const estMin = speed > 0 ? Math.ceil(remaining / speed) : 0;
+      $('statTime').textContent = estMin ? `${estMin} min` : 'Calculating...';
+    } else {
+      $('statTime').textContent = 'N/A';
     }
   }
+}
 
   function getAddressList(){
     const input = ($('miningAddressList').value || '').trim();
@@ -786,21 +814,24 @@
     
     try {
       // Get a batch of addresses to process
-      let addressesToProcess = [];
-      
-      if(addressList === null){
-        // Mine for all users - get distinct addresses from the database
-        const { data, error } = await sb.from('xp_claims')
-          .select('addr', { count: 'exact' })
-          .order('addr', { ascending: true })
-          .range(miningStats.processed, miningStats.processed + batchSize - 1);
-        
-        if(error) throw error;
-        addressesToProcess = data.map(r => r.addr);
-      } else {
-        // Mine for specified addresses
-        addressesToProcess = addressList.slice(miningStats.processed, miningStats.processed + batchSize);
-      }
+  let addressesToProcess = [];
+
+if (addressList === null) {
+  // Distinct addresses, stable order
+  const from = miningStats.processed;
+  const to   = miningStats.processed + batchSize - 1;
+
+  const { data, error } = await sb
+    .from('xp_claims')
+    .select('addr', { count: 'exact', distinct: true })
+    .order('addr', { ascending: true })
+    .range(from, to);
+
+  if (error) throw error;
+  addressesToProcess = (data || []).map(r => r.addr);
+} else {
+  addressesToProcess = addressList.slice(miningStats.processed, miningStats.processed + batchSize);
+}
       
       if(addressesToProcess.length === 0){
         addMiningLog('No more addresses to process. Mining complete.', 'success');
