@@ -7,372 +7,50 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <style>
   :root {
-    --bg: #0A1A24;
-    --bg2: #051018;
-    --ink: #EAF7FF;
-    --sub: #9CCBE3;
-    --accent: #73E1FF;
-    --gold: #e2c675;
-    --metamask: #f6851b;
-    --card: rgba(255,255,255,.06);
-    --stroke: rgba(255,255,255,.12);
-    --glow: 0 0 24px rgba(115,225,255,.35);
-    --success: #4ade80;
-    --error: #f87171;
-    --warning: #fbbf24;
+    --bg: #0A1A24; --bg2: #051018; --ink: #EAF7FF; --sub: #9CCBE3; --accent: #73E1FF; --gold: #e2c675;
+    --metamask: #f6851b; --card: rgba(255,255,255,.06); --stroke: rgba(255,255,255,.12);
+    --success:#4ade80; --error:#f87171; --warning:#fbbf24;
   }
-  
-  html, body {
-    margin: 0;
-    background: linear-gradient(180deg, var(--bg), var(--bg2));
-    color: var(--ink);
-    font-family: 'Inter', system-ui, Arial, sans-serif;
-    min-height: 100vh;
-  }
-  
-  .wrap {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-  
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-  }
-  
-  .brand {
-    font-weight: 800;
-    letter-spacing: .08em;
-    font-size: 1.5rem;
-    color: var(--accent);
-    text-shadow: 0 0 10px rgba(115,225,255,0.3);
-  }
-  
-  .hero {
-    text-align: center;
-    padding: 2rem 0;
-    margin-bottom: 3rem;
-  }
-  
-  .hero h1 {
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    margin: 0 0 1rem;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    background: linear-gradient(90deg, var(--accent), var(--gold));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-  
-  .hero p {
-    color: var(--sub);
-    margin: 0;
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.6;
-    font-size: 1.1rem;
-  }
-  
-  .wallet-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .btn {
-    background: linear-gradient(90deg, var(--metamask), #f8a34d);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 1rem 2rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-  
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(246, 133, 27, 0.3);
-  }
-  
-  .btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none !important;
-  }
-  
-  .wallet-info {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    background: rgba(0,0,0,0.2);
-    padding: 0.75rem 1.5rem;
-    border-radius: 999px;
-    font-size: 0.95rem;
-  }
-  
-  .wallet-address {
-    font-family: monospace;
-    font-size: 0.9rem;
-  }
-  
-  .balance {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  
-  .balance-amount {
-    font-weight: 600;
-  }
-  
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    margin-top: 2rem;
-  }
-  
-  .card {
-    background: var(--card);
-    border: 1px solid var(--stroke);
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 16px 60px rgba(0,0,0,.35);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--accent), var(--gold));
-  }
-  
-  .card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
-    border-color: rgba(115,225,255,0.3);
-  }
-  
-  .card h2 {
-    margin: 0 0 1rem;
-    font-size: 1.5rem;
-  }
-  
-  .contract-address {
-    font-size: 0.85rem;
-    word-break: break-all;
-    color: var(--sub);
-    margin-bottom: 1rem;
-    display: block;
-  }
-  
-  .form-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: center;
-    margin: 1rem 0;
-  }
-  
-  label {
-    font-size: 0.95rem;
-    opacity: 0.9;
-  }
-  
-  select, input[type=number] {
-    background: #0c1d27;
-    color: var(--ink);
-    border: 1px solid var(--stroke);
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-    font-family: inherit;
-    transition: all 0.2s ease;
-    min-width: 100px;
-  }
-  
-  select:hover, input[type=number]:hover {
-    border-color: var(--accent);
-  }
-  
-  select:focus, input[type=number]:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(115,225,255,0.2);
-  }
-  
-  .preview {
-    display: flex;
-    gap: 1.5rem;
-    margin: 1.5rem 0;
-    align-items: flex-start;
-  }
-  
-  .preview img {
-    width: 180px;
-    height: 180px;
-    object-fit: cover;
-    border-radius: 12px;
-    border: 1px solid var(--stroke);
-    box-shadow: 0 20px 60px rgba(0,0,0,.35);
-    transition: all 0.3s ease;
-    background: linear-gradient(45deg, #0c1d27, #0a2738);
-  }
-  
-  .preview img:hover {
-    transform: scale(1.03);
-    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
-  }
-  
-  .meta {
-    flex: 1;
-  }
-  
-  .nft-name {
-    margin: 0 0 0.5rem;
-    font-size: 1.25rem;
-  }
-  
-  .stat {
-    display: flex;
-    justify-content: space-between;
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
-  }
-  
-  .stat-label {
-    color: var(--sub);
-  }
-  
-  .stat-value {
-    font-weight: 600;
-  }
-  
-  .mint-btn {
-    background: linear-gradient(90deg, var(--accent), #a9ffcb);
-    color: #001018;
-    border: none;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    font-weight: 700;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 1rem;
-    transition: all 0.2s ease;
-  }
-  
-  .mint-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 32px rgba(115,225,255,0.5);
-  }
-  
-  .status {
-    min-height: 24px;
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-    text-align: center;
-  }
-  
-  .status.success {
-    color: var(--success);
-  }
-  
-  .status.error {
-    color: var(--error);
-  }
-  
-  .status.warning {
-    color: var(--warning);
-  }
-  
-  .loading {
-    position: relative;
-    color: transparent !important;
-  }
-  
-  .loading:after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-  }
-  
-  footer {
-    margin-top: 3rem;
-    text-align: center;
-    color: var(--sub);
-    font-size: 0.9rem;
-    padding: 1rem;
-  }
-  
-  /* Network indicator */
-  .network-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.2);
-  }
-  
-  .network-indicator.valid {
-    background: rgba(74, 222, 128, 0.1);
-    color: var(--success);
-  }
-  
-  .network-indicator.invalid {
-    background: rgba(248, 113, 113, 0.1);
-    color: var(--error);
-  }
-  
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .wrap {
-      padding: 1.5rem;
-    }
-    
-    .grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .preview {
-      flex-direction: column;
-    }
-    
-    .preview img {
-      width: 100%;
-      height: auto;
-      max-height: 300px;
-    }
-  }
+  html,body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font-family:Inter,system-ui,Arial,sans-serif;min-height:100vh}
+  .wrap{max-width:1200px;margin:0 auto;padding:2rem}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+  .brand{font-weight:800;letter-spacing:.08em;font-size:1.5rem;color:var(--accent);text-shadow:0 0 10px rgba(115,225,255,.3)}
+  .hero{text-align:center;padding:2rem 0;margin-bottom:3rem}
+  .hero h1{font-size:clamp(2rem,5vw,3.5rem);margin:0 0 1rem;text-transform:uppercase;letter-spacing:.06em;
+    background:linear-gradient(90deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{color:var(--sub);margin:0 auto;max-width:600px;line-height:1.6;font-size:1.1rem}
+  .wallet-section{display:flex;flex-direction:column;align-items:center;gap:1rem;margin-bottom:2rem}
+  .btn{background:linear-gradient(90deg,var(--metamask),#f8a34d);color:#fff;border:none;border-radius:12px;padding:1rem 2rem;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:.5rem}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(246,133,27,.3)}
+  .btn:disabled{opacity:.7;cursor:not-allowed;transform:none!important}
+  .wallet-info{display:flex;gap:1rem;align-items:center;background:rgba(0,0,0,.2);padding:.75rem 1.5rem;border-radius:999px;font-size:.95rem}
+  .wallet-address{font-family:monospace;font-size:.9rem}
+  .balance{display:flex;gap:.5rem;align-items:center}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:2rem;margin-top:2rem}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:1.5rem;box-shadow:0 16px 60px rgba(0,0,0,.35);transition:.3s;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
+  .card h2{margin:0 0 1rem;font-size:1.5rem}
+  .contract-address{font-size:.85rem;word-break:break-all;color:var(--sub);margin-bottom:1rem;display:block}
+  .form-group{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:1rem 0}
+  select,input[type=number]{background:#0c1d27;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:.75rem 1rem;min-width:120px}
+  .preview{display:flex;gap:1.5rem;margin:1.5rem 0;align-items:flex-start}
+  .preview img{width:180px;height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(45deg,#0c1d27,#0a2738)}
+  .meta{flex:1}
+  .nft-name{margin:0 0 .5rem;font-size:1.25rem}
+  .stat{display:flex;justify-content:space-between;margin:.5rem 0;font-size:.95rem}
+  .stat-label{color:var(--sub)}
+  .stat-value{font-weight:600}
+  .mint-btn{background:linear-gradient(90deg,var(--accent),#a9ffcb);color:#001018;border:none;border-radius:12px;padding:1rem 1.5rem;font-weight:700;cursor:pointer;width:100%;margin-top:1rem}
+  .status{min-height:24px;font-size:.9rem;margin-top:.5rem;text-align:center}
+  .status.success{color:var(--success)} .status.error{color:var(--error)} .status.warning{color:var(--warning)}
+  .loading{position:relative;color:transparent!important}
+  .loading:after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+  footer{margin-top:3rem;text-align:center;color:var(--sub);font-size:.9rem;padding:1rem}
+  .network-indicator{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.2)}
+  .network-indicator.valid{background:rgba(74,222,128,.1);color:var(--success)}
+  .network-indicator.invalid{background:rgba(248,113,113,.1);color:var(--error)}
+  @media (max-width:768px){.wrap{padding:1.5rem}.grid{grid-template-columns:1fr}.preview{flex-direction:column}.preview img{width:100%;height:auto;max-height:300px}}
 </style>
 </head>
 <body>
@@ -396,21 +74,15 @@
       Connect MetaMask
     </button>
     
-    <div id="walletInfo" style="display: none;">
+    <div id="walletInfo" style="display:none">
       <div class="wallet-info">
         <span id="walletAddress" class="wallet-address"></span>
-        <span class="network-indicator">
-          <span id="networkName">BSC</span>
-        </span>
+        <span class="network-indicator"><span id="networkName">BSC</span></span>
       </div>
       <div class="wallet-info">
-        <span class="balance">
-          Balance: <span id="balanceAmount" class="balance-amount">0</span>
-          <span id="balanceCurrency">BNB</span>
-        </span>
+        <span class="balance">Balance: <span id="balanceAmount" class="balance-amount">0</span> <span id="balanceCurrency">BNB</span></span>
       </div>
     </div>
-    
     <div id="connStatus" class="status"></div>
   </div>
 
@@ -419,742 +91,476 @@
     <div class="card" id="mechsCard">
       <h2>Ancestral Mechs: Bloodline Codex</h2>
       <span class="contract-address">Contract: 0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989</span>
-      
       <div class="form-group">
         <label for="mechsTokenId">Token ID</label>
         <select id="mechsTokenId"></select>
         <label for="mechsQty">Quantity</label>
         <input id="mechsQty" type="number" min="1" max="10" value="1"/>
       </div>
-
       <div class="preview">
         <img id="mechsImg" alt="Preview" loading="lazy"/>
         <div class="meta">
           <h3 id="mechsName" class="nft-name">—</h3>
-          <div class="stat">
-            <span class="stat-label">Price/Token:</span>
-            <span id="mechsPrice" class="stat-value">loading…</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Currency:</span>
-            <span id="mechsCurrency" class="stat-value">loading…</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Supply:</span>
-            <span id="mechsSupply" class="stat-value">—</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Your Balance:</span>
-            <span id="mechsBalance" class="stat-value">—</span>
-          </div>
+          <div class="stat"><span class="stat-label">Price/Token:</span><span id="mechsPrice" class="stat-value">loading…</span></div>
+          <div class="stat"><span class="stat-label">Currency:</span><span id="mechsCurrency" class="stat-value">loading…</span></div>
+          <div class="stat"><span class="stat-label">Supply:</span><span id="mechsSupply" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Your Balance:</span><span id="mechsBalance" class="stat-value">—</span></div>
         </div>
       </div>
-
       <button id="mechsMint" class="mint-btn">Mint Mech</button>
       <div id="mechsStatus" class="status"></div>
     </div>
 
-    <!-- Tribal Punk Cryptids (KLY) -->
+    <!-- Tribal Punk Cryptids (read‑only preview; ERC721 mint requires backend signature) -->
     <div class="card" id="cryptidsCard">
       <h2>Tribal Punk Cryptids</h2>
       <span class="contract-address">Contract: 0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11</span>
-      
       <div class="form-group">
         <label for="cryptidTokenId">Token ID</label>
         <select id="cryptidTokenId"></select>
         <label for="cryptidQty">Quantity</label>
-        <input id="cryptidQty" type="number" min="1" max="10" value="1"/>
+        <input id="cryptidQty" type="number" min="1" max="10" value="1" disabled/>
       </div>
-
       <div class="preview">
         <img id="cryptidImg" alt="Preview" loading="lazy"/>
         <div class="meta">
           <h3 id="cryptidName" class="nft-name">—</h3>
-          <div class="stat">
-            <span class="stat-label">Price/Token:</span>
-            <span id="cryptidPrice" class="stat-value">loading…</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Currency:</span>
-            <span id="cryptidCurrency" class="stat-value">loading…</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Supply:</span>
-            <span id="cryptidSupply" class="stat-value">—</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Your Balance:</span>
-            <span id="cryptidBalance" class="stat-value">—</span>
-          </div>
+          <div class="stat"><span class="stat-label">Price/Token:</span><span id="cryptidPrice" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Currency:</span><span id="cryptidCurrency" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Supply:</span><span id="cryptidSupply" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Your Balance:</span><span id="cryptidBalance" class="stat-value">—</span></div>
         </div>
       </div>
-
-      <button id="cryptidMint" class="mint-btn">Mint Cryptid</button>
-      <div id="cryptidStatus" class="status"></div>
+      <button id="cryptidMint" class="mint-btn" disabled>Mint Cryptid (requires signature)</button>
+      <div id="cryptidStatus" class="status warning">Mint requires a signed voucher (mintWithSignature). Not enabled on this page.</div>
     </div>
   </section>
 
   <footer>They took the land. We took the future.</footer>
 </div>
+
 <script type="module">
-  // ------------ CONFIG ------------
-  const BSC_CHAIN_ID = 56;
-  const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989";
-  const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11";
-  const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // ERC-20 (on BSC)
+/* ================== CONFIG ================== */
+const BSC_CHAIN_ID = 56;
+const READ_RPC = "https://bsc-dataseed.binance.org/";
 
-  // set to null in prod unless you intentionally override on-chain price
-  const FORCED_MECHS_PRICE_BNB = "0.0063"; // or null
-  const FORCED_CRYPTIDS_PRICE_KLY = null;  // or "12.34"
+// Contracts
+const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155
+const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 with mintWithSignature
+const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // (for your info)
 
-  const READ_RPC = "https://bsc-dataseed.binance.org/";
+// Optional UI override (leave null to use on-chain)
+const FORCED_MECHS_PRICE_BNB = null;
 
-  // ------------ TOKEN LISTS ------------
-  const T = (id, name, uri)=>({id, name, uri});
-  const CRYPTIDS = [
-    T(0,"Wendigo.EXE","ipfs://QmV2X7oUrG5i284sKQPHQJAbQV8HkL788mbZexuCA5oTvx/0"),
-    T(1,"Mask of Memory","ipfs://Qmbu7rbrAoG3cJTYEJGGJ6iZsPGpDQxhkJBsKt4QuBJj8N/0"),
-    T(2,"Wolf of Wounded Knee","ipfs://QmQm8nSAL56mGypS45f4AZ44xejVPWuktWidfZqAHdJtmk/0"),
-    T(3,"Coastal Sasquatch Punk","ipfs://QmV91qcvQmzwUEu4hin91iXqzVn7hn1F9gZ9bmfxnFTQje/0"),
-    T(4,"Anishinaabe Wendigo Protocol","ipfs://QmStEaLkFwNREJ3M4t42hNKvphwjHK1MxjA7CUdW15d6BE/0"),
-    T(5,"Desert Skinwalker Punk","ipfs://QmcW6m3B1ygPoMrsr4qVMaNC4uCL1s4EAq2LcdEsCj6iUS/0"),
-    T(6,"Métis Rougarou Rider","ipfs://Qmeg78oUMrM1fUGNMVzUNG2G5dEDuD8TLoB9Mh3j3X6zEF/0"),
-    T(7,"Cherokee Skinwalker Firewall","ipfs://QmWNsSbcy2iBmYjK2TCzELZTfzD1ezGj1WvktYiwnWnjjg/0"),
-    T(8,"Wabanaki Webworm","ipfs://QmdadZMbe1QMUW5i51smLxEDuWvRWKanLiiHdyb4zH2mbM/0"),
-    T(9,"Deer Woman DAO","ipfs://QmTmrUDMXuqnffe1duAEYdJGAKNeSdEsVvKe8dT8YKR4i7/0"),
-    T(10,"The Cipherskin Codex","ipfs://QmPcWyNf93hwKXxBH5QpseeqmkE296arM1jkg4zcvi3bgC/0"),
-    T(11,"Treaty.Exe","ipfs://QmeGbsj4E3w9zaaEnQiSsDUrPUbbTWumn8BemBnsHNdFuR/0"),
-    T(12,"Scroll of Unburied Seeds","ipfs://QmNXhjcuNvaYDW7PdDi7Erh1jbkhQb6ep15FAYcXVZUByE/0"),
-    T(13,"The Disentrancer","ipfs://QmQP3hP9YyAkFZwKNkrw5apxEcZ7nAZecshsaE1sdpyGaz/0"),
-    T(14,"Ledger Shaman","ipfs://QmNj8tHVjp4X1HNBFbm4nbw6mb2vzdMHrYDd8wQuE35qFw/0"),
-    T(15,"The Ghost of Paper Genocide","ipfs://QmWbTfxSn4Mybnw3deUiFn3T8PVyyJkiCPZD9C91Sqz9Kk/0"),
-    T(16,"Ironroot Codewalker","ipfs://QmWMhG22wfXFZufu7E2haVkqoc1XYf4bU8KXvVL6xUZZXW/0"),
-    T(17,"Deer Woman 9.0","ipfs://QmRieQJ4gpkjMsJkaB99t2M5BX5sns6CWVJPa3HNwASCEB/0"),
-    T(18,"Thunderbird 9G","ipfs://QmPnk3rYUeqeCevm7pjjfp31WrsUp8CzBP96TVRmmFky7h/0"),
-    T(19,"Skinwalker 9S","ipfs://Qmbv4hEy6gW68XSUUW46nzYmptaxiWS1vFGig3457W1Wez/0"),
-  ];
-  const MECHS = [ T(0,"Skybone Leviathan","ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0") ];
+/* ================== TOKEN LISTS ================== */
+const CRYPTIDS = [
+  { id:0,  name:"Wendigo.EXE",                    uri:"ipfs://QmV2X7oUrG5i284sKQPHQJAbQV8HkL788mbZexuCA5oTvx/0" },
+  { id:1,  name:"Mask of Memory",                 uri:"ipfs://Qmbu7rbrAoG3cJTYEJGGJ6iZsPGpDQxhkJBsKt4QuBJj8N/0" },
+  { id:2,  name:"Wolf of Wounded Knee",           uri:"ipfs://QmQm8nSAL56mGypS45f4AZ44xejVPWuktWidfZqAHdJtmk/0" },
+  { id:3,  name:"Coastal Sasquatch Punk",         uri:"ipfs://QmV91qcvQmzwUEu4hin91iXqzVn7hn1F9gZ9bmfxnFTQje/0" },
+  { id:4,  name:"Anishinaabe Wendigo Protocol",   uri:"ipfs://QmStEaLkFwNREJ3M4t42hNKvphwjHK1MxjA7CUdW15d6BE/0" },
+  { id:5,  name:"Desert Skinwalker Punk",         uri:"ipfs://QmcW6m3B1ygPoMrsr4qVMaNC4uCL1s4EAq2LcdEsCj6iUS/0" },
+  { id:6,  name:"Métis Rougarou Rider",           uri:"ipfs://Qmeg78oUMrM1fUGNMVzUNG2G5dEDuD8TLoB9Mh3j3X6zEF/0" },
+  { id:7,  name:"Cherokee Skinwalker Firewall",   uri:"ipfs://QmWNsSbcy2iBmYjK2TCzELZTfzD1ezGj1WvktYiwnWnjjg/0" },
+  { id:8,  name:"Wabanaki Webworm",               uri:"ipfs://QmdadZMbe1QMUW5i51smLxEDuWvRWKanLiiHdyb4zH2mbM/0" },
+  { id:9,  name:"Deer Woman DAO",                 uri:"ipfs://QmTmrUDMXuqnffe1duAEYdJGAKNeSdEsVvKe8dT8YKR4i7/0" },
+  { id:10, name:"The Cipherskin Codex",           uri:"ipfs://QmPcWyNf93hwKXxBH5QpseeqmkE296arM1jkg4zcvi3bgC/0" },
+  { id:11, name:"Treaty.Exe",                     uri:"ipfs://QmeGbsj4E3w9zaaEnQiSsDUrPUbbTWumn8BemBnsHNdFuR/0" },
+  { id:12, name:"Scroll of Unburied Seeds",       uri:"ipfs://QmNXhjcuNvaYDW7PdDi7Erh1jbkhQb6ep15FAYcXVZUByE/0" },
+  { id:13, name:"The Disentrancer",               uri:"ipfs://QmQP3hP9YyAkFZwKNkrw5apxEcZ7nAZecshsaE1sdpyGaz/0" },
+  { id:14, name:"Ledger Shaman",                  uri:"ipfs://QmNj8tHVjp4X1HNBFbm4nbw6mb2vzdMHrYDd8wQuE35qFw/0" },
+  { id:15, name:"The Ghost of Paper Genocide",    uri:"ipfs://QmWbTfxSn4Mybnw3deUiFn3T8PVyyJkiCPZD9C91Sqz9Kk/0" },
+  { id:16, name:"Ironroot Codewalker",            uri:"ipfs://QmWMhG22wfXFZufu7E2haVkqoc1XYf4bU8KXvVL6xUZZXW/0" },
+  { id:17, name:"Deer Woman 9.0",                 uri:"ipfs://QmRieQJ4gpkjMsJkaB99t2M5BX5sns6CWVJPa3HNwASCEB/0" },
+  { id:18, name:"Thunderbird 9G",                 uri:"ipfs://QmPnk3rYUeqeCevm7pjjfp31WrsUp8CzBP96TVRmmFky7h/0" },
+  { id:19, name:"Skinwalker 9S",                  uri:"ipfs://Qmbv4hEy6gW68XSUUW46nzYmptaxiWS1vFGig3457W1Wez/0" },
+];
+const MECHS = [
+  { id:0, name:"Skybone Leviathan", uri:"ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0" }
+];
 
-  // ------------ ABIs (variants + ERC20) ------------
-  const ERC20_ABI = [
-    "function approve(address spender,uint256 amount) returns (bool)",
-    "function allowance(address owner,address spender) view returns (uint256)",
-    "function decimals() view returns (uint8)",
-    "function balanceOf(address) view returns (uint256)",
-    "function symbol() view returns (string)"
-  ];
+/* ================== ABIs ================== */
+// MECHS: exact functions your contract exposes (from the ABI you sent)
+const MECHS_READ_ABI = [
+  "function uri(uint256) view returns (string)",
+  "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
+  "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))"
+];
+const MECHS_CLAIM_ABI = [
+  "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+];
 
-  // read variants
-  const ABI_READ_VARIANTS = [
-    // with metadata string
-    ["function getActiveClaimConditionId(uint256) view returns (uint256)",
-     "function getClaimConditionById(uint256,uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
-     "function uri(uint256) view returns (string)"],
-    // without metadata
-    ["function getActiveClaimConditionId(uint256) view returns (uint256)",
-     "function getClaimConditionById(uint256,uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency))",
-     "function uri(uint256) view returns (string)"],
-    // claimCondition single getter
-    ["function claimCondition(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency))",
-     "function uri(uint256) view returns (string)"],
-  ];
+// CRYPTIDS: basic read for metadata only
+const ERC721_READ_ABI = [
+  "function tokenURI(uint256 tokenId) view returns (string)"
+];
 
-  // write variants (native + erc20)
-  const ABI_WRITE_NATIVE = [
-    "function claim(address receiver,uint256 tokenId,uint256 quantity) payable",
-    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) allowlist,bytes data) payable",
-    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,bytes32[] proofs) payable",
-  ];
-  const ABI_WRITE_ERC20 = [
-    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) allowlist,bytes data)",
-    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,bytes32[] proofs)",
-    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken)",
-  ];
+// ERC20 for balances/allowance if you ever need it later
+const ERC20_ABI = [
+  "function approve(address spender,uint256 amount) returns (bool)",
+  "function allowance(address owner,address spender) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address) view returns (uint256)",
+  "function symbol() view returns (string)"
+];
 
-  // ------------ DOM ------------
-  const connectBtn = document.getElementById('connectBtn');
-  const walletInfo = document.getElementById('walletInfo');
-  const walletAddress = document.getElementById('walletAddress');
-  const networkName = document.getElementById('networkName');
-  const balanceAmount = document.getElementById('balanceAmount');
-  const balanceCurrency = document.getElementById('balanceCurrency');
-  const connStatus = document.getElementById('connStatus');
+/* ================== DOM ================== */
+const connectBtn = document.getElementById('connectBtn');
+const walletInfo = document.getElementById('walletInfo');
+const walletAddress = document.getElementById('walletAddress');
+const networkName = document.getElementById('networkName');
+const balanceAmount = document.getElementById('balanceAmount');
+const balanceCurrency = document.getElementById('balanceCurrency');
+const connStatus = document.getElementById('connStatus');
 
-  const mechs = {
-    sel: document.getElementById("mechsTokenId"), qty: document.getElementById("mechsQty"),
-    img: document.getElementById("mechsImg"), name: document.getElementById("mechsName"),
-    price: document.getElementById("mechsPrice"), currency: document.getElementById("mechsCurrency"),
-    supply: document.getElementById("mechsSupply"), balance: document.getElementById("mechsBalance"),
-    mint: document.getElementById("mechsMint"), status: document.getElementById("mechsStatus")
-  };
-  const crypt = {
-    sel: document.getElementById("cryptidTokenId"), qty: document.getElementById("cryptidQty"),
-    img: document.getElementById("cryptidImg"), name: document.getElementById("cryptidName"),
-    price: document.getElementById("cryptidPrice"), currency: document.getElementById("cryptidCurrency"),
-    supply: document.getElementById("cryptidSupply"), balance: document.getElementById("cryptidBalance"),
-    mint: document.getElementById("cryptidMint"), status: document.getElementById("cryptidStatus")
-  };
+const mechs = {
+  sel: document.getElementById("mechsTokenId"), qty: document.getElementById("mechsQty"),
+  img: document.getElementById("mechsImg"), name: document.getElementById("mechsName"),
+  price: document.getElementById("mechsPrice"), currency: document.getElementById("mechsCurrency"),
+  supply: document.getElementById("mechsSupply"), balance: document.getElementById("mechsBalance"),
+  mint: document.getElementById("mechsMint"), status: document.getElementById("mechsStatus")
+};
+const crypt = {
+  sel: document.getElementById("cryptidTokenId"), qty: document.getElementById("cryptidQty"),
+  img: document.getElementById("cryptidImg"), name: document.getElementById("cryptidName"),
+  price: document.getElementById("cryptidPrice"), currency: document.getElementById("cryptidCurrency"),
+  supply: document.getElementById("cryptidSupply"), balance: document.getElementById("cryptidBalance"),
+  mint: document.getElementById("cryptidMint"), status: document.getElementById("cryptidStatus")
+};
 
-  // ------------ Providers / State (ethers v6) ------------
-  const readProvider = new ethers.JsonRpcProvider(READ_RPC);
-  let browserProvider = null, signer = null, userAddr = null;
+/* ================== Providers / State ================== */
+const readProvider = new ethers.JsonRpcProvider(READ_RPC);
+let browserProvider = null, signer = null, userAddr = null;
 
-  // ------------ Utils ------------
-  const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-  const isAddrLike = v => typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v);
-  const isUintLike = v => typeof v === 'bigint' || (typeof v === 'object' && 'toString' in v);
-  const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
-  const ZERO = ethers.ZeroAddress;
-  const fmtEth = v => ethers.formatEther(v);
-  const toWei  = s => ethers.parseEther(s);
-  const fmtU   = (v,d)=> ethers.formatUnits(v,d);
-  const toU    = (s,d)=> ethers.parseUnits(s,d);
-  const trimEther = (s,dec=4)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
-  const errMsg = (e) =>
-    e?.error?.message || e?.info?.error?.message || e?.data?.message ||
-    e?.reason || e?.shortMessage || e?.message || 'Unknown error';
+/* ================== Utils ================== */
+const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+const ZERO = ethers.ZeroAddress;
+const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
+const fmtEth = v => ethers.formatEther(v);
+const toWei  = s => ethers.parseEther(s);
+const trimEther = (s,dec=6)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
+const errMsg = (e) => e?.error?.message || e?.info?.error?.message || e?.data?.message || e?.reason || e?.shortMessage || e?.message || 'Unknown error';
 
-  function setStatus(elOrType, typeOrMsg, maybeMsg){
-    let el, type, msg;
-    if (typeof elOrType === 'string'){ el = connStatus; type = elOrType; msg = typeOrMsg || ''; }
-    else { el = elOrType || connStatus; type = typeOrMsg || ''; msg = maybeMsg || ''; }
-    el.textContent = msg; el.className = "status " + (type||"");
+function setStatus(elOrType, typeOrMsg="", maybeMsg=""){
+  let el = connStatus, type = typeOrMsg, msg = maybeMsg;
+  if (typeof elOrType !== 'string'){ el = elOrType || connStatus; type = typeOrMsg; msg = maybeMsg; }
+  else { type = elOrType; msg = typeOrMsg; }
+  el.textContent = msg; el.className = "status " + (type||"");
+}
+
+function ipfsHttp(url, i=0){
+  if (!url) return "";
+  if (!url.startsWith("ipfs://")) return url;
+  const p = url.slice(7);
+  const gws = ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"];
+  return gws[Math.min(i,gws.length-1)] + p;
+}
+async function fetchJsonWithFallback(ipfsUrl){
+  let lastErr;
+  for (let i=0;i<3;i++){
+    try{ const r = await fetch(ipfsHttp(ipfsUrl,i)); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json(); }
+    catch(e){ lastErr = e; }
   }
-
-  function ipfsHttp(url, gatewayIndex=0){
-    if (!url) return "";
-    if (!url.startsWith("ipfs://")) return url;
-    const p = url.slice(7);
-    const gws = ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"];
-    return gws[Math.min(gatewayIndex,gws.length-1)] + p;
+  throw lastErr || new Error("Fetch failed");
+}
+function populateSelect(selectEl, items, defaultId=0){
+  selectEl.innerHTML = '';
+  for (const it of items){
+    const opt = document.createElement('option');
+    opt.value = String(it.id);
+    opt.textContent = `#${it.id} — ${it.name}`;
+    selectEl.appendChild(opt);
   }
-  async function fetchJsonWithFallback(ipfsUrl){
-    let lastErr;
-    for (let i=0;i<3;i++){
+  const fallback = items[0]?.id ?? 0;
+  selectEl.value = String(items.some(x => x.id === defaultId) ? defaultId : fallback);
+}
+
+/* ================== Wallet ================== */
+async function connectWallet(){
+  try{
+    if (!window.ethereum) throw new Error('MetaMask not detected. Please install MetaMask.');
+    connectBtn.disabled = true; connectBtn.classList.add('loading');
+    setStatus('warning','Connecting to MetaMask…');
+
+    browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+    await browserProvider.send('eth_requestAccounts',[]);
+
+    // Ensure BSC
+    const net = await browserProvider.getNetwork();
+    if (Number(net.chainId) !== BSC_CHAIN_ID){
       try{
-        const r = await fetch(ipfsHttp(ipfsUrl,i));
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return await r.json();
-      }catch(e){ lastErr = e; }
-    }
-    throw lastErr || new Error("Fetch failed");
-  }
-
-  // ------------- ABI auto-detection helpers -------------
-  function firstWorkingContract(address, fragments){
-    return (async () => {
-      for (const frags of fragments){
-        const iface = new ethers.Interface(frags);
-        const c = new ethers.Contract(address, frags, readProvider);
-        try {
-          // smoke test: if getActive.. exists, call it with tokenId 0 (no revert required to pass ABI decode)
-          if (frags.some(f => f.includes("getActiveClaimConditionId"))) {
-            await c.getActiveClaimConditionId(0).catch(()=>{}); // ignore revert; only care about decode
-          }
-          return frags; // decoding didn't fail => ABI is compatible enough
-        } catch {}
+        await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+BSC_CHAIN_ID.toString(16) }]);
+      }catch(err){
+        if (err?.code === 4902){
+          await browserProvider.send('wallet_addEthereumChain',[{
+            chainId:'0x'+BSC_CHAIN_ID.toString(16),
+            chainName:'Binance Smart Chain',
+            nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+            rpcUrls:['https://bsc-dataseed1.bnbchain.org','https://bsc-dataseed2.bnbchain.org','https://bsc-dataseed.binance.org'],
+            blockExplorerUrls:['https://bscscan.com/']
+          }]);
+        } else throw err;
       }
-      return null;
-    })();
-  }
-
-  const READ_ABI_CACHE = new Map(); // addr -> fragments
-  const NATIVE_WRITE_SIG_CACHE = new Map(); // addr -> signature string
-  const ERC20_WRITE_SIG_CACHE  = new Map(); // addr -> signature string
-
-  async function getReadAbi(addr){
-    if (READ_ABI_CACHE.has(addr)) return READ_ABI_CACHE.get(addr);
-    const frags = await firstWorkingContract(addr, ABI_READ_VARIANTS);
-    READ_ABI_CACHE.set(addr, frags);
-    return frags;
-  }
-
-  async function getNativeWriteSig(addr){
-    if (NATIVE_WRITE_SIG_CACHE.has(addr)) return NATIVE_WRITE_SIG_CACHE.get(addr);
-    for (const sig of ABI_WRITE_NATIVE){
-      const c = new ethers.Contract(addr, [sig], readProvider);
-      try { await c.callStatic[sig.split("(")[0]](...[userAddr??ZERO,0,0].slice(0, (sig.match(/,/g)||[]).length+1)).catch(()=>{}); }
-      catch { continue; }
-      NATIVE_WRITE_SIG_CACHE.set(addr, sig);
-      return sig;
     }
-    NATIVE_WRITE_SIG_CACHE.set(addr, null);
-    return null;
-  }
 
-  async function getErc20WriteSig(addr){
-    if (ERC20_WRITE_SIG_CACHE.has(addr)) return ERC20_WRITE_SIG_CACHE.get(addr);
-    for (const sig of ABI_WRITE_ERC20){
-      const c = new ethers.Contract(addr, [sig], readProvider);
-      try { await c.callStatic[sig.split("(")[0]](...[userAddr??ZERO,0,0,KLY_TOKEN,1n,[]].slice(0, (sig.match(/,/g)||[]).length+1)).catch(()=>{}); }
-      catch { continue; }
-      ERC20_WRITE_SIG_CACHE.set(addr, sig);
-      return sig;
+    signer = await browserProvider.getSigner();
+    userAddr = await signer.getAddress();
+
+    window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+    window.ethereum.on?.('chainChanged', handleChainChanged);
+
+    connectBtn.textContent = 'Connected';
+    walletInfo.style.display = 'flex';
+    walletAddress.textContent = shorten(userAddr);
+    await updateNetworkIndicator();
+    await updateBalance();
+    await renderMech(); // refresh pricing with wallet limit
+    setStatus('success','Connected to MetaMask');
+  } catch(e){
+    setStatus('error', errMsg(e));
+  } finally {
+    connectBtn.disabled = false; connectBtn.classList.remove('loading');
+  }
+}
+function handleAccountsChanged(acc){
+  if (!acc?.length) return disconnectWallet();
+  userAddr = acc[0];
+  walletAddress.textContent = shorten(userAddr);
+  updateBalance(); renderMech();
+}
+function handleChainChanged(){ if (window.ethereum) browserProvider = new ethers.BrowserProvider(window.ethereum,'any'); updateNetworkIndicator(); updateBalance(); renderMech(); }
+function disconnectWallet(){
+  try{
+    window.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
+    window.ethereum?.removeListener?.('chainChanged', handleChainChanged);
+  }catch{}
+  browserProvider = null; signer = null; userAddr = null;
+  connectBtn.textContent = 'Connect MetaMask';
+  walletInfo.style.display = 'none';
+  connStatus.textContent = '';
+}
+async function updateNetworkIndicator(){
+  const indicator = document.querySelector('.network-indicator');
+  if (!browserProvider || !indicator) return;
+  const net = await browserProvider.getNetwork();
+  const cid = Number(net.chainId);
+  networkName.textContent = (cid===56?'BSC':`Chain ${cid}`);
+  indicator.className = 'network-indicator ' + (cid===BSC_CHAIN_ID ? 'valid' : 'invalid');
+}
+async function updateBalance(){
+  if (!browserProvider || !userAddr) return;
+  const bal = await browserProvider.getBalance(userAddr);
+  balanceAmount.textContent = trimEther(fmtEth(bal),4);
+  balanceCurrency.textContent = 'BNB';
+  mechs.balance.textContent = `${trimEther(fmtEth(bal),4)} BNB`;
+}
+
+/* ================== Read helpers (MECHS) ================== */
+async function load1155Meta(contractAddr, tokenId){
+  try{
+    const c = new ethers.Contract(contractAddr, MECHS_READ_ABI, readProvider);
+    const base = await c.uri(tokenId);
+    const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
+    return await fetchJsonWithFallback(url);
+  }catch{ return {}; }
+}
+async function readClaim(contractAddr, tokenId){
+  try{
+    const c = new ethers.Contract(contractAddr, MECHS_READ_ABI, readProvider);
+    const condId = await c.getActiveClaimConditionId(tokenId);
+    const cond = await c.getClaimConditionById(tokenId, condId);
+    return {
+      max: cond.maxClaimableSupply,
+      claimed: cond.supplyClaimed,
+      quantityLimitPerWallet: cond.quantityLimitPerWallet,
+      pricePerToken: cond.pricePerToken,
+      currency: cond.currency
+    };
+  }catch(e){ throw new Error("Claim read failed: " + errMsg(e)); }
+}
+
+/* ================== Renderers ================== */
+async function renderMech(){
+  const id = Number(mechs.sel.value);
+  const entry = MECHS.find(x=>x.id===id);
+  mechs.name.textContent = entry?.name || `Token #${id}`;
+  mechs.img.src = ""; mechs.img.alt = "Preview";
+  [mechs.img, mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.add("loading"));
+
+  // image/meta
+  try {
+    const meta = entry?.uri ? await fetchJsonWithFallback(entry.uri) : await load1155Meta(CONTRACT_MECHS, id);
+    const img = meta.image || meta.image_url || meta.imageUri || "";
+    let i=0; const setNext=()=> mechs.img.src = ipfsHttp(img,i++);
+    mechs.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
+  } catch { mechs.img.alt = "Preview unavailable"; }
+  finally { mechs.img.classList.remove("loading"); }
+
+  // price/supply
+  try {
+    const claim = await readClaim(CONTRACT_MECHS, id);
+    const isNative = (claim.currency === ZERO);
+
+    if (isNative) {
+      const price = FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
+      mechs.currency.textContent = 'BNB';
+      mechs.price.textContent = `${trimEther(fmtEth(price))} BNB`;
+      const qty = Math.max(1, Number(mechs.qty.value) || 1);
+      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(price * BigInt(qty)))} BNB (est.)`;
+    } else {
+      mechs.currency.textContent = 'ERC20';
+      mechs.price.textContent = `${claim.pricePerToken.toString()} (raw units)`;
+      const qty = Math.max(1, Number(mechs.qty.value) || 1);
+      mechs.mint.textContent = `Mint (ERC20) x${qty}`;
     }
-    ERC20_WRITE_SIG_CACHE.set(addr, null);
-    return null;
+
+    mechs.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
+
+    const maxPerWallet = claim.quantityLimitPerWallet ?? 0n;
+    const currentQty = Math.max(1, Number(mechs.qty.value) || 1);
+    const clamped = (maxPerWallet>0n) ? Math.min(currentQty, Number(maxPerWallet)) : currentQty;
+    if (clamped !== currentQty){
+      mechs.qty.value = clamped;
+      setStatus(mechs.status, "warning", `Clamped to wallet limit: ${clamped}`);
+    } else setStatus(mechs.status, "", "");
+  } catch(e){
+    setStatus(mechs.status, "warning", errMsg(e));
+    // fallback UI if claim read fails but you set FORCED_MECHS_PRICE_BNB
+    if (FORCED_MECHS_PRICE_BNB){
+      const p = toWei(FORCED_MECHS_PRICE_BNB);
+      mechs.currency.textContent = 'BNB';
+      mechs.price.textContent = `${trimEther(fmtEth(p))} BNB`;
+      const qty = Math.max(1, Number(mechs.qty.value) || 1);
+      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(p * BigInt(qty)))} BNB (est.)`;
+    } else {
+      mechs.price.textContent="—"; mechs.currency.textContent="—"; mechs.supply.textContent="—";
+      mechs.mint.textContent = "Mint Mech";
+    }
+  } finally {
+    [mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.remove("loading"));
   }
+}
 
-  // ------------ WALLET ------------
-  async function connectWallet(){
-    try{
-      if (!window.ethereum) throw new Error('MetaMask not detected. Please install MetaMask first.');
-      connectBtn.disabled = true; connectBtn.classList.add('loading');
-      setStatus('warning','Connecting to MetaMask…');
+async function renderCryptid(){
+  const id = Number(crypt.sel.value);
+  const entry = CRYPTIDS.find(x=>x.id===id);
+  crypt.name.textContent = entry?.name || `Token #${id}`;
+  crypt.img.src = ""; crypt.img.alt = "Preview";
+  [crypt.img].forEach(el=>el.classList.add("loading"));
 
+  try {
+    const meta = entry?.uri ? await fetchJsonWithFallback(entry.uri) : null;
+    const img = meta?.image || meta?.image_url || meta?.imageUri || "";
+    let i=0; const setNext=()=> crypt.img.src = ipfsHttp(img,i++);
+    crypt.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
+  } catch { crypt.img.alt = "Preview unavailable"; }
+  finally { crypt.img.classList.remove("loading"); }
+
+  // Read-only notices
+  crypt.price.textContent = "—";
+  crypt.currency.textContent = "—";
+  crypt.supply.textContent = "—";
+  crypt.balance.textContent = "—";
+}
+
+/* ================== Mint (MECHS) ================== */
+const makeAllowlistProof = (pricePer, currency) =>
+  ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
+
+async function mintMech(){
+  try{
+    if (!signer) { await connectWallet(); if (!signer) return; }
+    mechs.mint.disabled = true; mechs.mint.classList.add("loading");
+    setStatus(mechs.status, "warning", "Preparing transaction…");
+
+    const tokenId = Number(mechs.sel.value);
+    const qty = Math.max(1, Number(mechs.qty.value) || 1);
+
+    // re-read claim to get fresh price
+    let claim;
+    try { claim = await readClaim(CONTRACT_MECHS, tokenId); } catch(e){ throw e; }
+
+    const isNative = (claim.currency === ZERO);
+    let pricePer = isNative
+      ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
+      : claim.pricePerToken;
+
+    const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI], signer);
+
+    if (isNative){
+      const totalValue = pricePer * BigInt(qty);
+      const userBalance = await browserProvider.getBalance(userAddr);
+      if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
+
+      const allowlist = makeAllowlistProof(pricePer, ZERO);
+      // static call for revert reasons (best effort)
+      await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue }).catch(()=>{});
+      const tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue });
+      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
+      const rec = await tx.wait();
+      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
+    } else {
+      // ERC20 path (in case claim is set to an ERC20)
+      const meta20 = new ethers.Contract(claim.currency, ERC20_ABI, readProvider);
+      const dec = await meta20.decimals();
+      const sym = await meta20.symbol();
+      const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
+
+      const total = pricePer * BigInt(qty);
+      const [bal, allowance] = await Promise.all([erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_MECHS)]);
+      if (bal < total) throw new Error(`Insufficient ${sym}. Need ${ethers.formatUnits(total, dec)} ${sym}.`);
+      if (allowance < total){ const txA = await erc20.approve(CONTRACT_MECHS, total); await txA.wait(); }
+
+      const allowlist = makeAllowlistProof(pricePer, claim.currency);
+      await drop.callStatic.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x").catch(()=>{});
+      const tx = await drop.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x");
+      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
+      const rec = await tx.wait();
+      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
+    }
+
+    await renderMech();
+  }catch(e){
+    setStatus(mechs.status, "error", errMsg(e));
+    console.error('mintMech:', e);
+  }finally{
+    mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
+  }
+}
+
+/* ================== Events ================== */
+mechs.sel.addEventListener("change", renderMech);
+mechs.qty.addEventListener("change", renderMech);
+document.getElementById("cryptidTokenId").addEventListener("change", renderCryptid);
+document.getElementById("cryptidQty").addEventListener("change", renderCryptid);
+document.getElementById("mechsMint").addEventListener("click", mintMech);
+connectBtn.addEventListener("click", connectWallet);
+
+/* ================== Boot ================== */
+(async function boot(){
+  // populate selects before first render (fixes “token id slot”)
+  populateSelect(mechs.sel, MECHS, 0);
+  populateSelect(crypt.sel, CRYPTIDS, 0);
+
+  await renderMech();
+  await renderCryptid();
+
+  if (window.ethereum){
+    const acc = await window.ethereum.request({ method:'eth_accounts' });
+    if (acc?.length){
       browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-      await browserProvider.send('eth_requestAccounts',[]);
-      await ensureCorrectNetwork(BSC_CHAIN_ID);
-
       signer = await browserProvider.getSigner();
-      userAddr = await signer.getAddress();
-
-      window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-      window.ethereum.on?.('chainChanged', handleChainChanged);
-
+      userAddr = acc[0];
       connectBtn.textContent = 'Connected';
       walletInfo.style.display = 'flex';
       walletAddress.textContent = shorten(userAddr);
       await updateNetworkIndicator();
       await updateBalance();
-      await refreshAll();
-
-      setStatus('success','Connected to MetaMask');
-    } catch(e){
-      console.error(e);
-      setStatus('error', errMsg(e) || 'Connection failed');
-      connectBtn.disabled = false; connectBtn.classList.remove('loading');
+      window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+      window.ethereum.on?.('chainChanged', handleChainChanged);
     }
   }
-  async function ensureCorrectNetwork(required){
-    const net = await browserProvider.getNetwork();
-    if (Number(net.chainId) === required) return true;
-    try{
-      await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+required.toString(16) }]);
-    }catch(err){
-      if (err?.code === 4902){
-        await browserProvider.send('wallet_addEthereumChain',[{
-          chainId:'0x'+required.toString(16),
-          chainName:'Binance Smart Chain',
-          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
-          rpcUrls:['https://bsc-dataseed1.bnbchain.org','https://bsc-dataseed2.bnbchain.org','https://bsc-dataseed.binance.org'],
-          blockExplorerUrls:['https://bscscan.com/']
-        }]);
-      } else throw err;
-    }
-    return true;
-  }
-  function handleAccountsChanged(acc){
-    if (!acc?.length) return disconnectWallet();
-    userAddr = acc[0];
-    walletAddress.textContent = shorten(userAddr);
-    updateBalance(); refreshAll();
-  }
-  function handleChainChanged(){
-    if (window.ethereum) browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-    updateNetworkIndicator(); updateBalance(); refreshAll();
-  }
-  function disconnectWallet(){
-    try{
-      window.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
-      window.ethereum?.removeListener?.('chainChanged', handleChainChanged);
-    }catch{}
-    browserProvider = null; signer = null; userAddr = null;
-    connectBtn.textContent = 'Connect MetaMask';
-    walletInfo.style.display = 'none';
-    connStatus.textContent = '';
-    connectBtn.disabled = false; connectBtn.classList.remove('loading');
-  }
-
-  async function updateNetworkIndicator(){
-    const indicator = document.querySelector('.network-indicator');
-    if (!browserProvider || !indicator) return;
-    const net = await browserProvider.getNetwork();
-    const cid = Number(net.chainId);
-    networkName.textContent = (cid===56?'BSC':`Chain ${cid}`);
-    indicator.className = 'network-indicator ' + (cid===BSC_CHAIN_ID ? 'valid' : 'invalid');
-  }
-  async function updateBalance(){
-    if (!browserProvider || !userAddr) return;
-    const bal = await browserProvider.getBalance(userAddr);
-    balanceAmount.textContent = trimEther(fmtEth(bal),4);
-    balanceCurrency.textContent = 'BNB';
-  }
-
-  // ------------ Read helpers (meta + claim) ------------
-  async function load1155Meta(contractAddr, tokenId) {
-    try{
-      const frags = await getReadAbi(contractAddr) || ABI_READ_VARIANTS[0];
-      const c = new ethers.Contract(contractAddr, frags, readProvider);
-      const base = await c.uri(tokenId);
-      const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
-      return await fetchJsonWithFallback(url);
-    }catch(e){ return {}; }
-  }
-
-  async function readClaim(contractAddr, tokenId){
-    const frags = await getReadAbi(contractAddr);
-    if (!frags) throw new Error("Unsupported claim ABI on this contract");
-    const c = new ethers.Contract(contractAddr, frags, readProvider);
-
-    try {
-      let cond;
-      if (frags.some(f=>f.startsWith("function getActiveClaimConditionId"))){
-        const id = await c.getActiveClaimConditionId(tokenId);
-        cond = await c.getClaimConditionById(tokenId, id);
-      } else {
-        cond = await c.claimCondition(tokenId);
-      }
-
-      // normalize tuple to common shape
-      const price = cond.pricePerToken ?? cond[5];
-      let curr = cond.currency ?? cond[6];
-      if (!isAddrLike(curr)) curr = ZERO;
-
-      return {
-        max: cond.maxClaimableSupply ?? cond[1],
-        claimed: cond.supplyClaimed ?? cond[2],
-        quantityLimitPerWallet: cond.quantityLimitPerWallet ?? cond[3],
-        pricePerToken: price,
-        currency: curr
-      };
-    } catch(e){
-      throw new Error("Claim read failed: " + errMsg(e));
-    }
-  }
-
-  // ------------ ERC20 meta cache ------------
-  const erc20MetaCache = new Map();
-  async function getErc20Meta(addr){
-    if (erc20MetaCache.has(addr)) return erc20MetaCache.get(addr);
-    const k = new ethers.Contract(addr, ERC20_ABI, readProvider);
-    const [dec, sym] = await Promise.all([k.decimals(), k.symbol()]);
-    const meta = {decimals: Number(dec), symbol: sym};
-    erc20MetaCache.set(addr, meta);
-    return meta;
-  }
-
-  // ------------ Renderers ------------
-  async function renderMech(){
-    const id = Number(mechs.sel.value);
-    const entry = MECHS.find(x=>x.id===id);
-    mechs.name.textContent = entry?.name || `Token #${id}`;
-    mechs.img.src = ""; mechs.img.alt = "Preview";
-    [mechs.img, mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.add("loading"));
-
-    try {
-      const meta = entry?.uri ? await fetchJsonWithFallback(entry.uri) : await load1155Meta(CONTRACT_MECHS, id);
-      const img = meta.image || meta.image_url || meta.imageUri || "";
-      let i=0; const setNext=()=> mechs.img.src = ipfsHttp(img,i++);
-      mechs.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
-    } catch { mechs.img.alt = "Preview unavailable"; }
-    finally { mechs.img.classList.remove("loading"); }
-
-    try {
-      const claim = await readClaim(CONTRACT_MECHS, id);
-      const isNative = (claim.currency === ZERO);
-
-      if (isNative) {
-        const price = FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
-        mechs.currency.textContent = 'BNB';
-        mechs.price.textContent = `${trimEther(fmtEth(price),6)} BNB`;
-        const qty = Math.max(1, Number(mechs.qty.value) || 1);
-        mechs.mint.textContent = `Mint for ${trimEther(fmtEth(price * BigInt(qty)),6)} BNB (est.)`;
-      } else {
-        const meta20 = await getErc20Meta(claim.currency);
-        mechs.currency.textContent = meta20.symbol;
-        mechs.price.textContent = `${fmtU(claim.pricePerToken, meta20.decimals)} ${meta20.symbol}`;
-        const qty = Math.max(1, Number(mechs.qty.value) || 1);
-        const total = claim.pricePerToken * BigInt(qty);
-        mechs.mint.textContent = `Mint for ${fmtU(total, meta20.decimals)} ${meta20.symbol} (est.)`;
-      }
-
-      mechs.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
-
-      const maxPerWallet = claim.quantityLimitPerWallet ?? 0n;
-      const currentQty = Math.max(1, Number(mechs.qty.value) || 1);
-      const clamped = (maxPerWallet>0n) ? Math.min(currentQty, Number(maxPerWallet)) : currentQty;
-      if (clamped !== currentQty){
-        mechs.qty.value = clamped;
-        setStatus(mechs.status, "warning", `Clamped to wallet limit: ${clamped}`);
-      } else setStatus(mechs.status, "", "");
-    } catch(e) {
-      console.warn("Mech read fallback:", e);
-      // last resort: show forced price so user can still mint native path
-      if (FORCED_MECHS_PRICE_BNB){
-        const p = toWei(FORCED_MECHS_PRICE_BNB);
-        mechs.currency.textContent = 'BNB';
-        mechs.price.textContent = `${trimEther(fmtEth(p),6)} BNB`;
-        const qty = Math.max(1, Number(mechs.qty.value) || 1);
-        mechs.mint.textContent = `Mint for ${trimEther(fmtEth(p * BigInt(qty)),6)} BNB (est.)`;
-      } else {
-        mechs.price.textContent="—"; mechs.currency.textContent="—"; mechs.supply.textContent="—";
-        mechs.mint.textContent = "Mint Mech";
-      }
-    } finally {
-      [mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.remove("loading"));
-    }
-  }
-
-  async function renderCryptid(){
-    const id = Number(crypt.sel.value);
-    const entry = CRYPTIDS.find(x=>x.id===id);
-    crypt.name.textContent = entry?.name || `Token #${id}`;
-    crypt.img.src = ""; crypt.img.alt = "Preview";
-    [crypt.img, crypt.price, crypt.currency, crypt.supply].forEach(el=>el.classList.add("loading"));
-
-    try {
-      const meta = entry?.uri ? await fetchJsonWithFallback(entry.uri) : await load1155Meta(CONTRACT_CRYPTIDS, id);
-      const img = meta.image || meta.image_url || meta.imageUri || "";
-      let i=0; const setNext=()=> crypt.img.src = ipfsHttp(img,i++);
-      crypt.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
-    } catch { crypt.img.alt = "Preview unavailable"; }
-    finally { crypt.img.classList.remove("loading"); }
-
-    try {
-      const claim = await readClaim(CONTRACT_CRYPTIDS, id);
-      const erc20Addr = claim.currency || KLY_TOKEN;
-      const meta20 = await getErc20Meta(erc20Addr);
-      const price = FORCED_CRYPTIDS_PRICE_KLY ? toU(FORCED_CRYPTIDS_PRICE_KLY, meta20.decimals) : claim.pricePerToken;
-
-      crypt.currency.textContent = meta20.symbol;
-      crypt.price.textContent = `${fmtU(price, meta20.decimals)} ${meta20.symbol}`;
-      crypt.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
-
-      const qty = Math.max(1, Number(crypt.qty.value) || 1);
-      const total = price * BigInt(qty);
-      crypt.mint.textContent = `Mint for ${fmtU(total, meta20.decimals)} ${meta20.symbol} (est.)`;
-    } catch(e){
-      console.warn("Cryptid read:", e);
-      crypt.price.textContent="—"; crypt.currency.textContent="—"; crypt.supply.textContent="—";
-      crypt.mint.textContent = "Mint Cryptid";
-    } finally {
-      [crypt.price, crypt.currency, crypt.supply].forEach(el=>el.classList.remove("loading"));
-    }
-  }
-
-  async function refreshAll(){
-    try {
-      await Promise.all([renderMech(), renderCryptid()]);
-      if (userAddr) await updateBalances();
-    } catch (e) {
-      console.error("refreshAll:", e);
-    }
-  }
-
-  // ------------ Mint helpers ------------
-  const makeAllowlistProof = (pricePer, currency) =>
-    ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
-
-  // pick a native/erc20 write signature that exists
-  async function pickWriteSig(contractAddr, isNative){
-    return isNative ? (await getNativeWriteSig(contractAddr)) : (await getErc20WriteSig(contractAddr));
-  }
-
-  // ------------ Mint: Mechs (auto BNB / ERC20, ABI-flex) ------------
-  async function mintMech(){
-    try {
-      if (!signer) { await connectWallet(); if (!signer) return; }
-      mechs.mint.disabled = true; mechs.mint.classList.add("loading");
-      setStatus(mechs.status, "warning", "Preparing transaction…");
-
-      const tokenId = Number(mechs.sel.value);
-      const qty = Math.max(1, Number(mechs.qty.value) || 1);
-
-      // read claim (or fallback to forced price for native)
-      let claim, isNative = true, pricePer, currencyAddr = ZERO;
-      try { claim = await readClaim(CONTRACT_MECHS, tokenId); }
-      catch {}
-
-      if (claim){
-        isNative = (claim.currency === ZERO);
-        pricePer = claim.pricePerToken;
-        currencyAddr = claim.currency;
-      } else {
-        // fallback so we can still mint
-        isNative = true;
-        pricePer = toWei(FORCED_MECHS_PRICE_BNB || "0");
-        currencyAddr = ZERO;
-      }
-
-      const methodSig = await pickWriteSig(CONTRACT_MECHS, isNative);
-      if (!methodSig) throw new Error("No compatible claim() overload found on contract");
-
-      const frags = [methodSig];
-      const drop = new ethers.Contract(CONTRACT_MECHS, frags, signer);
-
-      if (isNative){
-        if (FORCED_MECHS_PRICE_BNB) pricePer = toWei(FORCED_MECHS_PRICE_BNB);
-        const totalValue = pricePer * BigInt(qty);
-        const userBalance = await browserProvider.getBalance(userAddr);
-        if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue),6)} BNB.`);
-
-        // try different overload shapes
-        let tx;
-        try {
-          // variant 1: claim(receiver, tokenId, qty)
-          if (methodSig.includes("claim(address receiver,uint256 tokenId,uint256 quantity)")) {
-            await drop.callStatic.claim(userAddr, tokenId, qty, { value: totalValue });
-            tx = await drop.claim(userAddr, tokenId, qty, { value: totalValue });
-          }
-          // variant 2/3: long sig with currency & allowlist
-          else {
-            const allowlist = makeAllowlistProof(pricePer, ZERO);
-            await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer,
-              methodSig.includes("(bytes32[]") ? [] : allowlist,
-              methodSig.includes("(bytes32[]") ? undefined : "0x",
-              { value: totalValue }
-            ).catch(()=>{}); // some ABIs don't have data
-            tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer,
-              methodSig.includes("(bytes32[]") ? [] : allowlist,
-              methodSig.includes("(bytes32[]") ? undefined : "0x",
-              { value: totalValue }
-            );
-          }
-        } catch(e){ throw new Error(errMsg(e)); }
-
-        setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
-        const rec = await tx.wait();
-        setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
-      } else {
-        // ERC20 path
-        const meta20 = await getErc20Meta(currencyAddr);
-        const erc20 = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
-        const total = pricePer * BigInt(qty);
-        const [bal, allowance] = await Promise.all([
-          erc20.balanceOf(userAddr),
-          erc20.allowance(userAddr, CONTRACT_MECHS)
-        ]);
-        if (bal < total) throw new Error(`Insufficient ${meta20.symbol}. Need ${fmtU(total, meta20.decimals)} ${meta20.symbol}.`);
-        if (allowance < total){
-          setStatus(mechs.status, "warning", `Approving ${meta20.symbol}…`);
-          const txA = await erc20.approve(CONTRACT_MECHS, total);
-          await txA.wait();
-        }
-
-        let tx;
-        try{
-          // long sigs (struct or proofs)
-          if (methodSig.includes("(bytes32[]") || methodSig.includes("allowlist")) {
-            const allowlist = makeAllowlistProof(pricePer, currencyAddr);
-            await drop.callStatic.claim(userAddr, tokenId, qty, currencyAddr, pricePer,
-              methodSig.includes("(bytes32[]") ? [] : allowlist,
-              methodSig.includes("(bytes32[]") ? undefined : "0x"
-            ).catch(()=>{});
-            tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer,
-              methodSig.includes("(bytes32[]") ? [] : allowlist,
-              methodSig.includes("(bytes32[]") ? undefined : "0x"
-            );
-          } else {
-            // simple 5-arg overload
-            await drop.callStatic.claim(userAddr, tokenId, qty, currencyAddr, pricePer);
-            tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer);
-          }
-        }catch(e){ throw new Error(errMsg(e)); }
-
-        setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
-        const rec = await tx.wait();
-        setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
-      }
-
-      await refreshAll();
-    } catch(e){
-      setStatus(mechs.status, "error", errMsg(e));
-      console.error('mintMech:', e);
-    } finally {
-      mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
-    }
-  }
-
-  // ------------ Mint: Cryptids (ERC20 only likely) ------------
-  async function mintCryptid(){
-    try {
-      if (!signer) { await connectWallet(); if (!signer) return; }
-      crypt.mint.disabled = true; crypt.mint.classList.add("loading");
-      setStatus(crypt.status, "warning", "Preparing transaction…");
-
-      const tokenId = Number(crypt.sel.value);
-      const qty = Math.max(1, Number(crypt.qty.value) || 1);
-
-      const claim = await readClaim(CONTRACT_CRYPTIDS, tokenId);
-      const erc20Addr = claim.currency || KLY_TOKEN;
-      const meta20 = await getErc20Meta(erc20Addr);
-      const pricePer = FORCED_CRYPTIDS_PRICE_KLY ? toU(FORCED_CRYPTIDS_PRICE_KLY, meta20.decimals) : claim.pricePerToken;
-      const total = pricePer * BigInt(qty);
-
-      const erc20 = new ethers.Contract(erc20Addr, ERC20_ABI, signer);
-      const [bal, allowance] = await Promise.all([erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_CRYPTIDS)]);
-      if (bal < total) throw new Error(`Insufficient ${meta20.symbol}. Need ${fmtU(total, meta20.decimals)} ${meta20.symbol}.`);
-      if (allowance < total){
-        setStatus(crypt.status, "warning", `Approving ${meta20.symbol}…`);
-        const txA = await erc20.approve(CONTRACT_CRYPTIDS, total);
-        await txA.wait();
-      }
-
-      const methodSig = await getErc20WriteSig(CONTRACT_CRYPTIDS);
-      if (!methodSig) throw new Error("No compatible claim() overload found on contract");
-      const drop = new ethers.Contract(CONTRACT_CRYPTIDS, [methodSig], signer);
-
-      let tx;
-      try{
-        if (methodSig.includes("(bytes32[]") || methodSig.includes("allowlist")){
-          const allowlist = makeAllowlistProof(pricePer, erc20Addr);
-          await drop.callStatic.claim(userAddr, tokenId, qty, erc20Addr, pricePer,
-            methodSig.includes("(bytes32[]") ? [] : allowlist,
-            methodSig.includes("(bytes32[]") ? undefined : "0x"
-          ).catch(()=>{});
-          tx = await drop.claim(userAddr, tokenId, qty, erc20Addr, pricePer,
-            methodSig.includes("(bytes32[]") ? [] : allowlist,
-            methodSig.includes("(bytes32[]") ? undefined : "0x"
-          );
-        } else {
-          await drop.callStatic.claim(userAddr, tokenId, qty, erc20Addr, pricePer);
-          tx = await drop.claim(userAddr, tokenId, qty, erc20Addr, pricePer);
-        }
-      }catch(e){ throw new Error(errMsg(e)); }
-
-      setStatus(crypt.status, "warning", "Broadcasted. Waiting for confirmation…");
-      const rec = await tx.wait();
-      setStatus(crypt.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
-      await refreshAll();
-    } catch(e){
-      console.error(e);
-      setStatus(crypt.status, "error", errMsg(e));
-    } finally {
-      crypt.mint.disabled = false; crypt.mint.classList.remove("loading");
-    }
-  }
-
-  // ------------ Events ------------
-  mechs.sel.addEventListener("change", renderMech);
-  crypt.sel.addEventListener("change", renderCryptid);
-  mechs.qty.addEventListener("change", renderMech);
-  crypt.qty.addEventListener("change", renderCryptid);
-  mechs.mint.addEventListener("click", mintMech);
-  crypt.mint.addEventListener("click", mintCryptid);
-  connectBtn.addEventListener("click", connectWallet);
-
-  // ------------ Boot ------------
-  (async function boot(){
-    try{
-      await refreshAll(); // show read-only data
-      if (window.ethereum){
-        const acc = await window.ethereum.request({ method:'eth_accounts' });
-        if (acc?.length){
-          browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-          signer = await browserProvider.getSigner();
-          userAddr = acc[0];
-          connectBtn.textContent = 'Connected';
-          walletInfo.style.display = 'flex';
-          walletAddress.textContent = shorten(userAddr);
-          await updateNetworkIndicator();
-          await updateBalance();
-          window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-          window.ethereum.on?.('chainChanged', handleChainChanged);
-        }
-      }
-    }catch(e){ console.error(e); }
-  })();
+})();
 </script>
 </body>
 </html>
