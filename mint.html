@@ -6,11 +6,9 @@
 <title>Mint Exclusive & Rare NFTs | Tamaquah Nation</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #0A1A24; --bg2: #051018; --ink: #EAF7FF; --sub: #9CCBE3; --accent: #73E1FF; --gold: #e2c675;
-    --metamask: #f6851b; --card: rgba(255,255,255,.06); --stroke: rgba(255,255,255,.12);
-    --success:#4ade80; --error:#f87171; --warning:#fbbf24;
-  }
+  :root { --bg:#0A1A24; --bg2:#051018; --ink:#EAF7FF; --sub:#9CCBE3; --accent:#73E1FF; --gold:#e2c675;
+          --metamask:#f6851b; --card:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12);
+          --success:#4ade80; --error:#f87171; --warning:#fbbf24; }
   html,body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font-family:Inter,system-ui,Arial,sans-serif;min-height:100vh}
   .wrap{max-width:1200px;margin:0 auto;padding:2rem}
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
@@ -55,9 +53,7 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="brand">TAMAQUAH VAULT</div>
-  </header>
+  <header><div class="brand">TAMAQUAH VAULT</div></header>
 
   <section class="hero">
     <h1>Mint Exclusive & Rare NFTs</h1>
@@ -73,7 +69,6 @@
       </svg>
       Connect MetaMask
     </button>
-    
     <div id="walletInfo" style="display:none">
       <div class="wallet-info">
         <span id="walletAddress" class="wallet-address"></span>
@@ -87,7 +82,6 @@
   </div>
 
   <section class="grid">
-    <!-- Ancestral Mechs (BNB) -->
     <div class="card" id="mechsCard">
       <h2>Ancestral Mechs: Bloodline Codex</h2>
       <span class="contract-address">Contract: 0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989</span>
@@ -111,7 +105,6 @@
       <div id="mechsStatus" class="status"></div>
     </div>
 
-    <!-- Tribal Punk Cryptids (read‑only preview; ERC721 mint requires backend signature) -->
     <div class="card" id="cryptidsCard">
       <h2>Tribal Punk Cryptids</h2>
       <span class="contract-address">Contract: 0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11</span>
@@ -140,19 +133,17 @@
 </div>
 
 <script type="module">
-/* ================== CONFIG ================== */
+/* ============== CONFIG ============== */
 const BSC_CHAIN_ID = 56;
 const READ_RPC = "https://bsc-dataseed.binance.org/";
 
-// Contracts
 const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155
-const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 with mintWithSignature
-const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // (for your info)
+const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 (signature mint)
+const KLY_TOKEN         = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // FYI
 
-// Optional UI override (leave null to use on-chain)
-const FORCED_MECHS_PRICE_BNB = null;
+const FORCED_MECHS_PRICE_BNB = null; // set to string like "0.0063" only if you want to override UI
 
-/* ================== TOKEN LISTS ================== */
+/* ============== TOKEN LISTS ============== */
 const CRYPTIDS = [
   { id:0,  name:"Wendigo.EXE",                    uri:"ipfs://QmV2X7oUrG5i284sKQPHQJAbQV8HkL788mbZexuCA5oTvx/0" },
   { id:1,  name:"Mask of Memory",                 uri:"ipfs://Qmbu7rbrAoG3cJTYEJGGJ6iZsPGpDQxhkJBsKt4QuBJj8N/0" },
@@ -175,12 +166,10 @@ const CRYPTIDS = [
   { id:18, name:"Thunderbird 9G",                 uri:"ipfs://QmPnk3rYUeqeCevm7pjjfp31WrsUp8CzBP96TVRmmFky7h/0" },
   { id:19, name:"Skinwalker 9S",                  uri:"ipfs://Qmbv4hEy6gW68XSUUW46nzYmptaxiWS1vFGig3457W1Wez/0" },
 ];
-const MECHS = [
-  { id:0, name:"Skybone Leviathan", uri:"ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0" }
-];
+const MECHS = [{ id:0, name:"Skybone Leviathan", uri:"ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0" }];
 
-/* ================== ABIs ================== */
-// MECHS: exact functions your contract exposes (from the ABI you sent)
+/* ============== ABIs ============== */
+// Read + claim
 const MECHS_READ_ABI = [
   "function uri(uint256) view returns (string)",
   "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
@@ -189,13 +178,21 @@ const MECHS_READ_ABI = [
 const MECHS_CLAIM_ABI = [
   "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
 ];
-
-// CRYPTIDS: basic read for metadata only
-const ERC721_READ_ABI = [
-  "function tokenURI(uint256 tokenId) view returns (string)"
+// ✨ Add custom errors so ethers can decode revert data
+const MECHS_ERROR_ABI = [
+  "error DropNoActiveCondition()",
+  "error DropClaimNotStarted(uint256 expected,uint256 actual)",
+  "error DropClaimExceedMaxSupply(uint256 expected,uint256 actual)",
+  "error DropClaimExceedLimit(uint256 expected,uint256 actual)",
+  "error DropExceedMaxSupply()",
+  "error DropClaimInvalidTokenPrice(address expectedCurrency,uint256 expectedPricePerToken,address actualCurrency,uint256 actualExpectedPricePerToken)",
+  "error CurrencyTransferLibFailedNativeTransfer(address recipient,uint256 value)"
 ];
 
-// ERC20 for balances/allowance if you ever need it later
+// ERC721 read (cryptids preview only)
+const ERC721_READ_ABI = [ "function tokenURI(uint256 tokenId) view returns (string)" ];
+
+// ERC20
 const ERC20_ABI = [
   "function approve(address spender,uint256 amount) returns (bool)",
   "function allowance(address owner,address spender) view returns (uint256)",
@@ -204,7 +201,7 @@ const ERC20_ABI = [
   "function symbol() view returns (string)"
 ];
 
-/* ================== DOM ================== */
+/* ============== DOM ============== */
 const connectBtn = document.getElementById('connectBtn');
 const walletInfo = document.getElementById('walletInfo');
 const walletAddress = document.getElementById('walletAddress');
@@ -228,40 +225,41 @@ const crypt = {
   mint: document.getElementById("cryptidMint"), status: document.getElementById("cryptidStatus")
 };
 
-/* ================== Providers / State ================== */
+/* ============== Providers / State ============== */
 const readProvider = new ethers.JsonRpcProvider(READ_RPC);
 let browserProvider = null, signer = null, userAddr = null;
 
-/* ================== Utils ================== */
+/* ============== Utils ============== */
 const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 const ZERO = ethers.ZeroAddress;
 const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
 const fmtEth = v => ethers.formatEther(v);
 const toWei  = s => ethers.parseEther(s);
 const trimEther = (s,dec=6)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
-const errMsg = (e) => e?.error?.message || e?.info?.error?.message || e?.data?.message || e?.reason || e?.shortMessage || e?.message || 'Unknown error';
-
+function decodeErr(e){
+  // ethers v6 custom error surface
+  if (e?.errorName) {
+    const args = e?.errorArgs ? JSON.stringify(e.errorArgs) : "";
+    return `${e.errorName}${args && args!=="[]" ? " " + args : ""}`;
+  }
+  return e?.error?.message || e?.info?.error?.message || e?.data?.message || e?.reason || e?.shortMessage || e?.message || 'Unknown error';
+}
 function setStatus(elOrType, typeOrMsg="", maybeMsg=""){
   let el = connStatus, type = typeOrMsg, msg = maybeMsg;
   if (typeof elOrType !== 'string'){ el = elOrType || connStatus; type = typeOrMsg; msg = maybeMsg; }
   else { type = elOrType; msg = typeOrMsg; }
   el.textContent = msg; el.className = "status " + (type||"");
 }
-
 function ipfsHttp(url, i=0){
-  if (!url) return "";
-  if (!url.startsWith("ipfs://")) return url;
+  if (!url) return ""; if (!url.startsWith("ipfs://")) return url;
   const p = url.slice(7);
   const gws = ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"];
   return gws[Math.min(i,gws.length-1)] + p;
 }
 async function fetchJsonWithFallback(ipfsUrl){
-  let lastErr;
-  for (let i=0;i<3;i++){
-    try{ const r = await fetch(ipfsHttp(ipfsUrl,i)); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json(); }
-    catch(e){ lastErr = e; }
-  }
-  throw lastErr || new Error("Fetch failed");
+  let lastErr; for (let i=0;i<3;i++){ try{
+    const r = await fetch(ipfsHttp(ipfsUrl,i)); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json();
+  }catch(e){ lastErr=e; } } throw lastErr || new Error("Fetch failed");
 }
 function populateSelect(selectEl, items, defaultId=0){
   selectEl.innerHTML = '';
@@ -275,7 +273,7 @@ function populateSelect(selectEl, items, defaultId=0){
   selectEl.value = String(items.some(x => x.id === defaultId) ? defaultId : fallback);
 }
 
-/* ================== Wallet ================== */
+/* ============== Wallet ============== */
 async function connectWallet(){
   try{
     if (!window.ethereum) throw new Error('MetaMask not detected. Please install MetaMask.');
@@ -285,7 +283,6 @@ async function connectWallet(){
     browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
     await browserProvider.send('eth_requestAccounts',[]);
 
-    // Ensure BSC
     const net = await browserProvider.getNetwork();
     if (Number(net.chainId) !== BSC_CHAIN_ID){
       try{
@@ -314,10 +311,10 @@ async function connectWallet(){
     walletAddress.textContent = shorten(userAddr);
     await updateNetworkIndicator();
     await updateBalance();
-    await renderMech(); // refresh pricing with wallet limit
+    await renderMech();
     setStatus('success','Connected to MetaMask');
   } catch(e){
-    setStatus('error', errMsg(e));
+    setStatus('error', decodeErr(e));
   } finally {
     connectBtn.disabled = false; connectBtn.classList.remove('loading');
   }
@@ -355,7 +352,7 @@ async function updateBalance(){
   mechs.balance.textContent = `${trimEther(fmtEth(bal),4)} BNB`;
 }
 
-/* ================== Read helpers (MECHS) ================== */
+/* ============== Read helpers (MECHS) ============== */
 async function load1155Meta(contractAddr, tokenId){
   try{
     const c = new ethers.Contract(contractAddr, MECHS_READ_ABI, readProvider);
@@ -376,10 +373,10 @@ async function readClaim(contractAddr, tokenId){
       pricePerToken: cond.pricePerToken,
       currency: cond.currency
     };
-  }catch(e){ throw new Error("Claim read failed: " + errMsg(e)); }
+  }catch(e){ throw new Error("Claim read failed: " + decodeErr(e)); }
 }
 
-/* ================== Renderers ================== */
+/* ============== Renderers ============== */
 async function renderMech(){
   const id = Number(mechs.sel.value);
   const entry = MECHS.find(x=>x.id===id);
@@ -387,7 +384,6 @@ async function renderMech(){
   mechs.img.src = ""; mechs.img.alt = "Preview";
   [mechs.img, mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.add("loading"));
 
-  // image/meta
   try {
     const meta = entry?.uri ? await fetchJsonWithFallback(entry.uri) : await load1155Meta(CONTRACT_MECHS, id);
     const img = meta.image || meta.image_url || meta.imageUri || "";
@@ -396,7 +392,6 @@ async function renderMech(){
   } catch { mechs.img.alt = "Preview unavailable"; }
   finally { mechs.img.classList.remove("loading"); }
 
-  // price/supply
   try {
     const claim = await readClaim(CONTRACT_MECHS, id);
     const isNative = (claim.currency === ZERO);
@@ -424,8 +419,7 @@ async function renderMech(){
       setStatus(mechs.status, "warning", `Clamped to wallet limit: ${clamped}`);
     } else setStatus(mechs.status, "", "");
   } catch(e){
-    setStatus(mechs.status, "warning", errMsg(e));
-    // fallback UI if claim read fails but you set FORCED_MECHS_PRICE_BNB
+    setStatus(mechs.status, "warning", decodeErr(e));
     if (FORCED_MECHS_PRICE_BNB){
       const p = toWei(FORCED_MECHS_PRICE_BNB);
       mechs.currency.textContent = 'BNB';
@@ -456,17 +450,15 @@ async function renderCryptid(){
   } catch { crypt.img.alt = "Preview unavailable"; }
   finally { crypt.img.classList.remove("loading"); }
 
-  // Read-only notices
   crypt.price.textContent = "—";
   crypt.currency.textContent = "—";
   crypt.supply.textContent = "—";
   crypt.balance.textContent = "—";
 }
 
-/* ================== Mint (MECHS) ================== */
+/* ============== Mint (MECHS) ============== */
 const makeAllowlistProof = (pricePer, currency) =>
   ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
-
 
 async function mintMech(){
   try{
@@ -477,93 +469,72 @@ async function mintMech(){
     const tokenId = Number(mechs.sel.value);
     const qty = Math.max(1, Number(mechs.qty.value) || 1);
 
-    // re-read claim to get fresh price
-    let claim;
-    try { 
-      claim = await readClaim(CONTRACT_MECHS, tokenId); 
-    } catch(e){ 
-      throw new Error("Failed to read claim conditions: " + errMsg(e)); 
-    }
-
+    const claim = await readClaim(CONTRACT_MECHS, tokenId);
     const isNative = (claim.currency === ZERO);
-    let pricePer = claim.pricePerToken;
+    let pricePer = isNative
+      ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
+      : claim.pricePerToken;
 
-    const drop = new ethers.Contract(CONTRACT_MECHS, MECHS_CLAIM_ABI, signer);
+    // include custom errors in ABI so ethers can decode reverts
+    const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI], signer);
 
     if (isNative){
-      // Native BNB payment path (unchanged)
       const totalValue = pricePer * BigInt(qty);
       const userBalance = await browserProvider.getBalance(userAddr);
       if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
 
       const allowlist = makeAllowlistProof(pricePer, ZERO);
+
+      // static call first to get clear revert message
+      await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue }).catch(e => { throw new Error(decodeErr(e)); });
+
       const tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue });
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
       setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
     } else {
-      // ERC20 payment path - enhanced
+      // ERC20 payment
       const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
-      
-      try {
-        // Get token details
-        const [decimals, symbol, balance, allowance] = await Promise.all([
-          erc20.decimals(),
-          erc20.symbol(),
-          erc20.balanceOf(userAddr),
-          erc20.allowance(userAddr, CONTRACT_MECHS)
-        ]);
-        
-        const total = pricePer * BigInt(qty);
-        const formattedAmount = ethers.formatUnits(total, decimals);
-        
-        if (balance < total) {
-          throw new Error(`Insufficient ${symbol}. Need ${formattedAmount} ${symbol}. You have ${ethers.formatUnits(balance, decimals)} ${symbol}.`);
-        }
-        
-        // Check and set allowance if needed
-        if (allowance < total) {
-          setStatus(mechs.status, "warning", `Approving ${symbol}...`);
-          const approveTx = await erc20.approve(CONTRACT_MECHS, total);
-          await approveTx.wait();
-        }
-        
-        // Prepare claim
-        const allowlist = makeAllowlistProof(pricePer, claim.currency);
-        
-        setStatus(mechs.status, "warning", "Sending mint transaction...");
-        const tx = await drop.claim(
-          userAddr, 
-          tokenId, 
-          qty, 
-          claim.currency, 
-          pricePer, 
-          allowlist, 
-          "0x"
-        );
-        
-        setStatus(mechs.status, "warning", "Transaction sent. Waiting for confirmation...");
-        const receipt = await tx.wait();
-        setStatus(mechs.status, "success", `Successfully minted! Tx hash: ${receipt.hash}`);
-        
-      } catch (error) {
-        console.error("ERC20 Mint Error:", error);
-        throw new Error(`ERC20 Mint failed: ${errMsg(error)}`);
+      const [decimals, symbol, balance, allowance] = await Promise.all([
+        erc20.decimals(),
+        erc20.symbol(),
+        erc20.balanceOf(userAddr),
+        erc20.allowance(userAddr, CONTRACT_MECHS)
+      ]);
+      const total = pricePer * BigInt(qty);
+      if (balance < total) throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(total, decimals)} ${symbol}.`);
+
+      if (allowance < total){
+        setStatus(mechs.status, "warning", `Approving ${symbol}…`);
+        const approveTx = await erc20.approve(CONTRACT_MECHS, total);
+        await approveTx.wait();
       }
+
+      const allowlist = makeAllowlistProof(pricePer, claim.currency);
+
+      // static call with { value: 0 } so nodes don’t choke; now errors decode
+      await drop.callStatic.claim(
+        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0 }
+      ).catch(e => { throw new Error("ERC20 Mint failed: " + decodeErr(e)); });
+
+      const tx = await drop.claim(
+        userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x", { value: 0 }
+      );
+      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
+      const rec = await tx.wait();
+      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
     }
 
     await renderMech();
-  } catch(e) {
-    setStatus(mechs.status, "error", errMsg(e));
-    console.error('Mint Error:', e);
+  } catch(e){
+    setStatus(mechs.status, "error", decodeErr(e));
+    console.error('mintMech:', e);
   } finally {
-    mechs.mint.disabled = false; 
-    mechs.mint.classList.remove("loading");
+    mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
   }
 }
 
-
-/* ================== Events ================== */
+/* ============== Events / Boot ============== */
 mechs.sel.addEventListener("change", renderMech);
 mechs.qty.addEventListener("change", renderMech);
 document.getElementById("cryptidTokenId").addEventListener("change", renderCryptid);
@@ -571,12 +542,9 @@ document.getElementById("cryptidQty").addEventListener("change", renderCryptid);
 document.getElementById("mechsMint").addEventListener("click", mintMech);
 connectBtn.addEventListener("click", connectWallet);
 
-/* ================== Boot ================== */
 (async function boot(){
-  // populate selects before first render (fixes “token id slot”)
   populateSelect(mechs.sel, MECHS, 0);
   populateSelect(crypt.sel, CRYPTIDS, 0);
-
   await renderMech();
   await renderCryptid();
 
