@@ -1,137 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Mint Exclusive & Rare NFTs | Tamaquah Nation</title>
-<!-- Ethers v6 (UMD) -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<style>
-  :root { --bg:#0A1A24; --bg2:#051018; --ink:#EAF7FF; --sub:#9CCBE3; --accent:#73E1FF; --gold:#e2c675;
-          --metamask:#f6851b; --card:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12);
-          --success:#4ade80; --error:#f87171; --warning:#fbbf24; }
-  html,body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font-family:Inter,system-ui,Arial,sans-serif;min-height:100vh}
-  .wrap{max-width:1200px;margin:0 auto;padding:2rem}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
-  .brand{font-weight:800;letter-spacing:.08em;font-size:1.5rem;color:var(--accent);text-shadow:0 0 10px rgba(115,225,255,.3)}
-  .hero{text-align:center;padding:2rem 0;margin-bottom:3rem}
-  .hero h1{font-size:clamp(2rem,5vw,3.5rem);margin:0 0 1rem;text-transform:uppercase;letter-spacing:.06em;
-    background:linear-gradient(90deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--sub);margin:0 auto;max-width:600px;line-height:1.6;font-size:1.1rem}
-  .wallet-section{display:flex;flex-direction:column;align-items:center;gap:1rem;margin-bottom:2rem}
-  .btn{background:linear-gradient(90deg,var(--metamask),#f8a34d);color:#fff;border:none;border-radius:12px;padding:1rem 2rem;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:.5rem}
-  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(246,133,27,.3)}
-  .btn:disabled{opacity:.7;cursor:not-allowed;transform:none!important}
-  .wallet-info{display:flex;gap:1rem;align-items:center;background:rgba(0,0,0,.2);padding:.75rem 1.5rem;border-radius:999px;font-size:.95rem}
-  .wallet-address{font-family:monospace;font-size:.9rem}
-  .balance{display:flex;gap:.5rem;align-items:center}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:2rem;margin-top:2rem}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:1.5rem;box-shadow:0 16px 60px rgba(0,0,0,.35);transition:.3s;position:relative;overflow:hidden}
-  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
-  .card h2{margin:0 0 1rem;font-size:1.5rem}
-  .contract-address{font-size:.85rem;word-break:break-all;color:var(--sub);margin-bottom:1rem;display:block}
-  .form-group{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:1rem 0}
-  select,input[type=number]{background:#0c1d27;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:.75rem 1rem;min-width:120px}
-  .preview{display:flex;gap:1.5rem;margin:1.5rem 0;align-items:flex-start}
-  .preview img{width:180px;height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(45deg,#0c1d27,#0a2738)}
-  .meta{flex:1}
-  .nft-name{margin:0 0 .5rem;font-size:1.25rem}
-  .stat{display:flex;justify-content:space-between;margin:.5rem 0;font-size:.95rem}
-  .stat-label{color:var(--sub)}
-  .stat-value{font-weight:600}
-  .mint-btn{background:linear-gradient(90deg,var(--accent),#a9ffcb);color:#001018;border:none;border-radius:12px;padding:1rem 1.5rem;font-weight:700;cursor:pointer;width:100%;margin-top:1rem}
-  .status{min-height:24px;font-size:.9rem;margin-top:.5rem;text-align:center}
-  .status.success{color:var(--success)} .status.error{color:var(--error)} .status.warning{color:var(--warning)}
-  .loading{position:relative;color:transparent!important}
-  .loading:after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-  footer{margin-top:3rem;text-align:center;color:var(--sub);font-size:.9rem;padding:1rem}
-  .network-indicator{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.2)}
-  .network-indicator.valid{background:rgba(74,222,128,.1);color:var(--success)}
-  .network-indicator.invalid{background:rgba(248,113,113,.1);color:var(--error)}
-  @media (max-width:768px){.wrap{padding:1.5rem}.grid{grid-template-columns:1fr}.preview{flex-direction:column}.preview img{width:100%;height:auto;max-height:300px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFT Minting Interface</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="application/javascript"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .status { padding: 8px; border-radius: 4px; margin: 5px 0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    .loading { opacity: 0.7; position: relative; }
+    .loading::after { content: "⋯"; animation: dots 1s steps(5, end) infinite; }
+    @keyframes dots { 0%, 20% { content: "."; } 40% { content: ".."; } 60% { content: "..."; } }
+    button { padding: 8px 16px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .network-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+    .network-indicator.valid { background: green; }
+    .network-indicator.invalid { background: red; }
+    #walletInfo { display: none; align-items: center; gap: 10px; margin: 10px 0; }
+    .token-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 5px; }
+    .token-preview { max-width: 200px; max-height: 200px; display: block; margin: 10px 0; }
+    select, input { padding: 8px; margin: 5px 0; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <header><div class="brand">TAMAQUAH VAULT</div></header>
-
-  <section class="hero">
-    <h1>Mint Exclusive & Rare NFTs</h1>
-    <p>Connect your MetaMask wallet to mint these unique digital artifacts from our collections.</p>
-  </section>
-
-  <div class="wallet-section">
-    <button id="connectBtn" class="btn">
-      <svg width="20" height="20" viewBox="0 0 40 37" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M36.0115 3.33203L22.2221 14.2493C21.2623 14.9929 19.7377 14.9929 18.7779 14.2493L4.9885 3.33203" stroke="white" stroke-width="6" stroke-linecap="round"/>
-        <path d="M26.2086 23.5947L23.3333 26.0413C21.4609 27.6545 18.5391 27.6545 16.6667 26.0413L13.7914 23.5947" stroke="white" stroke-width="6" stroke-linecap="round"/>
-        <rect x="1" y="1" width="38" height="35" rx="6" stroke="white" stroke-width="2"/>
-      </svg>
-      Connect MetaMask
-    </button>
-    <div id="walletInfo" style="display:none">
-      <div class="wallet-info">
-        <span id="walletAddress" class="wallet-address"></span>
-        <span class="network-indicator"><span id="networkName">BSC</span></span>
-      </div>
-      <div class="wallet-info">
-        <span class="balance">Balance: <span id="balanceAmount" class="balance-amount">0</span> <span id="balanceCurrency">BNB</span></span>
-      </div>
-    </div>
-    <div id="connStatus" class="status"></div>
+  <h1>NFT Minting Interface</h1>
+  
+  <button id="connectBtn">Connect MetaMask</button>
+  
+  <div id="walletInfo">
+    <span class="network-indicator"></span>
+    <span id="networkName"></span>
+    <span>|</span>
+    <span id="walletAddress"></span>
+    <span>|</span>
+    <span id="balanceAmount"></span>
+    <span id="balanceCurrency"></span>
   </div>
-
-  <section class="grid">
-    <div class="card" id="mechsCard">
-      <h2>Ancestral Mechs: Bloodline Codex</h2>
-      <span class="contract-address">Contract: 0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989</span>
-      <div class="form-group">
-        <label for="mechsTokenId">Token ID</label>
-        <select id="mechsTokenId"></select>
-        <label for="mechsQty">Quantity</label>
-        <input id="mechsQty" type="number" min="1" max="10" value="1"/>
-      </div>
-      <div class="preview">
-        <img id="mechsImg" alt="Preview" loading="lazy"/>
-        <div class="meta">
-          <h3 id="mechsName" class="nft-name">—</h3>
-          <div class="stat"><span class="stat-label">Price/Token:</span><span id="mechsPrice" class="stat-value">loading…</span></div>
-          <div class="stat"><span class="stat-label">Currency:</span><span id="mechsCurrency" class="stat-value">loading…</span></div>
-          <div class="stat"><span class="stat-label">Supply:</span><span id="mechsSupply" class="stat-value">—</span></div>
-          <div class="stat"><span class="stat-label">Your Balance:</span><span id="mechsBalance" class="stat-value">—</span></div>
-        </div>
-      </div>
-      <button id="mechsMint" class="mint-btn">Mint Mech</button>
-      <div id="mechsStatus" class="status"></div>
-    </div>
-
-    <div class="card" id="cryptidsCard">
-      <h2>Tribal Punk Cryptids</h2>
-      <span class="contract-address">Contract: 0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11</span>
-      <div class="form-group">
-        <label for="cryptidTokenId">Token ID</label>
-        <select id="cryptidTokenId"></select>
-        <label for="cryptidQty">Quantity</label>
-        <input id="cryptidQty" type="number" min="1" max="10" value="1" disabled/>
-      </div>
-      <div class="preview">
-        <img id="cryptidImg" alt="Preview" loading="lazy"/>
-        <div class="meta">
-          <h3 id="cryptidName" class="nft-name">—</h3>
-          <div class="stat"><span class="stat-label">Price/Token:</span><span id="cryptidPrice" class="stat-value">—</span></div>
-          <div class="stat"><span class="stat-label">Currency:</span><span id="cryptidCurrency" class="stat-value">—</span></div>
-          <div class="stat"><span class="stat-label">Supply:</span><span id="cryptidSupply" class="stat-value">—</span></div>
-          <div class="stat"><span class="stat-label">Your Balance:</span><span id="cryptidBalance" class="stat-value">—</span></div>
-        </div>
-      </div>
-      <button id="cryptidMint" class="mint-btn" disabled>Mint Cryptid (requires signature)</button>
-      <div id="cryptidStatus" class="status warning">Mint requires a signed voucher (mintWithSignature). Not enabled on this page.</div>
-    </div>
-  </section>
-
-  <footer>They took the land. We took the future.</footer>
-</div>
+  
+  <div id="connStatus" class="status"></div>
+  
+  <div class="token-section">
+    <h2>Mechs</h2>
+    <select id="mechsTokenId"></select>
+    <input id="mechsQty" type="number" min="1" value="1">
+    <img id="mechsImg" class="token-preview" src="" alt="Preview">
+    <div><strong id="mechsName"></strong></div>
+    <div>Price: <span id="mechsPrice"></span> <span id="mechsCurrency"></span></div>
+    <div>Supply: <span id="mechsSupply"></span></div>
+    <div>Your Balance: <span id="mechsBalance"></span></div>
+    <button id="mechsMint">Mint Mech</button>
+    <div id="mechsStatus" class="status"></div>
+  </div>
+  
+  <div class="token-section">
+    <h2>Cryptids</h2>
+    <select id="cryptidTokenId"></select>
+    <input id="cryptidQty" type="number" min="1" value="1">
+    <img id="cryptidImg" class="token-preview" src="" alt="Preview">
+    <div><strong id="cryptidName"></strong></div>
+    <div>Price: <span id="cryptidPrice"></span> <span id="cryptidCurrency"></span></div>
+    <div>Supply: <span id="cryptidSupply"></span></div>
+    <div>Your Balance: <span id="cryptidBalance"></span></div>
+    <button id="cryptidMint">Mint Cryptid</button>
+    <div id="cryptidStatus" class="status"></div>
+  </div>
 
 <script type="module">
 /* ============== CONFIG ============== */
@@ -174,7 +109,9 @@ const MECHS = [
   { id: 2, name: "Red Clay Colossus",                           uri: "ipfs://QmdKMicaGDbmAGkaJiXNgHU6TJWrq8AB1purSBd4fyJmB7/2" },
   { id: 3, name: "SERPENT COIL MK-VII — River & Data Guardian", uri: "ipfs://Qmc1U4xsf4Yaw8D7B86v5TcDpWSFaftxX98Sh28TtU38x1/3" },
   { id: 4, name: "Void Sifu",                                   uri: "ipfs://QmXtzw2ASNnzhp3EyJXRGWQJ62RDy2b6MdCkH4dDiMY17p/4" },
-];/* ============== ABIs (exact from your contract) ============== */
+];
+
+/* ============== ABIs (exact from your contract) ============== */
 const MECHS_READ_ABI = [
   "function uri(uint256) view returns (string)",
   "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
@@ -223,7 +160,7 @@ const ERC20_READ_ABI = [
 const ERC20_APPROVE_BOOL_ABI = [
   "function approve(address spender,uint256 amount) returns (bool)"
 ];
-const ERC20_APPROVE_NO_RET_IFACE = new ethers.Interface([
+const ERC20_APPROVE_NO_RET_IFACE = new ethers.utils.Interface([
   "function approve(address spender,uint256 amount)"
 ]);
 
@@ -252,15 +189,15 @@ const crypt = {
 };
 
 /* ============== Providers / State ============== */
-const readProvider = new ethers.JsonRpcProvider(READ_RPC);
+const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
 let browserProvider = null, signer = null, userAddr = null;
 
 /* ============== Utils ============== */
 const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-const ZERO = ethers.ZeroAddress;
+const ZERO = ethers.constants.AddressZero;
 const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
-const fmtEth = v => ethers.formatEther(v);
-const toWei  = s => ethers.parseEther(s);
+const fmtEth = v => ethers.utils.formatEther(v);
+const toWei  = s => ethers.utils.parseEther(s);
 const trimEther = (s,dec=6)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
 function isZeroAddress(a){ return !!a && a.toLowerCase() === ZERO.toLowerCase(); }
 function decodeErr(e){
@@ -300,7 +237,7 @@ function populateSelect(selectEl, items, defaultId=0){
 }
 
 /* ===== Revert-friendly interface + helpers ===== */
-const FULL_MECHS_IFACE = new ethers.Interface([
+const FULL_MECHS_IFACE = new ethers.utils.Interface([
   ...MECHS_CLAIM_ABI,
   ...MECHS_ERROR_ABI
 ]);
@@ -309,7 +246,7 @@ function prettyRevert(e){
   const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data;
   if (typeof data === "string" && data.startsWith("0x")){
     try {
-      const dec = FULL_MECHS_IFACE.decodeErrorResult(data);
+      const dec = FULL_MECHS_IFACE.parseError(data);
       const args = Array.isArray(dec.args) && dec.args.length
         ? " " + JSON.stringify(dec.args.map(a => (typeof a === "bigint" ? a.toString() : a)))
         : "";
@@ -336,7 +273,7 @@ async function sendRawClaim({ to, value, args }){
   let gasLimit;
   try{
     const est = await signer.estimateGas({ to, data, value });
-    gasLimit = (est * 120n) / 100n; // +20% buffer
+    gasLimit = (est.mul(120)).div(100); // +20% buffer
   }catch(e){ console.warn("Gas estimate failed (will send w/o explicit limit):", decodeErr(e)); }
   console.log("[tx send] to", to, "value", value?.toString?.() ?? value, "gasLimit", gasLimit?.toString?.());
   const tx = await signer.sendTransaction({ to, data, value, ...(gasLimit ? { gasLimit } : {}) });
@@ -351,7 +288,7 @@ async function connectWallet(){
     connectBtn.disabled = true; connectBtn.classList.add('loading');
     setStatus('warning','Connecting to MetaMask…');
 
-    browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+    browserProvider = new ethers.providers.Web3Provider(window.ethereum,'any');
     await browserProvider.send('eth_requestAccounts',[]);
 
     const net = await browserProvider.getNetwork();
@@ -371,7 +308,7 @@ async function connectWallet(){
       }
     }
 
-    signer = await browserProvider.getSigner();
+    signer = browserProvider.getSigner();
     userAddr = await signer.getAddress();
 
     window.ethereum.on?.('accountsChanged', handleAccountsChanged);
@@ -397,7 +334,7 @@ function handleAccountsChanged(acc){
   updateBalance(); renderMech();
 }
 function handleChainChanged(){
-  if (window.ethereum) browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+  if (window.ethereum) browserProvider = new ethers.providers.Web3Provider(window.ethereum,'any');
   updateNetworkIndicator(); updateBalance(); renderMech();
 }
 function disconnectWallet(){
@@ -475,7 +412,7 @@ async function renderMech(){
       mechs.currency.textContent = 'BNB';
       mechs.price.textContent = `${trimEther(fmtEth(price))} BNB`;
       const qty = Math.max(1, Number(mechs.qty.value) || 1);
-      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(price * BigInt(qty)))} BNB (est.)`;
+      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(price.mul(qty)))} BNB (est.)`;
     } else {
       mechs.currency.textContent = 'ERC20';
       mechs.price.textContent = `${claim.pricePerToken.toString()} (raw units)`;
@@ -483,11 +420,11 @@ async function renderMech(){
       mechs.mint.textContent = `Mint (ERC20) x${qty}`;
     }
 
-    mechs.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
+    mechs.supply.textContent = `${(claim.claimed||0).toString()} / ${(claim.max||0).toString()}`;
 
-    const maxPerWallet = claim.quantityLimitPerWallet ?? 0n;
+    const maxPerWallet = claim.quantityLimitPerWallet ?? 0;
     const currentQty = Math.max(1, Number(mechs.qty.value) || 1);
-    const clamped = (maxPerWallet>0n) ? Math.min(currentQty, Number(maxPerWallet)) : currentQty;
+    const clamped = (maxPerWallet>0) ? Math.min(currentQty, Number(maxPerWallet)) : currentQty;
     if (clamped !== currentQty){
       mechs.qty.value = clamped;
       setStatus(mechs.status, "warning", `Clamped to wallet limit: ${clamped}`);
@@ -499,7 +436,7 @@ async function renderMech(){
       mechs.currency.textContent = 'BNB';
       mechs.price.textContent = `${trimEther(fmtEth(p))} BNB`;
       const qty = Math.max(1, Number(mechs.qty.value) || 1);
-      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(p * BigInt(qty)))} BNB (est.)`;
+      mechs.mint.textContent = `Mint for ${trimEther(fmtEth(p.mul(qty)))} BNB (est.)`;
     } else {
       mechs.price.textContent="—"; mechs.currency.textContent="—"; mechs.supply.textContent="—";
       mechs.mint.textContent = "Mint Mech";
@@ -543,7 +480,7 @@ async function safeApprove(tokenAddr, spender, amount){
       let gasLimit;
       try {
         const est = await signer.estimateGas({ to: tokenAddr, data });
-        gasLimit = (est * 120n) / 100n;
+        gasLimit = (est.mul(120)).div(100);
       } catch {}
       const tx = await signer.sendTransaction({ to: tokenAddr, data, ...(gasLimit ? { gasLimit } : {}) });
       return await tx.wait();
@@ -555,9 +492,9 @@ async function safeApprove(tokenAddr, spender, amount){
 /* ============== FIX: Zeroed allowlist override (public mint) ============== */
 const makeAllowlistProof = () => ({
   proof: [],
-  quantityLimitPerWallet: 0n,
-  pricePerToken: 0n,
-  currency: ethers.ZeroAddress,
+  quantityLimitPerWallet: 0,
+  pricePerToken: 0,
+  currency: ethers.constants.AddressZero,
 });
 
 /* ============== Universal Drop1155 minter (BNB or ERC-20) ============== */
@@ -571,7 +508,7 @@ async function mintDrop1155({ contractAddr, tokenId, qty, uiStatusEl }){
     const isNative = isZeroAddress(claim.currency);
     const pricePer = claim.pricePerToken;
     const totalQty = Math.max(1, Number(qty) || 1);
-    const totalCost = pricePer * BigInt(totalQty);
+    const totalCost = pricePer.mul(totalQty);
     const currencyAddr = isNative ? ZERO : claim.currency;
 
     // 2) allowlist struct MUST be zeroed when not using a Merkle proof
@@ -589,21 +526,21 @@ async function mintDrop1155({ contractAddr, tokenId, qty, uiStatusEl }){
       const [decimals, symbol, balance, allowance] = await Promise.all([
         erc20.decimals(), erc20.symbol(), erc20.balanceOf(userAddr), erc20.allowance(userAddr, contractAddr)
       ]);
-      if (balance < totalCost) throw new Error(`Insufficient ${symbol}. Need ${ethers.formatUnits(totalCost, decimals)} ${symbol}.`);
-      if (allowance < totalCost) {
+      if (balance.lt(totalCost)) throw new Error(`Insufficient ${symbol}. Need ${ethers.utils.formatUnits(totalCost, decimals)} ${symbol}.`);
+      if (allowance.lt(totalCost)) {
         setStatus(uiStatusEl, "warning", `Approving ${symbol}…`);
         await safeApprove(currencyAddr, contractAddr, totalCost);
       }
     } else {
       const bnbBal = await browserProvider.getBalance(userAddr);
-      if (bnbBal < totalCost) throw new Error(`Insufficient BNB. Need ${ethers.formatEther(totalCost)} BNB.`);
+      if (bnbBal.lt(totalCost)) throw new Error(`Insufficient BNB. Need ${ethers.utils.formatEther(totalCost)} BNB.`);
     }
 
     // 4) simulate & send
     const args = [userAddr, tokenId, totalQty, currencyAddr, pricePer, allowlist, "0x"];
-    await simulateClaim({ to: contractAddr, value: isNative ? totalCost : 0n, args });
+    await simulateClaim({ to: contractAddr, value: isNative ? totalCost : 0, args });
     setStatus(uiStatusEl, "warning", "Sending transaction…");
-    const rec = await sendRawClaim({ to: contractAddr, value: isNative ? totalCost : 0n, args });
+    const rec = await sendRawClaim({ to: contractAddr, value: isNative ? totalCost : 0, args });
     setStatus(uiStatusEl, "success", `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`);
   } catch(e){
     setStatus(uiStatusEl, "error", prettyRevert(e));
@@ -625,35 +562,36 @@ async function mintMech(){
 }
 
 /* ============== Events / Boot ============== */
-mechs.sel.addEventListener("change", renderMech);
-mechs.qty.addEventListener("change", renderMech);
-document.getElementById("cryptidTokenId").addEventListener("change", renderCryptid);
-document.getElementById("cryptidQty").addEventListener("change", renderCryptid);
-document.getElementById("mechsMint").addEventListener("click", mintMech);
-connectBtn.addEventListener("click", connectWallet);
+document.addEventListener('DOMContentLoaded', () => {
+  mechs.sel.addEventListener("change", renderMech);
+  mechs.qty.addEventListener("change", renderMech);
+  crypt.sel.addEventListener("change", renderCryptid);
+  crypt.qty.addEventListener("change", renderCryptid);
+  mechs.mint.addEventListener("click", mintMech);
+  connectBtn.addEventListener("click", connectWallet);
 
-(async function boot(){
   populateSelect(mechs.sel, MECHS, 0);
   populateSelect(crypt.sel, CRYPTIDS, 0);
-  await renderMech();
-  await renderCryptid();
+  renderMech();
+  renderCryptid();
 
   if (window.ethereum){
-    const acc = await window.ethereum.request({ method:'eth_accounts' });
-    if (acc?.length){
-      browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-      signer = await browserProvider.getSigner();
-      userAddr = acc[0];
-      connectBtn.textContent = 'Connected';
-      walletInfo.style.display = 'flex';
-      walletAddress.textContent = shorten(userAddr);
-      await updateNetworkIndicator();
-      await updateBalance();
-      window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-      window.ethereum.on?.('chainChanged', handleChainChanged);
-    }
+    window.ethereum.request({ method:'eth_accounts' }).then(acc => {
+      if (acc?.length){
+        browserProvider = new ethers.providers.Web3Provider(window.ethereum,'any');
+        signer = browserProvider.getSigner();
+        userAddr = acc[0];
+        connectBtn.textContent = 'Connected';
+        walletInfo.style.display = 'flex';
+        walletAddress.textContent = shorten(userAddr);
+        updateNetworkIndicator();
+        updateBalance();
+        window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+        window.ethereum.on?.('chainChanged', handleChainChanged);
+      }
+    });
   }
-})();
+});
 </script>
 </body>
 </html>
