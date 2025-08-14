@@ -467,6 +467,7 @@ async function renderCryptid(){
 const makeAllowlistProof = (pricePer, currency) =>
   ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
 
+
 async function mintMech(){
   try{
     if (!signer) { await connectWallet(); if (!signer) return; }
@@ -478,55 +479,89 @@ async function mintMech(){
 
     // re-read claim to get fresh price
     let claim;
-    try { claim = await readClaim(CONTRACT_MECHS, tokenId); } catch(e){ throw e; }
+    try { 
+      claim = await readClaim(CONTRACT_MECHS, tokenId); 
+    } catch(e){ 
+      throw new Error("Failed to read claim conditions: " + errMsg(e)); 
+    }
 
     const isNative = (claim.currency === ZERO);
-    let pricePer = isNative
-      ? (FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken)
-      : claim.pricePerToken;
+    let pricePer = claim.pricePerToken;
 
-    const drop = new ethers.Contract(CONTRACT_MECHS, [...MECHS_CLAIM_ABI], signer);
+    const drop = new ethers.Contract(CONTRACT_MECHS, MECHS_CLAIM_ABI, signer);
 
     if (isNative){
+      // Native BNB payment path (unchanged)
       const totalValue = pricePer * BigInt(qty);
       const userBalance = await browserProvider.getBalance(userAddr);
       if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue))} BNB.`);
 
       const allowlist = makeAllowlistProof(pricePer, ZERO);
-      // static call for revert reasons (best effort)
-      await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue }).catch(()=>{});
       const tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer, allowlist, "0x", { value: totalValue });
       setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
       setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
     } else {
-      // ERC20 path (in case claim is set to an ERC20)
-      const meta20 = new ethers.Contract(claim.currency, ERC20_ABI, readProvider);
-      const dec = await meta20.decimals();
-      const sym = await meta20.symbol();
+      // ERC20 payment path - enhanced
       const erc20 = new ethers.Contract(claim.currency, ERC20_ABI, signer);
-
-      const total = pricePer * BigInt(qty);
-      const [bal, allowance] = await Promise.all([erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_MECHS)]);
-      if (bal < total) throw new Error(`Insufficient ${sym}. Need ${ethers.formatUnits(total, dec)} ${sym}.`);
-      if (allowance < total){ const txA = await erc20.approve(CONTRACT_MECHS, total); await txA.wait(); }
-
-      const allowlist = makeAllowlistProof(pricePer, claim.currency);
-      await drop.callStatic.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x").catch(()=>{});
-      const tx = await drop.claim(userAddr, tokenId, qty, claim.currency, pricePer, allowlist, "0x");
-      setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
-      const rec = await tx.wait();
-      setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
+      
+      try {
+        // Get token details
+        const [decimals, symbol, balance, allowance] = await Promise.all([
+          erc20.decimals(),
+          erc20.symbol(),
+          erc20.balanceOf(userAddr),
+          erc20.allowance(userAddr, CONTRACT_MECHS)
+        ]);
+        
+        const total = pricePer * BigInt(qty);
+        const formattedAmount = ethers.formatUnits(total, decimals);
+        
+        if (balance < total) {
+          throw new Error(`Insufficient ${symbol}. Need ${formattedAmount} ${symbol}. You have ${ethers.formatUnits(balance, decimals)} ${symbol}.`);
+        }
+        
+        // Check and set allowance if needed
+        if (allowance < total) {
+          setStatus(mechs.status, "warning", `Approving ${symbol}...`);
+          const approveTx = await erc20.approve(CONTRACT_MECHS, total);
+          await approveTx.wait();
+        }
+        
+        // Prepare claim
+        const allowlist = makeAllowlistProof(pricePer, claim.currency);
+        
+        setStatus(mechs.status, "warning", "Sending mint transaction...");
+        const tx = await drop.claim(
+          userAddr, 
+          tokenId, 
+          qty, 
+          claim.currency, 
+          pricePer, 
+          allowlist, 
+          "0x"
+        );
+        
+        setStatus(mechs.status, "warning", "Transaction sent. Waiting for confirmation...");
+        const receipt = await tx.wait();
+        setStatus(mechs.status, "success", `Successfully minted! Tx hash: ${receipt.hash}`);
+        
+      } catch (error) {
+        console.error("ERC20 Mint Error:", error);
+        throw new Error(`ERC20 Mint failed: ${errMsg(error)}`);
+      }
     }
 
     await renderMech();
-  }catch(e){
+  } catch(e) {
     setStatus(mechs.status, "error", errMsg(e));
-    console.error('mintMech:', e);
-  }finally{
-    mechs.mint.disabled = false; mechs.mint.classList.remove("loading");
+    console.error('Mint Error:', e);
+  } finally {
+    mechs.mint.disabled = false; 
+    mechs.mint.classList.remove("loading");
   }
 }
+
 
 /* ================== Events ================== */
 mechs.sel.addEventListener("change", renderMech);
