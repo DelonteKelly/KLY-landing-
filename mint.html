@@ -535,19 +535,40 @@
   ];
   const MECHS = [ T(0,"Skybone Leviathan","ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0") ];
 
-  // ------------ ABIs ------------
-  const DROP1155_ABI = [
-    "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable",
-    "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
-    "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
-    "function uri(uint256) view returns (string)"
-  ];
+  // ------------ ABIs (variants + ERC20) ------------
   const ERC20_ABI = [
     "function approve(address spender,uint256 amount) returns (bool)",
     "function allowance(address owner,address spender) view returns (uint256)",
     "function decimals() view returns (uint8)",
     "function balanceOf(address) view returns (uint256)",
     "function symbol() view returns (string)"
+  ];
+
+  // read variants
+  const ABI_READ_VARIANTS = [
+    // with metadata string
+    ["function getActiveClaimConditionId(uint256) view returns (uint256)",
+     "function getClaimConditionById(uint256,uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata))",
+     "function uri(uint256) view returns (string)"],
+    // without metadata
+    ["function getActiveClaimConditionId(uint256) view returns (uint256)",
+     "function getClaimConditionById(uint256,uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency))",
+     "function uri(uint256) view returns (string)"],
+    // claimCondition single getter
+    ["function claimCondition(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency))",
+     "function uri(uint256) view returns (string)"],
+  ];
+
+  // write variants (native + erc20)
+  const ABI_WRITE_NATIVE = [
+    "function claim(address receiver,uint256 tokenId,uint256 quantity) payable",
+    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) allowlist,bytes data) payable",
+    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,bytes32[] proofs) payable",
+  ];
+  const ABI_WRITE_ERC20 = [
+    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) allowlist,bytes data)",
+    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken,bytes32[] proofs)",
+    "function claim(address receiver,uint256 tokenId,uint256 quantity,address currency,uint256 pricePerToken)",
   ];
 
   // ------------ DOM ------------
@@ -576,21 +597,30 @@
 
   // ------------ Providers / State (ethers v6) ------------
   const readProvider = new ethers.JsonRpcProvider(READ_RPC);
-  let browserProvider = null; // ethers.BrowserProvider
-  let signer = null;
-  let userAddr = null;
+  let browserProvider = null, signer = null, userAddr = null;
 
-  // ------------ Utils (put *above* readClaim) ------------
+  // ------------ Utils ------------
   const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+  const isAddrLike = v => typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v);
+  const isUintLike = v => typeof v === 'bigint' || (typeof v === 'object' && 'toString' in v);
+  const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
+  const ZERO = ethers.ZeroAddress;
+  const fmtEth = v => ethers.formatEther(v);
+  const toWei  = s => ethers.parseEther(s);
+  const fmtU   = (v,d)=> ethers.formatUnits(v,d);
+  const toU    = (s,d)=> ethers.parseUnits(s,d);
+  const trimEther = (s,dec=4)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
+  const errMsg = (e) =>
+    e?.error?.message || e?.info?.error?.message || e?.data?.message ||
+    e?.reason || e?.shortMessage || e?.message || 'Unknown error';
+
   function setStatus(elOrType, typeOrMsg, maybeMsg){
     let el, type, msg;
     if (typeof elOrType === 'string'){ el = connStatus; type = elOrType; msg = typeOrMsg || ''; }
     else { el = elOrType || connStatus; type = typeOrMsg || ''; msg = maybeMsg || ''; }
     el.textContent = msg; el.className = "status " + (type||"");
   }
-  const isAddrLike = v => typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v);
-  const isUintLike = v => typeof v === 'bigint' || (typeof v === 'object' && 'toString' in v);
-  const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
+
   function ipfsHttp(url, gatewayIndex=0){
     if (!url) return "";
     if (!url.startsWith("ipfs://")) return url;
@@ -609,17 +639,63 @@
     }
     throw lastErr || new Error("Fetch failed");
   }
-  const ZERO = ethers.ZeroAddress;
-  const fmtEth = v => ethers.formatEther(v);
-  const toWei  = s => ethers.parseEther(s);
-  const fmtU   = (v,d)=> ethers.formatUnits(v,d);
-  const toU    = (s,d)=> ethers.parseUnits(s,d);
-  const trimEther = (s,dec=4)=>{ const [i,f='']=String(s).split('.'); return f?`${i}.${f.slice(0,dec)}`:`${i}.${'0'.repeat(dec)}`; };
-  const errMsg = (e) =>
-    e?.error?.message || e?.info?.error?.message || e?.data?.message ||
-    e?.reason || e?.shortMessage || e?.message || 'Unknown error';
 
-  // ------------ WALLET CONNECTION ------------
+  // ------------- ABI auto-detection helpers -------------
+  function firstWorkingContract(address, fragments){
+    return (async () => {
+      for (const frags of fragments){
+        const iface = new ethers.Interface(frags);
+        const c = new ethers.Contract(address, frags, readProvider);
+        try {
+          // smoke test: if getActive.. exists, call it with tokenId 0 (no revert required to pass ABI decode)
+          if (frags.some(f => f.includes("getActiveClaimConditionId"))) {
+            await c.getActiveClaimConditionId(0).catch(()=>{}); // ignore revert; only care about decode
+          }
+          return frags; // decoding didn't fail => ABI is compatible enough
+        } catch {}
+      }
+      return null;
+    })();
+  }
+
+  const READ_ABI_CACHE = new Map(); // addr -> fragments
+  const NATIVE_WRITE_SIG_CACHE = new Map(); // addr -> signature string
+  const ERC20_WRITE_SIG_CACHE  = new Map(); // addr -> signature string
+
+  async function getReadAbi(addr){
+    if (READ_ABI_CACHE.has(addr)) return READ_ABI_CACHE.get(addr);
+    const frags = await firstWorkingContract(addr, ABI_READ_VARIANTS);
+    READ_ABI_CACHE.set(addr, frags);
+    return frags;
+  }
+
+  async function getNativeWriteSig(addr){
+    if (NATIVE_WRITE_SIG_CACHE.has(addr)) return NATIVE_WRITE_SIG_CACHE.get(addr);
+    for (const sig of ABI_WRITE_NATIVE){
+      const c = new ethers.Contract(addr, [sig], readProvider);
+      try { await c.callStatic[sig.split("(")[0]](...[userAddr??ZERO,0,0].slice(0, (sig.match(/,/g)||[]).length+1)).catch(()=>{}); }
+      catch { continue; }
+      NATIVE_WRITE_SIG_CACHE.set(addr, sig);
+      return sig;
+    }
+    NATIVE_WRITE_SIG_CACHE.set(addr, null);
+    return null;
+  }
+
+  async function getErc20WriteSig(addr){
+    if (ERC20_WRITE_SIG_CACHE.has(addr)) return ERC20_WRITE_SIG_CACHE.get(addr);
+    for (const sig of ABI_WRITE_ERC20){
+      const c = new ethers.Contract(addr, [sig], readProvider);
+      try { await c.callStatic[sig.split("(")[0]](...[userAddr??ZERO,0,0,KLY_TOKEN,1n,[]].slice(0, (sig.match(/,/g)||[]).length+1)).catch(()=>{}); }
+      catch { continue; }
+      ERC20_WRITE_SIG_CACHE.set(addr, sig);
+      return sig;
+    }
+    ERC20_WRITE_SIG_CACHE.set(addr, null);
+    return null;
+  }
+
+  // ------------ WALLET ------------
   async function connectWallet(){
     try{
       if (!window.ethereum) throw new Error('MetaMask not detected. Please install MetaMask first.');
@@ -690,7 +766,6 @@
     connectBtn.disabled = false; connectBtn.classList.remove('loading');
   }
 
-  /* ==================== Wallet UI helpers ==================== */
   async function updateNetworkIndicator(){
     const indicator = document.querySelector('.network-indicator');
     if (!browserProvider || !indicator) return;
@@ -706,57 +781,49 @@
     balanceCurrency.textContent = 'BNB';
   }
 
-  // ------------ Contract helpers ------------
+  // ------------ Read helpers (meta + claim) ------------
   async function load1155Meta(contractAddr, tokenId) {
-    const c = new ethers.Contract(contractAddr, DROP1155_ABI, readProvider);
-    const base = await c.uri(tokenId);
-    const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
-    return fetchJsonWithFallback(url);
+    try{
+      const frags = await getReadAbi(contractAddr) || ABI_READ_VARIANTS[0];
+      const c = new ethers.Contract(contractAddr, frags, readProvider);
+      const base = await c.uri(tokenId);
+      const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
+      return await fetchJsonWithFallback(url);
+    }catch(e){ return {}; }
   }
 
-  // Robust claim reader (tuple order safe)
   async function readClaim(contractAddr, tokenId){
-    const c = new ethers.Contract(contractAddr, DROP1155_ABI, readProvider);
-    const condId = await c.getActiveClaimConditionId(tokenId);
-    const cond = await c.getClaimConditionById(tokenId, condId);
+    const frags = await getReadAbi(contractAddr);
+    if (!frags) throw new Error("Unsupported claim ABI on this contract");
+    const c = new ethers.Contract(contractAddr, frags, readProvider);
 
-    let pricePerToken = cond[5];
-    let currency      = cond[6];
-
-    if (isAddrLike(pricePerToken) && isUintLike(currency)) {
-      [pricePerToken, currency] = [currency, pricePerToken];
-    }
-    if (!isAddrLike(currency)) currency = ethers.ZeroAddress;
-
-    return {
-      max: cond[1],
-      claimed: cond[2],
-      quantityLimitPerWallet: cond[3],
-      pricePerToken,
-      currency
-    };
-  }
-
-  // Balance of both tokens (BNB + KLY)
-  async function updateBalances() {
-    if (!userAddr || !browserProvider) return;
     try {
-      const bnb = await browserProvider.getBalance(userAddr);
-      const pretty = trimEther(fmtEth(bnb),4);
-      balanceAmount.textContent = pretty;
-      balanceCurrency.textContent = "BNB";
-      mechs.balance.textContent = `${pretty} BNB`;
+      let cond;
+      if (frags.some(f=>f.startsWith("function getActiveClaimConditionId"))){
+        const id = await c.getActiveClaimConditionId(tokenId);
+        cond = await c.getClaimConditionById(tokenId, id);
+      } else {
+        cond = await c.claimCondition(tokenId);
+      }
 
-      const meta = await getErc20Meta(KLY_TOKEN);
-      const kly = new ethers.Contract(KLY_TOKEN, ERC20_ABI, readProvider);
-      const kBal = await kly.balanceOf(userAddr);
-      crypt.balance.textContent = `${fmtU(kBal, meta.decimals)} ${meta.symbol}`;
-    } catch (e) {
-      console.error("updateBalances:", e);
+      // normalize tuple to common shape
+      const price = cond.pricePerToken ?? cond[5];
+      let curr = cond.currency ?? cond[6];
+      if (!isAddrLike(curr)) curr = ZERO;
+
+      return {
+        max: cond.maxClaimableSupply ?? cond[1],
+        claimed: cond.supplyClaimed ?? cond[2],
+        quantityLimitPerWallet: cond.quantityLimitPerWallet ?? cond[3],
+        pricePerToken: price,
+        currency: curr
+      };
+    } catch(e){
+      throw new Error("Claim read failed: " + errMsg(e));
     }
   }
 
-  // cache for ERC20 metadata
+  // ------------ ERC20 meta cache ------------
   const erc20MetaCache = new Map();
   async function getErc20Meta(addr){
     if (erc20MetaCache.has(addr)) return erc20MetaCache.get(addr);
@@ -780,15 +847,12 @@
       const img = meta.image || meta.image_url || meta.imageUri || "";
       let i=0; const setNext=()=> mechs.img.src = ipfsHttp(img,i++);
       mechs.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
-    } catch {
-      mechs.img.alt = "Preview unavailable";
-    } finally {
-      mechs.img.classList.remove("loading");
-    }
+    } catch { mechs.img.alt = "Preview unavailable"; }
+    finally { mechs.img.classList.remove("loading"); }
 
     try {
       const claim = await readClaim(CONTRACT_MECHS, id);
-      const isNative = (claim.currency === ethers.ZeroAddress);
+      const isNative = (claim.currency === ZERO);
 
       if (isNative) {
         const price = FORCED_MECHS_PRICE_BNB ? toWei(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
@@ -805,7 +869,7 @@
         mechs.mint.textContent = `Mint for ${fmtU(total, meta20.decimals)} ${meta20.symbol} (est.)`;
       }
 
-      mechs.supply.textContent = `${claim.claimed.toString()} / ${claim.max.toString()}`;
+      mechs.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
 
       const maxPerWallet = claim.quantityLimitPerWallet ?? 0n;
       const currentQty = Math.max(1, Number(mechs.qty.value) || 1);
@@ -815,9 +879,18 @@
         setStatus(mechs.status, "warning", `Clamped to wallet limit: ${clamped}`);
       } else setStatus(mechs.status, "", "");
     } catch(e) {
-      console.error("Mech price:", e);
-      mechs.price.textContent="—"; mechs.currency.textContent="—"; mechs.supply.textContent="—";
-      mechs.mint.textContent = "Mint Mech";
+      console.warn("Mech read fallback:", e);
+      // last resort: show forced price so user can still mint native path
+      if (FORCED_MECHS_PRICE_BNB){
+        const p = toWei(FORCED_MECHS_PRICE_BNB);
+        mechs.currency.textContent = 'BNB';
+        mechs.price.textContent = `${trimEther(fmtEth(p),6)} BNB`;
+        const qty = Math.max(1, Number(mechs.qty.value) || 1);
+        mechs.mint.textContent = `Mint for ${trimEther(fmtEth(p * BigInt(qty)),6)} BNB (est.)`;
+      } else {
+        mechs.price.textContent="—"; mechs.currency.textContent="—"; mechs.supply.textContent="—";
+        mechs.mint.textContent = "Mint Mech";
+      }
     } finally {
       [mechs.price, mechs.currency, mechs.supply].forEach(el=>el.classList.remove("loading"));
     }
@@ -835,11 +908,8 @@
       const img = meta.image || meta.image_url || meta.imageUri || "";
       let i=0; const setNext=()=> crypt.img.src = ipfsHttp(img,i++);
       crypt.img.onerror = ()=>{ if (i<3) setNext(); }; setNext();
-    } catch {
-      crypt.img.alt = "Preview unavailable";
-    } finally {
-      crypt.img.classList.remove("loading");
-    }
+    } catch { crypt.img.alt = "Preview unavailable"; }
+    finally { crypt.img.classList.remove("loading"); }
 
     try {
       const claim = await readClaim(CONTRACT_CRYPTIDS, id);
@@ -849,13 +919,13 @@
 
       crypt.currency.textContent = meta20.symbol;
       crypt.price.textContent = `${fmtU(price, meta20.decimals)} ${meta20.symbol}`;
-      crypt.supply.textContent = `${claim.claimed.toString()} / ${claim.max.toString()}`;
+      crypt.supply.textContent = `${(claim.claimed||0n).toString()} / ${(claim.max||0n).toString()}`;
 
       const qty = Math.max(1, Number(crypt.qty.value) || 1);
       const total = price * BigInt(qty);
       crypt.mint.textContent = `Mint for ${fmtU(total, meta20.decimals)} ${meta20.symbol} (est.)`;
     } catch(e){
-      console.error("Cryptid price:", e);
+      console.warn("Cryptid read:", e);
       crypt.price.textContent="—"; crypt.currency.textContent="—"; crypt.supply.textContent="—";
       crypt.mint.textContent = "Mint Cryptid";
     } finally {
@@ -873,11 +943,15 @@
   }
 
   // ------------ Mint helpers ------------
-  function makeAllowlistProof(pricePer, currency){
-    return { proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency };
+  const makeAllowlistProof = (pricePer, currency) =>
+    ({ proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency });
+
+  // pick a native/erc20 write signature that exists
+  async function pickWriteSig(contractAddr, isNative){
+    return isNative ? (await getNativeWriteSig(contractAddr)) : (await getErc20WriteSig(contractAddr));
   }
 
-  // ------------ Mint: Mechs (auto BNB / ERC20 with preflight) ------------
+  // ------------ Mint: Mechs (auto BNB / ERC20, ABI-flex) ------------
   async function mintMech(){
     try {
       if (!signer) { await connectWallet(); if (!signer) return; }
@@ -886,32 +960,64 @@
 
       const tokenId = Number(mechs.sel.value);
       const qty = Math.max(1, Number(mechs.qty.value) || 1);
-      const drop = new ethers.Contract(CONTRACT_MECHS, DROP1155_ABI, signer);
 
-      const claim = await readClaim(CONTRACT_MECHS, tokenId);
-      const isNative = (claim.currency === ethers.ZeroAddress);
+      // read claim (or fallback to forced price for native)
+      let claim, isNative = true, pricePer, currencyAddr = ZERO;
+      try { claim = await readClaim(CONTRACT_MECHS, tokenId); }
+      catch {}
 
-      let pricePer = claim.pricePerToken;
-      let valueOpts = {};
-      let currencyAddr = claim.currency;
+      if (claim){
+        isNative = (claim.currency === ZERO);
+        pricePer = claim.pricePerToken;
+        currencyAddr = claim.currency;
+      } else {
+        // fallback so we can still mint
+        isNative = true;
+        pricePer = toWei(FORCED_MECHS_PRICE_BNB || "0");
+        currencyAddr = ZERO;
+      }
 
-      if (isNative) {
+      const methodSig = await pickWriteSig(CONTRACT_MECHS, isNative);
+      if (!methodSig) throw new Error("No compatible claim() overload found on contract");
+
+      const frags = [methodSig];
+      const drop = new ethers.Contract(CONTRACT_MECHS, frags, signer);
+
+      if (isNative){
         if (FORCED_MECHS_PRICE_BNB) pricePer = toWei(FORCED_MECHS_PRICE_BNB);
         const totalValue = pricePer * BigInt(qty);
         const userBalance = await browserProvider.getBalance(userAddr);
         if (userBalance < totalValue) throw new Error(`Insufficient BNB. Need ${trimEther(fmtEth(totalValue),6)} BNB.`);
-        valueOpts = { value: totalValue };
-        currencyAddr = ethers.ZeroAddress;
 
-        const allowlist = makeAllowlistProof(pricePer, currencyAddr);
-        await drop.claim.staticCall(userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x", valueOpts);
+        // try different overload shapes
+        let tx;
+        try {
+          // variant 1: claim(receiver, tokenId, qty)
+          if (methodSig.includes("claim(address receiver,uint256 tokenId,uint256 quantity)")) {
+            await drop.callStatic.claim(userAddr, tokenId, qty, { value: totalValue });
+            tx = await drop.claim(userAddr, tokenId, qty, { value: totalValue });
+          }
+          // variant 2/3: long sig with currency & allowlist
+          else {
+            const allowlist = makeAllowlistProof(pricePer, ZERO);
+            await drop.callStatic.claim(userAddr, tokenId, qty, ZERO, pricePer,
+              methodSig.includes("(bytes32[]") ? [] : allowlist,
+              methodSig.includes("(bytes32[]") ? undefined : "0x",
+              { value: totalValue }
+            ).catch(()=>{}); // some ABIs don't have data
+            tx = await drop.claim(userAddr, tokenId, qty, ZERO, pricePer,
+              methodSig.includes("(bytes32[]") ? [] : allowlist,
+              methodSig.includes("(bytes32[]") ? undefined : "0x",
+              { value: totalValue }
+            );
+          }
+        } catch(e){ throw new Error(errMsg(e)); }
 
-        mechs.mint.textContent = `Mint for ${trimEther(fmtEth(totalValue),6)} BNB`;
-        const tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x", valueOpts);
         setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
         const rec = await tx.wait();
         setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
       } else {
+        // ERC20 path
         const meta20 = await getErc20Meta(currencyAddr);
         const erc20 = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
         const total = pricePer * BigInt(qty);
@@ -926,10 +1032,26 @@
           await txA.wait();
         }
 
-        const allowlist = makeAllowlistProof(pricePer, currencyAddr);
-        await drop.claim.staticCall(userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x");
+        let tx;
+        try{
+          // long sigs (struct or proofs)
+          if (methodSig.includes("(bytes32[]") || methodSig.includes("allowlist")) {
+            const allowlist = makeAllowlistProof(pricePer, currencyAddr);
+            await drop.callStatic.claim(userAddr, tokenId, qty, currencyAddr, pricePer,
+              methodSig.includes("(bytes32[]") ? [] : allowlist,
+              methodSig.includes("(bytes32[]") ? undefined : "0x"
+            ).catch(()=>{});
+            tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer,
+              methodSig.includes("(bytes32[]") ? [] : allowlist,
+              methodSig.includes("(bytes32[]") ? undefined : "0x"
+            );
+          } else {
+            // simple 5-arg overload
+            await drop.callStatic.claim(userAddr, tokenId, qty, currencyAddr, pricePer);
+            tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer);
+          }
+        }catch(e){ throw new Error(errMsg(e)); }
 
-        const tx = await drop.claim(userAddr, tokenId, qty, currencyAddr, pricePer, allowlist, "0x");
         setStatus(mechs.status, "warning", "Broadcasted. Waiting for confirmation…");
         const rec = await tx.wait();
         setStatus(mechs.status, "success", `Minted! Tx: ${rec.hash.slice(0,10)}…`);
@@ -944,7 +1066,7 @@
     }
   }
 
-  // ------------ Mint: Cryptids (ERC20 with preflight) ------------
+  // ------------ Mint: Cryptids (ERC20 only likely) ------------
   async function mintCryptid(){
     try {
       if (!signer) { await connectWallet(); if (!signer) return; }
@@ -953,15 +1075,14 @@
 
       const tokenId = Number(crypt.sel.value);
       const qty = Math.max(1, Number(crypt.qty.value) || 1);
-      const drop = new ethers.Contract(CONTRACT_CRYPTIDS, DROP1155_ABI, signer);
 
       const claim = await readClaim(CONTRACT_CRYPTIDS, tokenId);
       const erc20Addr = claim.currency || KLY_TOKEN;
       const meta20 = await getErc20Meta(erc20Addr);
-      const erc20 = new ethers.Contract(erc20Addr, ERC20_ABI, signer);
       const pricePer = FORCED_CRYPTIDS_PRICE_KLY ? toU(FORCED_CRYPTIDS_PRICE_KLY, meta20.decimals) : claim.pricePerToken;
       const total = pricePer * BigInt(qty);
 
+      const erc20 = new ethers.Contract(erc20Addr, ERC20_ABI, signer);
       const [bal, allowance] = await Promise.all([erc20.balanceOf(userAddr), erc20.allowance(userAddr, CONTRACT_CRYPTIDS)]);
       if (bal < total) throw new Error(`Insufficient ${meta20.symbol}. Need ${fmtU(total, meta20.decimals)} ${meta20.symbol}.`);
       if (allowance < total){
@@ -970,11 +1091,27 @@
         await txA.wait();
       }
 
-      const allowlist = makeAllowlistProof(pricePer, erc20Addr);
-      await drop.claim.staticCall(userAddr, tokenId, qty, erc20Addr, pricePer, allowlist, "0x");
+      const methodSig = await getErc20WriteSig(CONTRACT_CRYPTIDS);
+      if (!methodSig) throw new Error("No compatible claim() overload found on contract");
+      const drop = new ethers.Contract(CONTRACT_CRYPTIDS, [methodSig], signer);
 
-      crypt.mint.textContent = `Minting…`;
-      const tx = await drop.claim(userAddr, tokenId, qty, erc20Addr, pricePer, allowlist, "0x");
+      let tx;
+      try{
+        if (methodSig.includes("(bytes32[]") || methodSig.includes("allowlist")){
+          const allowlist = makeAllowlistProof(pricePer, erc20Addr);
+          await drop.callStatic.claim(userAddr, tokenId, qty, erc20Addr, pricePer,
+            methodSig.includes("(bytes32[]") ? [] : allowlist,
+            methodSig.includes("(bytes32[]") ? undefined : "0x"
+          ).catch(()=>{});
+          tx = await drop.claim(userAddr, tokenId, qty, erc20Addr, pricePer,
+            methodSig.includes("(bytes32[]") ? [] : allowlist,
+            methodSig.includes("(bytes32[]") ? undefined : "0x"
+          );
+        } else {
+          await drop.callStatic.claim(userAddr, tokenId, qty, erc20Addr, pricePer);
+          tx = await drop.claim(userAddr, tokenId, qty, erc20Addr, pricePer);
+        }
+      }catch(e){ throw new Error(errMsg(e)); }
 
       setStatus(crypt.status, "warning", "Broadcasted. Waiting for confirmation…");
       const rec = await tx.wait();
