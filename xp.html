@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>KLY — XP Claims Dashboard (Supabase)</title>
+  <title>KLY — XP Claims & Mining Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
   <style>
     :root {
@@ -15,34 +16,39 @@
       --text-main:#e9e9f0; --text-muted:rgba(255,255,255,.6);
       --border:rgba(255,255,255,.12);
       --success:#4ade80; --warning:#facc15; --danger:#f87171; --info:#60a5fa;
+      --mining:#10b981; --mining-bg:rgba(16,185,129,.1);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg-dark);color:var(--text-main);line-height:1.5;min-height:100vh}
-    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    .wrap{max-width:1400px;margin:0 auto;padding:24px}
     .card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);transition:transform .2s,box-shadow .2s}
     .card:hover{transform:translateY(-2px);box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
     h1,h2{margin:0 0 16px;font-weight:700;line-height:1.2}
     h1{font-size:28px;background:linear-gradient(90deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
     h2{font-size:22px;color:var(--text-main);display:flex;align-items:center;gap:8px}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
     .row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;align-items:center}
+    .col{display:flex;flex-direction:column;gap:12px}
     .pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:14px;display:inline-flex;align-items:center;gap:6px}
-    input,select{flex:1;min-width:200px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:14px;transition:border-color .2s,box-shadow .2s}
-    input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(110,68,255,.2)}
+    input,select,textarea{flex:1;min-width:200px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:14px;transition:border-color .2s,box-shadow .2s}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(110,68,255,.2)}
     button{padding:12px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;white-space:nowrap}
     button:disabled{opacity:.6;cursor:not-allowed}
     .primary{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#0b0b0b}
     .ghost{background:rgba(255,255,255,.08);color:var(--text-main);border:1px solid var(--border)}
     .ghost:hover:not(:disabled){background:rgba(255,255,255,.12)}
     .danger{background:var(--danger);color:#fff}
+    .mining{background:var(--mining);color:#fff}
     table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
     th,td{padding:12px;border-bottom:1px solid var(--border);text-align:left}
     th{opacity:.85;font-weight:600;color:var(--text-muted);text-transform:uppercase;font-size:13px;letter-spacing:.5px}
     tr:hover td{background:rgba(255,255,255,.03)}
     .meta{opacity:.85;font-size:14px;margin-top:8px;color:var(--text-muted)}
     .bar{height:16px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin:12px 0}
-    .fill{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .5s cubic-bezier(.65,0,.35,1)}
+    .fill{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .5s cubic-bezier(.65,0,.35,1))}
     .badge{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
     .badge-success{background:rgba(74,222,128,.15);color:var(--success)}
+    .badge-mining{background:var(--mining-bg);color:var(--mining)}
     .status{display:inline-flex;align-items:center;gap:6px}
     .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
     .status-online{background:var(--success)} .status-offline{background:var(--danger)}
@@ -58,10 +64,32 @@
     .tooltip .tooltip-text{visibility:hidden;width:200px;background-color:var(--bg-card);color:var(--text-main);text-align:center;border-radius:6px;padding:8px;position:absolute;z-index:1;bottom:125%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity .3s;font-size:13px;border:1px solid var(--border);box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06)}
     .tooltip:hover .tooltip-text{visibility:visible;opacity:1}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .tab-container{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+    .tab{position:relative;padding:8px 16px;cursor:pointer;font-weight:500;color:var(--text-muted);transition:all .2s}
+    .tab:hover:not(.active){color:var(--text-main)}
+    .tab.active{color:var(--text-main)}
+    .tab.active:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--primary),var(--secondary))}
+    .chart-container{position:relative;height:300px;width:100%}
+    .mining-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin:16px 0}
+    .stat-card{padding:16px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border)}
+    .stat-value{font-size:24px;font-weight:700;margin:8px 0;color:var(--text-main)}
+    .stat-label{font-size:14px;color:var(--text-muted)}
+    .mining-config{padding:16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px dashed var(--border);margin-bottom:16px}
+    .mining-config h3{margin-bottom:12px;font-size:16px}
+    .mining-controls{display:flex;gap:12px;flex-wrap:wrap}
+    .mining-log{height:200px;overflow-y:auto;padding:12px;background:var(--bg-input);border-radius:8px;border:1px solid var(--border);font-family:monospace;font-size:13px;white-space:pre-wrap}
+    .log-entry{margin-bottom:4px}
+    .log-time{color:var(--text-muted);margin-right:8px}
+    .log-info{color:var(--text-main)}
+    .log-warning{color:var(--warning)}
+    .log-error{color:var(--danger)}
+    .log-success{color:var(--success)}
+    .log-mining{color:var(--mining)}
     @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
     @media (max-width:768px){
       .wrap{padding:16px}.card{padding:16px}h1{font-size:24px}h2{font-size:20px}
-      input,select,button{min-width:100%} table{font-size:13px} th,td{padding:8px}
+      input,select,button,textarea{min-width:100%} table{font-size:13px} th,td{padding:8px}
+      .grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -69,7 +97,7 @@
 <div class="wrap">
   <div class="card animate__animated animate__fadeIn">
     <div class="row" style="justify-content: space-between; align-items: center;">
-      <h1><i class="fas fa-trophy"></i> KLY XP Dashboard</h1>
+      <h1><i class="fas fa-trophy"></i> KLY XP & Mining Dashboard</h1>
       <div class="status">
         <span class="status-dot" id="connectionStatus"></span>
         <span id="connectionText">Connecting...</span>
@@ -85,74 +113,210 @@
     <div class="meta">
       <i class="fas fa-info-circle"></i> Configuration is saved in local storage.
       <span class="pill"><i class="fas fa-database"></i> Supabase v2</span>
+      <span class="pill"><i class="fab fa-ethereum"></i> Ethers v5</span>
     </div>
   </div>
 
-  <div class="card animate__animated animate__fadeIn animate__delay-1s">
-    <h2><i class="fas fa-user"></i> Player Profile</h2>
-    <div class="row">
-      <label for="addr" class="sr-only">Wallet address</label>
-      <input id="addr" placeholder="0x... wallet address" autocomplete="off" />
-      <button id="connect" class="ghost"><i class="fab fa-ethereum"></i> MetaMask</button>
-      <button id="refreshXp" class="ghost"><i class="fas fa-sync-alt"></i> Refresh XP</button>
-      <span class="pill"><i class="fas fa-star"></i> Total XP: <b id="xpTotal">0</b></span>
-    </div>
-    <div class="bar" aria-label="XP progress"><div id="xpFill" class="fill"></div></div>
-    <div class="row" style="justify-content: space-between;">
-      <div class="meta"><b id="rankName">Initiate</b> — <span id="xpVal">0</span>/<span id="xpReq">100</span> XP</div>
-      <div class="meta" id="nextRankInfo"></div>
-    </div>
+  <div class="tab-container">
+    <div class="tab active" data-tab="xp">XP Dashboard</div>
+    <div class="tab" data-tab="mining">Mining</div>
+    <div class="tab" data-tab="analytics">Analytics</div>
   </div>
 
-  <div class="card animate__animated animate__fadeIn animate__delay-2s">
-    <h2><i class="fas fa-plus-circle"></i> Add XP Claim</h2>
-    <div class="row">
-      <div class="tooltip" style="flex:1;">
-        <label for="questId" class="sr-only">Quest ID</label>
-        <input id="questId" placeholder="quest_id (e.g., q_connect)" />
-        <span class="tooltip-text">Enter quest identifier (e.g., q_twitter_follow)</span>
+  <!-- XP Dashboard Tab -->
+  <div id="xp-tab" class="tab-content">
+    <div class="card animate__animated animate__fadeIn animate__delay-1s">
+      <h2><i class="fas fa-user"></i> Player Profile</h2>
+      <div class="row">
+        <label for="addr" class="sr-only">Wallet address</label>
+        <input id="addr" placeholder="0x... wallet address" autocomplete="off" />
+        <button id="connect" class="ghost"><i class="fab fa-ethereum"></i> MetaMask</button>
+        <button id="refreshXp" class="ghost"><i class="fas fa-sync-alt"></i> Refresh XP</button>
+        <span class="pill"><i class="fas fa-star"></i> Total XP: <b id="xpTotal">0</b></span>
       </div>
-      <div class="tooltip" style="flex:1;">
-        <label for="xpAmount" class="sr-only">XP amount</label>
-        <input id="xpAmount" type="number" step="1" min="1" placeholder="XP amount (uses in4)" />
-        <span class="tooltip-text">XP amount stored in column “in4”</span>
+      <div class="bar" aria-label="XP progress"><div id="xpFill" class="fill"></div></div>
+      <div class="row" style="justify-content: space-between;">
+        <div class="meta"><b id="rankName">Initiate</b> — <span id="xpVal">0</span>/<span id="xpReq">100</span> XP</div>
+        <div class="meta" id="nextRankInfo"></div>
       </div>
-      <button id="addClaim" class="primary" disabled><i class="fas fa-plus"></i> Add Claim</button>
     </div>
-    <div class="meta">
-      <i class="fas fa-code"></i> Writes to <code>xp_claims</code>: <code>addr</code>, <code>quest_id</code>, <code>in4</code>, <code>created_at</code>.
+
+    <div class="card animate__animated animate__fadeIn animate__delay-2s">
+      <h2><i class="fas fa-plus-circle"></i> Add XP Claim</h2>
+      <div class="row">
+        <div class="tooltip" style="flex:1;">
+          <label for="questId" class="sr-only">Quest ID</label>
+          <input id="questId" placeholder="quest_id (e.g., q_connect)" />
+          <span class="tooltip-text">Enter quest identifier (e.g., q_twitter_follow)</span>
+        </div>
+        <div class="tooltip" style="flex:1;">
+          <label for="xpAmount" class="sr-only">XP amount</label>
+          <input id="xpAmount" type="number" step="1" min="1" placeholder="XP amount (uses in4)" />
+          <span class="tooltip-text">XP amount stored in column "in4"</span>
+        </div>
+        <button id="addClaim" class="primary" disabled><i class="fas fa-plus"></i> Add Claim</button>
+      </div>
+      <div class="meta">
+        <i class="fas fa-code"></i> Writes to <code>xp_claims</code>: <code>addr</code>, <code>quest_id</code>, <code>in4</code>, <code>created_at</code>.
+      </div>
+    </div>
+
+    <div class="card animate__animated animate__fadeIn animate__delay-3s">
+      <h2><i class="fas fa-history"></i> Recent Claims</h2>
+      <div class="row">
+        <button id="refreshClaims" class="ghost"><i class="fas fa-sync-alt"></i> Refresh</button>
+        <button id="toggleFilter" class="ghost"><i class="fas fa-users"></i> Show All</button>
+        <label for="limitSelect" class="sr-only">Row limit</label>
+        <select id="limitSelect">
+          <option value="10">10 rows</option>
+          <option value="20" selected>20 rows</option>
+          <option value="50">50 rows</option>
+          <option value="100">100 rows</option>
+        </select>
+        <span class="pill"><i class="fas fa-list"></i> Rows: <b id="rowCount">0</b></span>
+        <span class="pill"><i class="fas fa-filter"></i> Filter: <b id="filterStatus">All</b></span>
+      </div>
+      <div class="table-responsive">
+        <table aria-describedby="claims table of recent XP claims">
+          <thead>
+            <tr>
+              <th>ID</th><th>Address</th><th>Quest</th><th>in2</th><th>in4 (XP)</th><th>in8</th><th>Created</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="claimsBody">
+            <tr><td colspan="8" style="text-align:center;padding:24px;">No data available. Connect to Supabase and load claims.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px;">
+        <button id="loadMore" class="ghost" style="display:none;"><i class="fas fa-arrow-down"></i> Load More</button>
+      </div>
     </div>
   </div>
 
-  <div class="card animate__animated animate__fadeIn animate__delay-3s">
-    <h2><i class="fas fa-history"></i> Recent Claims</h2>
-    <div class="row">
-      <button id="refreshClaims" class="ghost"><i class="fas fa-sync-alt"></i> Refresh</button>
-      <button id="toggleFilter" class="ghost"><i class="fas fa-users"></i> Show All</button>
-      <label for="limitSelect" class="sr-only">Row limit</label>
-      <select id="limitSelect">
-        <option value="10">10 rows</option>
-        <option value="20" selected>20 rows</option>
-        <option value="50">50 rows</option>
-        <option value="100">100 rows</option>
-      </select>
-      <span class="pill"><i class="fas fa-list"></i> Rows: <b id="rowCount">0</b></span>
-      <span class="pill"><i class="fas fa-filter"></i> Filter: <b id="filterStatus">All</b></span>
+  <!-- Mining Tab -->
+  <div id="mining-tab" class="tab-content" style="display:none;">
+    <div class="card animate__animated animate__fadeIn">
+      <h2><i class="fas fa-hard-hat"></i> Mining Configuration</h2>
+      
+      <div class="mining-config">
+        <h3><i class="fas fa-cog"></i> Mining Parameters</h3>
+        <div class="row">
+          <div class="col" style="flex:1;">
+            <label for="miningBatchSize">Batch Size</label>
+            <input id="miningBatchSize" type="number" min="1" max="1000" value="50" />
+            <div class="meta">Number of claims to process per batch</div>
+          </div>
+          <div class="col" style="flex:1;">
+            <label for="miningDelay">Delay (ms)</label>
+            <input id="miningDelay" type="number" min="100" max="10000" value="1000" />
+            <div class="meta">Delay between batches in milliseconds</div>
+          </div>
+          <div class="col" style="flex:1;">
+            <label for="miningXpAmount">XP Amount</label>
+            <input id="miningXpAmount" type="number" min="1" value="10" />
+            <div class="meta">XP to award per claim</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col" style="flex:1;">
+            <label for="miningQuestId">Quest ID</label>
+            <input id="miningQuestId" value="q_mining" />
+            <div class="meta">Quest identifier for mining claims</div>
+          </div>
+          <div class="col" style="flex:1;">
+            <label for="miningAddressList">Addresses (comma separated)</label>
+            <textarea id="miningAddressList" rows="3" placeholder="0x...,0x...,0x..."></textarea>
+            <div class="meta">Or leave empty to mine for all users</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mining-controls">
+        <button id="startMining" class="mining"><i class="fas fa-play"></i> Start Mining</button>
+        <button id="stopMining" class="danger" disabled><i class="fas fa-stop"></i> Stop Mining</button>
+        <button id="testMining" class="ghost"><i class="fas fa-vial"></i> Test Run</button>
+        <button id="clearMiningLog" class="ghost"><i class="fas fa-trash"></i> Clear Log</button>
+        <span class="pill"><i class="fas fa-bolt"></i> Status: <b id="miningStatus">Idle</b></span>
+        <span class="pill"><i class="fas fa-database"></i> Processed: <b id="miningProcessed">0</b></span>
+      </div>
     </div>
-    <div class="table-responsive">
-      <table aria-describedby="claims table of recent XP claims">
-        <thead>
-          <tr>
-            <th>ID</th><th>Address</th><th>Quest</th><th>in2</th><th>in4 (XP)</th><th>in8</th><th>Created</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="claimsBody">
-          <tr><td colspan="8" style="text-align:center;padding:24px;">No data available. Connect to Supabase and load claims.</td></tr>
-        </tbody>
-      </table>
+
+    <div class="card animate__animated animate__fadeIn animate__delay-1s">
+      <h2><i class="fas fa-terminal"></i> Mining Log</h2>
+      <div class="mining-log" id="miningLog">
+        <div class="log-entry"><span class="log-time">[SYSTEM]</span> <span class="log-info">Mining module ready. Configure parameters and start mining.</span></div>
+      </div>
     </div>
-    <div class="row" style="justify-content:flex-end;margin-top:12px;">
-      <button id="loadMore" class="ghost" style="display:none;"><i class="fas fa-arrow-down"></i> Load More</button>
+
+    <div class="card animate__animated animate__fadeIn animate__delay-2s">
+      <h2><i class="fas fa-chart-line"></i> Mining Statistics</h2>
+      <div class="mining-stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Processed</div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">addresses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">XP Distributed</div>
+          <div class="stat-value" id="statXp">0</div>
+          <div class="stat-label">total XP</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Current Speed</div>
+          <div class="stat-value" id="statSpeed">0</div>
+          <div class="stat-label">claims/min</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Estimated Time</div>
+          <div class="stat-value" id="statTime">0</div>
+          <div class="stat-label">remaining</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Tab -->
+  <div id="analytics-tab" class="tab-content" style="display:none;">
+    <div class="card animate__animated animate__fadeIn">
+      <h2><i class="fas fa-chart-pie"></i> XP Distribution</h2>
+      <div class="chart-container">
+        <canvas id="xpChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card animate__animated animate__fadeIn animate__delay-1s">
+      <h2><i class="fas fa-chart-bar"></i> Top Users</h2>
+      <div class="chart-container">
+        <canvas id="topUsersChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card animate__animated animate__fadeIn animate__delay-2s">
+      <h2><i class="fas fa-table"></i> Leaderboard</h2>
+      <div class="row">
+        <button id="refreshLeaderboard" class="ghost"><i class="fas fa-sync-alt"></i> Refresh</button>
+        <label for="leaderboardLimit" class="sr-only">Top N</label>
+        <select id="leaderboardLimit">
+          <option value="10">Top 10</option>
+          <option value="20" selected>Top 20</option>
+          <option value="50">Top 50</option>
+          <option value="100">Top 100</option>
+        </select>
+        <span class="pill"><i class="fas fa-users"></i> Showing: <b id="leaderboardCount">0</b></span>
+      </div>
+      <div class="table-responsive">
+        <table aria-describedby="leaderboard table">
+          <thead>
+            <tr>
+              <th>Rank</th><th>Address</th><th>Total XP</th><th>Claims</th><th>Rank</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr><td colspan="5" style="text-align:center;padding:24px;">No data available. Load leaderboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -175,6 +339,8 @@
 
   // 1) State
   let sb = null, currentPage = 1, hasMoreData = false, currentFilter = 'all';
+  let miningInterval = null, miningStats = { processed: 0, xpDistributed: 0, startTime: null };
+  let xpChart = null, topUsersChart = null;
 
   // 2) DOM utils
   const $ = (id) => document.getElementById(id);
@@ -224,6 +390,8 @@
     subscribeRealtime();
     showToast('Supabase client initialized', 'success');
     loadClaims(); // initial
+    loadLeaderboard(); // initial leaderboard
+    loadAnalytics(); // initial analytics
     return true;
   }
 
@@ -271,6 +439,39 @@
     actions.appendChild(del); tr.appendChild(actions);
 
     return tr;
+  }
+
+  function appendLeaderboardRow(r, index){
+    const tr = document.createElement('tr');
+    const td = (text)=>{ const t=document.createElement('td'); t.textContent=(text ?? '').toString(); return t; };
+
+    tr.appendChild(td(index + 1));
+
+    const addrTd = el('td','tooltip');
+    const shortSpan = el('span','', short(r.addr));
+    const tip = el('span','tooltip-text', r.addr);
+    addrTd.append(shortSpan, tip); tr.appendChild(addrTd);
+
+    tr.appendChild(td(r.total_xp));
+
+    const claimsTd = document.createElement('td');
+    const badge = el('span','badge', r.claims_count.toString());
+    claimsTd.appendChild(badge); tr.appendChild(claimsTd);
+
+    const rank = getRankForXp(r.total_xp);
+    const rankTd = document.createElement('td');
+    const rankBadge = el('span','badge', `${rank.icon} ${rank.name}`);
+    rankBadge.style.color = rank.color;
+    rankTd.appendChild(rankBadge); tr.appendChild(rankTd);
+
+    return tr;
+  }
+
+  function getRankForXp(xp){
+    for(let i=RANKS.length-1;i>=0;i--){
+      if(xp >= RANKS[i].req) return RANKS[i];
+    }
+    return RANKS[0];
   }
 
   // 7) Data ops
@@ -330,6 +531,136 @@
     }
   }
 
+  async function loadLeaderboard(){
+    if(!sb) return;
+    const limit = parseInt($('leaderboardLimit').value);
+    const loading = showToast('Loading leaderboard...','info',0);
+    try{
+      const { data, error } = await sb.rpc('get_leaderboard', { limit_count: limit });
+      if(error) throw error;
+      
+      const tb=$('leaderboardBody');
+      tb.innerHTML='';
+      
+      if(!data || !data.length){
+        tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;">No leaderboard data available</td></tr>';
+        $('leaderboardCount').textContent='0';
+        return;
+      }
+      
+      $('leaderboardCount').textContent = data.length;
+      data.forEach((r, i) => tb.appendChild(appendLeaderboardRow(r, i)));
+      
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Leaderboard loaded with ${data.length} entries`,'success');
+    }catch(e){
+      console.error('loadLeaderboard error:', e);
+      loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
+      showToast(`Failed to load leaderboard: ${e.message}`,'error');
+    }
+  }
+
+  async function loadAnalytics(){
+    if(!sb) return;
+    try{
+      // Load data for XP distribution chart
+      const { data: xpData, error: xpError } = await sb.rpc('get_xp_distribution');
+      if(xpError) throw xpError;
+      
+      // Load data for top users chart
+      const { data: usersData, error: usersError } = await sb.rpc('get_top_users', { limit_count: 10 });
+      if(usersError) throw usersError;
+      
+      // Create or update charts
+      updateCharts(xpData, usersData);
+    }catch(e){
+      console.error('loadAnalytics error:', e);
+      showToast(`Failed to load analytics: ${e.message}`,'error');
+    }
+  }
+
+  function updateCharts(xpData, usersData){
+    // Destroy existing charts if they exist
+    if(xpChart) xpChart.destroy();
+    if(topUsersChart) topUsersChart.destroy();
+    
+    // XP Distribution Chart (Pie)
+    const xpCtx = document.getElementById('xpChart').getContext('2d');
+    xpChart = new Chart(xpCtx, {
+      type: 'pie',
+      data: {
+        labels: xpData.map(d => d.range),
+        datasets: [{
+          data: xpData.map(d => d.count),
+          backgroundColor: [
+            '#6E44FF', '#D4AF37', '#4ade80', '#facc15', '#f87171', '#60a5fa', '#ec4899'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.raw || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = Math.round((value / total) * 100);
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // Top Users Chart (Bar)
+    const usersCtx = document.getElementById('topUsersChart').getContext('2d');
+    topUsersChart = new Chart(usersCtx, {
+      type: 'bar',
+      data: {
+        labels: usersData.map(d => short(d.addr)),
+        datasets: [{
+          label: 'Total XP',
+          data: usersData.map(d => d.total_xp),
+          backgroundColor: '#6E44FF',
+          borderColor: '#D4AF37',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#e9e9f0' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          },
+          x: {
+            ticks: { color: '#e9e9f0' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: function(context) {
+                const data = usersData[context.dataIndex];
+                return `Address: ${data.addr}\nClaims: ${data.claims_count}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   async function insertClaim(){
     if(!sb){ showToast('Supabase client not initialized','error'); return; }
     const addrPretty = normalizeAddr($('addr').value);
@@ -350,7 +681,7 @@
       showToast(`Added ${xp} XP for ${short(addrPretty)} (${quest})`,'success');
 
       $('questId').value=''; $('xpAmount').value=''; updateAddBtnState();
-      await Promise.all([loadXP(), loadClaims()]);
+      await Promise.all([loadXP(), loadClaims(), loadLeaderboard(), loadAnalytics()]);
     }catch(e){
       console.error('insertClaim error:', e);
       loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
@@ -367,7 +698,7 @@
       if(error) throw error;
       loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
       showToast('Claim deleted','success');
-      await Promise.all([loadXP(), loadClaims()]);
+      await Promise.all([loadXP(), loadClaims(), loadLeaderboard(), loadAnalytics()]);
     }catch(e){
       console.error('deleteClaim error:', e);
       loading.classList.remove('show'); setTimeout(()=>loading.remove(),300);
@@ -397,23 +728,195 @@
     }
   }
 
-  // 9) Utils
+  // 9) Mining Functions
+  function addMiningLog(message, type='info'){
+    const log = $('miningLog');
+    const entry = el('div','log-entry');
+    const time = el('span','log-time', `[${new Date().toLocaleTimeString()}]`);
+    const msg = el('span',`log-${type}`, message);
+    
+    entry.appendChild(time);
+    entry.appendChild(msg);
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function updateMiningStats(){
+    $('statTotal').textContent = miningStats.processed;
+    $('statXp').textContent = miningStats.xpDistributed;
+    
+    if(miningStats.startTime){
+      const elapsed = (Date.now() - miningStats.startTime) / 1000 / 60; // minutes
+      const speed = elapsed > 0 ? Math.round(miningStats.processed / elapsed) : 0;
+      $('statSpeed').textContent = speed;
+      
+      // Estimate remaining time if we have addresses to process
+      const addressList = getAddressList();
+      if(addressList.length > 0){
+        const remaining = addressList.length - miningStats.processed;
+        const estTime = speed > 0 ? Math.round(remaining / speed) : 0;
+        $('statTime').textContent = estTime > 0 ? `${estTime} min` : 'Calculating...';
+      } else {
+        $('statTime').textContent = 'N/A';
+      }
+    }
+  }
+
+  function getAddressList(){
+    const input = ($('miningAddressList').value || '').trim();
+    if(!input) return null; // null means mine for all users
+    
+    return input.split(',')
+      .map(a => a.trim())
+      .filter(a => a.length > 0)
+      .map(a => {
+        try { return ethers.utils.getAddress(a); }
+        catch { return null; }
+      })
+      .filter(a => a !== null);
+  }
+
+  async function processMiningBatch(){
+    if(!sb) return;
+    
+    const batchSize = parseInt($('miningBatchSize').value) || 50;
+    const xpAmount = parseInt($('miningXpAmount').value) || 10;
+    const questId = ($('miningQuestId').value || 'q_mining').trim();
+    const addressList = getAddressList();
+    
+    try {
+      // Get a batch of addresses to process
+      let addressesToProcess = [];
+      
+      if(addressList === null){
+        // Mine for all users - get distinct addresses from the database
+        const { data, error } = await sb.from('xp_claims')
+          .select('addr', { count: 'exact' })
+          .order('addr', { ascending: true })
+          .range(miningStats.processed, miningStats.processed + batchSize - 1);
+        
+        if(error) throw error;
+        addressesToProcess = data.map(r => r.addr);
+      } else {
+        // Mine for specified addresses
+        addressesToProcess = addressList.slice(miningStats.processed, miningStats.processed + batchSize);
+      }
+      
+      if(addressesToProcess.length === 0){
+        addMiningLog('No more addresses to process. Mining complete.', 'success');
+        stopMining();
+        return;
+      }
+      
+      // Prepare batch insert
+      const now = new Date().toISOString();
+      const claims = addressesToProcess.map(addr => ({
+        addr: addr.toLowerCase(),
+        quest_id: questId,
+        in4: xpAmount,
+        created_at: now
+      }));
+      
+      // Insert batch
+      const { error } = await sb.from('xp_claims').insert(claims);
+      if(error) throw error;
+      
+      // Update stats
+      miningStats.processed += addressesToProcess.length;
+      miningStats.xpDistributed += addressesToProcess.length * xpAmount;
+      
+      $('miningProcessed').textContent = miningStats.processed;
+      updateMiningStats();
+      
+      addMiningLog(`Processed ${addressesToProcess.length} addresses (${xpAmount} XP each)`, 'mining');
+      
+    } catch(e) {
+      console.error('Mining batch error:', e);
+      addMiningLog(`Error processing batch: ${e.message}`, 'error');
+      stopMining();
+    }
+  }
+
+  async function startMining(){
+    if(miningInterval) return;
+    
+    // Reset stats
+    miningStats = {
+      processed: 0,
+      xpDistributed: 0,
+      startTime: Date.now()
+    };
+    
+    $('miningStatus').textContent = 'Running';
+    $('miningProcessed').textContent = '0';
+    $('startMining').disabled = true;
+    $('stopMining').disabled = false;
+    $('testMining').disabled = true;
+    
+    addMiningLog('Starting mining process...', 'info');
+    addMiningLog(`Configuration: Batch ${$('miningBatchSize').value}, Delay ${$('miningDelay').value}ms, XP ${$('miningXpAmount').value}`, 'info');
+    
+    const delay = parseInt($('miningDelay').value) || 1000;
+    
+    // Process first batch immediately
+    await processMiningBatch();
+    
+    // Set up interval for subsequent batches
+    miningInterval = setInterval(async () => {
+      await processMiningBatch();
+    }, delay);
+  }
+
+  function stopMining(){
+    if(miningInterval){
+      clearInterval(miningInterval);
+      miningInterval = null;
+    }
+    
+    $('miningStatus').textContent = 'Idle';
+    $('startMining').disabled = false;
+    $('stopMining').disabled = true;
+    $('testMining').disabled = false;
+    
+    addMiningLog('Mining stopped', 'info');
+    updateMiningStats();
+  }
+
+  async function testMining(){
+    addMiningLog('Starting test run...', 'info');
+    
+    const batchSize = parseInt($('miningBatchSize').value) || 50;
+    const xpAmount = parseInt($('miningXpAmount').value) || 10;
+    const questId = ($('miningQuestId').value || 'q_mining').trim();
+    const addressList = getAddressList() || ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
+    
+    addMiningLog(`Test would process ${Math.min(batchSize, addressList.length)} addresses`, 'info');
+    addMiningLog(`Each would receive ${xpAmount} XP for quest "${questId}"`, 'info');
+    addMiningLog('No actual database changes were made', 'success');
+  }
+
+  function clearMiningLog(){
+    $('miningLog').innerHTML = '';
+    addMiningLog('Log cleared', 'info');
+  }
+
+  // 10) Utils
   function normalizeAddr(a){ try{ return ethers.utils.getAddress((a||'').trim()); }catch{return null;} }
   function isAddr(a){ return !!normalizeAddr(a); }
   function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
   function formatDate(iso){ const d=new Date(iso); return new Intl.DateTimeFormat([], {month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d); }
 
-  // 10) Realtime (optional but enabled)
+  // 11) Realtime (optional but enabled)
   function subscribeRealtime(){
     if(!sb) return;
     const ch = sb.channel('xp_claims_changes');
     ch.on('postgres_changes',{ event:'*', schema:'public', table:'xp_claims' }, () => {
       clearTimeout(window._rt);
-      window._rt = setTimeout(()=>{ loadXP(); loadClaims(1); }, 300);
+      window._rt = setTimeout(()=>{ loadXP(); loadClaims(1); loadLeaderboard(); loadAnalytics(); }, 300);
     }).subscribe();
   }
 
-  // 11) Events
+  // 12) Events
   function updateAddBtnState(){
     const okAddr = isAddr($('addr').value);
     const xpOk = Number($('xpAmount').value) > 0;
@@ -422,6 +925,22 @@
   }
 
   function setupEventListeners(){
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        
+        tab.classList.add('active');
+        $(`${tab.dataset.tab}-tab`).style.display = 'block';
+        
+        // Load data when switching to analytics tab
+        if(tab.dataset.tab === 'analytics'){
+          loadAnalytics();
+        }
+      });
+    });
+    
     $('saveCfg').addEventListener('click', async ()=>{
       const url=$('projectUrl').value, key=$('anonKey').value;
       if(!url || !key){ showToast('Provide both URL and anon key','warning'); return; }
@@ -451,6 +970,16 @@
       loadClaims(1);
     });
 
+    // Leaderboard events
+    $('refreshLeaderboard').addEventListener('click', loadLeaderboard);
+    $('leaderboardLimit').addEventListener('change', loadLeaderboard);
+    
+    // Mining events
+    $('startMining').addEventListener('click', startMining);
+    $('stopMining').addEventListener('click', stopMining);
+    $('testMining').addEventListener('click', testMining);
+    $('clearMiningLog').addEventListener('click', clearMiningLog);
+
     ['questId','xpAmount'].forEach(id=>{
       $(id).addEventListener('input', updateAddBtnState);
       $(id).addEventListener('keydown', e=>{ if(e.ctrlKey && e.key==='Enter' && id==='questId') $('addClaim').click(); });
@@ -467,7 +996,7 @@
     }
   }
 
-  // 12) Boot
+  // 13) Boot
   async function boot(){
     setupEventListeners();
     const cfg = getCfg();
