@@ -150,7 +150,7 @@
   </div>
 
   <!-- LIVE MODE SCRIPT -->
-  <script type="module">
+<script type="module">
   /* =================== CONFIG =================== */
   const BSC_CHAIN_ID = 56;
   const READ_RPC = "https://bsc-dataseed.binance.org/";
@@ -159,17 +159,6 @@
   const FORCED_MECHS_PRICE_BNB = null;
 
   // 🔐 Your backend must return a signed MintRequest compatible with your ABI.
-  // Expected JSON response:
-  // {
-  //   "request": {
-  //     "to":"0x...", "royaltyRecipient":"0x...", "royaltyBps":"0",
-  //     "primarySaleRecipient":"0x...", "uri":"ipfs://.../metadata.json",
-  //     "price":"0", "currency":"0x0000000000000000000000000000000000000000",
-  //     "validityStartTimestamp":"0", "validityEndTimestamp":"9999999999",
-  //     "uid":"0x..." // bytes32
-  //   },
-  //   "signature":"0x..."
-  // }
   const VOUCHER_ENDPOINT = "/api/cryptid-voucher";
 
   /* =================== TOKEN LISTS =================== */
@@ -221,18 +210,33 @@
     "error DropClaimInvalidTokenPrice(address expectedCurrency,uint256 expectedPricePerToken,address actualCurrency,uint256 actualExpectedPricePerToken)"
   ];
 
-  // 721 (Cryptids) — exact struct from your ABI
+  // 721 (Cryptids)
   const CRYPTIDS_ABI = [
-    // write
     "function mintWithSignature((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) payable returns (uint256 tokenIdMinted)",
-    // view
     "function verify((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) view returns (bool,address)",
     "function tokenURI(uint256 tokenId) view returns (string)",
     "function totalSupply() view returns (uint256)",
     "function nextTokenIdToMint() view returns (uint256)",
-    // events (for parsing)
     "event TokensMintedWithSignature(address indexed signer,address indexed mintedTo,uint256 indexed tokenIdMinted,(address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) mintRequest)"
   ];
+
+  /* ===== NEW: ERC20 meta for correct price formatting ===== */
+  const ERC20_READ_ABI = [
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+  ];
+  async function getCurrencyMeta(addr){
+    if (!addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase()){
+      return { symbol:"BNB", decimals:18, isNative:true };
+    }
+    const erc = new ethers.Contract(addr, ERC20_READ_ABI, readProvider);
+    const [dec, sym] = await Promise.all([
+      erc.decimals(),
+      erc.symbol().catch(()=> "ERC20")
+    ]);
+    return { symbol: sym || "ERC20", decimals: Number(dec), isNative:false };
+  }
+  /* ======================================================= */
 
   /* =================== Providers / State =================== */
   const readProvider = new ethers.JsonRpcProvider(READ_RPC);
@@ -397,12 +401,16 @@
       try { claim = await readClaim(tokenId); }
       catch { status.className="status warning"; status.textContent="No active claim for this token yet."; priceEl.textContent="—"; currEl.textContent="—"; supEl.textContent="—"; return; }
 
-      const isNative = String(claim.currency).toLowerCase() === ZERO.toLowerCase();
-      const pricePer = FORCED_MECHS_PRICE_BNB ? ethers.parseEther(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
+      // NEW: read ERC20 decimals/symbol and format price correctly
+      const curMeta = await getCurrencyMeta(claim.currency);
+      const pricePer = (FORCED_MECHS_PRICE_BNB && curMeta.isNative)
+        ? ethers.parseEther(FORCED_MECHS_PRICE_BNB)
+        : claim.pricePerToken;
 
-      currEl.textContent = isNative ? "BNB" : "ERC20";
-      priceEl.textContent = isNative ? `${ethers.formatEther(pricePer)} BNB` : pricePer.toString();
-      supEl.textContent = `${(claim.supplyClaimed||0n).toString()} / ${(claim.maxClaimableSupply||0n).toString()}`;
+      const priceHuman = ethers.formatUnits(pricePer, curMeta.decimals);
+      priceEl.textContent = priceHuman;      // e.g., 0.00063
+      currEl.textContent  = curMeta.symbol;  // e.g., BNB or the ERC20 ticker
+      supEl.textContent   = `${(claim.supplyClaimed||0n).toString()} / ${(claim.maxClaimableSupply||0n).toString()}`;
     } catch {
       status.className = "status warning"; status.textContent = "Metadata unavailable or claim read failed.";
       imgEl.classList.remove("loading");
@@ -500,7 +508,6 @@
       if(!signer) await connectWallet();
       if(!signer) return;
 
-      // Ensure BSC
       const net = await browserProvider.getNetwork();
       if (Number(net.chainId)!==BSC_CHAIN_ID){
         try{ await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+BSC_CHAIN_ID.toString(16) }]); }
@@ -509,33 +516,26 @@
 
       status.className = "status warning"; status.textContent = "Requesting voucher…"; btn.disabled = true;
 
-      // Get a signed MintRequest for this user/token from your backend
       const { request, signature } = await fetchVoucher(tokenId, userAddr);
 
-      // Optional: sanity adjustments (strings -> BigInt)
       request.price = BigInt(request.price);
       request.validityStartTimestamp = BigInt(request.validityStartTimestamp);
       request.validityEndTimestamp   = BigInt(request.validityEndTimestamp);
 
-      // Verify on-chain (view)
       const [valid] = await cryptidsRead.verify(request, signature);
       if (!valid) throw new Error("Voucher invalid (verify=false)");
 
-      // Compute native value if currency == address(0)
       const isNative = String(request.currency).toLowerCase() === ZERO.toLowerCase();
       const value = isNative ? request.price : 0n;
 
-      // Simulate call (decoded reverts show up nicely)
       const data = new ethers.Interface(CRYPTIDS_ABI).encodeFunctionData("mintWithSignature", [request, signature]);
       await signer.call({ to: CONTRACT_CRYPTIDS, data, value });
 
-      // Estimate + send
       let gasLimit; try { const est = await signer.estimateGas({ to: CONTRACT_CRYPTIDS, data, value }); gasLimit=(est*120n)/100n; } catch {}
       status.textContent = "Sending mint…";
       const tx = await signer.sendTransaction({ to: CONTRACT_CRYPTIDS, data, value, ...(gasLimit?{gasLimit}:{}) });
       const rec = await tx.wait();
 
-      // Try to parse tokenId from event
       let mintedId = null;
       try {
         const parsed = rec.logs.map(l=>{ try{ return FULL_IFACE.parseLog(l); }catch{ return null; } }).filter(Boolean);
@@ -548,7 +548,6 @@
         ? `Minted #${mintedId}! Tx: ${rec.transactionHash.slice(0,10)}…`
         : `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`;
 
-      // Optional fresh preview if mintedId known
       if (mintedId){
         try{
           const tokenUri = await cryptidsRead.tokenURI(mintedId);
@@ -595,7 +594,6 @@
     const cBtn = document.getElementById('cryptidMint');
     if (cBtn){ cBtn.disabled = true; cBtn.addEventListener('click', mintCryptid); }
 
-    // Auto-connect if already authorized
     (async ()=>{
       if (window.ethereum){
         const acc = await window.ethereum.request({ method:'eth_accounts' });
