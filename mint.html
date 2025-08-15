@@ -151,345 +151,469 @@
 
   <!-- LIVE MODE SCRIPT -->
   <script type="module">
-    /* =================== CONFIG =================== */
-    const BSC_CHAIN_ID = 56;
-    const READ_RPC = "https://bsc-dataseed.binance.org/";
-    const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155 (BNB)
-    const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // (preview only)
-    const FORCED_MECHS_PRICE_BNB = null; // leave null to use on-chain price
+  /* =================== CONFIG =================== */
+  const BSC_CHAIN_ID = 56;
+  const READ_RPC = "https://bsc-dataseed.binance.org/";
+  const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155
+  const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 (signature mint)
+  const FORCED_MECHS_PRICE_BNB = null;
 
-    /* =================== TOKEN LISTS =================== */
-    const MECHS = [
-      { id: 0, name: "Skybone Leviathan",                           uri: "ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0" },
-      { id: 1, name: "Obsidian Jaguar",                             uri: "ipfs://Qmc7FAsop9nLMNfof4aYumKfSJ71sTWHhiAroKL5mA1Z4h/1" },
-      { id: 2, name: "Red Clay Colossus",                           uri: "ipfs://QmdKMicaGDbmAGkaJiXNgHU6TJWrq8AB1purSBd4fyJmB7/2" },
-      { id: 3, name: "SERPENT COIL MK-VII — River & Data Guardian", uri: "ipfs://Qmc1U4xsf4Yaw8D7B86v5TcDpWSFaftxX98Sh28TtU38x1/3" },
-      { id: 4, name: "Void Sifu",                                   uri: "ipfs://QmXtzw2ASNnzhp3EyJXRGWQJ62RDy2b6MdCkH4dDiMY17p/4" },
-    ];
-    const CRYPTIDS = [
-      { id:0,  name:"Wendigo.EXE",                    uri:"ipfs://QmV2X7oUrG5i284sKQPHQJAbQV8HkL788mbZexuCA5oTvx/0" },
-      { id:1,  name:"Mask of Memory",                 uri:"ipfs://Qmbu7rbrAoG3cJTYEJGGJ6iZsPGpDQxhkJBsKt4QuBJj8N/0" },
-      { id:2,  name:"Wolf of Wounded Knee",           uri:"ipfs://QmQm8nSAL56mGypS45f4AZ44xejVPWuktWidfZqAHdJtmk/0" },
-      { id:3,  name:"Coastal Sasquatch Punk",         uri:"ipfs://QmV91qcvQmzwUEu4hin91iXqzVn7hn1F9gZ9bmfxnFTQje/0" },
-      { id:4,  name:"Anishinaabe Wendigo Protocol",   uri:"ipfs://QmStEaLkFwNREJ3M4t42hNKvphwjHK1MxjA7CUdW15d6BE/0" },
-      { id:5,  name:"Desert Skinwalker Punk",         uri:"ipfs://QmcW6m3B1ygPoMrsr4qVMaNC4uCL1s4EAq2LcdEsCj6iUS/0" },
-      { id:6,  name:"Métis Rougarou Rider",           uri:"ipfs://Qmeg78oUMrM1fUGNMVzUNG2G5dEDuD8TLoB9Mh3j3X6zEF/0" },
-      { id:7,  name:"Cherokee Skinwalker Firewall",   uri:"ipfs://QmWNsSbcy2iBmYjK2TCzELZTfzD1ezGj1WvktYiwnWnjjg/0" },
-      { id:8,  name:"Wabanaki Webworm",               uri:"ipfs://QmdadZMbe1QMUW5i51smLxEDuWvRWKanLiiHdyb4zH2mbM/0" },
-      { id:9,  name:"Deer Woman DAO",                 uri:"ipfs://QmTmrUDMXuqnffe1duAEYdJGAKNeSdEsVvKe8dT8YKR4i7/0" },
-      { id:10, name:"The Cipherskin Codex",           uri:"ipfs://QmPcWyNf93hwKXxBH5QpseeqmkE296arM1jkg4zcvi3bgC/0" },
-      { id:11, name:"Treaty.Exe",                     uri:"ipfs://QmeGbsj4E3w9zaaEnQiSsDUrPUbbTWumn8BemBnsHNdFuR/0" },
-      { id:12, name:"Scroll of Unburied Seeds",       uri:"ipfs://QmNXhjcuNvaYDW7PdDi7Erh1jbkhQb6ep15FAYcXVZUByE/0" },
-      { id:13, name:"The Disentrancer",               uri:"ipfs://QmQP3hP9YyAkFZwKNkrw5apxEcZ7nAZecshsaE1sdpyGaz/0" },
-      { id:14, name:"Ledger Shaman",                  uri:"ipfs://QmNj8tHVjp4X1HNBFbm4nbw6mb2vzdMHrYDd8wQuE35qFw/0" },
-      { id:15, name:"The Ghost of Paper Genocide",    uri:"ipfs://QmWbTfxSn4Mybnw3deUiFn3T8PVyyJkiCPZD9C91Sqz9Kk/0" },
-      { id:16, name:"Ironroot Codewalker",            uri:"ipfs://QmWMhG22wfXFZufu7E2haVkqoc1XYf4bU8KXvVL6xUZZXW/0" },
-      { id:17, name:"Deer Woman 9.0",                 uri:"ipfs://QmRieQJ4gpkjMsJkaB99t2M5BX5sns6CWVJPa3HNwASCEB/0" },
-      { id:18, name:"Thunderbird 9G",                 uri:"ipfs://QmPnk3rYUeqeCevm7pjjfp31WrsUp8CzBP96TVRmmFky7h/0" },
-      { id:19, name:"Skinwalker 9S",                  uri:"ipfs://Qmbv4hEy6gW68XSUUW46nzYmptaxiWS1vFGig3457W1Wez/0" },
-    ];
+  // 🔐 Your backend must return a signed MintRequest compatible with your ABI.
+  // Expected JSON response:
+  // {
+  //   "request": {
+  //     "to":"0x...", "royaltyRecipient":"0x...", "royaltyBps":"0",
+  //     "primarySaleRecipient":"0x...", "uri":"ipfs://.../metadata.json",
+  //     "price":"0", "currency":"0x0000000000000000000000000000000000000000",
+  //     "validityStartTimestamp":"0", "validityEndTimestamp":"9999999999",
+  //     "uid":"0x..." // bytes32
+  //   },
+  //   "signature":"0x..."
+  // }
+  const VOUCHER_ENDPOINT = "/api/cryptid-voucher";
 
-    /* =================== ABIs =================== */
-    const MECHS_READ_ABI = [
-      "function uri(uint256) view returns (string)",
-      "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
-      "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata) condition)"
-    ];
-    const MECHS_CLAIM_ABI = [
-      "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
-    ];
-    const MECHS_ERROR_ABI = [
-      "error DropNoActiveCondition()",
-      "error DropClaimNotStarted(uint256 expected,uint256 actual)",
-      "error DropClaimExceedMaxSupply(uint256 expected,uint256 actual)",
-      "error DropClaimExceedLimit(uint256 expected,uint256 actual)",
-      "error DropClaimInvalidTokenPrice(address expectedCurrency,uint256 expectedPricePerToken,address actualCurrency,uint256 actualExpectedPricePerToken)"
-    ];
+  /* =================== TOKEN LISTS =================== */
+  const MECHS = [
+    { id: 0, name: "Skybone Leviathan",                           uri: "ipfs://QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0" },
+    { id: 1, name: "Obsidian Jaguar",                             uri: "ipfs://Qmc7FAsop9nLMNfof4aYumKfSJ71sTWHhiAroKL5mA1Z4h/1" },
+    { id: 2, name: "Red Clay Colossus",                           uri: "ipfs://QmdKMicaGDbmAGkaJiXNgHU6TJWrq8AB1purSBd4fyJmB7/2" },
+    { id: 3, name: "SERPENT COIL MK-VII — River & Data Guardian", uri: "ipfs://Qmc1U4xsf4Yaw8D7B86v5TcDpWSFaftxX98Sh28TtU38x1/3" },
+    { id: 4, name: "Void Sifu",                                   uri: "ipfs://QmXtzw2ASNnzhp3EyJXRGWQJ62RDy2b6MdCkH4dDiMY17p/4" },
+  ];
+  const CRYPTIDS = [
+    { id:0,  name:"Wendigo.EXE",                    uri:"ipfs://QmV2X7oUrG5i284sKQPHQJAbQV8HkL788mbZexuCA5oTvx/0" },
+    { id:1,  name:"Mask of Memory",                 uri:"ipfs://Qmbu7rbrAoG3cJTYEJGGJ6iZsPGpDQxhkJBsKt4QuBJj8N/0" },
+    { id:2,  name:"Wolf of Wounded Knee",           uri:"ipfs://QmQm8nSAL56mGypS45f4AZ44xejVPWuktWidfZqAHdJtmk/0" },
+    { id:3,  name:"Coastal Sasquatch Punk",         uri:"ipfs://QmV91qcvQmzwUEu4hin91iXqzVn7hn1F9gZ9bmfxnFTQje/0" },
+    { id:4,  name:"Anishinaabe Wendigo Protocol",   uri:"ipfs://QmStEaLkFwNREJ3M4t42hNKvphwjHK1MxjA7CUdW15d6BE/0" },
+    { id:5,  name:"Desert Skinwalker Punk",         uri:"ipfs://QmcW6m3B1ygPoMrsr4qVMaNC4uCL1s4EAq2LcdEsCj6iUS/0" },
+    { id:6,  name:"Métis Rougarou Rider",           uri:"ipfs://Qmeg78oUMrM1fUGNMVzUNG2G5dEDuD8TLoB9Mh3j3X6zEF/0" },
+    { id:7,  name:"Cherokee Skinwalker Firewall",   uri:"ipfs://QmWNsSbcy2iBmYjK2TCzELZTfzD1ezGj1WvktYiwnWnjjg/0" },
+    { id:8,  name:"Wabanaki Webworm",               uri:"ipfs://QmdadZMbe1QMUW5i51smLxEDuWvRWKanLiiHdyb4zH2mbM/0" },
+    { id:9,  name:"Deer Woman DAO",                 uri:"ipfs://QmTmrUDMXuqnffe1duAEYdJGAKNeSdEsVvKe8dT8YKR4i7/0" },
+    { id:10, name:"The Cipherskin Codex",           uri:"ipfs://QmPcWyNf93hwKXxBH5QpseeqmkE296arM1jkg4zcvi3bgC/0" },
+    { id:11, name:"Treaty.Exe",                     uri:"ipfs://QmeGbsj4E3w9zaaEnQiSsDUrPUbbTWumn8BemBnsHNdFuR/0" },
+    { id:12, name:"Scroll of Unburied Seeds",       uri:"ipfs://QmNXhjcuNvaYDW7PdDi7Erh1jbkhQb6ep15FAYcXVZUByE/0" },
+    { id:13, name:"The Disentrancer",               uri:"ipfs://QmQP3hP9YyAkFZwKNkrw5apxEcZ7nAZecshsaE1sdpyGaz/0" },
+    { id:14, name:"Ledger Shaman",                  uri:"ipfs://QmNj8tHVjp4X1HNBFbm4nbw6mb2vzdMHrYDd8wQuE35qFw/0" },
+    { id:15, name:"The Ghost of Paper Genocide",    uri:"ipfs://QmWbTfxSn4Mybnw3deUiFn3T8PVyyJkiCPZD9C91Sqz9Kk/0" },
+    { id:16, name:"Ironroot Codewalker",            uri:"ipfs://QmWMhG22wfXFZufu7E2haVkqoc1XYf4bU8KXvVL6xUZZXW/0" },
+    { id:17, name:"Deer Woman 9.0",                 uri:"ipfs://QmRieQJ4gpkjMsJkaB99t2M5BX5sns6CWVJPa3HNwASCEB/0" },
+    { id:18, name:"Thunderbird 9G",                 uri:"ipfs://QmPnk3rYUeqeCevm7pjjfp31WrsUp8CzBP96TVRmmFky7h/0" },
+    { id:19, name:"Skinwalker 9S",                  uri:"ipfs://Qmbv4hEy6gW68XSUUW46nzYmptaxiWS1vFGig3457W1Wez/0" },
+  ];
 
-    /* =================== Providers / State =================== */
-    const readProvider = new ethers.JsonRpcProvider(READ_RPC);
-    let browserProvider = null, signer = null, userAddr = null;
+  /* =================== ABIs =================== */
+  // 1155 (Mechs)
+  const MECHS_READ_ABI = [
+    "function uri(uint256) view returns (string)",
+    "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
+    "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata) condition)"
+  ];
+  const MECHS_CLAIM_ABI = [
+    "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
+  ];
+  const MECHS_ERROR_ABI = [
+    "error DropNoActiveCondition()",
+    "error DropClaimNotStarted(uint256 expected,uint256 actual)",
+    "error DropClaimExceedMaxSupply(uint256 expected,uint256 actual)",
+    "error DropClaimExceedLimit(uint256 expected,uint256 actual)",
+    "error DropClaimInvalidTokenPrice(address expectedCurrency,uint256 expectedPricePerToken,address actualCurrency,uint256 actualExpectedPricePerToken)"
+  ];
 
-    /* =================== Utils =================== */
-    const ZERO = ethers.ZeroAddress;
-    const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-    const fmtEth = v => ethers.formatEther(v);
-    const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
-    const ipfsHttp = (u,i=0)=> u?.startsWith("ipfs://")
-      ? ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"][Math.min(i,2)] + u.slice(7)
-      : (u||"");
-    const FULL_IFACE = new ethers.Interface([...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI]);
-    const prettyRevert = (e)=>{
-      const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data;
-      if (typeof data === "string" && data.startsWith("0x")) { try { return FULL_IFACE.decodeErrorResult(data).name; } catch {} }
-      return e?.reason || e?.shortMessage || e?.message || "Transaction failed";
-    };
+  // 721 (Cryptids) — exact struct from your ABI
+  const CRYPTIDS_ABI = [
+    // write
+    "function mintWithSignature((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) payable returns (uint256 tokenIdMinted)",
+    // view
+    "function verify((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) view returns (bool,address)",
+    "function tokenURI(uint256 tokenId) view returns (string)",
+    "function totalSupply() view returns (uint256)",
+    "function nextTokenIdToMint() view returns (uint256)",
+    // events (for parsing)
+    "event TokensMintedWithSignature(address indexed signer,address indexed mintedTo,uint256 indexed tokenIdMinted,(address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) mintRequest)"
+  ];
 
-    async function fetchJsonWithFallback(url){
-      let lastErr;
-      for (let i=0;i<3;i++){
-        try { const r = await fetch(ipfsHttp(url,i)); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json(); }
-        catch(e){ lastErr=e; }
-      }
-      throw lastErr || new Error("Fetch failed");
-    }
+  /* =================== Providers / State =================== */
+  const readProvider = new ethers.JsonRpcProvider(READ_RPC);
+  let browserProvider = null, signer = null, userAddr = null;
+  let mechsReader = null;
+  let cryptidsRead = new ethers.Contract(CONTRACT_CRYPTIDS, CRYPTIDS_ABI, readProvider);
+  let cryptidsWrite = null;
 
-    /* =================== Reads =================== */
-    async function readClaim(tokenId){
-      const c = new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-      const condId = await c.getActiveClaimConditionId(tokenId);
-      const cond = await c.getClaimConditionById(tokenId, condId);
-      return cond;
-    }
-    async function load1155Meta(tokenId){
-      const c = new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-      const base = await c.uri(tokenId);
-      const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
-      return await fetchJsonWithFallback(url);
-    }
+  /* =================== Utils =================== */
+  const ZERO = ethers.ZeroAddress;
+  const shorten = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+  const fmtEth = v => ethers.formatEther(v);
+  const idToHex = n => n.toString(16).padStart(64,"0").toLowerCase();
+  const ipfsHttp = (u,i=0)=> u?.startsWith("ipfs://")
+    ? ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"][Math.min(i,2)] + u.slice(7)
+    : (u||"");
+  const FULL_IFACE = new ethers.Interface([
+    ...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI, ...CRYPTIDS_ABI
+  ]);
+  const prettyRevert = (e)=>{
+    const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data;
+    if (typeof data === "string" && data.startsWith("0x")) { try { return FULL_IFACE.decodeErrorResult(data).name; } catch {} }
+    return e?.reason || e?.shortMessage || e?.message || "Transaction failed";
+  };
+  async function fetchJsonWithFallback(url){
+    let lastErr; for (let i=0;i<3;i++){
+      try { const r = await fetch(ipfsHttp(url,i)); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.json(); }
+      catch(e){ lastErr=e; }
+    } throw lastErr || new Error("Fetch failed");
+  }
 
-    /* =================== Wallet =================== */
-    async function connectWallet(){
-      const btn = document.getElementById('connectBtn');
-      const info = document.getElementById('walletInfo');
-      const statusEl = document.getElementById('connStatus');
-      try{
-        if(!window.ethereum) throw new Error("MetaMask not detected");
-        btn.disabled = true; btn.textContent = "Connecting…";
-        statusEl.className = "status warning"; statusEl.textContent = "Requesting connection…";
+  /* =================== Reads (Mechs) =================== */
+  async function readClaim(tokenId){
+    mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
+    const condId = await mechsReader.getActiveClaimConditionId(tokenId);
+    return await mechsReader.getClaimConditionById(tokenId, condId);
+  }
+  async function load1155Meta(tokenId){
+    mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
+    const base = await mechsReader.uri(tokenId);
+    const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
+    return await fetchJsonWithFallback(url);
+  }
 
-        browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-        await browserProvider.send('eth_requestAccounts',[]);
-        const net = await browserProvider.getNetwork();
-        if (Number(net.chainId) !== BSC_CHAIN_ID){
-          try{
-            await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+BSC_CHAIN_ID.toString(16) }]);
-          }catch(err){
-            if (err?.code === 4902){
-              await browserProvider.send('wallet_addEthereumChain',[{
-                chainId:'0x'+BSC_CHAIN_ID.toString(16),
-                chainName:'Binance Smart Chain',
-                nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
-                rpcUrls:['https://bsc-dataseed1.bnbchain.org','https://bsc-dataseed2.bnbchain.org','https://bsc-dataseed.binance.org'],
-                blockExplorerUrls:['https://bscscan.com/']
-              }]);
-            } else throw err;
-          }
+  /* =================== Wallet =================== */
+  async function connectWallet(){
+    const btn = document.getElementById('connectBtn');
+    const info = document.getElementById('walletInfo');
+    const statusEl = document.getElementById('connStatus');
+    try{
+      if(!window.ethereum) throw new Error("MetaMask not detected");
+      btn.disabled = true; btn.textContent = "Connecting…";
+      statusEl.className = "status warning"; statusEl.textContent = "Requesting connection…";
+
+      browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+      await browserProvider.send('eth_requestAccounts',[]);
+      let net = await browserProvider.getNetwork();
+      if (Number(net.chainId) !== BSC_CHAIN_ID){
+        try{ await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+BSC_CHAIN_ID.toString(16) }]); }
+        catch(err){
+          if (err?.code === 4902){
+            await browserProvider.send('wallet_addEthereumChain',[{
+              chainId:'0x'+BSC_CHAIN_ID.toString(16),
+              chainName:'Binance Smart Chain',
+              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+              rpcUrls:['https://bsc-dataseed1.bnbchain.org','https://bsc-dataseed2.bnbchain.org','https://bsc-dataseed.binance.org'],
+              blockExplorerUrls:['https://bscscan.com/']
+            }]);
+          } else throw err;
         }
+      }
 
-        signer = await browserProvider.getSigner();
-        userAddr = await signer.getAddress();
+      signer = await browserProvider.getSigner();
+      userAddr = await signer.getAddress();
+      cryptidsWrite = new ethers.Contract(CONTRACT_CRYPTIDS, CRYPTIDS_ABI, signer);
 
-        window.ethereum.on?.('accountsChanged', acc=>{
-          if (!acc?.length) return disconnectWallet();
-          userAddr = acc[0]; document.getElementById('walletAddress').textContent = shorten(userAddr); updateBalance(); updateMechPreview();
-        });
-        window.ethereum.on?.('chainChanged', async ()=>{
-          browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-          await updateNetworkIndicator(); await updateBalance(); await updateMechPreview();
-        });
-
+      window.ethereum.on?.('accountsChanged', acc=>{
+        if (!acc?.length) return disconnectWallet();
+        userAddr = acc[0];
         document.getElementById('walletAddress').textContent = shorten(userAddr);
-        info.style.display = "flex";
-        await updateNetworkIndicator();
-        await updateBalance();
-
-        statusEl.className = "status success"; statusEl.textContent = "Wallet connected!";
-        btn.style.display = "none";
-      }catch(e){
-        statusEl.className = "status error"; statusEl.textContent = prettyRevert(e);
-        btn.disabled = false; btn.textContent = "Connect Wallet";
-      }
-    }
-    function disconnectWallet(){
-      try{
-        window.ethereum?.removeListener?.('accountsChanged', ()=>{});
-        window.ethereum?.removeListener?.('chainChanged',   ()=>{});
-      }catch{}
-      browserProvider = null; signer = null; userAddr = null;
-      document.getElementById('connectBtn').textContent = 'Connect Wallet';
-      document.getElementById('walletInfo').style.display = 'none';
-      document.getElementById('connStatus').textContent = '';
-    }
-    async function updateNetworkIndicator(){
-      const indicator = document.querySelector('.network-indicator');
-      if (!browserProvider || !indicator) return;
-      const net = await browserProvider.getNetwork();
-      const cid = Number(net.chainId);
-      document.getElementById('networkName').textContent = (cid===56?'BSC':`Chain ${cid}`);
-      indicator.className = 'network-indicator ' + (cid===BSC_CHAIN_ID ? 'valid' : 'invalid');
-    }
-    async function updateBalance(){
-      if (!browserProvider || !userAddr) return;
-      const bal = await browserProvider.getBalance(userAddr);
-      document.getElementById('balanceAmount').textContent = fmtEth(bal);
-      document.getElementById('balanceCurrency').textContent = 'BNB';
-      document.getElementById('mechsBalance').textContent = `${fmtEth(bal)} BNB`;
-    }
-
-    /* =================== Renderers =================== */
-    function populateSelect(selectEl, items){
-      selectEl.innerHTML = '';
-      for (const it of items){
-        const opt = document.createElement('option');
-        opt.value = String(it.id);
-        opt.textContent = `#${it.id} — ${it.name}`;
-        selectEl.appendChild(opt);
-      }
-    }
-
-    async function updateMechPreview(){
-      const tokenId = Number(document.getElementById('mechsTokenId').value);
-      const mech = MECHS.find(m => m.id === tokenId);
-      const nameEl = document.getElementById('mechsName');
-      const imgEl  = document.getElementById('mechsImg');
-      const priceEl= document.getElementById('mechsPrice');
-      const currEl = document.getElementById('mechsCurrency');
-      const supEl  = document.getElementById('mechsSupply');
-      const status = document.getElementById('mechsStatus');
-
-      nameEl.textContent = mech?.name || `#${tokenId}`;
-      imgEl.src = ""; imgEl.alt = "Preview"; imgEl.classList.add("loading");
-      priceEl.textContent = "loading…"; currEl.textContent = "loading…"; supEl.textContent = "—";
-      status.className = "status"; status.textContent = "";
-
-      try {
-        // Metadata & image
-        const meta = mech?.uri ? await fetchJsonWithFallback(mech.uri) : await load1155Meta(tokenId);
-        const rawImg = meta?.image || meta?.image_url || meta?.imageUri || "";
-        let i=0; const setNext=()=> imgEl.src = ipfsHttp(rawImg,i++);
-        imgEl.onerror = ()=>{ if(i<3) setNext(); }; setNext();
-        imgEl.classList.remove("loading");
-
-        // Claim read
-        let claim;
-        try {
-          claim = await readClaim(tokenId);
-        } catch (err) {
-          // No active phase (common): show friendly message and bail gracefully
-          status.className = "status warning";
-          status.textContent = "No active claim for this token yet.";
-          priceEl.textContent = "—"; currEl.textContent = "—"; supEl.textContent = "—";
-          return;
-        }
-
-        const isNative = String(claim.currency).toLowerCase() === ZERO.toLowerCase();
-        const pricePer = FORCED_MECHS_PRICE_BNB ? ethers.parseEther(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
-
-        currEl.textContent = isNative ? "BNB" : "ERC20";
-        priceEl.textContent = isNative ? `${ethers.formatEther(pricePer)} BNB` : pricePer.toString();
-        supEl.textContent = `${(claim.supplyClaimed||0n).toString()} / ${(claim.maxClaimableSupply||0n).toString()}`;
-      } catch(e){
-        status.className = "status warning";
-        status.textContent = "Metadata unavailable or claim read failed.";
-        imgEl.classList.remove("loading");
-      }
-    }
-
-    /* =================== Mint =================== */
-    async function mintMech(){
-      const status = document.getElementById('mechsStatus');
-      const btn = document.getElementById('mechsMint');
-      const qty = Math.max(1, Number(document.getElementById('mechsQty').value) || 1);
-      const tokenId = Number(document.getElementById('mechsTokenId').value);
-
-      try{
-        if(!signer) await connectWallet();
-        if(!signer) return;
-
-        status.className = "status warning"; status.textContent = "Preparing transaction…"; btn.disabled = true;
-
-        // read claim
-        const claim = await readClaim(tokenId);
-        const isNative = String(claim.currency).toLowerCase() === ZERO.toLowerCase();
-        const pricePer = FORCED_MECHS_PRICE_BNB ? ethers.parseEther(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
-        const totalValue = isNative ? (pricePer * BigInt(qty)) : 0n;
-
-        // funds check (BNB path)
-        if (isNative) {
-          const bal = await browserProvider.getBalance(userAddr);
-          if (bal < totalValue) throw new Error(`Insufficient BNB. Need ${ethers.formatEther(totalValue)} BNB.`);
-        }
-
-        // build args
-        const allowlist = { proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency: isNative ? ZERO : claim.currency };
-        const args = [ (await signer.getAddress()), tokenId, qty, isNative ? ZERO : claim.currency, pricePer, allowlist, "0x" ];
-
-        // simulate (eth_call)
-        const data = FULL_IFACE.encodeFunctionData("claim", args);
-        await signer.call({ to: CONTRACT_MECHS, data, value: totalValue });
-
-        // estimate + send raw tx
-        let gasLimit;
-        try { const est = await signer.estimateGas({ to: CONTRACT_MECHS, data, value: totalValue }); gasLimit = (est*120n)/100n; } catch {}
-        status.className = "status warning"; status.textContent = "Sending transaction…";
-        const tx = await signer.sendTransaction({ to: CONTRACT_MECHS, data, value: totalValue, ...(gasLimit?{gasLimit}:{}) });
-        const rec = await tx.wait();
-
-        status.className = "status success"; status.textContent = `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`;
-        await updateMechPreview();
-      }catch(e){
-        status.className = "status error"; status.textContent = `❌ ${prettyRevert(e)}`;
-      }finally{
-        btn.disabled = false;
-      }
-    }
-
-    /* =================== Cryptids (preview only) =================== */
-    function populateCryptids(){
-      const sel = document.getElementById('cryptidTokenId');
-      sel.innerHTML = '';
-      for (const it of CRYPTIDS){
-        const opt = document.createElement('option');
-        opt.value = String(it.id);
-        opt.textContent = `#${it.id} — ${it.name}`;
-        sel.appendChild(opt);
-      }
-      // simple placeholder preview
-      const img = document.getElementById('cryptidImg');
-      const name = document.getElementById('cryptidName');
-      sel.addEventListener('change', ()=>{
-        const id = Number(sel.value);
-        const entry = CRYPTIDS.find(x=>x.id===id);
-        name.textContent = entry?.name || `Token #${id}`;
-        img.src = "https://via.placeholder.com/180x180/0c1d27/73E1FF?text=Cryptid+"+id;
+        updateBalance(); updateMechPreview(); updateCryptidPreview(); updateCryptidButton();
       });
-      sel.dispatchEvent(new Event('change'));
+      window.ethereum.on?.('chainChanged', async ()=>{
+        browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+        signer = await browserProvider.getSigner();
+        cryptidsWrite = new ethers.Contract(CONTRACT_CRYPTIDS, CRYPTIDS_ABI, signer);
+        await updateNetworkIndicator(); await updateBalance();
+        await updateMechPreview(); await updateCryptidPreview(); updateCryptidButton();
+      });
+
+      document.getElementById('walletAddress').textContent = shorten(userAddr);
+      info.style.display = "flex";
+      await updateNetworkIndicator();
+      await updateBalance();
+      updateCryptidButton();
+
+      statusEl.className = "status success"; statusEl.textContent = "Wallet connected!";
+      btn.style.display = "none";
+    }catch(e){
+      statusEl.className = "status error"; statusEl.textContent = prettyRevert(e);
+      btn.disabled = false; btn.textContent = "Connect Wallet";
     }
+  }
+  function disconnectWallet(){
+    browserProvider = null; signer = null; userAddr = null; cryptidsWrite = null;
+    document.getElementById('connectBtn').textContent = 'Connect Wallet';
+    document.getElementById('walletInfo').style.display = 'none';
+    document.getElementById('connStatus').textContent = '';
+    updateCryptidButton();
+  }
+  async function updateNetworkIndicator(){
+    const indicator = document.querySelector('.network-indicator');
+    if (!browserProvider || !indicator) return;
+    const net = await browserProvider.getNetwork();
+    const cid = Number(net.chainId);
+    document.getElementById('networkName').textContent = (cid===56?'BSC':`Chain ${cid}`);
+    indicator.className = 'network-indicator ' + (cid===BSC_CHAIN_ID ? 'valid' : 'invalid');
+  }
+  async function updateBalance(){
+    if (!browserProvider || !userAddr) return;
+    const bal = await browserProvider.getBalance(userAddr);
+    document.getElementById('balanceAmount').textContent = fmtEth(bal);
+    document.getElementById('balanceCurrency').textContent = 'BNB';
+    const mb = document.getElementById('mechsBalance'); if (mb) mb.textContent = `${fmtEth(bal)} BNB`;
+  }
 
-    /* =================== Boot =================== */
-    function boot(){
-      // populate selects
-      populateSelect(document.getElementById('mechsTokenId'), MECHS);
-      populateCryptids();
-      // initial preview
-      updateMechPreview();
+  /* =================== Renderers (shared) =================== */
+  function populateSelect(selectEl, items){
+    selectEl.innerHTML = '';
+    for (const it of items){
+      const opt = document.createElement('option');
+      opt.value = String(it.id);
+      opt.textContent = `#${it.id} — ${it.name}`;
+      selectEl.appendChild(opt);
+    }
+  }
 
-      // events
-      document.getElementById('connectBtn').addEventListener('click', connectWallet);
-      document.getElementById('mechsTokenId').addEventListener('change', updateMechPreview);
-      document.getElementById('mechsQty').addEventListener('change', updateMechPreview);
-      document.getElementById('mechsMint').addEventListener('click', mintMech);
+  /* =================== Mechs (1155) =================== */
+  async function updateMechPreview(){
+    const tokenId = Number(document.getElementById('mechsTokenId').value);
+    const mech = MECHS.find(m => m.id === tokenId);
+    const nameEl = document.getElementById('mechsName');
+    const imgEl  = document.getElementById('mechsImg');
+    const priceEl= document.getElementById('mechsPrice');
+    const currEl = document.getElementById('mechsCurrency');
+    const supEl  = document.getElementById('mechsSupply');
+    const status = document.getElementById('mechsStatus');
 
-      // auto-connect if already authorized
-      (async ()=>{
-        if (window.ethereum){
-          const acc = await window.ethereum.request({ method:'eth_accounts' });
-          if (acc?.length){
-            browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
-            signer = await browserProvider.getSigner();
-            userAddr = acc[0];
-            document.getElementById('connectBtn').style.display = 'none';
-            document.getElementById('walletInfo').style.display = 'flex';
-            document.getElementById('walletAddress').textContent = shorten(userAddr);
-            await updateNetworkIndicator(); await updateBalance();
-            window.ethereum.on?.('accountsChanged', ()=>{}); // attached in connectWallet too
-            window.ethereum.on?.('chainChanged',  ()=>{});
-          }
+    nameEl.textContent = mech?.name || `#${tokenId}`;
+    imgEl.src = ""; imgEl.alt = "Preview"; imgEl.classList.add("loading");
+    priceEl.textContent = "loading…"; currEl.textContent = "loading…"; supEl.textContent = "—";
+    status.className = "status"; status.textContent = "";
+
+    try {
+      const meta = mech?.uri ? await fetchJsonWithFallback(mech.uri) : await load1155Meta(tokenId);
+      const rawImg = meta?.image || meta?.image_url || meta?.imageUri || "";
+      let i=0; const setNext=()=> imgEl.src = ipfsHttp(rawImg,i++);
+      imgEl.onerror = ()=>{ if(i<3) setNext(); }; setNext();
+      imgEl.classList.remove("loading");
+
+      let claim;
+      try { claim = await readClaim(tokenId); }
+      catch { status.className="status warning"; status.textContent="No active claim for this token yet."; priceEl.textContent="—"; currEl.textContent="—"; supEl.textContent="—"; return; }
+
+      const isNative = String(claim.currency).toLowerCase() === ZERO.toLowerCase();
+      const pricePer = FORCED_MECHS_PRICE_BNB ? ethers.parseEther(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
+
+      currEl.textContent = isNative ? "BNB" : "ERC20";
+      priceEl.textContent = isNative ? `${ethers.formatEther(pricePer)} BNB` : pricePer.toString();
+      supEl.textContent = `${(claim.supplyClaimed||0n).toString()} / ${(claim.maxClaimableSupply||0n).toString()}`;
+    } catch {
+      status.className = "status warning"; status.textContent = "Metadata unavailable or claim read failed.";
+      imgEl.classList.remove("loading");
+    }
+  }
+
+  async function mintMech(){
+    const status = document.getElementById('mechsStatus');
+    const btn = document.getElementById('mechsMint');
+    const qty = Math.max(1, Number(document.getElementById('mechsQty').value) || 1);
+    const tokenId = Number(document.getElementById('mechsTokenId').value);
+
+    try{
+      if(!signer) await connectWallet();
+      if(!signer) return;
+
+      status.className = "status warning"; status.textContent = "Preparing transaction…"; btn.disabled = true;
+
+      const claim = await readClaim(tokenId);
+      const isNative = String(claim.currency).toLowerCase() === ZERO.toLowerCase();
+      const pricePer = FORCED_MECHS_PRICE_BNB ? ethers.parseEther(FORCED_MECHS_PRICE_BNB) : claim.pricePerToken;
+      const totalValue = isNative ? (pricePer * BigInt(qty)) : 0n;
+
+      if (isNative) {
+        const bal = await browserProvider.getBalance(userAddr);
+        if (bal < totalValue) throw new Error(`Insufficient BNB. Need ${ethers.formatEther(totalValue)} BNB.`);
+      }
+
+      const allowlist = { proof: [], quantityLimitPerWallet: 0n, pricePerToken: pricePer, currency: isNative ? ZERO : claim.currency };
+      const args = [ (await signer.getAddress()), tokenId, qty, isNative ? ZERO : claim.currency, pricePer, allowlist, "0x" ];
+
+      const data = new ethers.Interface(MECHS_CLAIM_ABI).encodeFunctionData("claim", args);
+      await signer.call({ to: CONTRACT_MECHS, data, value: totalValue });
+
+      let gasLimit; try { const est = await signer.estimateGas({ to: CONTRACT_MECHS, data, value: totalValue }); gasLimit=(est*120n)/100n; } catch {}
+      status.textContent = "Sending transaction…";
+      const tx = await signer.sendTransaction({ to: CONTRACT_MECHS, data, value: totalValue, ...(gasLimit?{gasLimit}:{}) });
+      const rec = await tx.wait();
+
+      status.className = "status success"; status.textContent = `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`;
+      await updateMechPreview();
+    }catch(e){
+      status.className = "status error"; status.textContent = `❌ ${prettyRevert(e)}`;
+    }finally{ btn.disabled = false; }
+  }
+
+  /* =================== Cryptids (ERC721 Signature Mint) =================== */
+  function updateCryptidButton(){
+    const btn = document.getElementById('cryptidMint');
+    if (!btn) return;
+    btn.disabled = !(browserProvider && signer && userAddr);
+    btn.textContent = btn.disabled ? "Connect wallet to mint" : "Mint Cryptid";
+  }
+
+  async function updateCryptidPreview(){
+    const sel = document.getElementById('cryptidTokenId');
+    const id = Number(sel.value);
+    const entry = CRYPTIDS.find(x=>x.id===id);
+    const img = document.getElementById('cryptidImg');
+    const name = document.getElementById('cryptidName');
+
+    name.textContent = entry?.name || `Token #${id}`;
+    img.alt = entry?.name || "Cryptid";
+    img.classList.add("loading");
+    const status = document.getElementById('cryptidStatus'); status.className="status"; status.textContent="";
+
+    try{
+      const meta = await fetchJsonWithFallback(entry.uri);
+      const rawImg = meta?.image || meta?.image_url || meta?.imageUri || "";
+      let i=0; const setNext=()=> img.src = ipfsHttp(rawImg,i++);
+      img.onerror = ()=>{ if(i<3) setNext(); }; setNext();
+    }catch{
+      img.src = `https://via.placeholder.com/180x180/0c1d27/73E1FF?text=Cryptid+${id}`;
+    }finally{
+      img.classList.remove("loading");
+    }
+  }
+
+  async function fetchVoucher(tokenId, to){
+    const url = new URL(VOUCHER_ENDPOINT, location.origin);
+    url.searchParams.set("tokenId", String(tokenId));
+    url.searchParams.set("to", to);
+    const res = await fetch(url.toString(), { method:"GET", headers:{ "Accept":"application/json" }});
+    if (!res.ok) throw new Error(`Voucher API ${res.status}`);
+    return await res.json();
+  }
+
+  async function mintCryptid(){
+    const status = document.getElementById('cryptidStatus');
+    const btn = document.getElementById('cryptidMint');
+    const sel = document.getElementById('cryptidTokenId');
+    const tokenId = Number(sel.value);
+
+    try{
+      if(!signer) await connectWallet();
+      if(!signer) return;
+
+      // Ensure BSC
+      const net = await browserProvider.getNetwork();
+      if (Number(net.chainId)!==BSC_CHAIN_ID){
+        try{ await browserProvider.send('wallet_switchEthereumChain',[{ chainId:'0x'+BSC_CHAIN_ID.toString(16) }]); }
+        catch{ throw new Error("Please switch to BSC to mint"); }
+      }
+
+      status.className = "status warning"; status.textContent = "Requesting voucher…"; btn.disabled = true;
+
+      // Get a signed MintRequest for this user/token from your backend
+      const { request, signature } = await fetchVoucher(tokenId, userAddr);
+
+      // Optional: sanity adjustments (strings -> BigInt)
+      request.price = BigInt(request.price);
+      request.validityStartTimestamp = BigInt(request.validityStartTimestamp);
+      request.validityEndTimestamp   = BigInt(request.validityEndTimestamp);
+
+      // Verify on-chain (view)
+      const [valid] = await cryptidsRead.verify(request, signature);
+      if (!valid) throw new Error("Voucher invalid (verify=false)");
+
+      // Compute native value if currency == address(0)
+      const isNative = String(request.currency).toLowerCase() === ZERO.toLowerCase();
+      const value = isNative ? request.price : 0n;
+
+      // Simulate call (decoded reverts show up nicely)
+      const data = new ethers.Interface(CRYPTIDS_ABI).encodeFunctionData("mintWithSignature", [request, signature]);
+      await signer.call({ to: CONTRACT_CRYPTIDS, data, value });
+
+      // Estimate + send
+      let gasLimit; try { const est = await signer.estimateGas({ to: CONTRACT_CRYPTIDS, data, value }); gasLimit=(est*120n)/100n; } catch {}
+      status.textContent = "Sending mint…";
+      const tx = await signer.sendTransaction({ to: CONTRACT_CRYPTIDS, data, value, ...(gasLimit?{gasLimit}:{}) });
+      const rec = await tx.wait();
+
+      // Try to parse tokenId from event
+      let mintedId = null;
+      try {
+        const parsed = rec.logs.map(l=>{ try{ return FULL_IFACE.parseLog(l); }catch{ return null; } }).filter(Boolean);
+        const ev = parsed.find(p=>p.name==="TokensMintedWithSignature");
+        if (ev) mintedId = ev.args.tokenIdMinted?.toString?.() ?? String(ev.args[2] ?? "");
+      } catch {}
+
+      status.className = "status success";
+      status.textContent = mintedId
+        ? `Minted #${mintedId}! Tx: ${rec.transactionHash.slice(0,10)}…`
+        : `Minted! Tx: ${rec.transactionHash.slice(0,10)}…`;
+
+      // Optional fresh preview if mintedId known
+      if (mintedId){
+        try{
+          const tokenUri = await cryptidsRead.tokenURI(mintedId);
+          const meta = await fetchJsonWithFallback(tokenUri);
+          const rawImg = meta?.image || meta?.image_url || meta?.imageUri || "";
+          const img = document.getElementById('cryptidImg');
+          let i=0; const setNext=()=> img.src = ipfsHttp(rawImg,i++);
+          img.onerror = ()=>{ if(i<3) setNext(); }; setNext();
+        }catch{}
+      }
+    }catch(e){
+      status.className = "status error";
+      status.textContent = `❌ ${prettyRevert(e)}`;
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  /* =================== Cryptids UI bootstrap =================== */
+  function populateCryptids(){
+    const sel = document.getElementById('cryptidTokenId');
+    sel.innerHTML = '';
+    for (const it of CRYPTIDS){
+      const opt = document.createElement('option');
+      opt.value = String(it.id);
+      opt.textContent = `#${it.id} — ${it.name}`;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', updateCryptidPreview);
+    sel.dispatchEvent(new Event('change'));
+  }
+
+  /* =================== Boot =================== */
+  function boot(){
+    populateSelect(document.getElementById('mechsTokenId'), MECHS);
+    populateCryptids();
+    updateMechPreview();
+
+    document.getElementById('connectBtn').addEventListener('click', connectWallet);
+    document.getElementById('mechsTokenId').addEventListener('change', updateMechPreview);
+    document.getElementById('mechsQty').addEventListener('change', updateMechPreview);
+    document.getElementById('mechsMint').addEventListener('click', mintMech);
+
+    const cBtn = document.getElementById('cryptidMint');
+    if (cBtn){ cBtn.disabled = true; cBtn.addEventListener('click', mintCryptid); }
+
+    // Auto-connect if already authorized
+    (async ()=>{
+      if (window.ethereum){
+        const acc = await window.ethereum.request({ method:'eth_accounts' });
+        if (acc?.length){
+          browserProvider = new ethers.BrowserProvider(window.ethereum,'any');
+          signer = await browserProvider.getSigner();
+          userAddr = acc[0];
+          cryptidsWrite = new ethers.Contract(CONTRACT_CRYPTIDS, CRYPTIDS_ABI, signer);
+          document.getElementById('connectBtn').style.display = 'none';
+          document.getElementById('walletInfo').style.display = 'flex';
+          document.getElementById('walletAddress').textContent = shorten(userAddr);
+          await updateNetworkIndicator(); await updateBalance();
+          updateCryptidButton();
         }
-      })();
-    }
-    boot();
-  </script>
+      }
+    })();
+  }
+  boot();
+</script>
 </body>
 </html>
