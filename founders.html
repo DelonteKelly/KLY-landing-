@@ -108,47 +108,104 @@
     <p class="foot">Never trust DMs. We will not change the claim link. © KLY Legacy</p>
   </div>
 
+<script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script>
   // ==== CONFIG YOU CAN EDIT QUICKLY ====
-  const TOTAL_SPOTS = 100;
+  const TOTAL_SPOTS = 100; // total available in your claim phase
   const CLAIM_URL = "https://thirdweb.com/bnb/0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026/claim";
-  const END_ISO = "2025-08-22T23:59:00Z"; // <-- set your end date/time (UTC ISO string)
-  let spotsClaimed = 0; // <-- update manually during the push (or wire to analytics)
+  const END_ISO_FALLBACK = "2025-08-22T23:59:00Z"; // used only if we can't infer end on-chain
+  let spotsClaimed = 0; // will be updated automatically from contract
+
+  // Thirdweb contract read settings
+  const CONTRACT_ADDRESS = "0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026"; 
+  const RPC_URL = "https://bsc-dataseed.binance.org/"; // BNB Mainnet RPC
+  const ERC20_DROP_ABI = [
+    "function getActiveClaimConditionId() view returns (uint256)",
+    "function getClaimConditionById(uint256) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerTransaction,bytes32 merkleRoot,uint256 pricePerToken,address currency))"
+  ];
   // =====================================
 
   const spotsLeftEl = document.getElementById('spotsLeft');
   const filledText = document.getElementById('filledText');
   const bar = document.getElementById('fillBar');
   const cta = document.getElementById('claimBtn');
+  const cd = document.getElementById('countdown');
   cta.href = CLAIM_URL;
+
+  // Will be set from-chain if a "next" phase exists
+  let dynamicEndMs = null;
 
   function renderSpots(){
     const left = Math.max(0, TOTAL_SPOTS - spotsClaimed);
     const pct = Math.min(100, (spotsClaimed / TOTAL_SPOTS) * 100);
-    spotsLeftEl.textContent = left;
-    filledText.textContent = spotsClaimed;
-    bar.style.width = pct + "%";
+    if (spotsLeftEl) spotsLeftEl.textContent = left;
+    if (filledText)  filledText.textContent = spotsClaimed;
+    if (bar)         bar.style.width = pct + "%";
   }
-  renderSpots();
 
-  // Countdown timer
-  const cd = document.getElementById('countdown');
+  async function fetchLivePhase(){
+    try {
+      const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      const c = new ethers.Contract(CONTRACT_ADDRESS, ERC20_DROP_ABI, provider);
+
+      // Active condition
+      const id = await c.getActiveClaimConditionId();
+      const cond = await c.getClaimConditionById(id);
+
+      // Spots (since 1 token = 1 spot, we treat values as whole units)
+      const claimed = Number(ethers.utils.formatUnits(cond.supplyClaimed, 0));
+      spotsClaimed = claimed;
+      renderSpots();
+
+      // Try to infer end time from NEXT phase's startTimestamp
+      try {
+        const nextCond = await c.getClaimConditionById(id.add(1));
+        const nextStart = Number(nextCond.startTimestamp) * 1000; // ms
+        if (nextStart > Date.now()) dynamicEndMs = nextStart;
+      } catch (e) {
+        // No next phase found — keep fallback
+        dynamicEndMs = null;
+      }
+    } catch(e) {
+      console.error("Failed to fetch phase data:", e);
+      renderSpots(); // keep whatever we have
+    }
+  }
+
   function tick(){
-    const end = new Date(END_ISO).getTime();
+    const fallbackMs = new Date(END_ISO_FALLBACK).getTime();
+    const endMs = dynamicEndMs || fallbackMs;
+
+    if (!endMs || isNaN(endMs)) {
+      cd.textContent = "⏳ Closing soon";
+      return;
+    }
     const now = Date.now();
-    const d = end - now;
-    if (isNaN(end) || d <= 0){ cd.textContent = "⏳ Closing soon"; return; }
-    const days = Math.floor(d/86400000);
-    const hrs  = Math.floor((d%86400000)/3600000);
-    const min  = Math.floor((d%3600000)/60000);
+    const d = endMs - now;
+    if (d <= 0){
+      cd.textContent = "⏳ Closing soon";
+      return;
+    }
+    const days = Math.floor(d / 86400000);
+    const hrs  = Math.floor((d % 86400000) / 3600000);
+    const min  = Math.floor((d % 3600000) / 60000);
     cd.textContent = `⏳ Ends in ${days}d ${hrs}h ${min}m`;
   }
-  tick(); setInterval(tick, 30000);
+
+  // Initial loads + intervals
+  renderSpots();
+  fetchLivePhase().then(tick);
+  setInterval(fetchLivePhase, 30000); // refresh on-chain data every 30s
+  setInterval(tick, 30000);           // update countdown every 30s
 
   // Copy link
   document.getElementById('copyBtn').onclick = async () => {
-    try { await navigator.clipboard.writeText(CLAIM_URL); alert("Claim link copied ✅"); }
-    catch(e){ prompt("Copy the claim link:", CLAIM_URL); }
+    try { 
+      await navigator.clipboard.writeText(CLAIM_URL); 
+      alert("Claim link copied ✅"); 
+    } catch(e){ 
+      prompt("Copy the claim link:", CLAIM_URL); 
+    }
   };
 </script>
 </body>
