@@ -156,8 +156,6 @@
   const CONTRACT_MECHS    = "0x2EB40e1dCaA7faFc14040352d7aa37C6D6FBA989"; // Drop1155
   const CONTRACT_CRYPTIDS = "0xF98796F28c40b2d0A238B951E72C14Cdf2C4Da11"; // ERC721 (signature mint)
   const FORCED_MECHS_PRICE_BNB = null;
-
-  // 🔐 Your backend must return a signed MintRequest compatible with your ABI.
   const VOUCHER_ENDPOINT = "/api/cryptid-voucher";
 
   /* =================== TOKEN LISTS =================== */
@@ -192,13 +190,21 @@
   ];
 
   /* =================== ABIs =================== */
-  // 1155 (Mechs)
-  const MECHS_READ_ABI = [
+  // Mechs read ABIs: try V1 (with metadata), fallback to V0 (no metadata)
+  const MECHS_READ_ABI_V1 = [
     "function uri(uint256) view returns (string)",
     "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
     "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency,string metadata) condition)",
     "function balanceOf(address account,uint256 id) view returns (uint256)"
   ];
+  const MECHS_READ_ABI_V0 = [
+    "function uri(uint256) view returns (string)",
+    "function getActiveClaimConditionId(uint256 _tokenId) view returns (uint256)",
+    "function getClaimConditionById(uint256 _tokenId,uint256 _conditionId) view returns (tuple(uint256 startTimestamp,uint256 maxClaimableSupply,uint256 supplyClaimed,uint256 quantityLimitPerWallet,bytes32 merkleRoot,uint256 pricePerToken,address currency) condition)",
+    "function balanceOf(address account,uint256 id) view returns (uint256)"
+  ];
+  const URI_ABI = ["function uri(uint256) view returns (string)"];
+
   const MECHS_CLAIM_ABI = [
     "function claim(address _receiver,uint256 _tokenId,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
   ];
@@ -210,7 +216,7 @@
     "error DropClaimInvalidTokenPrice(address expectedCurrency,uint256 expectedPricePerToken,address actualCurrency,uint256 actualExpectedPricePerToken)"
   ];
 
-  // 721 (Cryptids)
+  // Cryptids (721)
   const CRYPTIDS_ABI = [
     "function mintWithSignature((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) payable returns (uint256 tokenIdMinted)",
     "function verify((address to,address royaltyRecipient,uint256 royaltyBps,address primarySaleRecipient,string uri,uint256 price,address currency,uint128 validityStartTimestamp,uint128 validityEndTimestamp,bytes32 uid) _req, bytes _signature) view returns (bool,address)",
@@ -251,7 +257,7 @@
   /* =================== Providers / State =================== */
   const readProvider = new ethers.JsonRpcProvider(READ_RPC);
   let browserProvider = null, signer = null, userAddr = null;
-  let mechsReader = null;
+  let mechsReaderV1 = null, mechsReaderV0 = null, mechsUriReader = null;
   let cryptidsRead = new ethers.Contract(CONTRACT_CRYPTIDS, CRYPTIDS_ABI, readProvider);
   let cryptidsWrite = null;
   let listenersBound = false;
@@ -267,14 +273,16 @@
   const FULL_IFACE = new ethers.Interface([
     ...MECHS_CLAIM_ABI, ...MECHS_ERROR_ABI, ...CRYPTIDS_ABI
   ]);
+  const isDecodeErr = (e)=> (e?.code === 'BAD_DATA') || /could not decode|insufficient data for abi decoding/i.test(String(e?.message||""));
   const prettyRevert = (e)=>{
     const data = e?.data || e?.error?.data || e?.info?.error?.data || e?.error?.error?.data || e?.receipt?.revertReason;
     try {
       if (typeof data === "string" && data.startsWith("0x")) {
-        const parsed = FULL_IFACE.parseError(data); // ✅ v6
+        const parsed = FULL_IFACE.parseError(data); // ethers v6
         return parsed?.name || "Transaction reverted";
       }
     } catch {}
+    if (isDecodeErr(e)) return "Contract/ABI mismatch while reading; updated ABI likely required.";
     return e?.reason || e?.shortMessage || e?.message || "Transaction failed";
   };
   async function fetchJsonWithFallback(url){
@@ -291,13 +299,31 @@
 
   /* =================== Reads (Mechs) =================== */
   async function readClaim(tokenId){
-    mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-    const condId = await mechsReader.getActiveClaimConditionId(tokenId);
-    return await mechsReader.getClaimConditionById(tokenId, condId);
+    // Try ABI with metadata
+    try{
+      mechsReaderV1 ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI_V1, readProvider);
+      const condId = await mechsReaderV1.getActiveClaimConditionId(tokenId);
+      const c = await mechsReaderV1.getClaimConditionById(tokenId, condId);
+      return {
+        startTimestamp: c.startTimestamp,
+        maxClaimableSupply: c.maxClaimableSupply,
+        supplyClaimed: c.supplyClaimed,
+        quantityLimitPerWallet: c.quantityLimitPerWallet,
+        merkleRoot: c.merkleRoot,
+        pricePerToken: c.pricePerToken,
+        currency: c.currency
+      };
+    }catch(e){
+      if (!isDecodeErr(e)) throw e;
+      // Fallback ABI without metadata
+      mechsReaderV0 ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI_V0, readProvider);
+      const condId = await mechsReaderV0.getActiveClaimConditionId(tokenId);
+      return await mechsReaderV0.getClaimConditionById(tokenId, condId);
+    }
   }
   async function load1155Meta(tokenId){
-    mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-    const base = await mechsReader.uri(tokenId);
+    mechsUriReader ||= new ethers.Contract(CONTRACT_MECHS, URI_ABI, readProvider);
+    const base = await mechsUriReader.uri(tokenId);
     const url = base.includes("{id}") ? base.replace("{id}", idToHex(tokenId)) : base;
     return await fetchJsonWithFallback(url);
   }
@@ -366,8 +392,9 @@
   }
   function disconnectWallet(){
     browserProvider = null; signer = null; userAddr = null; cryptidsWrite = null;
-    document.getElementById('connectBtn').textContent = 'Connect Wallet';
-    document.getElementById('connectBtn').style.display = '';
+    const btn = document.getElementById('connectBtn');
+    btn.textContent = 'Connect Wallet';
+    btn.style.display = '';
     document.getElementById('walletInfo').style.display = 'none';
     document.getElementById('connStatus').textContent = '';
     document.getElementById('networkName').textContent = '—';
@@ -378,7 +405,8 @@
     if (!browserProvider || !indicator) return;
     const net = await browserProvider.getNetwork();
     const cid = Number(net.chainId);
-    document.getElementById('networkName').textContent = (cid===56?'BSC':`Chain ${cid}`);
+    const label = (cid===56 ? 'BSC' : `Chain ${cid}`);
+    document.getElementById('networkName').textContent = label;
     indicator.className = 'network-indicator ' + (cid===BSC_CHAIN_ID ? 'valid' : 'invalid');
   }
   async function updateBalance(){
@@ -390,8 +418,8 @@
     // Also show ERC-1155 balance for selected token (if any)
     try {
       const tokenId = Number(document.getElementById('mechsTokenId').value);
-      mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-      const bal1155 = await mechsReader.balanceOf(userAddr, tokenId);
+      const reader = mechsReaderV1 || mechsReaderV0 || new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI_V0, readProvider);
+      const bal1155 = await reader.balanceOf(userAddr, tokenId);
       const mb = document.getElementById('mechsBalance');
       if (mb) mb.textContent = `${bal1155.toString()} pcs`;
     } catch {}
@@ -453,12 +481,12 @@
 
       // 1155 balance if connected
       if (userAddr){
-        mechsReader ||= new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI, readProvider);
-        const bal1155 = await mechsReader.balanceOf(userAddr, tokenId);
+        const reader = mechsReaderV1 || mechsReaderV0 || new ethers.Contract(CONTRACT_MECHS, MECHS_READ_ABI_V0, readProvider);
+        const bal1155 = await reader.balanceOf(userAddr, tokenId);
         if (balEl) balEl.textContent = `${bal1155.toString()} pcs`;
       }
-    } catch {
-      status.className = "status warning"; status.textContent = "Metadata unavailable or claim read failed.";
+    } catch (e) {
+      status.className = "status warning"; status.textContent = prettyRevert(e);
       imgEl.classList.remove("loading");
     }
   }
@@ -584,7 +612,6 @@
       const isNative = String(request.currency).toLowerCase() === ZERO.toLowerCase();
       const value = isNative ? request.price : 0n;
 
-      // If ERC20 currency, ensure allowance to the 721 contract
       if (!isNative) {
         await ensureAllowance(request.currency, userAddr, CONTRACT_CRYPTIDS, request.price);
       }
@@ -597,7 +624,6 @@
       const tx = await signer.sendTransaction({ to: CONTRACT_CRYPTIDS, data, value, ...(gasLimit?{gasLimit}:{}) });
       const rec = await tx.wait();
 
-      // Parse logs the v6 way
       let mintedId = null;
       try {
         const parsed = rec.logs.map(l=>{ try{ return FULL_IFACE.parseLog({ topics:l.topics, data:l.data }); }catch{ return null; } }).filter(Boolean);
