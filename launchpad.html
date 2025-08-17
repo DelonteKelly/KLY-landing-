@@ -2,133 +2,292 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>KLY Launchpad - BNB Chain</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="KLY Launchpad - The premier platform for initial DEX offerings on BNB Chain">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>KLY Launchpad — BNB Chain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="KLY Launchpad — Two-token growth on BNB Chain: KLY gates access & governance; SólCoin powers utility & community.">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@500;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-  <!-- Web3 Libraries (compatible versions) -->
+  <!-- Web3 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+  <!-- BG -->
   <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 
   <style>
     :root{
-      --primary:#00ffe7;--secondary:#ff00aa;--bg-dark:#0b0b0b;--bg-darker:#050505;--text-light:#e0e0e0;
-      --success:#00ff88;--error:#ff3860;--warning:#ffaa00;--bnb-yellow:#F0B90B;
-      --glow-primary:0 0 15px rgba(0,255,231,.5);--glow-secondary:0 0 15px rgba(255,0,170,.5)
+      --primary:#00ffe7; --secondary:#ff00aa;
+      --accent:#e6c15a; --bnb:#F0B90B;
+      --bg:#050506; --panel:#0d0e10; --panel-2:#111217;
+      --text:#e9f0f0; --muted:#a9b0b5;
+      --error:#ff3860; --ok:#00ff88; --warn:#ffaa00;
+      --glow-1:0 0 18px rgba(0,255,231,.45);
+      --glow-2:0 0 22px rgba(255,0,170,.35);
+      --ring:1px solid rgba(0,255,231,.22);
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Rajdhani',sans-serif;background:var(--bg-darker);color:var(--text-light);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow-x:hidden}
-    #particles-js{position:absolute;inset:0;z-index:-1;pointer-events:none}
-    .grid-overlay{position:fixed;inset:0;background:
-      linear-gradient(rgba(0,255,231,.03) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(0,255,231,.03) 1px,transparent 1px);
-      background-size:40px 40px;z-index:-1;pointer-events:none}
-    .card{background:rgba(15,15,15,.8);padding:2.5rem;border-radius:20px;border:1px solid rgba(0,255,231,.2);
-      backdrop-filter:blur(10px);box-shadow:var(--glow-primary);text-align:center;max-width:620px;width:100%;position:relative;overflow:hidden;transition:.3s}
-    .card:hover{box-shadow:0 0 30px rgba(0,255,231,.6)}
-    .card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
-      background:radial-gradient(circle,rgba(0,255,231,.1) 0%,transparent 70%);transform:rotate(45deg);z-index:-1;animation:rot 20s linear infinite}
-    @keyframes rot{to{transform:rotate(360deg)}}
-    h1{font-family:'Orbitron',sans-serif;color:var(--primary);text-shadow:0 0 10px var(--primary);margin-bottom:.5rem;font-size:2.5rem;letter-spacing:2px;position:relative;display:inline-block}
-    h1::after{content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:3px}
-    .network-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(240,185,11,.1);color:var(--bnb-yellow);
-      padding:.5rem 1.2rem;border-radius:20px;font-size:.9rem;margin-bottom:1.5rem;border:1px solid var(--bnb-yellow);box-shadow:0 0 10px rgba(240,185,11,.3)}
-    .subtitle{opacity:.9;font-size:1.05rem;line-height:1.6;margin-bottom:1.2rem}
-    button{background:linear-gradient(135deg,var(--primary),var(--secondary));border:none;color:#000;font-weight:700;
-      padding:14px 28px;border-radius:12px;cursor:pointer;margin-top:1rem;width:100%;font-size:1.1rem;transition:.3s;position:relative;overflow:hidden;z-index:1;font-family:'Montserrat',sans-serif}
-    button::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--secondary),var(--primary));opacity:0;transition:.3s;z-index:-1}
-    button:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,255,231,.6)}button:hover::before{opacity:1}
-    button:disabled{opacity:.6;cursor:not-allowed;background:linear-gradient(135deg,#555,#777);transform:none!important}
-    #walletStatus{margin:1rem 0 0;font-family:'Orbitron',sans-serif;color:var(--primary);word-break:break-all;padding:1rem;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(0,255,231,.2);position:relative}
-    .pill{display:inline-block;padding:.25rem .6rem;border-radius:999px;font-size:.8rem;margin-top:.5rem;border:1px solid rgba(255,255,255,.2)}
-    .token-info{margin-top:1.2rem;text-align:left;background:rgba(0,0,0,.3);padding:1rem;border-radius:12px;border:1px solid rgba(0,255,231,.2);position:relative}
-    .token-info h3{font-family:'Orbitron',sans-serif;color:var(--primary);margin-bottom:.5rem;font-size:1.1rem}
-    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:.4rem 0}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:radial-gradient(1200px 1200px at 10% 5%,rgba(0,255,231,.06),transparent 60%),
+                 radial-gradient(1200px 1200px at 90% 10%,rgba(255,0,170,.05),transparent 60%),
+                 var(--bg);
+      color:var(--text); font-family:'Rajdhani',system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      overflow-x:hidden;
+    }
+    /* Header */
+    .site-header{
+      position:sticky; top:0; z-index:50; backdrop-filter: blur(8px);
+      background:linear-gradient(180deg,rgba(5,6,7,.85),rgba(5,6,7,.55) 60%,transparent);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .header-inner{max-width:1100px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:16px}
+    .logo{font-family:'Orbitron',sans-serif;font-weight:700;letter-spacing:1.5px}
+    .logo span{color:var(--primary);text-shadow:0 0 10px var(--primary)}
+    .nav{margin-left:auto;display:flex;gap:14px;align-items:center}
+    .nav a,.nav button.link{
+      color:var(--text);opacity:.9;text-decoration:none;border:none;background:transparent;cursor:pointer;
+      padding:8px 12px;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:600
+    }
+    .nav a:hover,.nav button.link:hover{background:rgba(255,255,255,.06)}
+    .chain-pill{
+      display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+      border:1px solid rgba(240,185,11,.35); color:var(--bnb); background:rgba(240,185,11,.12);
+      box-shadow:0 0 10px rgba(240,185,11,.25) inset;
+      font-size:.9rem
+    }
+
+    /* Hero / Card */
+    .wrap{max-width:1100px;margin:38px auto;padding:0 18px}
+    .hero{
+      display:grid;grid-template-columns: 1.1fr .9fr; gap:24px;
+    }
+    @media(max-width:940px){ .hero{grid-template-columns:1fr} }
+    .panel{
+      background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+      border:var(--ring); border-radius:20px; box-shadow:var(--glow-1),var(--glow-2);
+      padding:26px; position:relative; overflow:hidden;
+    }
+    .panel::before{
+      content:''; position:absolute; inset:-40%; background:
+      radial-gradient(circle at 20% 0%, rgba(0,255,231,.12), transparent 45%),
+      radial-gradient(circle at 80% -10%, rgba(255,0,170,.12), transparent 45%);
+      transform:rotate(8deg); pointer-events:none;
+    }
+
+    h1.title{
+      font-family:'Orbitron',sans-serif; font-weight:700; letter-spacing:1px; margin:0 0 6px;
+      color:var(--primary); text-shadow:0 0 8px rgba(0,255,231,.6);
+    }
+    .subtitle{color:var(--muted); font-family:'Montserrat',sans-serif; line-height:1.6}
+    .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); margin:16px 0}
+
+    .countdown{display:flex;gap:12px;flex-wrap:wrap}
+    .cd-item{
+      min-width:84px;text-align:center;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.25)
+    }
+    .cd-num{font-size:1.5rem;font-weight:800;color:var(--primary);font-family:'Orbitron'}
+    .cd-label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#b9c2c8}
+
+    .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      padding:14px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:800;
+      font-family:'Montserrat',sans-serif; letter-spacing:.2px; transition:.25s;
+      background:linear-gradient(135deg,var(--primary),var(--secondary)); color:#081113;
+      box-shadow:0 10px 26px rgba(0,255,231,.28);
+    }
+    .btn:hover{transform:translateY(-2px)}
+    .btn.secondary{
+      color:var(--text); background:linear-gradient(135deg,#2a2d34,#16181c);
+      border:1px solid rgba(255,255,255,.14)
+    }
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    .status{
+      margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.35);
+      border:1px solid rgba(0,255,231,.2); font-family:'Montserrat';
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap
+    }
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+    /* Balances / Gate */
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:520px){ .grid{grid-template-columns:1fr} }
+    .block{
+      padding:14px;border-radius:12px;background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.12)
+    }
+    .block h3{margin:0 0 8px;font-family:'Orbitron';font-size:1.05rem;color:var(--primary)}
+    .row{display:flex;align-items:center;justify-content:space-between;margin:8px 0;color:#dfe6ea}
     .row .label{opacity:.8}
-    .row .val{font-family:'Orbitron',sans-serif;color:var(--primary)}
-    .action-buttons{display:flex;gap:1rem;margin-top:1.3rem}
-    .action-buttons button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px}
-    .notification{position:fixed;top:20px;right:20px;background:rgba(20,20,20,.95);padding:1.1rem;border-left:4px solid var(--primary);color:#fff;max-width:360px;border-radius:8px;transform:translateX(120%);transition:transform .3s cubic-bezier(.68,-.55,.265,1.55);z-index:1000;box-shadow:0 5px 15px rgba(0,0,0,.3);display:flex;align-items:center;gap:12px}
-    .notification.show{transform:translateX(0)} .notification.error{border-left-color:var(--error)} .notification.success{border-left-color:var(--success)} .notification.warning{border-left-color:var(--warning)}
-    .tx-status{margin-top:1rem;padding:1rem;border-radius:8px;background:rgba(0,0,0,.3);border:1px solid rgba(0,255,231,.2);display:none}
-    .tx-hash{display:flex;align-items:center;gap:8px;font-size:.9rem;margin-bottom:.4rem;word-break:break-all}
-    .progress-container{width:100%;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
-    .progress-bar{height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));width:0;transition:width .3s}
-    .countdown{display:flex;justify-content:center;gap:1rem;margin:1rem 0}
-    .countdown-item{background:rgba(0,0,0,.3);padding:.6rem;border-radius:8px;min-width:70px;text-align:center;border:1px solid rgba(0,255,231,.2)}
-    .countdown-number{font-size:1.4rem;font-weight:700;color:var(--primary);font-family:'Orbitron',sans-serif}
-    .countdown-label{font-size:.7rem;opacity:.7;text-transform:uppercase;margin-top:4px}
-    @media(max-width:768px){.card{padding:1.8rem}h1{font-size:2rem}.action-buttons{flex-direction:column}}
+    .addr{display:inline-flex;align-items:center;gap:8px}
+    .copy{border:none;background:transparent;color:var(--primary);cursor:pointer}
+    .gate-pill{
+      display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 10px;border-radius:999px;font-size:.9rem;
+      border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.35)
+    }
+    .meter{height:8px;width:100%;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden}
+    .meter > span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));width:0%}
+
+    /* Transaction panel */
+    .tx{display:none;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12)}
+    .tx .hash{display:flex;align-items:center;gap:10px;word-break:break-all}
+    .progress{height:6px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden;margin-top:8px}
+    .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));width:0%}
+
+    /* Toast */
+    .toast{
+      position:fixed; right:20px; top:20px; z-index:1000; max-width:380px;
+      transform:translateX(120%); transition:transform .35s cubic-bezier(.2,.8,.2,1);
+      background:rgba(15,16,20,.96); color:#fff; border-left:4px solid var(--primary);
+      padding:12px 14px; border-radius:10px; box-shadow:0 12px 30px rgba(0,0,0,.35); display:flex; gap:12px; align-items:center
+    }
+    .toast.show{transform:translateX(0)}
+    .toast.ok{border-left-color:var(--ok)} .toast.err{border-left-color:var(--error)} .toast.warn{border-left-color:var(--warn)}
+
+    /* Overlay badge on right card */
+    .badge{
+      position:absolute; right:14px; top:14px; padding:6px 10px; border-radius:999px; font-size:.82rem;
+      border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.07); color:#dfe6ea
+    }
+
+    /* Particles layer */
+    #particles-js{position:fixed; inset:0; z-index:-1; pointer-events:none}
   </style>
 </head>
 <body>
   <div id="particles-js"></div>
-  <div class="grid-overlay"></div>
 
-  <div class="card">
-    <h1>KLY LAUNCHPAD</h1>
-    <div class="network-badge"><i class="fab fa-btc"></i> BNB Smart Chain</div>
-    <p class="subtitle">Two‑token growth: <strong>KLY</strong> gates access & governance; <strong>SólCoin</strong> powers utility & community.</p>
-
-    <div class="countdown">
-      <div class="countdown-item"><div class="countdown-number" id="days">00</div><div class="countdown-label">Days</div></div>
-      <div class="countdown-item"><div class="countdown-number" id="hours">00</div><div class="countdown-label">Hours</div></div>
-      <div class="countdown-item"><div class="countdown-number" id="minutes">00</div><div class="countdown-label">Minutes</div></div>
-      <div class="countdown-item"><div class="countdown-number" id="seconds">00</div><div class="countdown-label">Seconds</div></div>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">KLY<span>TOKEN</span></div>
+      <div class="chain-pill"><i class="fa-brands fa-btc"></i> BNB Smart Chain • Mainnet</div>
+      <nav class="nav">
+        <a href="/index.html">Home</a>
+        <a href="/vault.html">Vault</a>
+        <a href="/oracle">Oracle</a>
+        <button class="link" id="openExplorer"><i class="fa-solid fa-up-right-from-square"></i> Explorer</button>
+      </nav>
     </div>
+  </header>
 
-    <button id="connectWallet"><i class="fas fa-wallet"></i> <span id="buttonText">Connect Wallet</span></button>
-    <div id="walletStatus">Not connected</div>
+  <main class="wrap">
+    <section class="hero">
+      <!-- Left: Call-to-action / Countdown -->
+      <div class="panel">
+        <h1 class="title">KLY LAUNCHPAD</h1>
+        <p class="subtitle">Two-token growth: <b>KLY</b> gates access & governance; <b>SólCoin</b> powers utility & community.</p>
+        <div class="divider"></div>
 
-    <div class="token-info" id="tokenInfo" style="display:none;">
-      <h3>Balances</h3>
-      <div class="row"><span class="label">KLY Contract</span><span class="val" id="klyAddress">—</span></div>
-      <div class="row"><span class="label">KLY Balance</span><span class="val" id="klyBalance">—</span></div>
-      <div class="row"><span class="label">SólCoin (Drop)</span><span class="val" id="solAddress">—</span></div>
-      <div class="row"><span class="label">SólCoin Balance</span><span class="val" id="solBalance">—</span></div>
-      <div class="pill" id="gateInfo">Gate: requires <span id="klyThresholdText">—</span> to claim SólCoin</div>
-    </div>
+        <div class="countdown" aria-label="Countdown to next opening">
+          <div class="cd-item"><div class="cd-num" id="d">00</div><div class="cd-label">Days</div></div>
+          <div class="cd-item"><div class="cd-num" id="h">00</div><div class="cd-label">Hours</div></div>
+          <div class="cd-item"><div class="cd-num" id="m">00</div><div class="cd-label">Minutes</div></div>
+          <div class="cd-item"><div class="cd-num" id="s">00</div><div class="cd-label">Seconds</div></div>
+        </div>
 
-    <div class="action-buttons" id="actionButtons" style="display:none;">
-      <button id="getTokensButton"><i class="fas fa-coins"></i> Mint KLY</button>
-      <button id="buySolBtn" disabled title="Requires gate"><i class="fas fa-bolt"></i> Buy SólCoin</button>
-      <button id="viewExplorer"><i class="fas fa-external-link-alt"></i> Explorer</button>
-    </div>
+        <div class="cta-row">
+          <button class="btn" id="connect"><i class="fa-solid fa-wallet"></i><span id="connectText">Connect Wallet</span></button>
+          <button class="btn secondary" id="thirdwebSol"><i class="fa-solid fa-bolt"></i> Buy SólCoin (Thirdweb)</button>
+          <button class="btn secondary" id="thirdwebNFT"><i class="fa-solid fa-cubes"></i> Mint NFT (Thirdweb)</button>
+        </div>
 
-    <div class="tx-status" id="txStatus">
-      <div class="tx-hash"><i class="fas fa-exchange-alt"></i><a href="#" target="_blank" id="txHashLink">Transaction pending...</a></div>
-      <div class="progress-container"><div class="progress-bar" id="txProgress"></div></div>
-    </div>
-  </div>
+        <div class="status" id="status">
+          <div><i class="fa-solid fa-circle-dot" style="color:var(--primary)"></i> <span id="netText">Not connected</span></div>
+          <div class="mono" id="addr">—</div>
+        </div>
 
-  <div id="notification" class="notification"><i class="fas fa-info-circle"></i><span id="notificationMessage">Notification</span></div>
+        <div class="tx" id="txBox" aria-live="polite">
+          <div class="hash"><i class="fa-solid fa-arrows-rotate"></i> <a id="txHref" href="#" target="_blank" rel="noopener">Transaction pending...</a></div>
+          <div class="progress"><span id="txProg"></span></div>
+        </div>
+      </div>
+
+      <!-- Right: Balances / Gate / Actions -->
+      <div class="panel">
+        <span class="badge">Access Gate</span>
+
+        <div class="grid">
+          <div class="block">
+            <h3>Contracts</h3>
+            <div class="row">
+              <span class="label">KLY</span>
+              <span class="addr mono" id="klyAddr">— <button class="copy" data-copy-target="klyAddrFull" title="Copy"><i class="fa-regular fa-copy"></i></button></span>
+              <span id="klyAddrFull" style="display:none;"></span>
+            </div>
+            <div class="row">
+              <span class="label">SólCoin</span>
+              <span class="addr mono" id="solAddr">— <button class="copy" data-copy-target="solAddrFull" title="Copy"><i class="fa-regular fa-copy"></i></button></span>
+              <span id="solAddrFull" style="display:none;"></span>
+            </div>
+          </div>
+
+          <div class="block">
+            <h3>Balances</h3>
+            <div class="row"><span class="label">KLY</span><span class="mono" id="klyBal">—</span></div>
+            <div class="row"><span class="label">SólCoin</span><span class="mono" id="solBal">—</span></div>
+          </div>
+        </div>
+
+        <div class="gate-pill" id="gatePill">
+          <i class="fa-solid fa-lock"></i>
+          <span>Gate requires <b id="threshTxt">—</b></span>
+        </div>
+        <div class="meter" style="margin-top:10px"><span id="gateMeter"></span></div>
+
+        <div class="divider"></div>
+
+        <div class="grid" id="actionGrid">
+          <div class="block">
+            <h3>Mint KLY</h3>
+            <p class="subtitle" style="margin:6px 0 12px">Quick faucet for onboarding & testing. (Owner-gated on chain.)</p>
+            <button class="btn" id="mintKLY"><i class="fa-solid fa-coins"></i> Mint 100 KLY</button>
+            <small id="mintHint" class="subtitle">If mint is disabled, we’ll route you to explorer/Thirdweb.</small>
+          </div>
+          <div class="block">
+            <h3>Buy SólCoin</h3>
+            <div class="row" style="gap:10px">
+              <span class="label">Quantity</span>
+              <input id="solQty" type="number" min="1" step="1" value="1" style="width:120px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:var(--text)">
+            </div>
+            <button class="btn" id="buySol" disabled title="Requires gate"><i class="fa-solid fa-bolt"></i> Purchase</button>
+            <small class="subtitle">Uses active claim condition (Thirdweb Drop20).</small>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i><span id="toastMsg">Notice</span></div>
 
   <script>
     /********** Config **********/
-    const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY ERC20 (mintTo)
-    const SOL_DROP_ADDRESS = "0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026"; // SólCoin (ERC20 + Drop claim)
+    const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52"; // KLY (ERC20)
+    const SOL_DROP_ADDRESS = "0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026"; // SólCoin (ERC20/Drop)
     const BSC_CHAIN_ID = 56;
-    const EXPLORER_URL = "https://bscscan.com";
-    const NATIVE_TOKEN_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+    const EXPLORER = "https://bscscan.com";
+    const RPC_URL = "https://bsc-dataseed.binance.org/";
+    const NATIVE_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
-    // 🔐 Gate: how much KLY you need to enable SólCoin purchase (human units)
-    const KLY_THRESHOLD_HUMAN = "1000"; // change to taste
+    // Gate
+    const KLY_THRESHOLD_HUMAN = "1000"; // TODO: adjust
+    const DEFAULT_MINT_AMOUNT = "100";
 
-    const RPC_URLS = [
-      "https://bsc-dataseed.binance.org/",
-      "https://bsc-dataseed1.defibit.io/",
-      "https://bsc-dataseed1.ninicoin.io/"
-    ];
+    // Helpful outbound links
+    const THIRDWEB_SOL_LINK = "https://thirdweb.com/binance/0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026"; // TODO: direct SólCoin claim link
+    const THIRDWEB_NFT_LINK = "https://thirdweb.com/"; // TODO: direct NFT mint link
 
     /********** ABIs **********/
-    const TOKEN_ABI = [
+    const TOKEN_MIN_ABI = [
       "function symbol() view returns (string)",
       "function decimals() view returns (uint8)",
-      "function balanceOf(address) view returns (uint256)",
+      "function balanceOf(address) view returns (uint256)"
+    ];
+    const TOKEN_WITH_MINT = [
+      ...TOKEN_MIN_ABI,
       "function mintTo(address to, uint256 amount)"
     ];
     const ERC20_ABI = [
@@ -144,409 +303,391 @@
       "function claim(address _receiver,uint256 _quantity,address _currency,uint256 _pricePerToken,(bytes32[] proof,uint256 quantityLimitPerWallet,uint256 pricePerToken,address currency) _allowlistProof,bytes _data) payable"
     ];
 
-    /********** State & DOM **********/
-    let web3Modal, provider, externalProvider, signer, userAddress;
-    let kly, solToken, drop;
-    let klyDecimals = 18, solDecimals = 18;
-    let txInterval;
+    /********** State **********/
+    let web3Modal, extProvider, provider, signer, me;
+    let kly, solErc20, drop;
+    let klyDec = 18, solDec = 18;
+    let canMint = false; // feature detect for mintTo
+    let txTicker;
 
-    const connectBtn = document.getElementById("connectWallet");
-    const buttonText = document.getElementById("buttonText");
-    const walletStatus = document.getElementById("walletStatus");
+    /********** DOM **********/
+    const el = (id)=>document.getElementById(id);
+    const connectBtn = el("connect");
+    const connectText = el("connectText");
+    const netText = el("netText");
+    const addrEl = el("addr");
+    const txBox = el("txBox"), txHref = el("txHref"), txProg = el("txProg");
+    const klyAddr = el("klyAddr"), klyAddrFull = el("klyAddrFull");
+    const solAddr = el("solAddr"), solAddrFull = el("solAddrFull");
+    const klyBal = el("klyBal"), solBal = el("solBal");
+    const threshTxt = el("threshTxt");
+    const gatePill = el("gatePill"), gateMeter = el("gateMeter");
+    const mintBtn = el("mintKLY"), mintHint = el("mintHint");
+    const buyBtn = el("buySol"), qtyInp = el("solQty");
+    const toast = el("toast"), toastMsg = el("toastMsg");
 
-    const tokenInfo = document.getElementById("tokenInfo");
-    const actionButtons = document.getElementById("actionButtons");
+    /********** Particles **********/
+    particlesJS('particles-js',{
+      particles:{ number:{value:80, density:{enable:true, value_area:800}},
+        color:{value:["#00ffe7","#ff00aa"]}, shape:{type:"circle"},
+        opacity:{value:.5,random:true}, size:{value:3,random:true},
+        line_linked:{enable:true, distance:150, color:"#00ffe7", opacity:.2, width:1},
+        move:{enable:true, speed:1, random:true}
+      },
+      interactivity:{events:{onhover:{enable:true,mode:"grab"}}}, retina_detect:true
+    });
 
-    const klyAddressEl = document.getElementById("klyAddress");
-    const klyBalanceEl = document.getElementById("klyBalance");
-    const solAddressEl = document.getElementById("solAddress");
-    const solBalanceEl = document.getElementById("solBalance");
-    const klyThresholdText = document.getElementById("klyThresholdText");
-    const buySolBtn = document.getElementById("buySolBtn");
-
-    const getTokensButton = document.getElementById("getTokensButton");
-    const viewExplorer = document.getElementById("viewExplorer");
-    const notification = document.getElementById("notification");
-    const txStatus = document.getElementById("txStatus");
-    const txHashLink = document.getElementById("txHashLink");
-    const txProgress = document.getElementById("txProgress");
-
-    const daysEl = document.getElementById("days");
-    const hoursEl = document.getElementById("hours");
-    const minutesEl = document.getElementById("minutes");
-    const secondsEl = document.getElementById("seconds");
+    /********** Countdown (7 days rolling) **********/
+    (function startCountdown(){
+      const t=new Date(); t.setDate(t.getDate()+7);
+      const pad=(n)=>String(n).padStart(2,"0");
+      const tick=()=>{
+        const diff=t - new Date();
+        let d=0,h=0,m=0,s=0;
+        if(diff>0){
+          d=Math.floor(diff/86400000);
+          h=Math.floor(diff%86400000/3600000);
+          m=Math.floor(diff%3600000/60000);
+          s=Math.floor(diff%60000/1000);
+        }
+        el("d").textContent=pad(d); el("h").textContent=pad(h);
+        el("m").textContent=pad(m); el("s").textContent=pad(s);
+      };
+      tick(); setInterval(tick,1000);
+    })();
 
     /********** Web3Modal **********/
-    function setupWeb3Modal() {
+    function setupWeb3Modal(){
       web3Modal = new window.Web3Modal.default({
         cacheProvider: true,
-        providerOptions: {
-          walletconnect: {
+        providerOptions:{
+          walletconnect:{
             package: window.WalletConnectProvider.default,
-            options: { rpc: { [BSC_CHAIN_ID]: RPC_URLS[0] }, chainId: BSC_CHAIN_ID, qrcode: true }
+            options:{ rpc:{ [BSC_CHAIN_ID]: RPC_URL }, chainId:BSC_CHAIN_ID, qrcode:true }
           }
         },
-        theme: "dark"
+        theme:"dark"
       });
     }
 
-    /********** Connect **********/
-    async function connectWallet() {
-      try {
-        showNotification("Connecting wallet...", "warning");
+    async function connect(){
+      try{
+        showToast("Connecting wallet…","warn");
         connectBtn.disabled = true;
-        buttonText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting';
+        connectText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting`;
 
-        externalProvider = await web3Modal.connect();
-        provider = new ethers.providers.Web3Provider(externalProvider);
+        extProvider = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(extProvider);
         signer = provider.getSigner();
-        userAddress = await signer.getAddress();
+        me = await signer.getAddress();
 
-        const network = await provider.getNetwork();
-        if (network.chainId !== BSC_CHAIN_ID) {
-          const ok = await ensureBscChain();
-          if (!ok) {
-            showNotification("Please switch to BNB Smart Chain (56)", "error");
-            buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-            connectBtn.disabled = false;
-            return;
-          }
+        const net = await provider.getNetwork();
+        if(net.chainId !== BSC_CHAIN_ID){
+          const ok = await ensureBsc();
+          if(!ok){ showToast("Please switch to BNB Smart Chain (56)","err"); resetDisconnected(); return; }
         }
 
-        // Contracts
-        kly = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
-        solToken = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
+        // Feature-detect contract
+        // Use a permissive ABI first; if mintTo exists, we'll enable it.
+        kly = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_WITH_MINT, signer);
+        solErc20 = new ethers.Contract(SOL_DROP_ADDRESS, ERC20_ABI, signer);
         drop = new ethers.Contract(SOL_DROP_ADDRESS, DROP20_ABI, signer);
 
-        // Check code exists
+        // Ensure code exists
         const code = await provider.getCode(CONTRACT_ADDRESS);
-        if (!code || code === "0x") {
-          showNotification("KLY contract not found on BNB Chain", "error");
-          resetUiToDisconnected();
-          return;
+        if(!code || code === "0x"){
+          showToast("KLY contract not found on BNB Chain","err");
+          resetDisconnected(); return;
         }
 
-        walletStatus.textContent = formatAddress(userAddress);
-        buttonText.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+        // Detect mintTo support safely
+        canMint = !!kly.interface.functions["mintTo(address,uint256)"];
 
-        await loadBalancesAndGate();
-        tokenInfo.style.display = "block";
-        actionButtons.style.display = "flex";
-        showNotification("Wallet connected successfully", "success");
-
-        if (externalProvider.on) {
-          externalProvider.on("accountsChanged", handleAccountsChanged);
-          externalProvider.on("chainChanged", () => window.location.reload());
-          externalProvider.on("disconnect", () => {
-            web3Modal.clearCachedProvider?.();
-            resetUiToDisconnected();
-            showNotification("Wallet disconnected", "error");
+        // Wire provider events
+        if(extProvider.on){
+          extProvider.on("accountsChanged", (acc)=>{
+            if(!acc?.length){ handleDisconnect(); return; }
+            me = acc[0]; loadAll();
+            showToast("Account switched","warn");
           });
+          extProvider.on("chainChanged", ()=>window.location.reload());
+          extProvider.on("disconnect", handleDisconnect);
         }
-      } catch (err) {
-        console.error("Connection error:", err);
-        showNotification("Connection failed", "error");
-        buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-      } finally {
+
+        netText.textContent = "Connected";
+        addrEl.textContent = short(me);
+        connectText.innerHTML = `<i class="fa-solid fa-check"></i> Connected`;
+
+        await loadAll();
+        showToast("Wallet connected","ok");
+      }catch(e){
+        console.error(e);
+        showToast("Connection failed","err");
+      }finally{
         connectBtn.disabled = false;
       }
     }
 
-    async function ensureBscChain() {
-      const hexChainId = "0x" + BSC_CHAIN_ID.toString(16);
-      try {
-        await provider.send("wallet_switchEthereumChain", [{ chainId: hexChainId }]);
+    function handleDisconnect(){
+      web3Modal.clearCachedProvider?.();
+      resetDisconnected();
+      showToast("Wallet disconnected","err");
+    }
+
+    async function ensureBsc(){
+      const hex = "0x"+BSC_CHAIN_ID.toString(16);
+      try{
+        await provider.send("wallet_switchEthereumChain", [{ chainId: hex }]);
         return true;
-      } catch (e) {
-        if (e.code === 4902 || e?.data?.originalError?.code === 4902) {
-          try {
-            await provider.send("wallet_addEthereumChain", [{
-              chainId: hexChainId,
-              chainName: "BNB Smart Chain",
-              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-              rpcUrls: RPC_URLS,
-              blockExplorerUrls: [EXPLORER_URL]
+      }catch(e){
+        if(e?.code === 4902 || e?.data?.originalError?.code === 4902){
+          try{
+            await provider.send("wallet_addEthereumChain",[{
+              chainId:hex, chainName:"BNB Smart Chain",
+              nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
+              rpcUrls:[RPC_URL], blockExplorerUrls:[EXPLORER]
             }]);
             return true;
-          } catch (e2) { return false; }
+          }catch{ return false; }
         }
         return false;
       }
     }
 
-    function handleAccountsChanged(accounts) {
-      if (!accounts.length) {
-        web3Modal.clearCachedProvider?.();
-        resetUiToDisconnected();
-        showNotification("Wallet disconnected", "error");
-      } else {
-        userAddress = accounts[0];
-        walletStatus.textContent = formatAddress(userAddress);
-        loadBalancesAndGate();
-        showNotification("Wallet account changed", "warning");
+    function resetDisconnected(){
+      netText.textContent = "Not connected";
+      addrEl.textContent = "—";
+      connectText.innerHTML = `Connect Wallet`;
+      document.querySelectorAll("#klyBal,#solBal,#klyAddr,#solAddr").forEach(n=>n.textContent="—");
+      klyAddrFull.textContent = ""; solAddrFull.textContent = "";
+      threshTxt.textContent = "—"; gateMeter.style.width = "0%";
+      buyBtn.disabled = true; txBox.style.display="none";
+    }
+
+    /********** Loads **********/
+    async function loadAll(){
+      try{
+        // decimals & symbols
+        klyDec = await readDecimalsOr(kly, 18);
+        solDec = await readDecimalsOr(solErc20, 18);
+        const [klySym, solSym] = await Promise.all([safeSymbol(kly,"KLY"), safeSymbol(solErc20,"SOL")]);
+
+        // contract addrs UI
+        klyAddr.textContent = fmtAddr(CONTRACT_ADDRESS);
+        solAddr.textContent = fmtAddr(SOL_DROP_ADDRESS);
+        klyAddrFull.textContent = CONTRACT_ADDRESS;
+        solAddrFull.textContent = SOL_DROP_ADDRESS;
+
+        // balances
+        const [kb, sb] = await Promise.all([kly.balanceOf(me), solErc20.balanceOf(me)]);
+        const kbH = ethers.utils.formatUnits(kb, klyDec);
+        const sbH = ethers.utils.formatUnits(sb, solDec);
+        klyBal.textContent = `${kbH} ${klySym}`;
+        solBal.textContent = `${sbH} ${solSym}`;
+
+        // gate
+        const needBase = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDec);
+        const have = kb;
+        const pct = Math.max(0, Math.min(100, have.mul(10000).div(needBase).toNumber()/100));
+        gateMeter.style.width = `${pct}%`;
+        threshTxt.textContent = `${KLY_THRESHOLD_HUMAN} ${klySym}`;
+        const passed = have.gte(needBase);
+
+        gatePill.style.borderColor = passed ? "rgba(0,255,136,.7)" : "rgba(255,56,96,.6)";
+        gatePill.style.color = passed ? "var(--ok)" : "var(--error)";
+        buyBtn.disabled = !passed;
+        buyBtn.title = passed ? "Eligible to buy SólCoin" : `Requires at least ${KLY_THRESHOLD_HUMAN} ${klySym}`;
+
+        // Mint capability hint
+        mintBtn.disabled = !canMint;
+        mintHint.textContent = canMint
+          ? "Mint is enabled on this contract."
+          : "Mint function not detected. Use Thirdweb/Explorer instead.";
+      }catch(e){
+        console.error(e); showToast("Failed to load balances","err");
       }
     }
 
-    function resetUiToDisconnected() {
-      walletStatus.textContent = "Not connected";
-      buttonText.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-      tokenInfo.style.display = "none";
-      actionButtons.style.display = "none";
-      txStatus.style.display = "none";
-      buySolBtn.disabled = true;
-    }
+    /********** Actions **********/
+    async function doMint(){
+      if(!signer) return showToast("Connect your wallet first","err");
+      if(!canMint){
+        window.open(`${EXPLORER}/token/${CONTRACT_ADDRESS}`,'_blank'); return;
+      }
+      try{
+        showToast("Preparing KLY mint…","warn");
+        txBox.style.display="block"; txHref.textContent="Preparing transaction…"; txHref.href="#"; setProg(12);
 
-    /********** Balances & Gate **********/
-    async function loadBalancesAndGate() {
-      try {
-        // Read decimals & symbols (with fallbacks)
-        klyDecimals = await readDecimalsOr(kly, 18);
-        solDecimals = await readDecimalsOr(solToken, 18);
-        const [klySym, solSym] = await Promise.all([safeSymbol(kly), safeSymbol(solToken)]);
+        const amt = ethers.utils.parseUnits(DEFAULT_MINT_AMOUNT, klyDec);
 
-        const [klyBal, solBal] = await Promise.all([
-          kly.balanceOf(userAddress),
-          solToken.balanceOf(userAddress)
-        ]);
+        let gas;
+        try{ const est = await kly.estimateGas.mintTo(me, amt); gas = est.mul(120).div(100); }
+        catch{ gas = ethers.BigNumber.from(250000); }
 
-        const klyHuman = ethers.utils.formatUnits(klyBal, klyDecimals);
-        const solHuman = ethers.utils.formatUnits(solBal, solDecimals);
+        const tx = await kly.mintTo(me, amt, { gasLimit: gas });
+        txHref.textContent = short(tx.hash); txHref.href = `${EXPLORER}/tx/${tx.hash}`;
+        animateProgTo(88);
 
-        klyAddressEl.textContent = formatAddress(CONTRACT_ADDRESS);
-        solAddressEl.textContent = formatAddress(SOL_DROP_ADDRESS);
-        klyBalanceEl.textContent = `${klyHuman} ${klySym}`;
-        solBalanceEl.textContent = `${solHuman} ${solSym}`;
-
-        // Gate text
-        klyThresholdText.textContent = `${KLY_THRESHOLD_HUMAN} ${klySym}`;
-
-        // Gate check
-        const thresholdBase = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDecimals);
-        const passed = klyBal.gte(thresholdBase);
-
-        buySolBtn.disabled = !passed;
-        buySolBtn.title = passed ? "Eligible to buy SólCoin" : `Requires at least ${KLY_THRESHOLD_HUMAN} ${klySym}`;
-
-        // subtle UI hint
-        const gateInfo = document.getElementById("gateInfo");
-        gateInfo.style.borderColor = passed ? "rgba(0,255,136,.7)" : "rgba(255,56,96,.6)";
-        gateInfo.style.color = passed ? "var(--success)" : "var(--error)";
-      } catch (err) {
-        console.error("Balance/gate error:", err);
-        showNotification("Failed to load balances", "error");
+        await tx.wait(); setProg(100);
+        await loadAll();
+        confetti(); showToast("KLY minted successfully","ok");
+      }catch(err){
+        console.error(err);
+        txBox.style.display="none";
+        showToast(parseRevert(err) || "Mint failed","err");
       }
     }
 
-    /********** Mint KLY **********/
-    async function mintTokens() {
-      if (!signer) return showNotification("Please connect your wallet first", "error");
-      try {
-        showNotification("Preparing KLY mint...", "warning");
-        getTokensButton.disabled = true;
-        getTokensButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
-        txStatus.style.display = "block";
-        txHashLink.textContent = "Preparing transaction...";
-        txHashLink.href = "#";
-        txProgress.style.width = "10%";
+    async function buySol(){
+      if(!signer) return showToast("Connect your wallet first","err");
 
-        const mintAmount = ethers.utils.parseUnits("100", klyDecimals);
+      // Re-check gate swiftly
+      try{
+        const bal = await kly.balanceOf(me);
+        const need = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDec);
+        if(bal.lt(need)) return showToast(`Gate not met: need ${KLY_THRESHOLD_HUMAN} KLY`,"err");
+      }catch{}
 
-        let gasLimit;
-        try { const est = await kly.estimateGas.mintTo(userAddress, mintAmount); gasLimit = est.mul(120).div(100); }
-        catch { gasLimit = ethers.BigNumber.from(250000); }
-
-        const tx = await kly.mintTo(userAddress, mintAmount, { gasLimit });
-        txHashLink.textContent = formatAddress(tx.hash);
-        txHashLink.href = `${EXPLORER_URL}/tx/${tx.hash}`;
-        txProgress.style.width = "30%";
-
-        let progress = 30;
-        txInterval = setInterval(()=>{ progress+=1; if(progress<90) txProgress.style.width = `${progress}%`; }, 500);
-        await tx.wait();
-        clearInterval(txInterval);
-        txProgress.style.width = "100%";
-
-        await loadBalancesAndGate();
-        showNotification("KLY minted successfully!", "success");
-      } catch (err) {
-        clearInterval(txInterval);
-        const msg = err?.error?.message || err?.message || "unknown error";
-        showNotification("Mint failed: " + msg, "error");
-        txStatus.style.display = "none";
-      } finally {
-        getTokensButton.disabled = false;
-        getTokensButton.innerHTML = '<i class="fas fa-coins"></i> Mint KLY';
-      }
-    }
-
-    /********** Buy / Claim SólCoin **********/
-    async function buySolCoin(humanQty = "1") {
-      if (!signer) return showNotification("Please connect your wallet first", "error");
-
-      // Gate check before doing anything
-      const currentKlyBal = await kly.balanceOf(userAddress);
-      const thresholdBase = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDecimals);
-      if (currentKlyBal.lt(thresholdBase)) {
-        return showNotification(`Gate not met: need at least ${KLY_THRESHOLD_HUMAN} KLY`, "error");
-      }
-
-      try {
-        // Optional: quick inspect in console
-        // await inspectClaim();
-
-        // 1) Read condition
+      try{
+        const qtyHuman = (qtyInp.value||"1").toString();
         const condId = await drop.getActiveClaimConditionId();
-        const cond = await drop.getClaimConditionById(condId);
-        const pricePerToken = ethers.BigNumber.from(cond.pricePerToken);
-        const currencyAddr = cond.currency; // keep exact value
+        const c = await drop.getClaimConditionById(condId);
+        const pricePer = ethers.BigNumber.from(c.pricePerToken);
+        const currency = c.currency;
 
-        // 2) Qty in base units
-        const qtyBase = ethers.utils.parseUnits(String(humanQty), solDecimals);
+        const qtyBase = ethers.utils.parseUnits(qtyHuman, solDec);
 
-        // 3) Native vs ERC20 payment (for overrides/approvals only)
-        const isNative =
-          currencyAddr === ethers.constants.AddressZero ||
-          (typeof currencyAddr === "string" && currencyAddr.toLowerCase() === NATIVE_TOKEN_SENTINEL.toLowerCase());
+        // compute total cost = pricePer * qty in token units (Drop20: price is per whole unit)
+        const totalCost = pricePer.mul(qtyBase).div(ethers.BigNumber.from(10).pow(solDec));
 
-        // 4) Total cost
-        const scale = ethers.BigNumber.from(10).pow(solDecimals);
-        const totalCost = pricePerToken.mul(qtyBase).div(scale);
-
-        let overrides = {};
-        if (!pricePerToken.isZero()) {
-          if (isNative) {
-            const myBNB = await provider.getBalance(userAddress);
-            if (myBNB.lt(totalCost)) {
-              return showNotification(`Insufficient BNB. Need ${ethers.utils.formatEther(totalCost)} BNB`, "error");
-            }
+        let overrides={};
+        if(!pricePer.isZero()){
+          const isNative = (currency === ethers.constants.AddressZero) ||
+                           (typeof currency==="string" && currency.toLowerCase()===NATIVE_SENTINEL.toLowerCase());
+          if(isNative){
+            const bnb = await provider.getBalance(me);
+            if(bnb.lt(totalCost)) return showToast(`Insufficient BNB. Need ${ethers.utils.formatEther(totalCost)} BNB`,"err");
             overrides = { value: totalCost };
-          } else {
-            const payToken = new ethers.Contract(currencyAddr, ERC20_ABI, signer);
-            const [dec, bal, allowance] = await Promise.all([
-              payToken.decimals(), payToken.balanceOf(userAddress), payToken.allowance(userAddress, SOL_DROP_ADDRESS)
+          }else{
+            const pay = new ethers.Contract(currency, ERC20_ABI, signer);
+            const [dec, bal, allow] = await Promise.all([
+              pay.decimals(), pay.balanceOf(me), pay.allowance(me, SOL_DROP_ADDRESS)
             ]);
-            if (bal.lt(totalCost)) {
-              const sym = await safeSymbol(payToken);
-              return showNotification(`Insufficient ${sym}. Need ${ethers.utils.formatUnits(totalCost, dec)} ${sym}`, "error");
+            if(bal.lt(totalCost)){
+              const sym = await safeSymbol(pay,"PAY");
+              return showToast(`Insufficient ${sym}. Need ${ethers.utils.formatUnits(totalCost,dec)} ${sym}`,"err");
             }
-            if (allowance.lt(totalCost)) {
-              const approveTx = await payToken.approve(SOL_DROP_ADDRESS, totalCost);
-              await approveTx.wait();
+            if(allow.lt(totalCost)){
+              showToast("Approving spend…","warn");
+              const atx = await pay.approve(SOL_DROP_ADDRESS, totalCost); await atx.wait();
             }
           }
         }
 
-        // 5) Allowlist proof (blank unless you have one)
-        const allowlistProof = {
-          proof: [],
-          quantityLimitPerWallet: ethers.constants.Zero,
-          pricePerToken: ethers.constants.Zero,
-          currency: ethers.constants.AddressZero
-        };
+        // Optional allowlist proof (blank)
+        const allowlist = { proof:[], quantityLimitPerWallet:0, pricePerToken:0, currency:ethers.constants.AddressZero };
 
-        // 6) Dry run
-        await drop.callStatic.claim(
-          userAddress, qtyBase, currencyAddr, pricePerToken, allowlistProof, "0x", overrides
-        );
+        // Dry-run
+        await drop.callStatic.claim(me, qtyBase, currency, pricePer, allowlist, "0x", overrides);
 
-        // 7) Send tx
-        const tx = await drop.claim(
-          userAddress, qtyBase, currencyAddr, pricePerToken, allowlistProof, "0x", overrides
-        );
-        showNotification("Claim submitted...", "warning", `${EXPLORER_URL}/tx/${tx.hash}`);
+        showToast("Submitting purchase…","warn");
+        txBox.style.display="block"; setProg(20);
+        const tx = await drop.claim(me, qtyBase, currency, pricePer, allowlist, "0x", overrides);
+        txHref.textContent = short(tx.hash); txHref.href = `${EXPLORER}/tx/${tx.hash}`;
+        animateProgTo(85);
         await tx.wait();
-
-        await loadBalancesAndGate();
-        showNotification("✅ SólCoin purchase confirmed!", "success", `${EXPLORER_URL}/tx/${tx.hash}`);
-      } catch (err) {
-        const reason = await decodeRevert(err);
-        console.error("Buy SólCoin error:", err);
-        showNotification(`Buy SólCoin failed: ${reason}`, "error");
+        setProg(100);
+        await loadAll();
+        confetti(); showToast("SólCoin purchase confirmed","ok");
+      }catch(err){
+        console.error(err);
+        txBox.style.display="none";
+        showToast(`Buy SólCoin failed: ${parseRevert(err) || 'Reverted'}`,"err");
       }
     }
 
-    /********** Inspect & Helpers **********/
-    async function inspectClaim() {
-      const condId = await drop.getActiveClaimConditionId();
-      const c = await drop.getClaimConditionById(condId);
-      const now = Math.floor(Date.now() / 1000);
-      console.table({
-        condId: condId.toString(),
-        start: `${c.startTimestamp} (${toDate(Number(c.startTimestamp))})`,
-        active: now >= Number(c.startTimestamp),
-        pricePerToken_raw: c.pricePerToken.toString(),
-        currency: c.currency,
-        perWallet: c.quantityLimitPerWallet?.toString?.(),
-        maxSupply: c.maxClaimableSupply?.toString?.(),
-        claimed: c.supplyClaimed?.toString?.(),
-        merkleRoot: c.merkleRoot
-      });
+    /********** Helpers **********/
+    function short(a){ return a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—"; }
+    function fmtAddr(a){ return a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—"; }
+    function setProg(p){ txProg.style.width = p+"%"; }
+    function animateProgTo(target){
+      let w = parseInt(txProg.style.width||"0"); clearInterval(txTicker);
+      txTicker = setInterval(()=>{ w += 1; if(w >= target){ clearInterval(txTicker); } txProg.style.width = w+"%"; }, 400);
     }
-    function toDate(ts){ if(!ts)return "0"; const d=new Date(Number(ts)*1000||Number(ts)); return isNaN(d.getTime())?String(ts):d.toISOString(); }
-    function selectorOf(data){ return (typeof data==="string" && data.startsWith("0x")) ? data.slice(0,10) : null; }
-    async function decodeRevert(error){
+    function showToast(msg, kind="info", timeout=4800){
+      toast.className = "toast show";
+      if(kind==="ok") toast.classList.add("ok");
+      else if(kind==="err") toast.classList.add("err");
+      else if(kind==="warn") toast.classList.add("warn");
+      toastMsg.textContent = msg;
+      clearTimeout(toast._t); toast._t = setTimeout(()=> toast.className="toast", timeout);
+    }
+    async function safeSymbol(erc20, fallback="TOKEN"){ try{ return await erc20.symbol(); } catch { return fallback; } }
+    async function readDecimalsOr(erc20, fb=18){ try{ return await erc20.decimals(); } catch { return fb; } }
+
+    function parseRevert(error){
       try{
-        const data = error?.error?.data || error?.data || error?.receipt?.revertReason || error?.message || "";
-        const sel = selectorOf(data);
-        if (sel === "0x08c379a0") { const [reason]=ethers.utils.defaultAbiCoder.decode(["string"],"0x"+data.slice(10)); return reason; }
-        if (sel === "0x4e487b71") { const [code]=ethers.utils.defaultAbiCoder.decode(["uint256"],"0x"+data.slice(10)); return `Panic: ${code.toString()}`; }
-        const iface = new ethers.utils.Interface([
-          "error NotAuthorized()","error NotInMerkleProof()","error NotEnoughTokens()",
-          "error ClaimInactive(uint256,uint256)","error ExceedsMaxPerWallet(uint256,uint256)",
-          "error ExceedsMaxSupply(uint256,uint256)","error InvalidCurrency(address,address)",
-          "error InsufficientFunds()","error WrongPrice(uint256,uint256)"
-        ]);
-        try{ const parsed=iface.parseError(data); if(parsed) return parsed.name+(parsed.args?.length?` ${parsed.args.map(a=>a.toString()).join(", ")}`:""); }catch{}
-        return sel?`Reverted (${sel})`:(typeof data==="string"?data:"Transaction reverted");
-      }catch{return "Transaction reverted";}
-    }
-    async function safeSymbol(erc20){ try{ return await erc20.symbol(); } catch { return "TOKEN"; } }
-    async function readDecimalsOr(erc20, fallback=18){ try{ return await erc20.decimals(); } catch { return fallback; } }
-
-    /********** UI utils **********/
-    function viewOnExplorer(){ window.open(`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}`, "_blank"); }
-    function formatAddress(addr){ return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : ""; }
-    function showNotification(message, type="info", link=null){
-      const el = notification;
-      const icon = type==="error"?"fas fa-exclamation-circle":type==="success"?"fas fa-check-circle":type==="warning"?"fas fa-exclamation-triangle":"fas fa-info-circle";
-      el.innerHTML = `<i class="${icon}"></i><span id="notificationMessage">${message}</span>${link?`<a href="${link}" target="_blank" style="color: var(--primary); margin-left: auto;"><i class="fas fa-external-link-alt"></i></a>`:""}`;
-      el.className = `notification ${type} show`;
-      clearTimeout(el.timeout); el.timeout = setTimeout(()=>el.classList.remove("show"), 5000);
+        const data = error?.error?.data || error?.data || "";
+        if(typeof data === "string" && data.startsWith("0x08c379a0")){
+          const [reason] = ethers.utils.defaultAbiCoder.decode(["string"], "0x"+data.slice(10));
+          return reason;
+        }
+      }catch{}
+      return error?.reason || error?.message;
     }
 
-    /********** Countdown **********/
-    function startCountdown(){
-      const target=new Date(); target.setDate(target.getDate()+7);
-      const update=()=>{
-        const diff=+target-+new Date(); if(diff<=0){["days","hours","minutes","seconds"].forEach(id=>document.getElementById(id).textContent="00"); return;}
-        const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000), m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
-        daysEl.textContent=String(d).padStart(2,"0"); hoursEl.textContent=String(h).padStart(2,"0"); minutesEl.textContent=String(m).padStart(2,"0"); secondsEl.textContent=String(s).padStart(2,"0");
-      };
-      update(); setInterval(update,1000);
+    // Light confetti burst without external deps
+    function confetti(){
+      try{
+        const n=28, root=document.body;
+        for(let i=0;i<n;i++){
+          const s=document.createElement('span');
+          s.style.position='fixed';
+          s.style.left=(50+Math.random()*10-5)+'%';
+          s.style.top='-10px';
+          s.style.width=s.style.height=(6+Math.random()*8)+'px';
+          s.style.background = ['#00ffe7','#ff00aa','#e6c15a','#00ff88'][i%4];
+          s.style.borderRadius='2px';
+          s.style.pointerEvents='none';
+          s.style.zIndex=9999;
+          s.style.transform=`rotate(${Math.random()*360}deg)`;
+          s.style.transition='transform 1.6s ease, top 1.6s ease, opacity 1.8s ease';
+          root.appendChild(s);
+          requestAnimationFrame(()=>{
+            s.style.top = '110%';
+            s.style.transform += ` translate(${(Math.random()*2-1)*140}px,0) rotate(${(Math.random()*2-1)*360}deg)`;
+            s.style.opacity='0';
+          });
+          setTimeout(()=>s.remove(),1900);
+        }
+      }catch{}
     }
 
-    /********** Events & Init **********/
-    function setupEventListeners(){
-      connectBtn.addEventListener("click", connectWallet);
-      getTokensButton.addEventListener("click", mintTokens);
-      viewExplorer.addEventListener("click", viewOnExplorer);
-      buySolBtn.addEventListener("click", ()=> buySolCoin("1"));
-    }
-    function initParticles(){
-      particlesJS('particles-js',{
-        particles:{number:{value:80,density:{enable:true,value_area:800}},color:{value:["#00ffe7","#ff00aa"]},
-          shape:{type:"circle"},opacity:{value:.5,random:true},size:{value:3,random:true},
-          line_linked:{enable:true,distance:150,color:"#00ffe7",opacity:.2,width:1},move:{enable:true,speed:1,random:true}},
-        interactivity:{events:{onhover:{enable:true,mode:"grab"}}},retina_detect:true});
-    }
-
-    window.addEventListener('DOMContentLoaded', ()=>{
-      initParticles();
-      setupWeb3Modal();
-      setupEventListeners();
-      startCountdown();
-      if (web3Modal?.cachedProvider) connectWallet();
+    /********** Events **********/
+    document.addEventListener('click', (e)=>{
+      if(e.target.closest('.copy')){
+        const targetId = e.target.closest('.copy').dataset.copyTarget;
+        const val = document.getElementById(targetId)?.textContent?.trim();
+        if(val){ navigator.clipboard.writeText(val); showToast("Address copied","ok",2000); }
+      }
     });
+    connectBtn.addEventListener('click', connect);
+    el('openExplorer').addEventListener('click', ()=> window.open(`${EXPLORER}/token/${CONTRACT_ADDRESS}`,'_blank'));
+    el('thirdwebSol').addEventListener('click', ()=> window.open(THIRDWEB_SOL_LINK,'_blank'));
+    el('thirdwebNFT').addEventListener('click', ()=> window.open(THIRDWEB_NFT_LINK,'_blank'));
+    mintBtn.addEventListener('click', doMint);
+    buyBtn.addEventListener('click', buySol);
+
+    /********** Init **********/
+    (function init(){
+      setupWeb3Modal();
+      // Show contract addresses immediately for copying
+      klyAddr.textContent = fmtAddr(CONTRACT_ADDRESS); klyAddrFull.textContent = CONTRACT_ADDRESS;
+      solAddr.textContent = fmtAddr(SOL_DROP_ADDRESS); solAddrFull.textContent = SOL_DROP_ADDRESS;
+      threshTxt.textContent = `${KLY_THRESHOLD_HUMAN} KLY`;
+
+      if(window.Web3Modal && web3Modal?.cachedProvider){ connect(); }
+    })();
   </script>
 </body>
 </html>
