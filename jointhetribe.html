@@ -11,917 +11,545 @@
   <meta property="og:image" content="https://yourdomain.com/images/social-preview.jpg">
   <meta property="og:url" content="https://yourdomain.com">
   <meta name="twitter:card" content="summary_large_image">
-  
+
   <!-- Preload critical resources -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="image" href="tribal-background.jpg">
-  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js">
-  
+  <!-- Use UMD so window.ethers exists -->
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js">
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js">
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js">
+
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+
   <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
+
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
-  
+
   <style>
-    :root {
-      --primary: #ffd700;
-      --primary-dark: #d4af37;
-      --dark: #0b0b0b;
-      --darker: #050505;
-      --light: #f5f5f5;
-      --accent: #8a2be2;
-      --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    html {
-      scroll-behavior: smooth;
-    }
-    
-    body {
-      background: var(--dark);
-      color: var(--light);
-      font-family: 'Cinzel', serif;
-      line-height: 1.6;
-      text-align: center;
-      overflow-x: hidden;
-      position: relative;
-    }
-    
-    /* Loading animation */
-    .loader {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: var(--darker);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      transition: opacity 0.8s ease-out;
-    }
-    
-    .loader-spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid rgba(255, 215, 0, 0.3);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
-      margin-bottom: 20px;
-    }
-    
-    .loader-text {
-      color: var(--primary);
-      font-family: 'Cinzel Decorative', serif;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    
-    .hero {
-      padding: 120px 20px;
-      background: linear-gradient(rgba(11, 11, 11, 0.7), rgba(11, 11, 11, 0.9)), 
-                  url('tribal-background.jpg') no-repeat center center/cover;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: var(--transition);
-    }
-    
-    .hero.loaded {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 100px;
-      background: linear-gradient(transparent, var(--dark));
-      z-index: 1;
-    }
-    
-    h1, h2, h3 {
-      font-family: 'Cinzel Decorative', serif;
-      font-weight: 700;
-      letter-spacing: 1px;
-    }
-    
-    .hero h1 {
-      font-size: clamp(2.5rem, 5vw, 4.5rem);
-      margin-bottom: 0.5em;
-      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-      animation: pulse 3s infinite;
-      position: relative;
-      z-index: 2;
-    }
-    
-    .hero p {
-      font-size: clamp(1.2rem, 2vw, 1.4rem);
-      margin-bottom: 1.5em;
-      max-width: 800px;
-      position: relative;
-      z-index: 2;
-    }
-    
-    .cta-button {
-      background: var(--primary);
-      color: var(--dark);
-      border: none;
-      padding: 18px 36px;
-      font-size: 1.2rem;
-      font-family: 'Cinzel', serif;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 50px;
-      transition: var(--transition);
-      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
-      position: relative;
-      overflow: hidden;
-      z-index: 1;
-    }
-    
-    .cta-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 0;
-      height: 100%;
-      background: var(--light);
-      transition: width 0.4s ease;
-      z-index: -1;
-    }
-    
-    .cta-button:hover::before {
-      width: 100%;
-    }
-    
-    .cta-button:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
-    }
-    
-    .cta-button:active {
-      transform: translateY(1px);
-    }
-    
-    .status-message {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111;
-      color: #FFD700;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-family: 'Cinzel', serif;
-      font-size: 14px;
-      border: 1px solid gold;
-      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-      z-index: 9999;
-      opacity: 0;
-      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      max-width: 90%;
-    }
-    
-    .status-message.visible {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    
-    .status-message.hidden {
-      opacity: 0;
-      transform: translateX(-50%) translateY(20px);
-    }
-    
-    .status-icon {
-      font-size: 1.2em;
-    }
-    
-    .section {
-      padding: 100px 20px;
-      position: relative;
-      opacity: 0;
-      transform: translateY(30px);
-      transition: var(--transition);
-    }
-    
-    .section.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .section:nth-child(even) {
-      background: var(--darker);
-    }
-    
-    .section-title {
-      font-size: clamp(2rem, 4vw, 2.5rem);
-      margin-bottom: 60px;
-      position: relative;
-      display: inline-block;
-    }
-    
-    .section-title::after {
-      content: '';
-      position: absolute;
-      bottom: -15px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100px;
-      height: 3px;
-      background: var(--primary);
-    }
-    
-    .pathways-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .pathway {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 215, 0, 0.2);
-      border-radius: 10px;
-      padding: 40px 30px;
-      width: 100%;
-      max-width: 350px;
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    
-    .pathway.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .pathway::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 5px;
-      background: var(--primary);
-    }
-    
-    .pathway:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
-      background: rgba(255, 255, 255, 0.08);
-    }
-    
-    .pathway-icon {
-      font-size: 2.5rem;
-      margin-bottom: 20px;
-      color: var(--primary);
-      transition: var(--transition);
-    }
-    
-    .pathway:hover .pathway-icon {
-      transform: scale(1.1);
-    }
-    
-    .pathway h3 {
-      font-size: 1.5rem;
-      margin-bottom: 15px;
-    }
-    
-    .pathway p {
-      margin-bottom: 25px;
-      color: rgba(245, 245, 245, 0.8);
-    }
-    
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      transition: color 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    a:hover {
-      color: var(--light);
-    }
-    
-    .arrow-icon {
-      transition: transform 0.3s ease;
-    }
-    
-    a:hover .arrow-icon {
-      transform: translateX(5px);
-    }
-    
-    .testimonials {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px;
-      background: rgba(255, 215, 0, 0.05);
-      border-radius: 10px;
-      border-left: 3px solid var(--primary);
-      position: relative;
-      opacity: 0;
-      transform: scale(0.95);
-      transition: var(--transition);
-    }
-    
-    .testimonials.visible {
-      opacity: 1;
-      transform: scale(1);
-    }
-    
-    .testimonial-text {
-      font-style: italic;
-      margin-bottom: 20px;
-      position: relative;
-      font-size: 1.1rem;
-      line-height: 1.8;
-    }
-    
-    .testimonial-text::before,
-    .testimonial-text::after {
-      content: '"';
-      color: var(--primary);
-      font-size: 1.5rem;
-      font-family: serif;
-    }
-    
-    .testimonial-author {
-      font-weight: bold;
-      color: var(--primary);
-      display: block;
-      margin-top: 15px;
-    }
-    
-    footer {
-      padding: 60px 20px;
-      background: var(--darker);
-      border-top: 1px solid rgba(255, 215, 0, 0.1);
-    }
-    
-    .social-links {
-      display: flex;
-      justify-content: center;
-      gap: 25px;
-      margin: 30px 0;
-    }
-    
-    .social-links a {
-      font-size: 1.5rem;
-      color: var(--light);
-      transition: var(--transition);
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.05);
-    }
-    
-    .social-links a:hover {
-      color: var(--primary);
-      transform: translateY(-5px) scale(1.1);
-      box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    }
-    
-    .copyright {
-      color: rgba(245, 245, 245, 0.6);
-      font-size: 0.9rem;
-      margin-top: 20px;
-    }
-    
-    /* Animations */
-    @keyframes pulse {
-      0% { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-      50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
-      100% { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    /* Scroll indicator */
-    .scroll-down {
-      position: absolute;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: var(--primary);
-      font-size: 2rem;
-      animation: bounce 2s infinite;
-      cursor: pointer;
-      z-index: 2;
-      transition: var(--transition);
-    }
-    
-    .scroll-down:hover {
-      color: var(--light);
-      animation: none;
-      transform: translateX(-50%) translateY(5px);
-    }
-    
-    @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
-      40% { transform: translateY(-20px) translateX(-50%); }
-      60% { transform: translateY(-10px) translateX(-50%); }
-    }
-    
-    /* Floating particles */
-    .particles {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    }
-    
-    .particle {
-      position: absolute;
-      background: var(--primary);
-      border-radius: 50%;
-      opacity: 0.3;
-      animation: float linear infinite;
-    }
-    
-    @keyframes float {
-      0% { transform: translateY(0) rotate(0deg); }
-      100% { transform: translateY(-100vh) rotate(360deg); }
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .hero {
-        padding: 80px 20px;
-      }
-      
-      .pathways-container {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .pathway {
-        max-width: 100%;
-      }
-      
-      .status-message {
-        width: 90%;
-        text-align: center;
-        padding: 10px 15px;
-      }
-    }
-    
-    /* Wallet connection button */
-    .wallet-btn {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(255, 215, 0, 0.1);
-      color: var(--primary);
-      border: 1px solid var(--primary);
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-family: 'Cinzel', serif;
-      cursor: pointer;
-      transition: var(--transition);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .wallet-btn:hover {
-      background: rgba(255, 215, 0, 0.2);
-      transform: translateY(-2px);
-    }
-    
-    .wallet-btn.connected {
-      background: rgba(255, 215, 0, 0.2);
-      border-color: var(--light);
-    }
-    
-    /* Tooltip */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-    }
-    
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      width: 200px;
-      background-color: #111;
-      color: var(--light);
-      text-align: center;
-      border-radius: 6px;
-      padding: 10px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      opacity: 0;
-      transition: opacity 0.3s;
-      font-size: 0.9rem;
-      border: 1px solid var(--primary);
-    }
-    
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
+    :root{
+      --primary:#ffd700; --primary-dark:#d4af37; --primary-light:rgba(255,215,0,.1);
+      --dark:#0b0b0b; --darker:#050505; --light:#f5f5f5; --light-dim:rgba(245,245,245,.8);
+      --error:#ff3860; --success:#00c853; --warning:#ffab00;
+      --transition:all .4s cubic-bezier(.165,.84,.44,1); --transition-fast:all .2s ease;
+      --shadow-md:0 4px 6px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.08);
+      --shadow-gold:0 0 15px rgba(255,215,0,.4);
+      --radius:10px; --radius-lg:16px; --radius-xl:24px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--dark);color:var(--light);font-family:'Cinzel',serif;line-height:1.6;text-align:center;overflow-x:hidden;min-height:100vh}
+
+    /* Loader */
+    .loader{position:fixed;inset:0;background:var(--darker);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity .8s ease-out}
+    .loader-spinner{width:60px;height:60px;border:5px solid var(--primary-light);border-radius:50%;border-top-color:var(--primary);animation:spin 1.5s ease-in-out infinite;margin-bottom:1rem}
+    .loader-text{color:var(--primary);font-family:'Cinzel Decorative',serif;letter-spacing:2px;text-transform:uppercase}
+
+    /* Header */
+    header{position:fixed;top:0;left:0;width:100%;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;z-index:100;background:rgba(11,11,11,.8);backdrop-filter:blur(10px);transition:var(--transition)}
+    .header-scrolled{box-shadow:var(--shadow-md);background:rgba(5,5,5,.95);padding:.5rem 2rem}
+    .logo{display:flex;align-items:center;gap:.75rem}
+    .logo-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);border-radius:50%;border:1px solid var(--primary)}
+    .logo-text{font-family:'Cinzel Decorative',serif;font-weight:700;font-size:1.5rem}
+    .logo-text span{color:var(--primary)}
+
+    .nav-toggle{display:none;background:none;border:none;color:var(--light);font-size:1.5rem;cursor:pointer}
+    .nav-menu{display:flex;gap:1.5rem;list-style:none}
+    .nav-link{color:var(--light-dim);font-family:'Montserrat',sans-serif;font-weight:500;position:relative;transition:var(--transition-fast)}
+    .nav-link:hover{color:var(--primary)}
+    .nav-link::after{content:'';position:absolute;bottom:-5px;left:0;width:0;height:2px;background:var(--primary);transition:var(--transition-fast)}
+    .nav-link:hover::after{width:100%}
+
+    /* Wallet btn */
+    .wallet-btn{background:var(--primary-light);color:var(--primary);border:1px solid var(--primary);padding:.5rem 1.25rem;border-radius:var(--radius-xl);font-family:'Montserrat',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:.5rem;transition:var(--transition)}
+    .wallet-btn:hover{background:rgba(255,215,0,.2);transform:translateY(-2px)}
+    .wallet-btn.connected{background:rgba(255,215,0,.2);border-color:var(--light)}
+
+    /* Hero */
+    .hero{padding:180px 20px 120px;background:linear-gradient(rgba(11,11,11,.7),rgba(11,11,11,.9)),url('tribal-background.jpg') center/cover no-repeat;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;opacity:0;transform:translateY(20px);transition:var(--transition);position:relative}
+    .hero.loaded{opacity:1;transform:translateY(0)}
+    .hero h1{font-family:'Cinzel Decorative',serif;font-weight:700;font-size:clamp(2.5rem,5vw,4.5rem);margin-bottom:1rem;text-shadow:0 0 10px rgba(255,215,0,.5)}
+    .hero p{font-family:'Montserrat',sans-serif;font-size:clamp(1.1rem,2vw,1.4rem);color:var(--light-dim);margin-bottom:2rem}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.75rem;padding:1rem 2rem;font-size:1.05rem;font-weight:600;border-radius:var(--radius-xl);transition:var(--transition);border:none;cursor:pointer;position:relative;overflow:hidden}
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#111;box-shadow:var(--shadow-gold)}
+    .btn-primary:hover{transform:translateY(-3px);box-shadow:0 10px 25px rgba(255,215,0,.5)}
+    .btn-outline{background:transparent;color:var(--primary);border:2px solid var(--primary)}
+    .btn-outline:hover{background:var(--primary-light)}
+
+    .scroll-down{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);color:var(--primary);font-size:2rem;animation:bounce 2s infinite;cursor:pointer}
+    .scroll-down:hover{color:var(--light);animation:none;transform:translateX(-50%) translateY(5px)}
+
+    /* Sections */
+    .section{padding:6rem 2rem;opacity:0;transform:translateY(30px);transition:var(--transition)}
+    .section.visible{opacity:1;transform:translateY(0)}
+    .section-dark{background:var(--darker)}
+    .section-title{font-family:'Cinzel Decorative',serif;font-weight:700;font-size:clamp(2rem,4vw,2.8rem);margin-bottom:2.5rem;position:relative;display:inline-block}
+    .section-title::after{content:'';position:absolute;bottom:-1rem;left:50%;transform:translateX(-50%);width:100px;height:3px;background:var(--primary)}
+    .container{max-width:1200px;margin:0 auto}
+
+    .pathways{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2rem}
+    .pathway{background:rgba(255,255,255,.05);border:1px solid rgba(255,215,0,.2);border-radius:var(--radius-lg);padding:2.5rem 2rem;transition:var(--transition);position:relative;overflow:hidden;opacity:0;transform:translateY(20px)}
+    .pathway.visible{opacity:1;transform:translateY(0)}
+    .pathway::before{content:'';position:absolute;top:0;left:0;width:100%;height:5px;background:var(--primary)}
+    .pathway:hover{transform:translateY(-10px);box-shadow:0 10px 30px rgba(255,215,0,.2);background:rgba(255,255,255,.08)}
+    .pathway-icon{font-size:2.2rem;margin-bottom:1rem;color:var(--primary)}
+
+    .testimonials{max-width:800px;margin:0 auto}
+    .testimonial{background:rgba(255,215,0,.05);border-left:3px solid var(--primary);border-radius:var(--radius-lg);padding:2rem;opacity:0;transform:scale(.97);transition:var(--transition)}
+    .testimonial.visible{opacity:1;transform:scale(1)}
+    .testimonial-text{font-family:'Montserrat',sans-serif;color:var(--light-dim);font-style:italic;margin-bottom:1rem}
+
+    /* Status toast */
+    .status-message{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:rgba(17,17,17,.95);color:var(--light);padding:1rem 1.5rem;border-radius:var(--radius);border:1px solid var(--primary);box-shadow:var(--shadow-gold);z-index:9999;opacity:0;transition:all .4s cubic-bezier(.68,-.55,.265,1.55);display:flex;align-items:center;gap:.75rem;max-width:90%;backdrop-filter:blur(10px)}
+    .status-message.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+    .status-message.hidden{opacity:0;transform:translateX(-50%) translateY(20px)}
+    .status-success{border-color:var(--success);box-shadow:0 0 15px rgba(0,200,83,.3)}
+    .status-error{border-color:var(--error);box-shadow:0 0 15px rgba(255,56,96,.3)}
+    .status-warning{border-color:var(--warning);box-shadow:0 0 15px rgba(255,171,0,.3)}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(5,5,5,.9);display:flex;justify-content:center;align-items:center;z-index:1000;opacity:0;visibility:hidden;transition:var(--transition);backdrop-filter:blur(10px)}
+    .modal.active{opacity:1;visibility:visible}
+    .modal-content{background:var(--darker);border-radius:var(--radius-lg);padding:2rem;max-width:520px;width:90%;border:1px solid var(--primary);box-shadow:var(--shadow-gold);transform:scale(.92);transition:var(--transition)}
+    .modal.active .modal-content{transform:scale(1)}
+    .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--light-dim);font-size:1.4rem;cursor:pointer}
+    .modal-title{color:var(--primary);margin-bottom:1rem}
+
+    /* Particles */
+    .particles{position:absolute;inset:0;pointer-events:none}
+    .particle{position:absolute;background:var(--primary);border-radius:50%;opacity:.3;animation:float linear infinite}
+
+    /* Footer */
+    footer{padding:4rem 2rem;background:var(--darker);border-top:1px solid rgba(255,215,0,.1)}
+    .footer-links{display:flex;justify-content:center;flex-wrap:wrap;gap:1rem;margin:1.5rem 0}
+    .footer-link{color:var(--light-dim);font-family:'Montserrat',sans-serif}
+    .footer-link:hover{color:var(--primary)}
+    .social-links{display:flex;justify-content:center;gap:1.2rem;margin:1.5rem 0}
+    .social-link{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);color:var(--light);transition:var(--transition)}
+    .social-link:hover{color:var(--primary);transform:translateY(-4px) scale(1.06);box-shadow:0 5px 15px rgba(255,215,0,.2)}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes bounce{0%,20%,50%,80%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}60%{transform:translateY(-6px)}}
+    @keyframes float{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(-100vh) rotate(360deg)}}
+
+    @media (max-width:992px){
+      .nav-toggle{display:block}
+      .nav-menu{position:fixed;top:0;right:-100%;width:80%;max-width:300px;height:100vh;background:var(--darker);flex-direction:column;justify-content:center;align-items:center;transition:var(--transition);z-index:101}
+      .nav-menu.active{right:0}
+      .hero{padding:150px 20px 100px}
+    }
+    @media (max-width:768px){
+      header{padding:1rem}
+      .header-scrolled{padding:.5rem 1rem}
+      .hero{padding:120px 20px 80px}
+      .section{padding:4rem 1.5rem}
+      .pathways{grid-template-columns:1fr}
     }
   </style>
 </head>
 <body>
-  <!-- Loading screen -->
+  <!-- Loader -->
   <div class="loader" id="page-loader">
     <div class="loader-spinner"></div>
     <div class="loader-text">Entering Sacred Space...</div>
   </div>
 
-  <!-- Wallet connection button -->
-  <button class="wallet-btn" id="walletButton">
-    <i class="fas fa-wallet"></i>
-    <span>Connect Wallet</span>
-  </button>
+  <!-- Header -->
+  <header id="main-header">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-star"></i></div>
+      <div class="logo-text">KLY <span>Legacy</span></div>
+    </div>
 
-  <!-- Hero Section -->
-  <div class="hero" id="hero">
-    <!-- Floating particles -->
+    <button class="nav-toggle" id="nav-toggle"><i class="fas fa-bars"></i></button>
+
+    <ul class="nav-menu" id="nav-menu">
+      <li><a href="#hero" class="nav-link">Home</a></li>
+      <li><a href="#pathways" class="nav-link">Pathways</a></li>
+      <li><a href="#testimonials" class="nav-link">Wisdom</a></li>
+      <li><a href="#cta" class="nav-link">Initiation</a></li>
+    </ul>
+
+    <button class="wallet-btn" id="walletButton">
+      <i class="fas fa-wallet"></i><span>Connect Wallet</span>
+    </button>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
     <div class="particles" id="particles"></div>
-    
     <h1>You Were Called Here For A Reason</h1>
     <p>Claim Your Legacy. Join The Tribe. Begin Your Ascension.</p>
-    <button class="cta-button" onclick="scrollToSection()">Start Your Journey</button>
-    <div class="scroll-down" onclick="scrollToSection()">
-      <i class="fas fa-chevron-down"></i>
-    </div>
-  </div>
+    <button class="btn btn-primary" onclick="scrollToSection('pathways')">
+      Start Your Journey <i class="fas fa-arrow-right"></i>
+    </button>
+    <div class="scroll-down" onclick="scrollToSection('pathways')"><i class="fas fa-chevron-down"></i></div>
+  </section>
 
-  <!-- Pathways Section -->
-  <div class="section" id="join-section">
-    <h2 class="section-title">3 Sacred Pathways to Ascension</h2>
-    <div class="pathways-container">
-      <div class="pathway">
-        <div class="pathway-icon"><i class="fas fa-key"></i></div>
-        <h3>Claim Your NFT</h3>
-        <p>Own your proof of ascension and unlock sacred access to the KLY Legacy. Each NFT is a key to higher consciousness.</p>
-        <a href="/nft-drop.html">Go to Minting Page <span class="arrow-icon">→</span></a>
-      </div>
-      <div class="pathway">
-        <div class="pathway-icon"><i class="fas fa-book-open"></i></div>
-        <h3>Begin Your Awakening</h3>
-        <p>Access our private course: <em>The Path of Awakening</em> - ancient wisdom for modern seekers.</p>
-        <button class="cta-button" onclick="checkKLYAccess()">Begin Your Path <span class="arrow-icon">→</span></button>
-      </div>
-      <div class="pathway">
-        <div class="pathway-icon"><i class="fas fa-lock-open"></i></div>
-        <h3>Unlock the Vault</h3>
-        <p>Stake KLY, claim sacred relics, and enter the Chamber of Secrets where true transformation begins.</p>
-        <a href="/KLY-vault.html">Enter the Vault <span class="arrow-icon">→</span></a>
+  <!-- Pathways -->
+  <section class="section" id="pathways">
+    <div class="container">
+      <h2 class="section-title">3 Sacred Pathways to Ascension</h2>
+
+      <div class="pathways">
+        <div class="pathway">
+          <div class="pathway-icon"><i class="fas fa-key"></i></div>
+          <h3>Claim Your NFT</h3>
+          <p>Own your proof of ascension and unlock sacred access to the KLY Legacy. Each NFT is a key to higher consciousness.</p>
+          <button class="btn btn-outline" onclick="openModal('nft-modal')">
+            Learn More <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="pathway">
+          <div class="pathway-icon"><i class="fas fa-book-open"></i></div>
+          <h3>Begin Your Awakening</h3>
+          <p>Access our private course: <em>The Path of Awakening</em> — ancient wisdom for modern seekers.</p>
+          <button class="btn btn-outline" onclick="checkKLYAccess()">
+            Begin Your Path <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="pathway">
+          <div class="pathway-icon"><i class="fas fa-lock-open"></i></div>
+          <h3>Unlock the Vault</h3>
+          <p>Stake KLY, claim sacred relics, and enter the Chamber of Secrets where true transformation begins.</p>
+          <button class="btn btn-outline" onclick="checkNFTAccess()">
+            Enter the Vault <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- Testimonials -->
-  <div class="section">
-    <h2 class="section-title">Testimonials</h2>
-    <div class="testimonials">
-      <p class="testimonial-text">Joining the KLY Tribe was the turning point in my spiritual journey. The wisdom and community have transformed my life in ways I couldn't imagine.</p>
-      <p class="testimonial-author">- Marcus A., Initiate since 2025</p>
+  <section class="section section-dark" id="testimonials">
+    <div class="container">
+      <h2 class="section-title">Wisdom of the Tribe</h2>
+      <div class="testimonials">
+        <div class="testimonial">
+          <p class="testimonial-text">Joining the KLY Tribe was the turning point in my spiritual journey. The wisdom and community have transformed my life in ways I couldn't imagine.</p>
+          <span><strong>- Marcus A.</strong>, Initiate since 2025</span>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Final CTA -->
-  <div class="section">
-    <h2 class="section-title">Ready to Join the Tribe?</h2>
-    <p>Step into your divine role. This isn't just a movement — it's a Return to your true essence.</p>
-    <button class="cta-button" onclick="checkNFTAccess()">Begin Your Initiation</button>
-  </div>
+  <!-- CTA -->
+  <section class="section" id="cta">
+    <div class="container">
+      <h2 class="section-title">Ready to Join the Tribe?</h2>
+      <p>Step into your divine role. This isn't just a movement — it's a Return to your true essence.</p>
+      <button class="btn btn-primary" onclick="checkNFTAccess()">
+        Begin Your Initiation <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+  </section>
 
   <!-- Footer -->
   <footer>
-    <div class="social-links">
-      <a href="https://discord.gg/QZ6tecpF" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-      <a href="https://www.instagram.com/kly_official1?igsh=MXRnOGU4NzI4b3lleQ%3D%3D&utm_source=qr" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-      <a href="https://twitter.com/klyofficial" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+    <div class="container">
+      <div class="footer-links">
+        <a href="#hero" class="footer-link">Home</a>
+        <a href="#pathways" class="footer-link">Pathways</a>
+        <a href="#testimonials" class="footer-link">Wisdom</a>
+        <a href="#cta" class="footer-link">Initiation</a>
+        <a href="/privacy" class="footer-link">Privacy</a>
+        <a href="/terms" class="footer-link">Terms</a>
+      </div>
+      <div class="social-links">
+        <a href="https://discord.gg/QZ6tecpF" target="_blank" rel="noopener" class="social-link" aria-label="Discord"><i class="fab fa-discord"></i></a>
+        <a href="https://www.instagram.com/kly_official1" target="_blank" rel="noopener" class="social-link" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="https://twitter.com/klyofficial" target="_blank" rel="noopener" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+        <a href="https://medium.com/kly-legacy" target="_blank" rel="noopener" class="social-link" aria-label="Medium"><i class="fab fa-medium"></i></a>
+      </div>
+      <p class="copyright">© 2025 KLY Legacy. All rights reserved.</p>
     </div>
-    <p class="copyright">© 2025 KLY Legacy. All rights reserved.</p>
   </footer>
 
-  <!-- Status message element -->
-  <div id="status-message" class="status-message hidden">
-    <span class="status-icon" id="status-icon">ℹ️</span>
+  <!-- Status Toast -->
+  <div id="status-message" class="status-message hidden" role="status" aria-live="polite">
+    <span id="status-icon"><i class="fas fa-info-circle"></i></span>
     <span id="status-text"></span>
   </div>
 
+  <!-- NFT Modal -->
+  <div class="modal" id="nft-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('nft-modal')"><i class="fas fa-times"></i></button>
+      <h3 class="modal-title">Claim Your Key of Ascension</h3>
+      <p>Each Key of Ascension NFT grants access to:</p>
+      <ul style="text-align:left;margin:1rem 0 1.2rem;padding-left:1.2rem;font-family:'Montserrat',sans-serif">
+        <li>The Sacred Vault of Knowledge</li>
+        <li>Private Tribe Gatherings</li>
+        <li>Ancient Wisdom Teachings</li>
+        <li>Exclusive Meditation Practices</li>
+      </ul>
+      <p>To claim your Key, you’ll need:</p>
+      <ul style="text-align:left;margin:1rem 0 1.2rem;padding-left:1.2rem;font-family:'Montserrat',sans-serif">
+        <li>A Web3 wallet (MetaMask recommended)</li>
+        <li>BNB for gas fees</li>
+        <li>0.1 <b>BNB</b> for the initiation fee</li>
+      </ul>
+      <button class="btn btn-primary" onclick="checkNFTAccess()">Verify Eligibility <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script>
-    // Constants
+    /********** Constants **********/
     const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
     const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950';
     const NFT_TOKEN_ID = 2;
     const KLY_MIN_REQUIRED = 100;
-    const BNB_CHAIN_ID = '0x38';
-    
-    // DOM elements
+
+    const BNB_CHAIN_ID_HEX = '0x38';
+    const BNB_CHAIN_ID_DEC = 56;
+    const BNB_RPC = 'https://bsc-dataseed.binance.org/';
+    const BNB_EXPLORER = 'https://bscscan.com';
+
+    /********** DOM **********/
     const walletButton = document.getElementById('walletButton');
     const statusMessage = document.getElementById('status-message');
     const statusIcon = document.getElementById('status-icon');
     const statusText = document.getElementById('status-text');
     const pageLoader = document.getElementById('page-loader');
-    const heroSection = document.getElementById('hero');
+    const navToggle = document.getElementById('nav-toggle');
+    const navMenu = document.getElementById('nav-menu');
+    const mainHeader = document.getElementById('main-header');
     const particlesContainer = document.getElementById('particles');
 
-    // Initialize page
+    /********** Web3 state **********/
+    let web3Modal, extProvider, provider, signer, selectedAccount;
+
+    /********** Init **********/
     document.addEventListener('DOMContentLoaded', () => {
-      // Simulate loading (remove this in production)
+      // Simulated loader (optional)
       setTimeout(() => {
         pageLoader.style.opacity = '0';
-        setTimeout(() => {
-          pageLoader.style.display = 'none';
-          heroSection.classList.add('loaded');
-          initScrollAnimation();
-          createParticles();
-        }, 800);
-      }, 1500);
-      
-      // Check if wallet is already connected
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        updateWalletButton(true, shortenAddress(window.ethereum.selectedAddress));
-      }
-      
-      // Add wallet connection handler
-      if (walletButton) {
-        walletButton.addEventListener('click', connectWallet);
+        setTimeout(() => { pageLoader.style.display = 'none'; }, 800);
+      }, 1200);
+
+      setupWeb3Modal();
+      walletButton.addEventListener('click', connectWallet);
+
+      // header + menu
+      window.addEventListener('scroll', handleHeaderScroll);
+      navToggle.addEventListener('click', toggleMobileMenu);
+      document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => { if(navMenu.classList.contains('active')) toggleMobileMenu(); }));
+
+      // particles + reveal
+      createParticles();
+      initRevealObserver();
+
+      // initial connected state (nice-to-have)
+      if (window.ethereum) {
+        window.ethereum.request({ method:'eth_accounts' }).then(accs => {
+          if (accs?.[0]) updateWalletButton(true, shorten(accs[0]));
+        });
       }
     });
 
-    // Create floating particles
-    function createParticles() {
-      const particleCount = window.innerWidth < 768 ? 15 : 30;
-      
-      for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.classList.add('particle');
-        
-        // Random properties
-        const size = Math.random() * 5 + 2;
-        const posX = Math.random() * 100;
-        const duration = Math.random() * 20 + 10;
-        const delay = Math.random() * 10;
-        
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
-        particle.style.left = `${posX}%`;
-        particle.style.animationDuration = `${duration}s`;
-        particle.style.animationDelay = `-${delay}s`;
-        particle.style.opacity = Math.random() * 0.5 + 0.1;
-        
-        particlesContainer.appendChild(particle);
+    /********** Particles **********/
+    function createParticles(){
+      const count = window.innerWidth < 768 ? 14 : 28;
+      for(let i=0;i<count;i++){
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random()*5+2;
+        const left = Math.random()*100;
+        const dur = Math.random()*20+10;
+        const delay = Math.random()*10;
+        p.style.width = `${size}px`;
+        p.style.height = `${size}px`;
+        p.style.left = `${left}%`;
+        p.style.animationDuration = `${dur}s`;
+        p.style.animationDelay = `-${delay}s`;
+        p.style.opacity = (Math.random()*0.5+0.1).toFixed(2);
+        particlesContainer.appendChild(p);
       }
     }
 
-    // Initialize scroll animations
-    function initScrollAnimation() {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-          }
-        });
-      }, { threshold: 0.1 });
-
-      document.querySelectorAll('.section, .pathway, .testimonials').forEach(el => {
-        observer.observe(el);
-      });
+    /********** Reveal on scroll **********/
+    function initRevealObserver(){
+      const hero = document.querySelector('.hero'); hero.classList.add('loaded');
+      const obs = new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+      },{threshold:0.1});
+      document.querySelectorAll('.section,.pathway,.testimonial').forEach(el=>obs.observe(el));
     }
 
-    // Wallet connection functions
-    async function connectWallet() {
-      try {
-        if (typeof window.ethereum === 'undefined') {
-          showStatus('🦊 MetaMask not found. Please install it.', 'error');
-          setTimeout(() => {
-            window.open('https://metamask.io/download.html', '_blank');
-          }, 2000);
-          return;
+    /********** Header + Menu **********/
+    function handleHeaderScroll(){ if(window.scrollY>50) mainHeader.classList.add('header-scrolled'); else mainHeader.classList.remove('header-scrolled'); }
+    function toggleMobileMenu(){ navMenu.classList.toggle('active'); navToggle.innerHTML = navMenu.classList.contains('active')?'<i class="fas fa-times"></i>':'<i class="fas fa-bars"></i>'; }
+    function scrollToSection(id){ document.getElementById(id).scrollIntoView({ behavior:'smooth' }); }
+
+    /********** Web3Modal (v1) **********/
+    function setupWeb3Modal(){
+      const providerOptions = {
+        walletconnect: {
+          package: window.WalletConnectProvider.default,
+          options: {
+            rpc: { [BNB_CHAIN_ID_DEC]: BNB_RPC },
+            chainId: BNB_CHAIN_ID_DEC,
+            bridge: 'https://bridge.walletconnect.org',
+            qrcode: true
+          }
         }
+      };
+      web3Modal = new window.Web3Modal.default({
+        cacheProvider: true,
+        providerOptions,
+        theme: { background:'#0b0b0b', main:'#f5f5f5', secondary:'#cfcfcf', border:'rgba(255,215,0,.2)', hover:'rgba(255,215,0,.1)' }
+      });
 
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        updateWalletButton(true, shortenAddress(accounts[0]));
-        showStatus('✅ Wallet connected successfully!', 'success');
-        
-        // Listen for account changes
-        window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) {
-            updateWalletButton(false);
-            showStatus('⚠️ Wallet disconnected', 'warning');
+      // Auto-connect if previously cached
+      if (web3Modal.cachedProvider) connectWallet();
+    }
+
+    async function connectWallet(){
+      try{
+        if (!web3Modal) setupWeb3Modal();
+        extProvider = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(extProvider);
+        signer = provider.getSigner();
+        selectedAccount = await signer.getAddress();
+        updateWalletButton(true, shorten(selectedAccount));
+        showStatus('Wallet connected successfully!', 'success');
+
+        // events
+        if (extProvider.on){
+          extProvider.on('accountsChanged', (accs)=>{
+            if(!accs?.length){ resetWalletUI(); showStatus('Wallet disconnected', 'warning'); }
+            else { selectedAccount = accs[0]; updateWalletButton(true, shorten(selectedAccount)); }
+          });
+          extProvider.on('chainChanged', ()=> window.location.reload());
+          extProvider.on('disconnect', ()=> { resetWalletUI(); showStatus('Wallet disconnected', 'warning'); });
+        }
+      }catch(e){
+        console.error(e);
+        showStatus('Could not connect wallet', 'error');
+      }
+    }
+
+    function resetWalletUI(){ selectedAccount = null; updateWalletButton(false); }
+
+    /********** Network guard + Provider **********/
+    async function connectWalletAndVerifyNetwork(){
+      // ensure connected
+      if(!selectedAccount){ await connectWallet(); if(!selectedAccount) throw new Error('No wallet connected'); }
+      const chainId = await provider.send('eth_chainId', []);
+      if (chainId !== BNB_CHAIN_ID_HEX){
+        try{
+          await provider.send('wallet_switchEthereumChain', [{ chainId: BNB_CHAIN_ID_HEX }]);
+        }catch(err){
+          if (err?.code === 4902){
+            await provider.send('wallet_addEthereumChain',[{
+              chainId: BNB_CHAIN_ID_HEX, chainName:'BNB Smart Chain',
+              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+              rpcUrls:[BNB_RPC], blockExplorerUrls:[BNB_EXPLORER]
+            }]);
           } else {
-            updateWalletButton(true, shortenAddress(accounts[0]));
+            showStatus('Please switch to BNB Smart Chain', 'error');
+            throw err;
           }
-        });
-        
-        // Listen for chain changes
-        window.ethereum.on('chainChanged', () => {
-          window.location.reload();
-        });
-        
-      } catch (error) {
-        console.error('Wallet connection error:', error);
-        showStatus('⚠️ Could not connect wallet', 'error');
+        }
+      }
+      return provider;
+    }
+
+    /********** Gates **********/
+    async function checkKLYAccess(){
+      try{
+        showStatus('Checking KLY balance...', 'info');
+        const provider = await connectWalletAndVerifyNetwork();
+        const signer = provider.getSigner();
+        const user = await signer.getAddress();
+
+        const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
+        const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
+        const [raw, dec] = await Promise.all([kly.balanceOf(user), kly.decimals()]);
+        const need = ethers.utils.parseUnits(String(KLY_MIN_REQUIRED), dec);
+
+        if (raw.gte(need)){
+          showStatus('Access granted. Redirecting...', 'success');
+          setTimeout(()=>{ window.location.href='/kly-course.html'; }, 900);
+        } else {
+          const human = ethers.utils.formatUnits(raw, dec);
+          showStatus(`You need at least ${KLY_MIN_REQUIRED} KLY. You have ${Number(human).toFixed(2)} KLY.`, 'warning');
+          openModal('nft-modal');
+        }
+      }catch(e){
+        console.error(e);
+        showStatus('Could not verify token balance', 'error');
       }
     }
 
-    function updateWalletButton(connected, address = '') {
-      if (connected) {
-        walletButton.innerHTML = `<i class="fas fa-check-circle"></i><span>${address}</span>`;
-        walletButton.classList.add('connected');
-      } else {
-        walletButton.innerHTML = '<i class="fas fa-wallet"></i><span>Connect Wallet</span>';
-        walletButton.classList.remove('connected');
+    async function checkNFTAccess(){
+      try{
+        showStatus('Verifying NFT ownership...', 'info');
+        const provider = await connectWalletAndVerifyNetwork();
+        const signer = provider.getSigner();
+        const user = await signer.getAddress();
+
+        // ERC-1155
+        const abi = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+        const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+        const bal = await nft.balanceOf(user, NFT_TOKEN_ID);
+
+        if (ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0){
+          showStatus('NFT verified. Unlocking Portal...', 'success');
+          setTimeout(()=>{ window.location.href='/portal.html'; }, 900);
+        } else {
+          showStatus("You must hold the 'Key of Ascension' NFT", 'warning');
+          openModal('nft-modal');
+        }
+      }catch(e){
+        console.error(e);
+        showStatus('NFT verification failed', 'error');
       }
     }
 
-    function shortenAddress(address) {
-      return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    /********** UI helpers **********/
+    function updateWalletButton(connected, addr=''){
+      walletButton.innerHTML = connected
+        ? `<i class="fas fa-check-circle"></i><span>${addr}</span>`
+        : `<i class="fas fa-wallet"></i><span>Connect Wallet</span>`;
+      walletButton.classList.toggle('connected', connected);
     }
+    function shorten(a){ return `${a.slice(0,6)}...${a.slice(-4)}`; }
 
-    // Status message functions
-    function showStatus(msg, type = 'info') {
-      // Set icon based on type
-      let icon;
-      switch(type) {
-        case 'success':
-          icon = '✅';
-          break;
-        case 'error':
-          icon = '❌';
-          break;
-        case 'warning':
-          icon = '⚠️';
-          break;
-        default:
-          icon = 'ℹ️';
-      }
-      
-      statusIcon.textContent = icon;
+    let hideTimer;
+    function showStatus(msg, type='info'){
+      statusMessage.classList.remove('status-success','status-error','status-warning');
+      if(type==='success') statusMessage.classList.add('status-success');
+      if(type==='error')   statusMessage.classList.add('status-error');
+      if(type==='warning') statusMessage.classList.add('status-warning');
+
+      const icon = type==='success' ? 'fa-check-circle' :
+                   type==='error'   ? 'fa-exclamation-circle' :
+                   type==='warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+      statusIcon.innerHTML = `<i class="fas ${icon}"></i>`;
       statusText.textContent = msg;
-      
-      // Show message
+
       statusMessage.classList.remove('hidden');
       statusMessage.classList.add('visible');
-      
-      // Hide after delay
-      setTimeout(() => {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(()=>{
         statusMessage.classList.remove('visible');
         statusMessage.classList.add('hidden');
       }, 5000);
     }
 
-    // Verification functions
-    async function connectWalletAndVerifyNetwork() {
-      if (typeof window.ethereum === 'undefined') {
-        showStatus('🦊 MetaMask not found. Redirecting...', 'error');
-        setTimeout(() => {
-          window.location.href = 'https://metamask.app.link/dapp/kellylegacyestates.com';
-        }, 2000);
-        throw new Error('Wallet not found');
-      }
-
-      // Connect wallet if not already connected
-      if (!window.ethereum.selectedAddress) {
-        await connectWallet();
-      }
-
-      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (currentChainId !== BNB_CHAIN_ID) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: BNB_CHAIN_ID }],
-          });
-        } catch (err) {
-          if (err.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: BNB_CHAIN_ID,
-                  chainName: 'Binance Smart Chain',
-                  nativeCurrency: {
-                    name: 'BNB',
-                    symbol: 'BNB',
-                    decimals: 18
-                  },
-                  rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                  blockExplorerUrls: ['https://bscscan.com']
-                }]
-              });
-            } catch (addError) {
-              showStatus('⚠️ Please switch to BNB Smart Chain.', 'error');
-              throw addError;
-            }
-          } else {
-            showStatus('⚠️ Please switch to BNB Smart Chain.', 'error');
-            throw err;
-          }
-        }
-      }
-
-      return new ethers.providers.Web3Provider(window.ethereum);
-    }
-
-    async function checkKLYAccess() {
-      try {
-        showStatus('🔍 Checking KLY balance...', 'info');
-        const provider = await connectWalletAndVerifyNetwork();
-        const signer = provider.getSigner();
-        const userAddress = await signer.getAddress();
-
-        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-        const tokenContract = new ethers.Contract(KLY_TOKEN_ADDRESS, tokenAbi, provider);
-        const balance = await tokenContract.balanceOf(userAddress);
-        const formattedBalance = parseFloat(ethers.utils.formatUnits(balance, 18));
-
-        if (formattedBalance >= KLY_MIN_REQUIRED) {
-          showStatus("✅ Access granted. Redirecting...", 'success');
-          setTimeout(() => {
-            window.location.href = "/kly-course.html";
-          }, 1000);
-        } else {
-          showStatus(`⚠️ You need at least ${KLY_MIN_REQUIRED} KLY. You have ${formattedBalance.toFixed(2)} KLY.`, 'warning');
-        }
-      } catch (err) {
-        console.error(err);
-        showStatus("⚠️ Could not verify token balance.", 'error');
-      }
-    }
-
-    async function checkNFTAccess() {
-      try {
-        showStatus('🔍 Verifying NFT ownership...', 'info');
-        const provider = await connectWalletAndVerifyNetwork();
-        const signer = provider.getSigner();
-        const userAddress = await signer.getAddress();
-
-        const nftAbi = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
-        const nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, nftAbi, signer);
-        const balance = await nftContract.balanceOf(userAddress, NFT_TOKEN_ID);
-
-        if (balance > 0) {
-          showStatus("🔓 NFT verified. Unlocking Portal...", 'success');
-          setTimeout(() => {
-            window.location.href = "/portal.html";
-          }, 1000);
-        } else {
-          showStatus("⛔ You must hold the 'Key of Ascension' NFT.", 'warning');
-        }
-      } catch (err) {
-        console.error(err);
-        showStatus("⚠️ NFT verification failed.", 'error');
-      }
-    }
-
-    // Utility functions
-    function scrollToSection() {
-      document.getElementById('join-section').scrollIntoView({ behavior: 'smooth' });
-    }
+    function openModal(id){ document.getElementById(id).classList.add('active'); document.body.style.overflow='hidden'; }
+    function closeModal(id){ document.getElementById(id).classList.remove('active'); document.body.style.overflow='auto'; }
   </script>
 </body>
 </html>
