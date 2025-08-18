@@ -343,7 +343,9 @@
       // header + menu
       window.addEventListener('scroll', handleHeaderScroll);
       navToggle.addEventListener('click', toggleMobileMenu);
-      document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => { if(navMenu.classList.contains('active')) toggleMobileMenu(); }));
+      document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => {
+        if(navMenu.classList.contains('active')) toggleMobileMenu();
+      }));
 
       // particles + reveal
       createParticles();
@@ -379,7 +381,7 @@
 
     /********** Reveal on scroll **********/
     function initRevealObserver(){
-      const hero = document.querySelector('.hero'); hero.classList.add('loaded');
+      const hero = document.querySelector('.hero'); if (hero) hero.classList.add('loaded');
       const obs = new IntersectionObserver((entries)=>{
         entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
       },{threshold:0.1});
@@ -475,15 +477,17 @@
 
         const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
         const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
-        const [raw, dec] = await Promise.all([kly.balanceOf(user), kly.decimals()]);
+
+        let dec = 18;
+        try { dec = await kly.decimals(); } catch (_) { /* fallback to 18 */ }
+
+        const raw = await kly.balanceOf(user);
         const need = ethers.utils.parseUnits(String(KLY_MIN_REQUIRED), dec);
 
-        if (rawBal.gte(need)) {
-  showStatus("Access granted. Redirecting...", 'success');
-  setTimeout(() => { window.location.href = "/course.html"; }, 1000);
-}
-      
-      } else {
+        if (raw.gte(need)) {
+          showStatus("Access granted. Redirecting...", 'success');
+          setTimeout(() => { window.location.href = "/course.html"; }, 1000);
+        } else {
           const human = ethers.utils.formatUnits(raw, dec);
           showStatus(`You need at least ${KLY_MIN_REQUIRED} KLY. You have ${Number(human).toFixed(2)} KLY.`, 'warning');
           openModal('nft-modal');
@@ -506,7 +510,9 @@
         const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
         const bal = await nft.balanceOf(user, NFT_TOKEN_ID);
 
-        if (ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0){
+        const holds = ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0;
+
+        if (holds){
           showStatus('NFT verified. Unlocking Portal...', 'success');
           setTimeout(()=>{ window.location.href='/portal.html'; }, 900);
         } else {
