@@ -16,1228 +16,981 @@
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <style>
-    :root {
-      --bg: #0b0f14; 
-      --card: #121825; 
-      --card-2: #0f1522; 
-      --text: #e8eefc; 
-      --muted: #aeb7c9;
-      --accent: #7c7cff; 
-      --accent-2: #5fe1b9; 
-      --gold: #f6c667; 
-      --danger: #ff6b6b; 
-      --ok: #22c55e;
-      --border: rgba(255,255,255,.08); 
-      --shadow: 0 10px 30px rgba(0,0,0,.35); 
-      --radius: 14px;
-      --transition: all 0.3s ease;
+    :root{
+      --bg:#0b0f14;--card:#121825;--card-2:#0f1522;--text:#e8eefc;--muted:#aeb7c9;
+      --accent:#7c7cff;--accent-2:#5fe1b9;--gold:#f6c667;--danger:#ff6b6b;--ok:#22c55e;
+      --border:rgba(255,255,255,.08);--shadow:0 10px 30px rgba(0,0,0,.35);--radius:14px;
+      --transition:all .3s ease
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { margin:0; background:linear-gradient(180deg,#0b0f14 0%,#0e1320 100%); color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; line-height:1.6; overflow-x:hidden; scroll-behavior:smooth;}
-    a { color: inherit; text-decoration: none; }
-    .container { max-width:1200px; margin:0 auto; padding:0 20px; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:linear-gradient(180deg,#0b0f14 0%,#0e1320 100%);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;overflow-x:hidden;scroll-behavior:smooth}
+    a{color:inherit;text-decoration:none}
+    .container{max-width:1200px;margin:0 auto;padding:0 20px}
 
-    /* Header */
-    .header { padding:2rem 0 1rem; display:flex; flex-direction:column; gap:.75rem; margin-bottom:1.5rem; position:relative; }
-    .header h1 { margin:0; font-weight:800; letter-spacing:-.5px; font-size:2.5rem; background:linear-gradient(135deg,var(--accent-2),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    .header p { margin:0; color:var(--muted); font-size:1.1rem; max-width:800px; }
+    /* App Bar */
+    .appbar{position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);background:rgba(11,15,20,.82);border-bottom:1px solid var(--border)}
+    .appbar-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem 0}
+    .brand{display:flex;align-items:center;gap:.65rem;font-weight:800;letter-spacing:-.2px}
+    .brand-badge{height:28px;width:28px;border-radius:8px;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#0b0f14;font-weight:900}
+    .topnav{display:flex;gap:.25rem;flex-wrap:wrap}
+    .topnav a{padding:.5rem .75rem;border-radius:10px;border:1px solid transparent}
+    .topnav a.active,.topnav a:hover{background:rgba(255,255,255,.05);border-color:var(--border)}
+    .right-rail{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .theme-toggle{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;cursor:pointer;transition:var(--transition)}
+    .theme-toggle:hover{background:rgba(255,255,255,.12)}
+
+    /* Wallet mini */
+    .wallet-mini{display:flex;gap:.5rem;align-items:center}
+    .wallet-btn{background:linear-gradient(90deg,var(--accent-2),var(--accent));border:none;color:#0b0f14;padding:.55rem .8rem;border-radius:10px;font-weight:800;cursor:pointer;transition:var(--transition);display:flex;align-items:center;gap:.45rem}
+    .wallet-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(124,124,255,.3)}
+    .chip{background:rgba(15,21,35,.8);border:1px solid var(--border);border-radius:10px;padding:.45rem .6rem;display:flex;align-items:center;gap:.45rem;font-size:.9rem}
+    .chip .dot{width:8px;height:8px;border-radius:50%;background:#777}.chip.ok .dot{background:var(--ok)}
 
     /* Hero */
-    .hero { position:relative; padding:3rem 0; text-align:center; margin-bottom:2rem; }
-    .hero-content { max-width:800px; margin:0 auto; }
-    .hero-title { font-size:3rem; font-weight:800; margin-bottom:1rem; background:linear-gradient(135deg,var(--accent-2),var(--accent),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    .hero-subtitle { font-size:1.2rem; color:var(--muted); margin-bottom:2rem; }
-    .hero-cta { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
-    .cta-button { padding:1rem 2rem; border-radius:50px; font-weight:600; transition:var(--transition); display:inline-flex; align-items:center; gap:.5rem; }
-    .cta-primary { background:linear-gradient(90deg,var(--accent),#8a7cff); color:white; }
-    .cta-primary:hover { transform:translateY(-3px); box-shadow:0 10px 25px rgba(124,124,255,.3); }
-    .cta-secondary { background:transparent; border:2px solid var(--accent); color:var(--accent); }
-    .cta-secondary:hover { background:rgba(124,124,255,.1); }
+    .hero{padding:3.25rem 0 2.5rem;text-align:center}
+    .hero-title{font-size:3rem;font-weight:800;margin-bottom:.65rem;background:linear-gradient(135deg,var(--accent-2),var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-subtitle{font-size:1.15rem;color:var(--muted);max-width:840px;margin:0 auto 1.5rem}
+    .hero-cta{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+    .cta-button{padding:.9rem 1.35rem;border-radius:999px;font-weight:700;transition:var(--transition);display:inline-flex;align-items:center;gap:.5rem}
+    .cta-primary{background:linear-gradient(90deg,var(--accent),#8a7cff);color:white}
+    .cta-primary:hover{transform:translateY(-3px);box-shadow:0 10px 25px rgba(124,124,255,.3)}
+    .cta-secondary{background:transparent;border:2px solid var(--accent);color:var(--accent)}
+    .cta-secondary:hover{background:rgba(124,124,255,.1)}
 
-    /* Nav */
-    .main-nav{display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; position:sticky; top:0; background:rgba(11,15,20,.9); backdrop-filter:blur(10px); z-index:100; padding:1rem 0;}
-    .nav-item{padding:.5rem 1rem; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid var(--border); cursor:pointer; transition:var(--transition);}
-    .nav-item:hover, .nav-item.active{background:linear-gradient(90deg,var(--accent),#8a7cff); color:white;}
+    /* Sections */
+    section{padding:1rem 0 0}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:1rem 0 .5rem}
+    .section-title{font-size:1.75rem;font-weight:800}
+    .section-sub{color:var(--muted)}
 
-    /* Wallet */
-    .wallet-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:1rem; padding:1rem; background:rgba(15,23,42,.6); border-radius:var(--radius); border:1px solid var(--border);}
-    .wallet-btn{background:linear-gradient(90deg,var(--accent-2),var(--accent)); border:none; color:#0b0f14; padding:10px 16px; border-radius:12px; font-weight:700; cursor:pointer; transition:var(--transition); display:flex; align-items:center; gap:8px;}
-    .wallet-btn:hover{transform:translateY(-2px); box-shadow:0 5px 15px rgba(124,124,255,.3);}
-    .chip{background:rgba(15,21,35,.8); border:1px solid var(--border); border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap:8px; font-size:.9rem; transition:var(--transition);}
-    .chip:hover{transform:translateY(-1px); box-shadow:var(--shadow);}
-    .chip .dot{width:8px; height:8px; border-radius:50%; background:#777;}
-    .chip.ok .dot{background:var(--ok);}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; letter-spacing:.2px;}
-    .small-btn{background:transparent; border:1px solid var(--border); color:#cfe2ff; border-radius:8px; padding:4px 8px; cursor:pointer; transition:var(--transition);}
-    .small-btn:hover{background:rgba(255,255,255,.1);}
+    /* Overview card */
+    .overview{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow)}
+    .overview h3{color:var(--gold);margin:.25rem 0 .5rem}
+    .overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:.5rem}
+    .overview li{margin:.35rem 0;color:var(--muted)}
 
     /* Progress */
-    .progress-container{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin:1.5rem 0; box-shadow:var(--shadow); transition:var(--transition);}
-    .progress-container:hover{transform:translateY(-3px); box-shadow:0 15px 35px rgba(0,0,0,.4);}
-    .progress-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;}
-    .progress-title{font-weight:700; font-size:1.2rem;}
-    .progress-percentage{font-weight:700; color:var(--accent); font-size:1.2rem;}
-    .progress-bar{height:12px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; margin-bottom:.5rem;}
-    .progress-fill{height:100%; width:0; background:linear-gradient(90deg,var(--accent),#8a7cff,var(--gold)); border-radius:999px; transition:width .7s ease; position:relative; overflow:hidden;}
-    .progress-fill::after{content:''; position:absolute; inset:0; background-image:linear-gradient(-45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); z-index:1; background-size:20px 20px; animation:move 1s linear infinite; overflow:hidden;}
-    @keyframes move{0%{background-position:0 0;}100%{background-position:20px 20px;}}
-    .progress-stats{display:flex; gap:1.5rem; color:var(--muted); font-size:.95rem; flex-wrap:wrap;}
-    .progress-tools{margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;}
+    .progress{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin:1.25rem 0;box-shadow:var(--shadow)}
+    .progress-bar{height:12px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#8a7cff,var(--gold));transition:width .7s ease;position:relative}
+    .progress-stats{display:flex;gap:1rem;color:var(--muted);flex-wrap:wrap;margin-top:.6rem}
+    .progress-tools{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
+    .small-btn{background:transparent;border:1px solid var(--border);color:#cfe2ff;border-radius:8px;padding:.4rem .65rem;cursor:pointer;transition:var(--transition)}
+    .small-btn:hover{background:rgba(255,255,255,.1)}
 
-    /* Modules grid */
-    .modules-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; margin:2rem 0;}
-    .module-card{background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; display:flex; flex-direction:column; gap:1rem; box-shadow:var(--shadow); transition:var(--transition); position:relative; overflow:hidden; height:100%;}
-    .module-card::before{content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); opacity:0; transition:var(--transition);}
-    .module-card:hover{transform:translateY(-5px); box-shadow:0 15px 35px rgba(0,0,0,.4);}
-    .module-card:hover::before{opacity:1;}
-    .module-header{display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:12px;}
-    .module-badge{height:40px; width:40px; border-radius:10px; background:rgba(124,124,255,.16); border:1px solid rgba(124,124,255,.3); display:grid; place-items:center; font-weight:800; color:#bfbfff; font-size:1.1rem;}
-    .module-title{margin:0; font-size:1.3rem; font-weight:700;}
-    .module-theme{grid-column:2; color:var(--muted); font-size:.95rem; margin-top:-2px;}
-    .module-content{color:var(--muted); flex-grow:1;}
-    .module-description{margin-bottom:1rem;}
-    .learning-objectives h4{margin:.5rem 0 .5rem; font-weight:600; color:#dfe6fb; display:flex; align-items:center; gap:8px;}
-    .objectives-list{margin:.5rem 0 0 1.1rem;}
-    .objectives-list li{margin:.35rem 0; position:relative;}
-    .objectives-list li::marker{color:var(--accent);}
-    .module-footer{margin-top:auto; display:flex; justify-content:space-between; align-items:center; gap:10px;}
-    .module-status{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.9rem;}
-    .status-indicator{width:10px; height:10px; border-radius:50%; background:#777; transition:var(--transition);}
-    .status-indicator.completed{background:var(--ok); box-shadow:0 0 10px rgba(34,197,94,.5);}
-    .status-indicator.in-progress{background:#f59e0b; box-shadow:0 0 10px rgba(245,158,11,.5);}
-    .module-button{background:linear-gradient(90deg,var(--accent),#8a7cff); border:none; color:white; padding:10px 16px; border-radius:12px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:8px; transition:var(--transition);}
-    .module-button:hover{transform:translateY(-2px); box-shadow:0 5px 15px rgba(124,124,255,.3);}
-    .module-button:focus-visible{outline:3px solid rgba(124,124,255,.45);}
+    /* Grids & cards */
+    .modules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;margin:1rem 0}
+    .module-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;display:flex;flex-direction:column;gap:.8rem;box-shadow:var(--shadow);position:relative;overflow:hidden;min-height:240px}
+    .module-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-2));opacity:0;transition:var(--transition)}
+    .module-card:hover{transform:translateY(-4px);box-shadow:0 15px 35px rgba(0,0,0,.4)}
+    .module-card:hover::before{opacity:1}
+    .module-header{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:.75rem}
+    .module-badge{height:38px;width:38px;border-radius:10px;background:rgba(124,124,255,.16);border:1px solid rgba(124,124,255,.3);display:grid;place-items:center;font-weight:800;color:#bfbfff}
+    .module-title{margin:0;font-size:1.2rem;font-weight:800}
+    .module-theme{grid-column:2;color:var(--muted);font-size:.95rem;margin-top:-2px}
+    .module-content{color:var(--muted)}
+    .module-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:.75rem}
+    .status-indicator{width:10px;height:10px;border-radius:50%;background:#777}
+    .status-indicator.in-progress{background:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,.5)}
+    .status-indicator.completed{background:var(--ok);box-shadow:0 0 10px rgba(34,197,94,.5)}
+    .module-button{background:linear-gradient(90deg,var(--accent),#8a7cff);border:none;color:white;padding:.6rem .9rem;border-radius:10px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:.45rem}
+    .module-button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(124,124,255,.3)}
 
-    /* Detail */
-    .back-to-modules{display:none; margin:1.5rem 0 1rem; text-decoration:none; color:#cfe2ff; padding:.5rem 1rem; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid var(--border); width:fit-content; transition:var(--transition);}
-    .back-to-modules:hover{background:rgba(255,255,255,.1);}
-    .module-detail{display:none; background:linear-gradient(180deg,#0f1522,#0b101b); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; box-shadow:var(--shadow); margin-bottom:2rem; animation:fadeIn .5s ease;}
-    @keyframes fadeIn{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
-    .detail-header{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid var(--border);}
-    .detail-title{margin:0; font-size:1.8rem; font-weight:700;}
-    .detail-theme{color:var(--muted); font-size:1.1rem; margin-top:.5rem;}
-    .detail-close{background:transparent; border:1px solid var(--border); color:#98a4c8; height:40px; width:40px; border-radius:8px; cursor:pointer; transition:var(--transition);}
-    .detail-close:hover{background:rgba(255,255,255,.1);}
-    .detail-content{line-height:1.7;}
-    .detail-content h3{margin:1.5rem 0 .75rem; color:var(--accent-2); font-weight:600;}
-    .detail-content p{margin:.75rem 0;}
-    .detail-content ul,.detail-content ol{margin:.75rem 0; padding-left:1.5rem;}
-    .detail-content li{margin:.5rem 0;}
-    .practice-box{background:rgba(124,124,255,.08); border:1px dashed rgba(124,124,255,.35); border-radius:12px; padding:1.25rem; margin:1.25rem 0;}
-    .key-quote{background:rgba(255,255,255,.04); border-left:4px solid var(--gold); padding:1rem 1.25rem; border-radius:8px; margin:1.25rem 0; font-style:italic;}
-    .module-complete{margin:1.25rem 0; padding:1rem; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); border-radius:8px; display:flex; align-items:center; gap:10px;}
-    .module-next{color:#b7c7ff; text-decoration:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; margin-top:1rem; padding:.5rem 1rem; border-radius:8px; background:rgba(183,199,255,.1); transition:var(--transition);}
-    .module-next:hover{background:rgba(183,199,255,.2);}
+    /* Module Detail modal */
+    .modal{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);z-index:999}
+    .modal.open{display:flex}
+    .panel{width:min(950px,96vw);max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0f1522,#0b101b);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:1.25rem 1.25rem 1.35rem}
+    .detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.8rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+    .detail-title{margin:0;font-size:1.65rem;font-weight:800}
+    .detail-theme{color:var(--muted)}
+    .detail-close{background:transparent;border:1px solid var(--border);color:#98a4c8;height:40px;width:40px;border-radius:8px;cursor:pointer}
+    .detail-content h3{margin:1rem 0 .5rem;color:var(--accent-2)}
+    .practice-box{background:rgba(124,124,255,.08);border:1px dashed rgba(124,124,255,.35);border-radius:12px;padding:1rem;margin:1rem 0}
 
-    /* Sovereign Self helpers */
-    .bonus-section{background:rgba(124,124,255,.05); border:1px solid rgba(124,124,255,.2); border-radius:var(--radius); padding:1.5rem; margin:1.5rem 0;}
-    .bonus-section h3{color:var(--gold); margin-top:0;}
-    .serif-italic{font-style:italic; font-family:Georgia,serif;}
-    .code-number{position:absolute; top:-15px; left:-15px; width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--accent-2),var(--accent)); color:#0b0f14; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.2rem; box-shadow:var(--shadow); z-index:1;}
+    /* Tools */
+    .tools-card{background:rgba(124,124,255,.1);border-radius:var(--radius);padding:1.25rem;text-align:center}
+    .timer-display{font-size:2.6rem;font-weight:800;margin:.6rem 0;color:var(--accent)}
 
-    /* Audio slot */
-    .audio-slot{background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:12px; padding:1rem; margin:1rem 0;}
-    .audio-slot h4{margin:0 0 .5rem; font-weight:700}
+    /* Sovereign Self */
+    .code-number{position:absolute;top:-12px;left:-12px;width:36px;height:36px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#0b0f14;display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:var(--shadow)}
+    .sv-nav{display:flex;gap:.5rem;flex-wrap:wrap}
+    .sv-tab{padding:.5rem .75rem;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);cursor:pointer}
+    .sv-tab.active,.sv-tab:hover{background:linear-gradient(90deg,var(--accent),#8a7cff);color:#fff;border-color:transparent}
 
-    /* Interactive bits */
-    .interactive-element{background:rgba(124,124,255,.05); border:1px solid rgba(124,124,255,.2); border-radius:var(--radius); padding:1.5rem; margin:1.5rem 0; transition:var(--transition);}
-    .interactive-element:hover{transform:translateY(-2px); box-shadow:0 10px 25px rgba(0,0,0,.2);}
-    .journal-prompt{background:rgba(95,225,185,.05); border-left:4px solid var(--accent-2); padding:1.25rem; margin:1.25rem 0; border-radius:8px;}
+    /* Community & footer */
+    .community{background:rgba(246,198,103,.05);border:1px solid rgba(246,198,103,.2);border-radius:var(--radius);padding:1.4rem;text-align:center}
+    .community-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:1rem}
+    .community-card{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+    .footer{margin-top:2rem;padding:1.5rem 0;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:.9rem}
 
-    /* Community */
-    .community-section{background:rgba(246,198,103,.05); border:1px solid rgba(246,198,103,.2); border-radius:var(--radius); padding:2rem; margin:2rem 0; text-align:center;}
-    .community-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:1.5rem; margin-top:1.5rem;}
-    .community-card{background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; transition:var(--transition);}
-    .community-card:hover{transform:translateY(-3px); box-shadow:var(--shadow);}
-
-    /* Meditation Timer */
-    .meditation-timer{background:rgba(124,124,255,.1); border-radius:var(--radius); padding:2rem; text-align:center; margin:2rem 0;}
-    .timer-display{font-size:3rem; font-weight:700; margin:1rem 0; color:var(--accent);}
-    .timer-controls{display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;}
+    /* Toast */
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f1422;color:#eaf2ff;border:1px solid var(--border);padding:12px 18px;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:1000;display:flex;align-items:center;gap:8px}
+    .toast.show{opacity:1}
 
     /* Responsive */
     @media (max-width:768px){
-      .header h1{font-size:2rem;}
-      .hero-title{font-size:2.2rem;}
-      .hero-subtitle{font-size:1.1rem;}
-      .modules-grid{grid-template-columns:1fr;}
-      .progress-stats{flex-direction:column; gap:.5rem;}
-      .wallet-bar{flex-direction:column; align-items:flex-start;}
-      .detail-header{flex-direction:column;}
-      .hero-cta{flex-direction:column; align-items:center;}
-      .cta-button{width:100%; justify-content:center;}
+      .hero-title{font-size:2.25rem}
+      .topnav{display:none} /* keep header clean on small screens */
     }
-
-    /* Theme toggle */
-    .theme-toggle{position:absolute; top:1rem; right:1rem; background:rgba(255,255,255,.1); border:1px solid var(--border); color:var(--text); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:var(--transition);}
-    .theme-toggle:hover{background:rgba(255,255,255,.2);}
-
-    /* Loader */
-    .loader{display:inline-block; width:20px; height:20px; border:3px solid rgba(255,255,255,.3); border-radius:50%; border-top-color:var(--accent); animation:spin 1s ease-in-out infinite;}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* Toast */
-    .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#0f1422; color:#eaf2ff; border:1px solid var(--border); padding:12px 18px; border-radius:10px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .3s ease; z-index:1000; display:flex; align-items:center; gap:8px;}
-    .toast.show{opacity:1;}
-
-    /* Footer */
-    .footer{margin-top:3rem; padding:2rem 0; border-top:1px solid var(--border); text-align:center; color:var(--muted); font-size:.9rem;}
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Hero -->
-    <div class="hero">
-      <div class="hero-content">
-        <h1 class="hero-title">Sovereignty Mastery Program</h1>
-        <p class="hero-subtitle">A transformative journey to reclaim your personal power and live with authentic authority</p>
-        <div class="hero-cta">
-          <a href="#modulesGrid" class="cta-button cta-primary"><i class="fas fa-play-circle"></i> Start Your Journey</a>
-          <a href="#sovereign-overview" class="cta-button cta-secondary"><i class="fas fa-info-circle"></i> Learn More</a>
-          <a href="#" id="printWorkbook" class="cta-button cta-secondary"><i class="fas fa-print"></i> Print Workbook</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="header">
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
-
-      <!-- Wallet bar -->
-      <div class="wallet-bar">
-        <button id="connectBtn" class="wallet-btn"><i class="fa-solid fa-wallet"></i> Connect Wallet</button>
-        <div id="provChip" class="chip"><i class="fa-solid fa-triangle-exclamation" style="color:#ffd28a"></i> <span>No wallet detected</span></div>
-        <div id="addrChip" class="chip" style="display:none"><span class="dot"></span><i class="fa-regular fa-id-card"></i> <span id="addrShort" class="mono">0x…</span> <button id="copyAddr" class="small-btn" title="Copy"><i class="fa-regular fa-copy"></i></button></div>
-        <div id="chainChip" class="chip" style="display:none"><i class="fa-solid fa-network-wired"></i> <span id="chainName">Chain</span></div>
-        <div id="balChip" class="chip" style="display:none"><i class="fa-solid fa-coins"></i> <span id="nativeBal" class="mono">0.0000</span> <button id="refreshBal" class="small-btn" title="Refresh"><i class="fa-solid fa-rotate"></i></button></div>
-        <div id="gateChip" class="chip" style="display:none"><i class="fa-solid fa-key"></i> <span id="gateText">Checking access…</span></div>
-      </div>
-    </div>
-
-    <!-- Navigation -->
-    <div class="main-nav">
-      <div class="nav-item active" data-target="modules">Modules</div>
-      <div class="nav-item" data-target="progress">Progress</div>
-      <div class="nav-item" data-target="resources">Resources</div>
-      <div class="nav-item" data-target="community">Community</div>
-      <div class="nav-item" data-target="tools">Tools</div>
-    </div>
-
-    <!-- Progress -->
-    <div class="progress-container" aria-live="polite">
-      <div class="progress-header">
-        <div class="progress-title">Your Progress</div>
-        <div class="progress-percentage" id="progressPct">0% Complete</div>
-      </div>
-      <div class="progress-bar" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-stats">
-        <span id="progressCount">0 of 14 Modules Completed</span>
-        <span>Estimated 24 hours to complete</span>
-        <span id="timeSpent">Time spent: 0h 0m</span>
-      </div>
-
-      <!-- Export / Import tools -->
-      <div class="progress-tools">
-        <button class="cta-button cta-secondary" id="exportProgress"><i class="fas fa-file-export"></i> Export Progress</button>
-        <button class="cta-button cta-secondary" id="importProgress"><i class="fas fa-file-import"></i> Import Progress</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none" />
-      </div>
-    </div>
-
-    <!-- Certificate Eligibility -->
-    <div class="progress-container" id="eligibilityBox" style="margin-top:1rem">
-      <div class="progress-header">
-        <div class="progress-title">Certificate Eligibility</div>
-        <div id="eligibilityStatus" class="progress-percentage">Checking…</div>
-      </div>
-      <p id="eligibilityDesc" style="color:var(--muted); margin-bottom:1rem;"></p>
-      <button id="claimCert" class="cta-button cta-primary" disabled><i class="fas fa-certificate"></i> Claim Certificate</button>
-    </div>
-
-    <!-- Daily Practice Tracker -->
-    <div class="progress-container" style="margin-top:1.25rem">
-      <h3><i class="fas fa-calendar-check"></i> Daily Practice Tracker</h3>
-      <p>Mark each day you complete your sovereignty practice to build consistency</p>
-      <div class="modules-grid" id="practiceTracker"></div>
-    </div>
-
-    <!-- Modules Grid (Primary 7) -->
-    <div class="modules-grid" id="modulesGrid" role="list">
-      <!-- Cards 1–7 -->
-      <div class="module-card" role="listitem" data-module="1">
-        <div class="module-header"><div class="module-badge">1</div><h2 class="module-title">Foundation of Sovereignty</h2><div class="module-theme">Understanding Personal Power</div></div>
-        <div class="module-content">
-          <p class="module-description">Discover the core principles of sovereignty and how to reclaim your innate power.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Define sovereignty in personal terms</li>
-              <li>Identify areas where you've given away power</li>
-              <li>Establish your sovereignty baseline</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="2">
-        <div class="module-header"><div class="module-badge">2</div><h2 class="module-title">Boundaries & Energy Protection</h2><div class="module-theme">Creating Safe Containers</div></div>
-        <div class="module-content">
-          <p class="module-description">Learn to establish and maintain healthy boundaries that honor your energy and values.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Identify boundary weaknesses</li>
-              <li>Create effective energy protection practices</li>
-              <li>Communicate boundaries with clarity</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="3">
-        <div class="module-header"><div class="module-badge">3</div><h2 class="module-title">Authentic Decision Making</h2><div class="module-theme">Listening to Inner Wisdom</div></div>
-        <div class="module-content">
-          <p class="module-description">Develop the ability to make decisions aligned with your true self, not external expectations.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Recognize external influences on decisions</li>
-              <li>Access your inner guidance system</li>
-              <li>Practice values-based decision making</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="4">
-        <div class="module-header"><div class="module-badge">4</div><h2 class="module-title">Sovereign Communication</h2><div class="module-theme">Expressing Truth with Power</div></div>
-        <div class="module-content">
-          <p class="module-description">Master the art of communicating your truth with clarity, compassion, and conviction.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Identify communication patterns that diminish power</li>
-              <li>Practice authentic expression</li>
-              <li>Handle difficult conversations with sovereignty</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="5">
-        <div class="module-header"><div class="module-badge">5</div><h2 class="module-title">Financial Sovereignty</h2><div class="module-theme">Wealth as Energy Exchange</div></div>
-        <div class="module-content">
-          <p class="module-description">Align your financial life with your values and create empowered relationships with money.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Examine money beliefs and patterns</li>
-              <li>Create a sovereign financial plan</li>
-              <li>Develop empowered earning and spending practices</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="6">
-        <div class="module-header"><div class="module-badge">6</div><h2 class="module-title">Sovereign Relationships</h2><div class="module-theme">Connecting Without Losing Self</div></div>
-        <div class="module-content">
-          <p class="module-description">Build relationships that honor both connection and autonomy, without codependency.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Identify relationship patterns that diminish sovereignty</li>
-              <li>Practice sovereign relating in all connections</li>
-              <li>Set healthy relationship containers</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-
-      <div class="module-card" role="listitem" data-module="7">
-        <div class="module-header"><div class="module-badge">7</div><h2 class="module-title">Living as Sovereign Being</h2><div class="module-theme">Integration & Mastery</div></div>
-        <div class="module-content">
-          <p class="module-description">Integrate all aspects of sovereignty into a cohesive lifestyle of empowered living.</p>
-          <div class="learning-objectives">
-            <h4><i class="fas fa-bullseye"></i> Learning Objectives</h4>
-            <ul class="objectives-list">
-              <li>Create daily sovereignty practices</li>
-              <li>Develop a sovereignty maintenance plan</li>
-              <li>Become a sovereign leader in your community</li>
-            </ul>
-          </div>
-        </div>
-        <div class="module-footer"><div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div><button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-    </div>
-
-    <!-- Back to Modules Link -->
-    <a href="#" class="back-to-modules" id="backToModules"><i class="fas fa-arrow-left"></i> Back to All Modules</a>
-
-    <!-- Module Detail View -->
-    <div class="module-detail" id="moduleDetail"></div>
-
-    <!-- Meditation Timer -->
-    <div class="meditation-timer" id="meditationTimer">
-      <h3><i class="fas fa-clock"></i> Meditation Timer</h3>
-      <p>Set a timer for your daily sovereignty practice</p>
-      <div class="timer-display" id="timerDisplay">10:00</div>
-      <div class="timer-controls">
-        <button class="cta-button cta-secondary" data-time="5">5 min</button>
-        <button class="cta-button cta-secondary" data-time="10">10 min</button>
-        <button class="cta-button cta-secondary" data-time="20">20 min</button>
-        <button class="cta-button cta-primary" id="startTimer">Start</button>
-        <button class="cta-button cta-secondary" id="pauseTimer" disabled>Pause</button>
-        <button class="cta-button cta-secondary" id="resetTimer">Reset</button>
-      </div>
-    </div>
-
-    <!-- —————————————————————————————————————— -->
-    <!-- The Sovereign Self (7) — Module Cards   -->
-    <!-- —————————————————————————————————————— -->
-
-    <hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:2.5rem 0" />
-    <h2>🌟 The Sovereign Self</h2>
-    <p class="subtitle">Reclaim Your Throne, Live by Your Own Rules, and Embody Unshakable Authority</p>
-
-    <article class="bonus-section" id="sovereign-overview" style="margin-bottom:1.25rem">
-      <h3>🔥 Reclaim Your Throne</h3>
-      <p class="serif-italic">Stop living by rules you never agreed to. Step into your sovereignty and claim your rightful throne as the author of your life.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1rem">
-        <div>
-          <h4>Who This Is For</h4>
-          <ul>
-            <li>Seekers, healers & entrepreneurs ready for unshakable authority.</li>
-            <li>Those tired of playing small or living by external expectations.</li>
-            <li>Leaders who want systems of freedom, not control.</li>
-            <li>Anyone who knows they're meant for more.</li>
-          </ul>
-        </div>
-        <div>
-          <h4>Who This Is Not For</h4>
-          <ul>
-            <li>Comfort over growth.</li>
-            <li>Unwilling to self-reflect or face shadow.</li>
-            <li>Quick fixes without commitment.</li>
-            <li>Victimhood as identity.</li>
-          </ul>
-        </div>
-      </div>
-      <h4 style="margin-top:1rem">The Transformation</h4>
-      <p><strong>Before:</strong> Approval-seeking, drained by systems of control, unsure of your inner voice.</p>
-      <p><strong>After:</strong> Rooted in your inner throne—clear boundaries, steady authority, sovereign stewardship, soul-aligned life.</p>
-    </article>
-
-    <!-- Sovereign Self Navigation -->
-    <div class="main-nav" style="position:static; padding:0; margin-bottom:1.5rem">
-      <div class="nav-container" aria-label="Sovereign Self Navigation" style="display:flex; gap:.5rem; flex-wrap:wrap">
-        <button class="nav-button active" onclick="showModule('sv1')">Module 1</button>
-        <button class="nav-button" onclick="showModule('sv2')">Module 2</button>
-        <button class="nav-button" onclick="showModule('sv3')">Module 3</button>
-        <button class="nav-button" onclick="showModule('sv4')">Module 4</button>
-        <button class="nav-button" onclick="showModule('sv5')">Module 5</button>
-        <button class="nav-button" onclick="showModule('sv6')">Module 6</button>
-        <button class="nav-button" onclick="showModule('sv7')">Module 7</button>
-      </div>
-    </div>
-
-    <!-- SV Modules 1..7 (unchanged content except for checkboxes with data-track) -->
-    <div id="sv1" class="module-card" style="display:block;">
-      <div class="code-number">1</div>
-      <div class="module-title">The Call to Sovereignty</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>True power begins with recognizing you're more than compliant patterns—you are a sovereign soul called to reclaim your throne.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Identify where you've surrendered personal authority.</li>
-          <li>Hear and trust the whisper of your sovereign self.</li>
-          <li>Discern ego's fear from the soul's guidance.</li>
-          <li>Commit to answering the call.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>Recognizing the Whisper of Your Soul</li>
-          <li>The Illusion of the Matrix: Where You Gave Your Power Away</li>
-          <li>The Archetype of The Sovereign: Mapping the Territory of Your Power</li>
-          <li>The Sovereignty Audit: Taking Stock of Your Kingdom</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Worksheet — Sovereignty Audit</h4>
-          <p>Journal on: Where do I delay my yes/no for external validation? What decision restores my power this week?</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"The crown was never lost; it was waiting where you left it—within."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete1" data-track="sovereign-1"><label for="svComplete1">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv2')" style="cursor:pointer">Next: Dismantling the False Thrones →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv2" class="module-card" style="display:none;">
-      <div class="code-number">2</div>
-      <div class="module-title">Dismantling the False Thrones</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>To stand in sovereignty, first see the illusions and tyrannies—external and internal—that have claimed your throne.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Expose societal, cultural, and familial systems of disempowerment.</li>
-          <li>Name and confront the "false kings" within.</li>
-          <li>Recognize and dissolve hidden contracts of loyalty and silence.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>The Cultural Myths of Powerlessness</li>
-          <li>Family Loyalties & Hidden Contracts</li>
-          <li>Corporate, Religious & Social Thrones</li>
-          <li>The Inner Critic as False King</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Practice — Breaking the Spell</h4>
-          <p>Write one cultural/familial myth that limits you. Declare: "This no longer rules me."</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"You cannot overthrow what you refuse to name."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete2" data-track="sovereign-2"><label for="svComplete2">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv3')" style="cursor:pointer">Next: The Inner Throne →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv3" class="module-card" style="display:none;">
-      <div class="code-number">3</div>
-      <div class="module-title">The Inner Throne</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>Sovereignty is an inner seat of power that no one can grant or revoke—it must be claimed.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Anchor into soul-aligned values and principles.</li>
-          <li>Establish embodied presence as your throne.</li>
-          <li>Create self-anointing practices for daily alignment.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>The Anatomy of Inner Authority</li>
-          <li>Claiming Your Core Values</li>
-          <li>Presence, Posture & Power</li>
-          <li>Rituals of Self-Anointing</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Practice — Sovereign Alignment Scan</h4>
-          <p>Sit tall; breathe. Ask: "Where do I collapse when challenged?" With each exhale, re-seat yourself on the inner throne.</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"Authority lives not only in words, but in the posture you practice."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete3" data-track="sovereign-3"><label for="svComplete3">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv4')" style="cursor:pointer">Next: Boundaries, Consent & the Language of Power →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv4" class="module-card" style="display:none;">
-      <div class="code-number">4</div>
-      <div class="module-title">Boundaries, Consent & the Language of Power</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>Sovereign boundaries are not walls of defense—they are clear declarations of self-respect.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Redefine boundaries as sacred agreements.</li>
-          <li>Practice consent as the sacred currency of power.</li>
-          <li>Speak with clarity, strength, and compassion (C3).</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>The Alchemy of Boundaries</li>
-          <li>Consent as Sacred Currency</li>
-          <li>The C3 Framework: Clear, Clean, Kind</li>
-          <li>Saying No Without Guilt, Yes Without Fear</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Practice — Boundary Invocation</h4>
-          <p>Aloud: "My yes is sacred. My no is holy. My consent is the throne from which I rule."</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"What you allow becomes your law."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete4" data-track="sovereign-4"><label for="svComplete4">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv5')" style="cursor:pointer">Next: Alchemy of Resources & Right Livelihood →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv5" class="module-card" style="display:none;">
-      <div class="code-number">5</div>
-      <div class="module-title">Alchemy of Resources & Right Livelihood</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>Sovereignty includes stewardship of time, energy, money, and relationships as sacred currents.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Transform scarcity into conscious stewardship.</li>
-          <li>Align livelihood with soul-purpose.</li>
-          <li>Redirect resources with intention.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>The Four Ledgers of Resource Sovereignty</li>
-          <li>Wealth as Energy, Not Just Currency</li>
-          <li>Right Livelihood & Sacred Work</li>
-          <li>The Attention Economy & Energy Management</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Worksheet — Resource Audit</h4>
-          <p>For each ledger: Where am I leaking? Where am I aligned? One shift for this week?</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"Every yes spends from a ledger—spend like a sovereign."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete5" data-track="sovereign-5"><label for="svComplete5">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv6')" style="cursor:pointer">Next: Systems of Self-Governance →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv6" class="module-card" style="display:none;">
-      <div class="code-number">6</div>
-      <div class="module-title">Systems of Self-Governance</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>True freedom emerges from well-crafted agreements and systems that serve the soul.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Design rhythms, rituals, and agreements that support sovereignty.</li>
-          <li>Create a personal constitution.</li>
-          <li>Reduce decision fatigue through intentional design.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>Design Beats Discipline</li>
-          <li>Minimum Viable Rituals</li>
-          <li>Crafting Your Sovereign Constitution</li>
-          <li>Review & Reset Rhythms</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Exercise — Draft Your Constitution</h4>
-          <p>Write 5 Core Laws, 3 Practices, 2 Red Lines (non‑negotiables). Read aloud each morning for 21 days.</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"Freedom isn't the absence of structure—it's the presence of sacred structure."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete6" data-track="sovereign-6"><label for="svComplete6">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv7')" style="cursor:pointer">Next: The Sovereign in Service →</a>
-        </div>
-      </div>
-    </div>
-
-    <div id="sv7" class="module-card" style="display:none;">
-      <div class="code-number">7</div>
-      <div class="module-title">The Sovereign in Service</div>
-      <div class="module-content">
-        <h3>Core Concept</h3>
-        <p>Sovereignty matures into stewardship and service—your freedom empowers the collective.</p>
-        <h3>Learning Objectives</h3>
-        <ul>
-          <li>Move from isolation into conscious contribution.</li>
-          <li>Offer your gifts without depletion or martyrdom.</li>
-          <li>Lead in reciprocity and responsibility.</li>
-        </ul>
-        <h3>Key Lessons</h3>
-        <ol>
-          <li>From Isolation to Belonging</li>
-          <li>The Sovereign as Steward of the Commons</li>
-          <li>Gifts, Roles & Service Design</li>
-          <li>Legacy in Motion</li>
-        </ol>
-        <div class="practice-box">
-          <h4>Exercise — Sovereign Service Vision</h4>
-          <p>What gift burns to be shared? Who is it for? How do you serve without self-betrayal? One step in 72 hours.</p>
-        </div>
-        <h3>Activation</h3>
-        <blockquote>"The true mark of a sovereign is the freedom they help others remember."</blockquote>
-        <div class="module-footer" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div class="completion-checkbox"><input type="checkbox" id="svComplete7" data-track="sovereign-7"><label for="svComplete7">Mark as completed</label></div>
-          <a class="module-next" onclick="showModule('sv1')" style="cursor:pointer">Return to Module 1 ↺</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Closing Ritual -->
-    <article class="bonus-section" id="sovereign-closing" style="margin-top:1.25rem">
-      <h3>🔮 The Sovereign's Coronation</h3>
-      <ol>
-        <li>Dress in a way that symbolizes sovereignty.</li>
-        <li>Light a candle and speak your personal constitution aloud.</li>
-        <li>One hand on heart, one on crown: <em>"I reign from within. My sovereignty is sealed. I live, act, and serve as the Sovereign Self."</em></li>
-        <li>Celebrate with a symbolic act (dance, feast, create).</li>
-      </ol>
-    </article>
-
-    <!-- Community Section -->
-    <div class="community-section">
-      <h3><i class="fas fa-users"></i> Join Our Sovereign Community</h3>
-      <p>Connect with others on the path to sovereignty for support, sharing, and collective growth</p>
-      <div class="community-grid">
-        <div class="community-card"><h4><i class="fas fa-comments"></i> Discussion Forum</h4><p>Share experiences and get answers to your questions</p></div>
-        <div class="community-card"><h4><i class="fas fa-calendar"></i> Live Events</h4><p>Join weekly Q&A sessions and guided practices</p></div>
-        <div class="community-card"><h4><i class="fas fa-handshake"></i> Accountability Partners</h4><p>Connect with others for mutual support</p></div>
-      </div>
-      <button class="cta-button cta-primary" style="margin-top:1.5rem;">Join Community <i class="fas fa-arrow-right"></i></button>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer"><p>Sovereignty Mastery Program © 2023 | Designed for those ready to reclaim their power</p></div>
-  </div>
-
   <!-- Toast -->
   <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMessage"></span></div>
 
+  <!-- APP BAR -->
+  <header class="appbar" aria-label="Primary">
+    <div class="container appbar-inner">
+      <div class="brand">
+        <div class="brand-badge">SM</div>
+        <span>Sovereignty Mastery</span>
+      </div>
+      <nav class="topnav" id="topnav">
+        <a href="#home" class="active">Home</a>
+        <a href="#overview">Overview</a>
+        <a href="#progress">Progress</a>
+        <a href="#modules">Modules</a>
+        <a href="#tools">Tools</a>
+        <a href="#sovereign">Sovereign Self</a>
+        <a href="#community">Community</a>
+      </nav>
+      <div class="right-rail">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+        <div class="wallet-mini">
+          <button id="connectBtn" class="wallet-btn"><i class="fa-solid fa-wallet"></i><span>Connect</span></button>
+          <div id="addrChip" class="chip" style="display:none">
+            <span class="dot"></span><i class="fa-regular fa-id-card"></i>
+            <span id="addrShort" class="mono">0x…</span>
+            <button id="copyAddr" class="small-btn" title="Copy"><i class="fa-regular fa-copy"></i></button>
+          </div>
+          <div id="gateChip" class="chip" style="display:none"><span class="dot"></span><i class="fa-solid fa-key"></i><span id="gateText">Checking…</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="home" class="container" tabindex="-1">
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title" class="hero-title">Sovereignty Mastery Program</h1>
+      <p class="hero-subtitle">A transformative journey to reclaim your personal power and live with authentic authority.</p>
+      <div class="hero-cta">
+        <a href="#modules" class="cta-button cta-primary"><i class="fas fa-play-circle"></i> Start Your Journey</a>
+        <a href="#overview" class="cta-button cta-secondary"><i class="fas fa-info-circle"></i> Learn More</a>
+        <a href="#" id="printWorkbook" class="cta-button cta-secondary"><i class="fas fa-print"></i> Print Workbook</a>
+      </div>
+    </section>
+
+    <!-- OVERVIEW -->
+    <section id="overview" aria-labelledby="overview-title">
+      <div class="section-head">
+        <h2 class="section-title" id="overview-title">🌟 The Sovereign Self — Program Overview</h2>
+        <div class="section-sub">Reclaim your throne. Live by your own rules.</div>
+      </div>
+      <article class="overview">
+        <h3>🔥 Reclaim Your Throne</h3>
+        <p class="serif-italic">Stop living by rules you never agreed to. Step into your sovereignty and claim your rightful throne as the author of your life.</p>
+        <div class="overview-grid">
+          <div>
+            <h4>Who This Is For</h4>
+            <ul>
+              <li>Seekers, healers & entrepreneurs ready for unshakable authority.</li>
+              <li>Those tired of playing small or living by external expectations.</li>
+              <li>Leaders who want systems of freedom, not control.</li>
+              <li>Anyone who knows they're meant for more.</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Who This Is Not For</h4>
+            <ul>
+              <li>Comfort over growth.</li>
+              <li>Unwilling to self-reflect or face shadow.</li>
+              <li>Quick fixes without commitment.</li>
+              <li>Victimhood as identity.</li>
+            </ul>
+          </div>
+        </div>
+        <h4 style="margin-top:1rem">The Transformation</h4>
+        <p><strong>Before:</strong> Approval‑seeking, drained by systems of control, unsure of your inner voice.</p>
+        <p><strong>After:</strong> Rooted in your inner throne—clear boundaries, steady authority, sovereign stewardship, soul‑aligned life.</p>
+      </article>
+    </section>
+
+    <!-- PROGRESS -->
+    <section id="progress" aria-labelledby="progress-title">
+      <div class="section-head">
+        <h2 class="section-title" id="progress-title">Your Progress</h2>
+      </div>
+      <div class="progress" aria-live="polite">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <strong id="progressPct">0% Complete</strong>
+          <span id="progressCount" class="section-sub">0 of 14 Modules Completed</span>
+        </div>
+        <div class="progress-bar" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-stats">
+          <span>Estimated 24 hours to complete</span>
+          <span id="timeSpent">Time spent: 0h 0m</span>
+        </div>
+        <div class="progress-tools" style="margin-top:.8rem">
+          <button class="small-btn" id="exportProgress"><i class="fas fa-file-export"></i> Export Progress</button>
+          <button class="small-btn" id="importProgress"><i class="fas fa-file-import"></i> Import Progress</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" />
+        </div>
+      </div>
+
+      <div class="progress" id="eligibilityBox">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <strong>Certificate Eligibility</strong>
+          <strong id="eligibilityStatus" class="section-sub">Checking…</strong>
+        </div>
+        <p id="eligibilityDesc" class="section-sub" style="margin:.4rem 0 1rem"></p>
+        <button id="claimCert" class="cta-button cta-primary" disabled><i class="fas fa-certificate"></i> Claim Certificate</button>
+      </div>
+
+      <div class="progress">
+        <h3 style="margin-bottom:.2rem"><i class="fas fa-calendar-check"></i> Daily Practice Tracker</h3>
+        <p class="section-sub" style="margin-bottom:.5rem">Mark each day you complete your sovereignty practice.</p>
+        <div class="modules-grid" id="practiceTracker"></div>
+      </div>
+    </section>
+
+    <!-- MODULES -->
+    <section id="modules" aria-labelledby="modules-title">
+      <div class="section-head">
+        <h2 class="section-title" id="modules-title">Core Modules (1–7)</h2>
+        <div class="section-sub">Build from foundations to full integration.</div>
+      </div>
+
+      <div class="modules-grid" role="list" id="modulesGrid">
+        <!-- Card 1 -->
+        <div class="module-card" role="listitem" data-module="1">
+          <div class="module-header">
+            <div class="module-badge">1</div>
+            <h3 class="module-title">Foundation of Sovereignty</h3>
+            <div class="module-theme">Understanding Personal Power</div>
+          </div>
+          <div class="module-content">
+            <p>Discover the core principles of sovereignty and how to reclaim your innate power.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="module-card" role="listitem" data-module="2">
+          <div class="module-header">
+            <div class="module-badge">2</div>
+            <h3 class="module-title">Boundaries & Energy Protection</h3>
+            <div class="module-theme">Creating Safe Containers</div>
+          </div>
+          <div class="module-content">
+            <p>Establish and maintain healthy boundaries that honor your energy and values.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="module-card" role="listitem" data-module="3">
+          <div class="module-header">
+            <div class="module-badge">3</div>
+            <h3 class="module-title">Authentic Decision Making</h3>
+            <div class="module-theme">Listening to Inner Wisdom</div>
+          </div>
+          <div class="module-content">
+            <p>Decide in alignment with your true self, not external expectations.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="module-card" role="listitem" data-module="4">
+          <div class="module-header">
+            <div class="module-badge">4</div>
+            <h3 class="module-title">Sovereign Communication</h3>
+            <div class="module-theme">Expressing Truth with Power</div>
+          </div>
+          <div class="module-content">
+            <p>Communicate truth with clarity, compassion, and conviction.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="module-card" role="listitem" data-module="5">
+          <div class="module-header">
+            <div class="module-badge">5</div>
+            <h3 class="module-title">Financial Sovereignty</h3>
+            <div class="module-theme">Wealth as Energy Exchange</div>
+          </div>
+          <div class="module-content">
+            <p>Align your financial life with your values and create empowered money practices.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="module-card" role="listitem" data-module="6">
+          <div class="module-header">
+            <div class="module-badge">6</div>
+            <h3 class="module-title">Sovereign Relationships</h3>
+            <div class="module-theme">Connecting Without Losing Self</div>
+          </div>
+          <div class="module-content">
+            <p>Build relationships that honor connection and autonomy, without codependency.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Card 7 -->
+        <div class="module-card" role="listitem" data-module="7">
+          <div class="module-header">
+            <div class="module-badge">7</div>
+            <h3 class="module-title">Living as Sovereign Being</h3>
+            <div class="module-theme">Integration & Mastery</div>
+          </div>
+          <div class="module-content">
+            <p>Integrate all aspects into a cohesive lifestyle of empowered living.</p>
+          </div>
+          <div class="module-footer">
+            <div class="module-status"><span class="status-indicator"></span><span class="status-text">Not Started</span></div>
+            <button class="module-button">Begin Module <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE DETAIL (Modal Drawer) -->
+    <div class="modal" id="moduleModal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="panel" role="document">
+        <div class="detail-header">
+          <div>
+            <h3 class="detail-title" id="detailTitle">Module</h3>
+            <div class="detail-theme" id="detailTheme"></div>
+          </div>
+          <button class="detail-close" id="closeDetail" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="detail-content" id="detailContent"></div>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <section id="tools" aria-labelledby="tools-title">
+      <div class="section-head">
+        <h2 class="section-title" id="tools-title">Tools</h2>
+        <div class="section-sub">Daily practices to keep you aligned.</div>
+      </div>
+      <div class="tools-card">
+        <h3><i class="fas fa-clock"></i> Meditation Timer</h3>
+        <p>Set a timer for your daily sovereignty practice.</p>
+        <div class="timer-display" id="timerDisplay">10:00</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+          <button class="cta-button cta-secondary" data-time="5">5 min</button>
+          <button class="cta-button cta-secondary" data-time="10">10 min</button>
+          <button class="cta-button cta-secondary" data-time="20">20 min</button>
+          <button class="cta-button cta-primary" id="startTimer">Start</button>
+          <button class="cta-button cta-secondary" id="pauseTimer" disabled>Pause</button>
+          <button class="cta-button cta-secondary" id="resetTimer">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOVEREIGN SELF -->
+    <section id="sovereign" aria-labelledby="sovereign-title">
+      <div class="section-head">
+        <h2 class="section-title" id="sovereign-title">The Sovereign Self (7)</h2>
+        <div class="section-sub">A deeper arc to embody your authority.</div>
+      </div>
+
+      <div class="sv-nav" aria-label="Sovereign Self Navigation">
+        <button class="sv-tab active" data-sv="sv1">Module 1</button>
+        <button class="sv-tab" data-sv="sv2">Module 2</button>
+        <button class="sv-tab" data-sv="sv3">Module 3</button>
+        <button class="sv-tab" data-sv="sv4">Module 4</button>
+        <button class="sv-tab" data-sv="sv5">Module 5</button>
+        <button class="sv-tab" data-sv="sv6">Module 6</button>
+        <button class="sv-tab" data-sv="sv7">Module 7</button>
+      </div>
+
+      <div class="modules-grid" style="margin-top:.75rem">
+        <!-- SV1 -->
+        <div id="sv1" class="module-card" style="display:block;">
+          <div class="code-number">1</div>
+          <div class="module-title">The Call to Sovereignty</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>True power begins with recognizing you're more than compliant patterns—you are a sovereign soul called to reclaim your throne.</p>
+            <h3>Learning Objectives</h3>
+            <ul>
+              <li>Identify where you've surrendered personal authority.</li>
+              <li>Hear and trust the whisper of your sovereign self.</li>
+              <li>Discern ego's fear from the soul's guidance.</li>
+              <li>Commit to answering the call.</li>
+            </ul>
+            <h3>Key Lessons</h3>
+            <ol>
+              <li>Recognizing the Whisper of Your Soul</li>
+              <li>The Illusion of the Matrix</li>
+              <li>The Archetype of The Sovereign</li>
+              <li>The Sovereignty Audit</li>
+            </ol>
+            <div class="practice-box">
+              <h4>Worksheet — Sovereignty Audit</h4>
+              <p>Journal: Where do I delay my yes/no for external validation? What decision restores my power this week?</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete1" data-track="sovereign-1"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv2">Next: False Thrones →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV2 -->
+        <div id="sv2" class="module-card" style="display:none;">
+          <div class="code-number">2</div>
+          <div class="module-title">Dismantling the False Thrones</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>To stand in sovereignty, first see the illusions and tyrannies—external and internal—that have claimed your throne.</p>
+            <h3>Learning Objectives</h3>
+            <ul>
+              <li>Expose systems of disempowerment.</li>
+              <li>Name and confront the "false kings".</li>
+              <li>Dissolve hidden contracts.</li>
+            </ul>
+            <h3>Key Lessons</h3>
+            <ol>
+              <li>Cultural Myths of Powerlessness</li>
+              <li>Family Loyalties & Hidden Contracts</li>
+              <li>Corporate/Religious/Social Thrones</li>
+              <li>The Inner Critic as False King</li>
+            </ol>
+            <div class="practice-box">
+              <h4>Practice — Breaking the Spell</h4>
+              <p>Write one cultural/familial myth that limits you. Declare: "This no longer rules me."</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete2" data-track="sovereign-2"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv3">Next: The Inner Throne →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV3 -->
+        <div id="sv3" class="module-card" style="display:none;">
+          <div class="code-number">3</div>
+          <div class="module-title">The Inner Throne</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>Sovereignty is an inner seat of power that no one can grant or revoke—it must be claimed.</p>
+            <h3>Learning Objectives</h3>
+            <ul>
+              <li>Anchor into soul-aligned values.</li>
+              <li>Establish embodied presence as your throne.</li>
+              <li>Create self-anointing practices.</li>
+            </ul>
+            <div class="practice-box">
+              <h4>Practice — Alignment Scan</h4>
+              <p>Sit tall; breathe. Ask: "Where do I collapse when challenged?" Re-seat yourself on the inner throne.</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete3" data-track="sovereign-3"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv4">Next: Boundaries & Consent →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV4 -->
+        <div id="sv4" class="module-card" style="display:none;">
+          <div class="code-number">4</div>
+          <div class="module-title">Boundaries, Consent & Language of Power</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>Boundaries are clear declarations of self-respect.</p>
+            <div class="practice-box">
+              <h4>Practice — Boundary Invocation</h4>
+              <p>“My yes is sacred. My no is holy. My consent is the throne from which I rule.”</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete4" data-track="sovereign-4"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv5">Next: Resources & Livelihood →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV5 -->
+        <div id="sv5" class="module-card" style="display:none;">
+          <div class="code-number">5</div>
+          <div class="module-title">Alchemy of Resources & Right Livelihood</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>Sovereignty includes stewardship of time, energy, money, and relationships.</p>
+            <div class="practice-box">
+              <h4>Worksheet — Resource Audit</h4>
+              <p>For each ledger: Where am I leaking? Where am I aligned? One shift this week?</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete5" data-track="sovereign-5"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv6">Next: Self‑Governance →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV6 -->
+        <div id="sv6" class="module-card" style="display:none;">
+          <div class="code-number">6</div>
+          <div class="module-title">Systems of Self-Governance</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>Freedom emerges from well‑crafted agreements and systems that serve the soul.</p>
+            <div class="practice-box">
+              <h4>Exercise — Draft Your Constitution</h4>
+              <p>5 Core Laws, 3 Practices, 2 Red Lines. Read aloud for 21 days.</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete6" data-track="sovereign-6"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv7">Next: Sovereign in Service →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SV7 -->
+        <div id="sv7" class="module-card" style="display:none;">
+          <div class="code-number">7</div>
+          <div class="module-title">The Sovereign in Service</div>
+          <div class="module-content">
+            <h3>Core Concept</h3>
+            <p>Sovereignty matures into stewardship and service—your freedom empowers the collective.</p>
+            <div class="practice-box">
+              <h4>Exercise — Service Vision</h4>
+              <p>What gift burns to be shared? Who is it for? One step in 72 hours.</p>
+            </div>
+            <div class="module-footer" style="gap:.6rem;flex-wrap:wrap">
+              <label class="section-sub" style="display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" id="svComplete7" data-track="sovereign-7"> Mark as completed
+              </label>
+              <a class="module-button" href="#sovereign" data-next="sv1">Return to Module 1 ↺</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closing Ritual -->
+      <article class="overview" style="margin-top:.75rem">
+        <h3>🔮 The Sovereign's Coronation</h3>
+        <ol style="margin-left:1.25rem">
+          <li>Dress in a way that symbolizes sovereignty.</li>
+          <li>Light a candle and speak your personal constitution aloud.</li>
+          <li>Hand on heart & crown: <em>"I reign from within. My sovereignty is sealed."</em></li>
+          <li>Celebrate with a symbolic act (dance, feast, create).</li>
+        </ol>
+      </article>
+    </section>
+
+    <!-- COMMUNITY -->
+    <section id="community" aria-labelledby="community-title" style="margin-top:1rem">
+      <div class="section-head">
+        <h2 class="section-title" id="community-title"><i class="fas fa-users"></i> Join Our Sovereign Community</h2>
+        <div class="section-sub">Support, sharing, and collective growth.</div>
+      </div>
+      <div class="community">
+        <div class="community-grid">
+          <div class="community-card"><h4><i class="fas fa-comments"></i> Discussion Forum</h4><p>Share experiences and get answers to your questions.</p></div>
+          <div class="community-card"><h4><i class="fas fa-calendar"></i> Live Events</h4><p>Weekly Q&A sessions and guided practices.</p></div>
+          <div class="community-card"><h4><i class="fas fa-handshake"></i> Accountability Partners</h4><p>Connect for mutual support.</p></div>
+        </div>
+        <button class="cta-button cta-primary" style="margin-top:1rem;">Join Community <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <footer class="footer"><p>Sovereignty Mastery Program © 2023 • Designed for those ready to reclaim their power</p></footer>
+  </main>
+
   <script>
-    /**********************************************************
-     * CHAIN + TOKEN + NFT CONFIG
-     **********************************************************/
-    const USE_TESTNET = false;
-    const BSC_MAINNET = { chainId: '0x38', chainName: 'BNB Smart Chain', nativeCurrency: { name:'BNB',symbol:'BNB',decimals:18 }, rpcUrls: ['https://bsc-dataseed.binance.org/'], blockExplorerUrls: ['https://bscscan.com/'] };
-    const BSC_TESTNET = { chainId: '0x61', chainName: 'BNB Testnet', nativeCurrency: { name:'tBNB',symbol:'tBNB',decimals:18 }, rpcUrls: ['https://bsc-testnet.publicnode.com'], blockExplorerUrls: ['https://testnet.bscscan.com/'] };
-    const TARGET_CHAIN = USE_TESTNET ? BSC_TESTNET : BSC_MAINNET;
+    /* ---------- Helpers ---------- */
+    const showToast=(m)=>{const t=document.getElementById('toast');document.getElementById('toastMessage').textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+    const short=(a)=>a?a.slice(0,6)+'…'+a.slice(-4):'0x…'
 
-    // Gate: SólCoin (must hold >= 5)
-    const SOLCOIN_ADDRESS = '0x97A10b3889BdC8EE5EF937ebb75b91Ab1a7AA1F0'; // SólCoin ERC-20
-    const GATE_MIN_SOL = 5;
-    const ERC20_MIN_ABI = [
-      'function balanceOf(address) view returns (uint256)',
-      'function decimals() view returns (uint8)',
-      'function symbol() view returns (string)'
-    ];
-
-    // NFT Certificate
-    const NFT_CONTRACT = '0xDA76d35742190283E340dbeE2038ecc978a56950';
-    const NFT_URI = 'ipfs://QmXCJjJJNU15vkha7e3sHTizcTNyDy7Mgqt8CjYMWheb1g/3';
-    const NFT_ABI = ['function mintTo(address to, string uri)'];
-
-    // Web3 state
-    let web3Modal, externalProvider, ethersProvider, signer, userAddress = null, userChainId = null;
-
-    // ===== Toast =====
-    function showToast(message){ const t=document.getElementById('toast'); document.getElementById('toastMessage').textContent=message; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-    const short = (addr)=> addr ? addr.slice(0,6)+'…'+addr.slice(-4) : '0x…';
-    function setChip(el, show=true, text=null, ok=false){
-      if(!el) return; el.style.display = show ? 'flex':'none';
-      if(text){ const span = el.querySelector('span'); if(span) span.textContent = text; }
-      if(ok){ el.classList.add('ok'); } else { el.classList.remove('ok'); }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      initApp();
-      initPracticeTracker();
-      initMeditationTimer();
-      updateEligibilityUI();
-
-      // Wallet events
-      document.getElementById('copyAddr')?.addEventListener('click', async () => { 
-        try { await navigator.clipboard.writeText(userAddress || ''); showToast('Address copied'); } catch { showToast('Copy failed'); }
-      });
-      document.getElementById('refreshBal')?.addEventListener('click', async () => { await loadNativeBalance(); await checkSolGate(); showToast('Balances refreshed'); });
-
-      const connectBtn = document.getElementById('connectBtn');
-      if (connectBtn) connectBtn.addEventListener('click', async () => {
-        if (signer && userAddress) { await disconnectWallet(); } else { await connectWallet(); }
-      });
-
-      // Auto-connect if cached
-      try { const cached = localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER'); if (cached) connectWallet(); else setWalletUIDisconnected(); } catch { setWalletUIDisconnected(); }
-
-      // Claim NFT
-      document.getElementById('claimCert')?.addEventListener('click', claimCertificate);
+    /* ---------- THEME ---------- */
+    document.getElementById('themeToggle').addEventListener('click',()=>{
+      const body=document.body,icon=document.querySelector('#themeToggle i');
+      if(body.dataset.theme==='light'){body.dataset.theme='';icon.className='fas fa-moon';showToast('Dark mode ✔️')}
+      else{body.dataset.theme='light';icon.className='fas fa-sun';showToast('Light mode ✔️')}
     });
 
-    /* ---------------- Wallet UI helpers ---------------- */
-    function setWalletUIDisconnected(){
-      setChip(document.getElementById('provChip'), true, 'No wallet detected', false);
-      setChip(document.getElementById('addrChip'), false);
-      setChip(document.getElementById('chainChip'), false);
-      setChip(document.getElementById('balChip'), false);
-      setChip(document.getElementById('gateChip'), false);
-      userAddress = null; userChainId = null;
-      const btn=document.getElementById('connectBtn'); if(btn){ btn.innerHTML='<i class="fa-solid fa-wallet"></i> Connect Wallet'; btn.disabled=false; }
+    /* ---------- Sticky nav active link ---------- */
+    const sections=['home','overview','progress','modules','tools','sovereign','community']
+      .map(id=>document.getElementById(id))
+      .filter(Boolean);
+    const links=[...document.querySelectorAll('.topnav a')];
+    const io=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          links.forEach(l=>l.classList.toggle('active', l.getAttribute('href')==='#'+e.target.id))
+        }
+      })
+    },{rootMargin:'-40% 0px -50% 0px',threshold:0});
+    sections.forEach(s=>io.observe(s));
+
+    /* ---------- Print Workbook shortcut ---------- */
+    document.getElementById('printWorkbook').addEventListener('click',(e)=>{
+      e.preventDefault();
+      window.print();
+    });
+
+    /* ---------- Module detail content ---------- */
+    const MODULE_AUDIO={'1':'','2':'','3':'','4':'','5':'','6':'','7':''}
+    const moduleContents={
+      '1':{title:'Foundation of Sovereignty',theme:'Understanding Personal Power',content:`
+        <h3>What is Sovereignty?</h3>
+        <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy.</p>
+        <div class="practice-box"><h4><i class="fas fa-pen-fancy"></i> Reflection</h4>
+          <ul><li>Where are you fully empowered?</li><li>Where do you defer to others?</li><li>What if you chose inner guidance first?</li></ul>
+        </div>
+        <label><input type="checkbox" id="completeModule1"> Mark complete</label>`},
+      '2':{title:'Boundaries & Energy Protection',theme:'Creating Safe Containers',content:`
+        <h3>The Power of Healthy Boundaries</h3>
+        <p>Boundaries are gates that allow you to choose what enters your field.</p>
+        <div class="practice-box"><h4><i class="fas fa-shield-alt"></i> Energy Sphere</h4><p>Visualize a sphere of golden light that filters what serves you.</p></div>
+        <label><input type="checkbox" id="completeModule2"> Mark complete</label>`},
+      '3':{title:'Authentic Decision Making',theme:'Listening to Inner Wisdom',content:`
+        <h3>Reclaim Decision Power</h3>
+        <p>Every decision either reinforces sovereignty or gives power away.</p>
+        <div class="practice-box"><h4><i class="fas fa-compass"></i> Body Compass</h4><p>Notice expansion vs. contraction for each option.</p></div>
+        <label><input type="checkbox" id="completeModule3"> Mark complete</label>`},
+      '4':{title:'Sovereign Communication',theme:'Expressing Truth with Power',content:`
+        <h3>Speak Your Truth</h3>
+        <p>Clarity, compassion, conviction—without controlling outcomes.</p>
+        <div class="practice-box"><h4><i class="fas fa-comments"></i> “I” Statements</h4><p>“I feel…” instead of “You never…”</p></div>
+        <label><input type="checkbox" id="completeModule4"> Mark complete</label>`},
+      '5':{title:'Financial Sovereignty',theme:'Wealth as Energy Exchange',content:`
+        <h3>Money as Energy</h3>
+        <p>Create a conscious, empowered relationship with money.</p>
+        <div class="practice-box"><h4><i class="fas fa-search-dollar"></i> Money Story</h4><p>Write your money autobiography.</p></div>
+        <label><input type="checkbox" id="completeModule5"> Mark complete</label>`},
+      '6':{title:'Sovereign Relationships',theme:'Connecting Without Losing Self',content:`
+        <h3>Relationships as Mirrors</h3>
+        <p>Honor connection and autonomy.</p>
+        <div class="practice-box"><h4><i class="fas fa-heart"></i> Relationship Inventory</h4><p>Which relationships support sovereignty?</p></div>
+        <label><input type="checkbox" id="completeModule6"> Mark complete</label>`},
+      '7':{title:'Living as Sovereign Being',theme:'Integration & Mastery',content:`
+        <h3>Embodied Sovereignty</h3>
+        <p>Integrate sovereignty into daily life.</p>
+        <div class="practice-box"><h4><i class="fas fa-calendar"></i> Routine Design</h4><p>Build a daily practice you’ll keep.</p></div>
+        <label><input type="checkbox" id="completeModule7"> Mark complete</label>`}
+    };
+
+    /* ---------- Open module modal ---------- */
+    function wireModuleButtons(){
+      document.querySelectorAll('.module-card[data-module] .module-button').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const card=btn.closest('.module-card');
+          const id=card.dataset.module;
+          const data=moduleContents[id];
+          document.getElementById('detailTitle').textContent=data.title;
+          document.getElementById('detailTheme').textContent=data.theme;
+          document.getElementById('detailContent').innerHTML=(MODULE_AUDIO[id]?`<audio controls style="width:100%"><source src="${MODULE_AUDIO[id]}" type="audio/mpeg"></audio>`:'')+data.content;
+          openModal();
+          updateModuleStatus(id,'in-progress');
+          const ck=document.getElementById('completeModule'+id);
+          if(ck){ck.addEventListener('change',e=>updateModuleStatus(id,e.target.checked?'completed':'in-progress'))}
+        })
+      })
     }
-    function setWalletUIConnecting(){
-      setChip(document.getElementById('provChip'), true, 'Connecting…', false);
-      const btn=document.getElementById('connectBtn'); if(btn){ btn.innerHTML='<span class="loader"></span> Connecting…'; btn.disabled=true; }
+    function openModal(){const m=document.getElementById('moduleModal');m.classList.add('open');m.setAttribute('aria-hidden','false')}
+    function closeModal(){const m=document.getElementById('moduleModal');m.classList.remove('open');m.setAttribute('aria-hidden','true')}
+    document.getElementById('closeDetail').addEventListener('click',closeModal);
+    document.getElementById('moduleModal').addEventListener('click',e=>{if(e.target.id==='moduleModal')closeModal()});
+
+    /* ---------- Sovereign Self tabs ---------- */
+    function showSV(id){
+      ['sv1','sv2','sv3','sv4','sv5','sv6','sv7'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none'});
+      const show=document.getElementById(id); if(show) show.style.display='block';
+      document.querySelectorAll('.sv-tab').forEach(t=>t.classList.toggle('active',t.dataset.sv===id));
+      if(show) show.scrollIntoView({behavior:'smooth',block:'start'});
     }
-    function setWalletUIConnected(){
-      setChip(document.getElementById('provChip'), true, 'Wallet connected', true);
-      const btn=document.getElementById('connectBtn'); if(btn){ btn.innerHTML='<i class="fa-solid fa-right-from-bracket"></i> Disconnect'; btn.disabled=false; }
+    document.querySelectorAll('.sv-tab').forEach(t=>t.addEventListener('click',()=>showSV(t.dataset.sv)));
+    document.querySelectorAll('[data-next]').forEach(a=>a.addEventListener('click',(e)=>{e.preventDefault();showSV(a.dataset.next)}));
+    document.querySelectorAll('[data-track^="sovereign-"]').forEach(cb=>cb.addEventListener('change',()=>{updateProgress();gateAccessAndEligibility()}));
+
+    /* ---------- Practice tracker ---------- */
+    function initPracticeTracker(){
+      const g=document.getElementById('practiceTracker');
+      const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1;
+      const key=`practice-${y}-${m}`, saved=new Set(JSON.parse(localStorage.getItem(key)||'[]'));
+      const days=new Date(y,m,0).getDate();
+      g.innerHTML='';
+      for(let i=1;i<=days;i++){
+        const d=document.createElement('button');
+        d.className='module-card'; d.style.padding='1rem'; d.style.textAlign='center'; d.type='button';
+        d.setAttribute('aria-pressed', saved.has(i));
+        d.innerHTML=`<div style="font-size:1.1rem;font-weight:800">${i}</div>`;
+        if(saved.has(i)) d.style.outline='2px solid var(--accent)';
+        d.addEventListener('click',()=>{
+          if(saved.has(i)){saved.delete(i);d.style.outline=''}else{saved.add(i);d.style.outline='2px solid var(--accent)'}
+          localStorage.setItem(key,JSON.stringify([...saved]));showToast('Practice saved ✔️')
+        });
+        g.appendChild(d);
+      }
     }
 
-    /* ---------------- Connect / Disconnect ---------------- */
+    /* ---------- Progress + eligibility ---------- */
+    function updateModuleStatus(id,status){
+      const card=document.querySelector(`.module-card[data-module="${id}"]`);
+      if(!card){updateProgress();return}
+      const ind=card.querySelector('.status-indicator');const txt=card.querySelector('.status-text');
+      ind.className='status-indicator';
+      if(status==='completed'){ind.classList.add('completed');txt.textContent='Completed'}
+      else if(status==='in-progress'){ind.classList.add('in-progress');txt.textContent='In Progress'}
+      else{txt.textContent='Not Started'}
+      updateProgress();gateAccessAndEligibility();
+    }
+    function computeEligibility(){
+      const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
+      const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
+      const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
+      const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
+      const total=totalPrimary+totalSovereign, done=completedPrimary+completedSovereign;
+      return {ok: total>0 && done>=total, total, done}
+    }
+    function updateProgress(){
+      const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
+      const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
+      const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
+      const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
+      const totalCompleted=completedPrimary+completedSovereign;
+      const totalModules=totalPrimary+totalSovereign;
+      const pct=Math.round((totalCompleted/Math.max(totalModules,1))*100);
+      document.getElementById('progressFill').style.width=pct+'%';
+      document.getElementById('progressPct').textContent=`${pct}% Complete`;
+      document.getElementById('progressCount').textContent=`${totalCompleted} of ${totalModules} Modules Completed`;
+      if(pct===100) showToast('Congratulations! You completed the program! 🎉')
+    }
+    function updateEligibilityUI(){
+      const {ok,total,done}=computeEligibility();
+      document.getElementById('eligibilityStatus').textContent=ok?'Eligible ✅':'Not Eligible';
+      document.getElementById('eligibilityDesc').textContent= total ? `${done} of ${total} required modules completed` : 'No modules detected';
+    }
+
+    /* Export/Import */
+    function collectPracticeData(){
+      const now=new Date();const key=`practice-${now.getFullYear()}-${now.getMonth()+1}`;
+      try{return {[key]:JSON.parse(localStorage.getItem(key)||'[]')}}catch{return {}}
+    }
+    function restorePracticeData(dict){
+      const keys=Object.keys(dict||{}); if(!keys.length) return;
+      keys.forEach(k=>localStorage.setItem(k,JSON.stringify(dict[k]||[])));
+      initPracticeTracker();
+    }
+    document.getElementById('exportProgress').addEventListener('click',()=>{
+      const data={
+        version:2,date:new Date().toISOString(),
+        modules:[...document.querySelectorAll('.module-card[data-module]')].map(c=>({
+          id:c.dataset.module,
+          status:c.querySelector('.status-indicator').classList.contains('completed')?'completed':
+                 c.querySelector('.status-indicator').classList.contains('in-progress')?'in-progress':'not-started'
+        })),
+        sovereign:[...document.querySelectorAll('[data-track^="sovereign-"]')].map(cb=>({key:cb.dataset.track,checked:cb.checked})),
+        practice:collectPracticeData()
+      };
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sovereignty-progress.json';a.click();URL.revokeObjectURL(a.href);
+      showToast('Progress exported ✔️');
+    });
+    document.getElementById('importProgress').addEventListener('click',()=>document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change',e=>{
+      const f=e.target.files[0]; e.target.value='';
+      if(!f) return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        try{
+          const data=JSON.parse(ev.target.result);
+          if(!Array.isArray(data.modules)) throw new Error('Invalid file');
+          document.querySelectorAll('.module-card[data-module]').forEach(card=>{
+            const id=card.dataset.module;
+            const found=data.modules.find(m=>m.id==id);
+            updateModuleStatus(id,found?found.status:'not-started');
+          });
+          (data.sovereign||[]).forEach(sv=>{
+            const cb=document.querySelector(`[data-track="${sv.key}"]`); if(cb) cb.checked=!!sv.checked;
+          });
+          restorePracticeData(data.practice||{});
+          gateAccessAndEligibility();
+          showToast('Progress imported ✔️');
+        }catch(err){console.error(err);showToast('Import failed ❗')}
+      };
+      r.readAsText(f);
+    });
+
+    /* ---------- Timer ---------- */
+    (function initTimer(){
+      const disp=document.getElementById('timerDisplay');
+      const start=document.getElementById('startTimer');
+      const pause=document.getElementById('pauseTimer');
+      const reset=document.getElementById('resetTimer');
+      const timeBtns=document.querySelectorAll('[data-time]');
+      let t,remain=600,running=false;
+      const draw=()=>{const m=Math.floor(remain/60),s=remain%60;disp.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
+      start.addEventListener('click',()=>{if(running)return;running=true;start.disabled=true;pause.disabled=false;t=setInterval(()=>{if(remain>0){remain--;draw()}else{clearInterval(t);running=false;start.disabled=false;pause.disabled=true;showToast('Meditation complete ✅')}},1000)});
+      pause.addEventListener('click',()=>{if(!running)return;clearInterval(t);running=false;start.disabled=false;pause.disabled=true});
+      reset.addEventListener('click',()=>{clearInterval(t);running=false;remain=600;draw();start.disabled=false;pause.disabled=true});
+      timeBtns.forEach(b=>b.addEventListener('click',()=>{remain=parseInt(b.dataset.time,10)*60;draw()}));
+      draw();
+    })();
+
+    /* ---------- Sovereign eligibility gate (Web3) ---------- */
+    // Chain config
+    const USE_TESTNET=false;
+    const BSC_MAINNET={chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/']};
+    const BSC_TESTNET={chainId:'0x61',chainName:'BNB Testnet',nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},rpcUrls:['https://bsc-testnet.publicnode.com'],blockExplorerUrls:['https://testnet.bscscan.com/']};
+    const TARGET_CHAIN=USE_TESTNET?BSC_TESTNET:BSC_MAINNET;
+
+    // Gate: SólCoin (must hold >= 5)
+    const SOLCOIN_ADDRESS='0x97A10b3889BdC8EE5EF937ebb75b91Ab1a7AA1F0';
+    const GATE_MIN_SOL=5;
+    const ERC20_MIN_ABI=['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+
+    // NFT Certificate
+    const NFT_CONTRACT='0xDA76d35742190283E340dbeE2038ecc978a56950';
+    const NFT_URI='ipfs://QmXCJjJJNU15vkha7e3sHTizcTNyDy7Mgqt8CjYMWheb1g/3';
+    const NFT_ABI=['function mintTo(address to, string uri)'];
+
+    let web3Modal, externalProvider, ethersProvider, signer, userAddress=null, userChainId=null;
+
+    const gateChip=document.getElementById('gateChip'), gateText=document.getElementById('gateText');
+    const addrChip=document.getElementById('addrChip');
+
+    function setChip(el, show=true, text=null, ok=false){
+      if(!el) return; el.style.display=show?'flex':'none';
+      if(text){const span=el.querySelector('span'); if(span) span.textContent=text}
+      if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
+    }
+
     async function connectWallet(){
-      try {
-        setWalletUIConnecting();
+      try{
+        document.querySelector('#connectBtn span').textContent='Connecting…';
         if(!web3Modal){
-          web3Modal = new window.Web3Modal.default({
-            cacheProvider: true,
-            providerOptions: {
-              walletconnect: {
-                package: window.WalletConnectProvider.default,
-                options: { rpc: {56: BSC_MAINNET.rpcUrls[0], 97: BSC_TESTNET.rpcUrls[0]}, chainId: (USE_TESTNET?97:56) }
-              }
-            },
-            theme: 'dark'
+          web3Modal=new window.Web3Modal.default({
+            cacheProvider:true,
+            providerOptions:{ walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{56:BSC_MAINNET.rpcUrls[0],97:BSC_TESTNET.rpcUrls[0]}, chainId:(USE_TESTNET?97:56) } } },
+            theme:'dark'
           });
         }
-        externalProvider = await web3Modal.connect();
-        ethersProvider = new ethers.providers.Web3Provider(externalProvider, 'any');
-        signer = ethersProvider.getSigner();
-
-        // events
+        externalProvider=await web3Modal.connect();
+        ethersProvider=new ethers.providers.Web3Provider(externalProvider,'any');
+        signer=ethersProvider.getSigner();
         externalProvider.on && externalProvider.on('accountsChanged', onAccountsChanged);
         externalProvider.on && externalProvider.on('chainChanged', onChainChanged);
-        externalProvider.on && externalProvider.on('disconnect', async ()=>{ await disconnectWallet(); });
-
-        const ok = await ensureTargetChain();
-        if (!ok) { setWalletUIDisconnected(); return; }
-
-        userAddress = await signer.getAddress();
-        setChip(document.getElementById('addrChip'), true);
-        document.getElementById('addrShort').textContent = short(userAddress);
-
-        await loadChainChip();
-        await loadNativeBalance();
-        setWalletUIConnected();
-        showToast('Wallet connected');
-
+        externalProvider.on && externalProvider.on('disconnect', async ()=>{await disconnectWallet()});
+        const ok=await ensureTargetChain(); if(!ok){await disconnectWallet();return}
+        userAddress=await signer.getAddress();
+        document.getElementById('addrShort').textContent=short(userAddress);
+        setChip(addrChip,true,null,true);
+        setChip(gateChip,true,'Checking access…',false);
+        document.querySelector('#connectBtn span').textContent='Disconnect';
+        showToast('Wallet connected ✔️');
         await gateAccessAndEligibility();
-      } catch (e) {
-        console.error(e);
-        setWalletUIDisconnected();
-        showToast('Connection canceled');
-      }
+      }catch(e){console.error(e);showToast('Connection canceled');document.querySelector('#connectBtn span').textContent='Connect'}
     }
     async function disconnectWallet(){
-      try { if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); } catch(_){}
-      externalProvider=null; ethersProvider=null; signer=null;
-      setWalletUIDisconnected();
+      try{ if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); }catch(_){}
+      externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
+      setChip(addrChip,false); setChip(gateChip,false);
+      document.querySelector('#connectBtn span').textContent='Connect';
     }
-
-    /* ---------------- Chain helpers ---------------- */
     async function ensureTargetChain(){
-      try {
-        const cid = await (ethersProvider?.send('eth_chainId', []) || '0x0');
-        if (cid && cid.toLowerCase() === TARGET_CHAIN.chainId.toLowerCase()) return true;
-        await externalProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: TARGET_CHAIN.chainId }] });
-        return true;
-      } catch (err) {
-        try { await externalProvider.request({ method:'wallet_addEthereumChain', params:[TARGET_CHAIN] }); return true; }
-        catch (e) { console.error('Chain add/switch rejected', e); showToast('Please switch to BNB Smart Chain.'); return false; }
+      try{
+        const cid=await (ethersProvider?.send('eth_chainId',[])||'0x0');
+        if(cid && cid.toLowerCase()===TARGET_CHAIN.chainId.toLowerCase()) return true;
+        await externalProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:TARGET_CHAIN.chainId}]}); return true;
+      }catch(err){
+        try{ await externalProvider.request({method:'wallet_addEthereumChain',params:[TARGET_CHAIN]}); return true; }
+        catch(e){ showToast('Please switch to BNB Smart Chain ❗'); return false; }
       }
-    }
-    async function loadChainChip(){
-      const chainChip=document.getElementById('chainChip'); const chainName=document.getElementById('chainName');
-      try{
-        const net=await ethersProvider.getNetwork();
-        userChainId = '0x' + net.chainId.toString(16);
-        chainName.textContent = (net.chainId===56)?'BNB Smart Chain':(net.chainId===97)?'BNB Testnet':('Chain '+net.chainId);
-        setChip(chainChip, true);
-      }catch(e){ console.error(e); setChip(chainChip,false); }
-    }
-    async function loadNativeBalance(){
-      try{
-        const bn = await ethersProvider.getBalance(userAddress);
-        document.getElementById('nativeBal').textContent = parseFloat(ethers.utils.formatUnits(bn,18)).toFixed(4);
-        setChip(document.getElementById('balChip'), true);
-      }catch(e){ console.error(e); setChip(document.getElementById('balChip'), false); }
     }
     async function onAccountsChanged(accts){
       if(!accts || !accts.length){ showToast('Wallet disconnected'); await disconnectWallet(); return; }
-      userAddress = ethers.utils.getAddress(accts[0]);
-      document.getElementById('addrShort').textContent = short(userAddress);
-      await loadNativeBalance();
-      await gateAccessAndEligibility();
+      userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
     }
-    async function onChainChanged(_chainId){
-      userChainId = _chainId;
-      await loadChainChip();
-      if (userChainId.toLowerCase() !== TARGET_CHAIN.chainId.toLowerCase()) {
-        showToast('Wrong network. Switch to BNB.');
-        await ensureTargetChain();
-      }
-      await loadNativeBalance();
-      await gateAccessAndEligibility();
-    }
+    async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
 
-    /* ---------------- SólCoin gate + eligibility ---------------- */
     async function checkSolGate(){
-      const gateChip = document.getElementById('gateChip');
-      const gateText = document.getElementById('gateText');
-      if (!ethersProvider || !userAddress) { setChip(gateChip,false); return {ok:false, have:0, sym:'SOL'}; }
+      if(!ethersProvider || !userAddress){ setChip(gateChip,false); return {ok:false,have:0,sym:'SOL'} }
       try{
-        const erc20 = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider);
-        const [dec, sym, bal] = await Promise.all([erc20.decimals(), erc20.symbol().catch(()=> 'SOL'), erc20.balanceOf(userAddress)]);
-        const have = parseFloat(ethers.utils.formatUnits(bal,dec));
-        const ok = have >= GATE_MIN_SOL;
-        setChip(gateChip, true, null, ok);
-        gateText.textContent = ok ? `Access: ${have.toFixed(2)} ${sym} ✓` : `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`;
-        return { ok, have, sym };
-      }catch(e){
-        console.error(e);
-        setChip(gateChip, true, 'Unable to read SólCoin balance', false);
-        return {ok:false, have:0, sym:'SOL'};
-      }
+        const erc20=new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider);
+        const [dec,sym,bal]=await Promise.all([erc20.decimals(), erc20.symbol().catch(()=> 'SOL'), erc20.balanceOf(userAddress)]);
+        const have=parseFloat(ethers.utils.formatUnits(bal,dec)); const ok=have>=GATE_MIN_SOL;
+        setChip(gateChip,true, ok?`Access: ${have.toFixed(2)} ${sym} ✓`: `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`, ok);
+        return {ok,have,sym}
+      }catch(e){console.error(e);setChip(gateChip,true,'Unable to read SólCoin',false);return {ok:false,have:0,sym:'SOL'}}
     }
     async function gateAccessAndEligibility(){
-      const { ok: allModulesOk } = computeEligibility();
+      updateEligibilityUI();
       const { ok: solOk } = await checkSolGate();
-      const eligible = allModulesOk && solOk;
-      const status = document.getElementById('eligibilityStatus');
-      const desc = document.getElementById('eligibilityDesc');
-      status.textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
-      desc.textContent = eligible ? 'All modules complete and SólCoin requirement met' :
-                       solOk ? 'Finish all required modules to unlock your certificate' :
-                               `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`;
-      document.getElementById('claimCert').disabled = !eligible;
-    }
-
-    /* ---------------- App UI (modules, progress, print) ---------------- */
-    function initApp() {
-      // Theme toggle
-      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
-      // Primary module buttons
-      document.querySelectorAll('.module-button').forEach(button => {
-        button.addEventListener('click', function() {
-          const moduleCard = this.closest('.module-card');
-          const moduleId = moduleCard.getAttribute('data-module');
-          if (moduleId) loadModuleDetail(moduleId);
-        });
-      });
-
-      // Back to modules
-      document.getElementById('backToModules').addEventListener('click', function(e) { e.preventDefault(); showModuleGrid(); });
-
-      // Top nav
-      document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
-          const target = this.getAttribute('data-target');
-          document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-          this.classList.add('active');
-          showToast(`Navigating to ${target} section`);
-        });
-      });
-
-      // Export / Import
-      document.getElementById('exportProgress').addEventListener('click', exportProgressJSON);
-      document.getElementById('importProgress').addEventListener('click', () => document.getElementById('importFile').click());
-      document.getElementById('importFile').addEventListener('change', e => {
-        const f = e.target.files[0]; if (f) importProgressJSON(f);
-        e.target.value = '';
-      });
-
-      // Print workbook
-      document.getElementById('printWorkbook').addEventListener('click', e=>{ e.preventDefault(); openWorkbookPrint(); });
-
-      // Sovereign checkboxes -> eligibility update
-      document.querySelectorAll('[data-track^="sovereign-"]').forEach(cb=> cb.addEventListener('change', gateAccessAndEligibility));
-
-      updateProgress();
-    }
-
-    function toggleTheme() {
-      const body = document.body;
-      const themeIcon = document.querySelector('#themeToggle i');
-      if (body.getAttribute('data-theme') === 'light') {
-        body.removeAttribute('data-theme'); themeIcon.className = 'fas fa-moon'; showToast('Dark mode activated');
-      } else {
-        body.setAttribute('data-theme', 'light'); themeIcon.className = 'fas fa-sun'; showToast('Light mode activated');
-      }
-    }
-
-    // Optional audio per module
-    const MODULE_AUDIO = {'1':'','2':'','3':'','4':'','5':'','6':'','7':''};
-    function audioHTMLFor(id){
-      const src = MODULE_AUDIO[id];
-      return src ? `<div class="audio-slot"><h4><i class="fas fa-headphones"></i> Module Narration</h4><audio controls preload="none" style="width:100%"><source src="${src}" type="audio/mpeg">Your browser does not support the audio element.</audio></div>` : '';
-    }
-
-    function loadModuleDetail(moduleId) {
-      const moduleDetail = document.getElementById('moduleDetail');
-      const moduleGrid = document.getElementById('modulesGrid');
-      const backButton = document.getElementById('backToModules');
-
-      moduleGrid.style.display = 'none';
-      moduleDetail.style.display = 'block';
-      backButton.style.display = 'block';
-
-      updateModuleStatus(moduleId, 'in-progress');
-
-      const moduleContents = {
-        '1': { title:'Foundation of Sovereignty', theme:'Understanding Personal Power', content:`
-          <h3>What is Sovereignty?</h3>
-          <p>Sovereignty is your birthright to complete authority over your own being—your thoughts, emotions, choices, and energy.</p>
-          <div class="key-quote">"Sovereignty begins when we stop outsourcing our authority and start listening to our inner guidance."</div>
-          <h3>The Pillars of Sovereignty</h3>
-          <ol>
-            <li><strong>Self-awareness</strong></li>
-            <li><strong>Self-responsibility</strong></li>
-            <li><strong>Self-expression</strong></li>
-            <li><strong>Self-trust</strong></li>
-          </ol>
-          <div class="practice-box"><h4><i class="fas fa-pen-fancy"></i> Reflection Exercise</h4><ul><li>Where are you fully empowered?</li><li>Where do you defer to others?</li><li>What would change if you chose inner guidance first?</li></ul></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule1" onchange="updateModuleStatus('1', this.checked ? 'completed' : 'in-progress')"><label for="completeModule1">Mark this module as complete</label></div>
-        `},
-        '2': { title:'Boundaries & Energy Protection', theme:'Creating Safe Containers', content:`
-          <h3>The Power of Healthy Boundaries</h3>
-          <p>Boundaries are gates that allow you to choose what enters your field.</p>
-          <div class="practice-box"><h4><i class="fas fa-shield-alt"></i> Energy Protection Practice</h4><p>Visualize a sphere of golden light that filters what serves you.</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule2" onchange="updateModuleStatus('2', this.checked ? 'completed' : 'in-progress')"><label for="completeModule2">Mark this module as complete</label></div>
-        `},
-        '3': { title:'Authentic Decision Making', theme:'Listening to Inner Wisdom', content:`
-          <h3>Reclaiming Your Decision Power</h3>
-          <p>Every decision either reinforces sovereignty or gives power away.</p>
-          <div class="practice-box"><h4><i class="fas fa-compass"></i> Body Compass</h4><p>Notice expansion vs. contraction for each option.</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule3" onchange="updateModuleStatus('3', this.checked ? 'completed' : 'in-progress')"><label for="completeModule3">Mark this module as complete</label></div>
-        `},
-        '4': { title:'Sovereign Communication', theme:'Expressing Truth with Power', content:`
-          <h3>Speaking Your Truth</h3>
-          <p>Clarity, compassion, conviction—without controlling outcomes.</p>
-          <div class="practice-box"><h4><i class="fas fa-comments"></i> "I" Statements</h4><p>"I feel…" instead of "You never…"</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule4" onchange="updateModuleStatus('4', this.checked ? 'completed' : 'in-progress')"><label for="completeModule4">Mark this module as complete</label></div>
-        `},
-        '5': { title:'Financial Sovereignty', theme:'Wealth as Energy Exchange', content:`
-          <h3>Money as Energy</h3>
-          <p>Create a conscious, empowered relationship with money.</p>
-          <div class="practice-box"><h4><i class="fas fa-search-dollar"></i> Money Story</h4><p>Write your money autobiography.</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule5" onchange="updateModuleStatus('5', this.checked ? 'completed' : 'in-progress')"><label for="completeModule5">Mark this module as complete</label></div>
-        `},
-        '6': { title:'Sovereign Relationships', theme:'Connecting Without Losing Self', content:`
-          <h3>Relationships as Mirrors</h3>
-          <p>Honor connection and autonomy.</p>
-          <div class="practice-box"><h4><i class="fas fa-heart"></i> Relationship Inventory</h4><p>Which relationships support sovereignty?</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule6" onchange="updateModuleStatus('6', this.checked ? 'completed' : 'in-progress')"><label for="completeModule6">Mark this module as complete</label></div>
-        `},
-        '7': { title:'Living as Sovereign Being', theme:'Integration & Mastery', content:`
-          <h3>Embodied Sovereignty</h3>
-          <p>Integrate sovereignty into daily life.</p>
-          <div class="practice-box"><h4><i class="fas fa-calendar"></i> Routine Design</h4><p>Build a daily practice you’ll keep.</p></div>
-          <div class="module-complete"><input type="checkbox" id="completeModule7" onchange="updateModuleStatus('7', this.checked ? 'completed' : 'in-progress')"><label for="completeModule7">Mark this module as complete</label></div>
-        `}
-      };
-
-      const content = moduleContents[moduleId] || {title:'Module', theme:'', content:'<p>Content coming soon.</p>'};
-      moduleDetail.innerHTML = `
-        <div class="detail-header">
-          <div><h2 class="detail-title">${content.title}</h2><div class="detail-theme">${content.theme}</div></div>
-          <button class="detail-close" onclick="showModuleGrid()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="detail-content">${audioHTMLFor(moduleId)}${content.content}</div>
-      `;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function showModuleGrid(){ document.getElementById('moduleDetail').style.display='none'; document.getElementById('modulesGrid').style.display='grid'; document.getElementById('backToModules').style.display='none'; }
-
-    function showModule(id){
-      if (typeof id === 'string' && id.startsWith('sv')) { showSV(id); }
-      else { loadModuleDetail(String(id)); }
-    }
-
-    function updateModuleStatus(moduleId, status) {
-      const moduleCard = document.querySelector(`.module-card[data-module="${moduleId}"]`);
-      if (!moduleCard) { updateProgress(); gateAccessAndEligibility(); return; }
-      const statusIndicator = moduleCard.querySelector('.status-indicator');
-      const statusText = moduleCard.querySelector('.status-text');
-      statusIndicator.className = 'status-indicator';
-      if (status === 'completed') { statusIndicator.classList.add('completed'); statusText.textContent = 'Completed'; }
-      else if (status === 'in-progress') { statusIndicator.classList.add('in-progress'); statusText.textContent = 'In Progress'; }
-      else { statusText.textContent = 'Not Started'; }
-      updateProgress();
-      gateAccessAndEligibility();
-    }
-
-    function updateProgress() {
-      // Core 7
-      const completedPrimary = document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
-      const totalPrimary = document.querySelectorAll('.module-card[data-module]').length;
-      // Sovereign 7
-      const completedSovereign = document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
-      const totalSovereign = document.querySelectorAll('[data-track^="sovereign-"]').length;
-      const totalCompleted = completedPrimary + completedSovereign;
-      const totalModules = totalPrimary + totalSovereign;
-      const percentage = Math.round((totalCompleted / totalModules) * 100);
-      document.getElementById('progressFill').style.width = `${percentage}%`;
-      document.getElementById('progressPct').textContent = `${percentage}% Complete`;
-      document.getElementById('progressCount').textContent = `${totalCompleted} of ${totalModules} Modules Completed`;
-      if (percentage === 100) showToast('Congratulations! You completed the program!');
-    }
-
-    // Sovereign visibility
-    function showSV(id){
-      ['sv1','sv2','sv3','sv4','sv5','sv6','sv7'].forEach(sid=>{ const el = document.getElementById(sid); if (el) el.style.display = 'none'; });
-      const show = document.getElementById(id); if (show) show.style.display = 'block';
-      document.querySelectorAll('.nav-container .nav-button').forEach(b=>b.classList.remove('active'));
-      const btn = Array.from(document.querySelectorAll('.nav-container .nav-button')).find(b => (b.getAttribute('onclick')||'').includes(id));
-      if (btn) btn.classList.add('active');
-      if (show) show.scrollIntoView({behavior:'smooth', block:'start'});
-    }
-
-    // Practice Tracker
-    function initPracticeTracker() {
-      const trackerGrid = document.getElementById('practiceTracker');
-      const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + 1;
-      const key = `practice-${y}-${m}`; const saved = JSON.parse(localStorage.getItem(key) || '[]');
-      const daysInMonth = new Date(y, m, 0).getDate();
-      trackerGrid.innerHTML = '';
-      for (let i = 1; i <= daysInMonth; i++) {
-        const day = document.createElement('div');
-        day.className = 'module-card'; day.style.padding = '1rem'; day.style.textAlign = 'center';
-        day.innerHTML = `<div style="font-size:1.2rem; font-weight:700">${i}</div>`;
-        if (saved.includes(i)) day.classList.add('completed');
-        day.addEventListener('click', ()=>{
-          const arr = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
-          if (arr.has(i)) { arr.delete(i); day.classList.remove('completed'); }
-          else { arr.add(i); day.classList.add('completed'); }
-          localStorage.setItem(key, JSON.stringify(Array.from(arr)));
-          showToast('Practice saved');
-        });
-        trackerGrid.appendChild(day);
-      }
-    }
-
-    // Timer
-    function initMeditationTimer() {
-      const timerDisplay = document.getElementById('timerDisplay');
-      const startButton = document.getElementById('startTimer');
-      const pauseButton = document.getElementById('pauseTimer');
-      const resetButton = document.getElementById('resetTimer');
-      const timeButtons = document.querySelectorAll('.timer-controls button[data-time]');
-      let timer; let timeRemaining = 600; let isRunning = false;
-      const updateDisplay = () => {
-        const minutes = Math.floor(timeRemaining / 60);
-        const seconds = timeRemaining % 60;
-        timerDisplay.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
-      };
-      startButton.addEventListener('click', function() {
-        if (isRunning) return;
-        isRunning = true; startButton.disabled = true; pauseButton.disabled = false;
-        timer = setInterval(function() {
-          if (timeRemaining > 0) { timeRemaining--; updateDisplay(); }
-          else { clearInterval(timer); isRunning = false; startButton.disabled = false; pauseButton.disabled = true; showToast('Meditation session complete!'); }
-        }, 1000);
-      });
-      pauseButton.addEventListener('click', function() {
-        if (!isRunning) return;
-        clearInterval(timer); isRunning = false; startButton.disabled = false; pauseButton.disabled = true;
-      });
-      resetButton.addEventListener('click', function() {
-        clearInterval(timer); isRunning = false; timeRemaining = 600; updateDisplay(); startButton.disabled = false; pauseButton.disabled = true;
-      });
-      timeButtons.forEach(b=> b.addEventListener('click', function(){ const minutes = parseInt(this.getAttribute('data-time')); timeRemaining = minutes * 60; updateDisplay(); }));
-      updateDisplay();
-    }
-
-    // Export / Import
-    function collectPracticeData(){
-      const now = new Date();
-      const key = `practice-${now.getFullYear()}-${now.getMonth()+1}`;
-      try { return {[key]: JSON.parse(localStorage.getItem(key) || '[]')}; } catch { return {}; }
-    }
-    function restorePracticeData(dict){
-      const keys = Object.keys(dict || {}); if (!keys.length) return;
-      keys.forEach(k => localStorage.setItem(k, JSON.stringify(dict[k] || [])));
-      initPracticeTracker();
-    }
-    function exportProgressJSON(){
-      const data = {
-        version: 2,
-        date: new Date().toISOString(),
-        modules: [...document.querySelectorAll('.module-card[data-module]')].map(c => ({
-          id: c.dataset.module,
-          status: c.querySelector('.status-indicator').classList.contains('completed') ? 'completed' :
-                  c.querySelector('.status-indicator').classList.contains('in-progress') ? 'in-progress' : 'not-started'
-        })),
-        sovereign: [...document.querySelectorAll('[data-track^="sovereign-"]')].map(cb => ({ key: cb.dataset.track, checked: cb.checked })),
-        practice: collectPracticeData()
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = 'sovereignty-progress.json'; a.click(); URL.revokeObjectURL(a.href);
-      showToast('Progress exported');
-    }
-    function importProgressJSON(file){
-      const reader = new FileReader();
-      reader.onload = e => {
-        try {
-          const data = JSON.parse(e.target.result);
-          if (!data || !Array.isArray(data.modules)) throw new Error('Invalid file');
-          document.querySelectorAll('.module-card[data-module]').forEach(card=>{
-            const id = card.dataset.module;
-            const found = data.modules.find(m=>m.id==id);
-            updateModuleStatus(id, found ? found.status : 'not-started');
-          });
-          (data.sovereign || []).forEach(sv=>{
-            const cb = document.querySelector(`[data-track="${sv.key}"]`);
-            if (cb) cb.checked = !!sv.checked;
-          });
-          restorePracticeData(data.practice || {});
-          gateAccessAndEligibility();
-          showToast('Progress imported');
-        } catch(err){ showToast('Import failed'); console.error(err); }
-      };
-      reader.readAsText(file);
-    }
-
-    // Eligibility helpers
-    function computeEligibility(){
-      const completedPrimary = document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
-      const totalPrimary = document.querySelectorAll('.module-card[data-module]').length;
-      const completedSovereign = document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
-      const totalSovereign = document.querySelectorAll('[data-track^="sovereign-"]').length;
-      const total = totalPrimary + totalSovereign;
-      const done = completedPrimary + completedSovereign;
-      const ok = total > 0 && done >= total;
-      return {ok, total, done};
-    }
-    function updateEligibilityUI(){
-      const {ok, total, done} = computeEligibility();
-      document.getElementById('eligibilityStatus').textContent = ok ? 'Eligible ✅' : 'Not Eligible';
-      document.getElementById('eligibilityDesc').textContent = total ? `${done} of ${total} required modules completed` : 'No modules detected';
-      // gate text will be managed by checkSolGate when wallet is connected
-    }
-
-    // NFT mint
-    async function claimCertificate(){
       const { ok: modulesOk } = computeEligibility();
-      const { ok: solOk } = await checkSolGate();
-      if(!(modulesOk && solOk)){ showToast('Not eligible yet'); return; }
-      try{
-        const nft = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
-        const tx = await nft.mintTo(userAddress, NFT_URI);
-        showToast('Minting NFT…');
-        await tx.wait();
-        showToast('🎉 Certificate NFT minted!');
-      }catch(e){
-        console.error(e);
-        showToast('Mint failed');
-      }
+      const eligible = solOk && modulesOk;
+      document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
+      document.getElementById('eligibilityDesc').textContent = eligible ? 'All modules complete and SólCoin requirement met' :
+        solOk ? 'Finish all required modules to unlock your certificate' :
+        `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`;
+      document.getElementById('claimCert').disabled=!eligible;
     }
-
-    // Minimal extra wallet helpers
-    document.getElementById('copyAddr')?.addEventListener('click', async () => { 
-      try { await navigator.clipboard.writeText(document.getElementById('addrShort')?.textContent || ''); showToast('Address copied'); }
-      catch { showToast('Copy failed'); }
+    async function claimCertificate(){
+      const { ok: modulesOk }=computeEligibility(); const { ok: solOk }=await checkSolGate();
+      if(!(modulesOk&&solOk)){showToast('Not eligible yet ❗');return}
+      try{
+        const nft=new ethers.Contract(NFT_CONTRACT,NFT_ABI,signer);
+        const tx=await nft.mintTo(userAddress,NFT_URI); showToast('Minting NFT…'); await tx.wait(); showToast('🎉 Certificate NFT minted!')
+      }catch(e){console.error(e);showToast('Mint failed ❗')}
+    }
+    document.getElementById('claimCert').addEventListener('click',claimCertificate);
+    document.getElementById('connectBtn').addEventListener('click',async()=>{
+      if(signer && userAddress){await disconnectWallet()} else {await connectWallet()}
+    });
+    document.getElementById('copyAddr').addEventListener('click',async()=>{
+      try{await navigator.clipboard.writeText(userAddress||'');showToast('Address copied ✔️')}catch{showToast('Copy failed')}
     });
 
+    /* ---------- Init ---------- */
+    function init(){
+      wireModuleButtons();
+      initPracticeTracker();
+      updateProgress();
+      updateEligibilityUI();
+      // auto-connect if cached
+      try{const cached=localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER'); if(cached) connectWallet()}catch{}
+    }
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
