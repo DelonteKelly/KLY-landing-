@@ -630,340 +630,333 @@
     <footer class="footer"><p>Sovereignty Mastery Program © 2023 • Designed for those ready to reclaim their power</p></footer>
   </main>
 
-  <script>
-    /* ---------- Helpers ---------- */
-    const showToast=(m)=>{const t=document.getElementById('toast');document.getElementById('toastMessage').textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
-    const short=(a)=>a?a.slice(0,6)+'…'+a.slice(-4):'0x…'
+<script>
+  /* ---------- Helpers ---------- */
+  const showToast=(m)=>{const t=document.getElementById('toast');document.getElementById('toastMessage').textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+  const short=(a)=>a?a.slice(0,6)+'…'+a.slice(-4):'0x…'
 
-    /* ---------- THEME ---------- */
-    document.getElementById('themeToggle').addEventListener('click',()=>{
-      const body=document.body,icon=document.querySelector('#themeToggle i');
-      if(body.dataset.theme==='light'){body.dataset.theme='';icon.className='fas fa-moon';showToast('Dark mode ✔️')}
-      else{body.dataset.theme='light';icon.className='fas fa-sun';showToast('Light mode ✔️')}
-    });
+  /* ---------- THEME ---------- */
+  document.getElementById('themeToggle').addEventListener('click',()=>{
+    const body=document.body,icon=document.querySelector('#themeToggle i');
+    if(body.dataset.theme==='light'){body.dataset.theme='';icon.className='fas fa-moon';showToast('Dark mode ✔️')}
+    else{body.dataset.theme='light';icon.className='fas fa-sun';showToast('Light mode ✔️')}
+  });
 
-    /* ---------- Sticky nav active link ---------- */
-    const sections=['home','overview','progress','modules','tools','sovereign','community']
-      .map(id=>document.getElementById(id))
-      .filter(Boolean);
-    const links=[...document.querySelectorAll('.topnav a')];
-    const io=new IntersectionObserver((entries)=>{
-      entries.forEach(e=>{
-        if(e.isIntersecting){
-          links.forEach(l=>l.classList.toggle('active', l.getAttribute('href')==='#'+e.target.id))
-        }
-      })
-    },{rootMargin:'-40% 0px -50% 0px',threshold:0});
-    sections.forEach(s=>io.observe(s));
-
-    /* ---------- Print Workbook shortcut ---------- */
-    document.getElementById('printWorkbook').addEventListener('click',(e)=>{
-      e.preventDefault();
-      window.print();
-    });
-
-    /* ---------- Module detail content ---------- */
-    const MODULE_AUDIO={'1':'','2':'','3':'','4':'','5':'','6':'','7':''}
-    const moduleContents={
-      '1':{title:'Foundation of Sovereignty',theme:'Understanding Personal Power',content:`
-        <h3>What is Sovereignty?</h3>
-        <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy.</p>
-        <div class="practice-box"><h4><i class="fas fa-pen-fancy"></i> Reflection</h4>
-          <ul><li>Where are you fully empowered?</li><li>Where do you defer to others?</li><li>What if you chose inner guidance first?</li></ul>
-        </div>
-        <label><input type="checkbox" id="completeModule1"> Mark complete</label>`},
-      '2':{title:'Boundaries & Energy Protection',theme:'Creating Safe Containers',content:`
-        <h3>The Power of Healthy Boundaries</h3>
-        <p>Boundaries are gates that allow you to choose what enters your field.</p>
-        <div class="practice-box"><h4><i class="fas fa-shield-alt"></i> Energy Sphere</h4><p>Visualize a sphere of golden light that filters what serves you.</p></div>
-        <label><input type="checkbox" id="completeModule2"> Mark complete</label>`},
-      '3':{title:'Authentic Decision Making',theme:'Listening to Inner Wisdom',content:`
-        <h3>Reclaim Decision Power</h3>
-        <p>Every decision either reinforces sovereignty or gives power away.</p>
-        <div class="practice-box"><h4><i class="fas fa-compass"></i> Body Compass</h4><p>Notice expansion vs. contraction for each option.</p></div>
-        <label><input type="checkbox" id="completeModule3"> Mark complete</label>`},
-      '4':{title:'Sovereign Communication',theme:'Expressing Truth with Power',content:`
-        <h3>Speak Your Truth</h3>
-        <p>Clarity, compassion, conviction—without controlling outcomes.</p>
-        <div class="practice-box"><h4><i class="fas fa-comments"></i> “I” Statements</h4><p>“I feel…” instead of “You never…”</p></div>
-        <label><input type="checkbox" id="completeModule4"> Mark complete</label>`},
-      '5':{title:'Financial Sovereignty',theme:'Wealth as Energy Exchange',content:`
-        <h3>Money as Energy</h3>
-        <p>Create a conscious, empowered relationship with money.</p>
-        <div class="practice-box"><h4><i class="fas fa-search-dollar"></i> Money Story</h4><p>Write your money autobiography.</p></div>
-        <label><input type="checkbox" id="completeModule5"> Mark complete</label>`},
-      '6':{title:'Sovereign Relationships',theme:'Connecting Without Losing Self',content:`
-        <h3>Relationships as Mirrors</h3>
-        <p>Honor connection and autonomy.</p>
-        <div class="practice-box"><h4><i class="fas fa-heart"></i> Relationship Inventory</h4><p>Which relationships support sovereignty?</p></div>
-        <label><input type="checkbox" id="completeModule6"> Mark complete</label>`},
-      '7':{title:'Living as Sovereign Being',theme:'Integration & Mastery',content:`
-        <h3>Embodied Sovereignty</h3>
-        <p>Integrate sovereignty into daily life.</p>
-        <div class="practice-box"><h4><i class="fas fa-calendar"></i> Routine Design</h4><p>Build a daily practice you’ll keep.</p></div>
-        <label><input type="checkbox" id="completeModule7"> Mark complete</label>`}
-    };
-
-    /* ---------- Open module modal ---------- */
-    function wireModuleButtons(){
-      document.querySelectorAll('.module-card[data-module] .module-button').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          const card=btn.closest('.module-card');
-          const id=card.dataset.module;
-          const data=moduleContents[id];
-          document.getElementById('detailTitle').textContent=data.title;
-          document.getElementById('detailTheme').textContent=data.theme;
-          document.getElementById('detailContent').innerHTML=(MODULE_AUDIO[id]?`<audio controls style="width:100%"><source src="${MODULE_AUDIO[id]}" type="audio/mpeg"></audio>`:'')+data.content;
-          openModal();
-          updateModuleStatus(id,'in-progress');
-          const ck=document.getElementById('completeModule'+id);
-          if(ck){ck.addEventListener('change',e=>updateModuleStatus(id,e.target.checked?'completed':'in-progress'))}
-        })
-      })
-    }
-    function openModal(){const m=document.getElementById('moduleModal');m.classList.add('open');m.setAttribute('aria-hidden','false')}
-    function closeModal(){const m=document.getElementById('moduleModal');m.classList.remove('open');m.setAttribute('aria-hidden','true')}
-    document.getElementById('closeDetail').addEventListener('click',closeModal);
-    document.getElementById('moduleModal').addEventListener('click',e=>{if(e.target.id==='moduleModal')closeModal()});
-
-    /* ---------- Sovereign Self tabs ---------- */
-    function showSV(id){
-      ['sv1','sv2','sv3','sv4','sv5','sv6','sv7'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none'});
-      const show=document.getElementById(id); if(show) show.style.display='block';
-      document.querySelectorAll('.sv-tab').forEach(t=>t.classList.toggle('active',t.dataset.sv===id));
-      if(show) show.scrollIntoView({behavior:'smooth',block:'start'});
-    }
-    document.querySelectorAll('.sv-tab').forEach(t=>t.addEventListener('click',()=>showSV(t.dataset.sv)));
-    document.querySelectorAll('[data-next]').forEach(a=>a.addEventListener('click',(e)=>{e.preventDefault();showSV(a.dataset.next)}));
-    document.querySelectorAll('[data-track^="sovereign-"]').forEach(cb=>cb.addEventListener('change',()=>{updateProgress();
-
-    /* ---------- Progress + eligibility ---------- */
-    function updateModuleStatus(id,status){
-      const card=document.querySelector(`.module-card[data-module="${id}"]`);
-      if(!card){updateProgress();return}
-      const ind=card.querySelector('.status-indicator');const txt=card.querySelector('.status-text');
-      ind.className='status-indicator';
-      if(status==='completed'){ind.classList.add('completed');txt.textContent='Completed'}
-      else if(status==='in-progress'){ind.classList.add('in-progress');txt.textContent='In Progress'}
-      else{txt.textContent='Not Started'}
-      updateProgress();gateAccessAndEligibility();
-    }
-    function computeEligibility(){
-      const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
-      const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
-      const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
-      const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
-      const total=totalPrimary+totalSovereign, done=completedPrimary+completedSovereign;
-      return {ok: total>0 && done>=total, total, done}
-    }
-    function updateProgress(){
-      const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
-      const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
-      const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
-      const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
-      const totalCompleted=completedPrimary+completedSovereign;
-      const totalModules=totalPrimary+totalSovereign;
-      const pct=Math.round((totalCompleted/Math.max(totalModules,1))*100);
-      document.getElementById('progressFill').style.width=pct+'%';
-      document.getElementById('progressPct').textContent=`${pct}% Complete`;
-      document.getElementById('progressCount').textContent=`${totalCompleted} of ${totalModules} Modules Completed`;
-      if(pct===100) showToast('Congratulations! You completed the program! 🎉')
-    }
-    function updateEligibilityUI(){
-      const {ok,total,done}=computeEligibility();
-      document.getElementById('eligibilityStatus').textContent=ok?'Eligible ✅':'Not Eligible';
-      document.getElementById('eligibilityDesc').textContent= total ? `${done} of ${total} required modules completed` : 'No modules detected';
-    }
-
-    /* Export/Import */
-    function collectPracticeData(){
-      const now=new Date();const key=`practice-${now.getFullYear()}-${now.getMonth()+1}`;
-      try{return {[key]:JSON.parse(localStorage.getItem(key)||'[]')}}catch{return {}}
-    }
-    function restorePracticeData(dict){
-      const keys=Object.keys(dict||{}); if(!keys.length) return;
-      keys.forEach(k=>localStorage.setItem(k,JSON.stringify(dict[k]||[])));
-      initPracticeTracker();
-    }
-    document.getElementById('exportProgress').addEventListener('click',()=>{
-      const data={
-        version:2,date:new Date().toISOString(),
-        modules:[...document.querySelectorAll('.module-card[data-module]')].map(c=>({
-          id:c.dataset.module,
-          status:c.querySelector('.status-indicator').classList.contains('completed')?'completed':
-                 c.querySelector('.status-indicator').classList.contains('in-progress')?'in-progress':'not-started'
-        })),
-        sovereign:[...document.querySelectorAll('[data-track^="sovereign-"]')].map(cb=>({key:cb.dataset.track,checked:cb.checked})),
-        practice:collectPracticeData()
-      };
-      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sovereignty-progress.json';a.click();URL.revokeObjectURL(a.href);
-      showToast('Progress exported ✔️');
-    });
-    document.getElementById('importProgress').addEventListener('click',()=>document.getElementById('importFile').click());
-    document.getElementById('importFile').addEventListener('change',e=>{
-      const f=e.target.files[0]; e.target.value='';
-      if(!f) return;
-      const r=new FileReader();
-      r.onload=ev=>{
-        try{
-          const data=JSON.parse(ev.target.result);
-          if(!Array.isArray(data.modules)) throw new Error('Invalid file');
-          document.querySelectorAll('.module-card[data-module]').forEach(card=>{
-            const id=card.dataset.module;
-            const found=data.modules.find(m=>m.id==id);
-            updateModuleStatus(id,found?found.status:'not-started');
-          });
-          (data.sovereign||[]).forEach(sv=>{
-            const cb=document.querySelector(`[data-track="${sv.key}"]`); if(cb) cb.checked=!!sv.checked;
-          });
-          restorePracticeData(data.practice||{});
-          gateAccessAndEligibility();
-          showToast('Progress imported ✔️');
-        }catch(err){console.error(err);showToast('Import failed ❗')}
-      };
-      r.readAsText(f);
-    });
-
-    /* ---------- Timer ---------- */
-    (function initTimer(){
-      const disp=document.getElementById('timerDisplay');
-      const start=document.getElementById('startTimer');
-      const pause=document.getElementById('pauseTimer');
-      const reset=document.getElementById('resetTimer');
-      const timeBtns=document.querySelectorAll('[data-time]');
-      let t,remain=600,running=false;
-      const draw=()=>{const m=Math.floor(remain/60),s=remain%60;disp.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
-      start.addEventListener('click',()=>{if(running)return;running=true;start.disabled=true;pause.disabled=false;t=setInterval(()=>{if(remain>0){remain--;draw()}else{clearInterval(t);running=false;start.disabled=false;pause.disabled=true;showToast('Meditation complete ✅')}},1000)});
-      pause.addEventListener('click',()=>{if(!running)return;clearInterval(t);running=false;start.disabled=false;pause.disabled=true});
-      reset.addEventListener('click',()=>{clearInterval(t);running=false;remain=600;draw();start.disabled=false;pause.disabled=true});
-      timeBtns.forEach(b=>b.addEventListener('click',()=>{remain=parseInt(b.dataset.time,10)*60;draw()}));
-      draw();
-    })();
-
-    /* ---------- Sovereign eligibility gate (Web3) ---------- */
-    // Chain config
-    const USE_TESTNET=false;
-    const BSC_MAINNET={chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/']};
-    const BSC_TESTNET={chainId:'0x61',chainName:'BNB Testnet',nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},rpcUrls:['https://bsc-testnet.publicnode.com'],blockExplorerUrls:['https://testnet.bscscan.com/']};
-    const TARGET_CHAIN=USE_TESTNET?BSC_TESTNET:BSC_MAINNET;
-
-    // Gate: SólCoin (must hold >= 5)
-    const SOLCOIN_ADDRESS='0x97A10b3889BdC8EE5EF937ebb75b91Ab1a7AA1F0';
-    const GATE_MIN_SOL=5;
-    const ERC20_MIN_ABI=['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
-
-    // NFT Certificate
-    const NFT_CONTRACT='0xDA76d35742190283E340dbeE2038ecc978a56950';
-    const NFT_URI='ipfs://QmXCJjJJNU15vkha7e3sHTizcTNyDy7Mgqt8CjYMWheb1g/3';
-    const NFT_ABI=['function mintTo(address to, string uri)'];
-
-    let web3Modal, externalProvider, ethersProvider, signer, userAddress=null, userChainId=null;
-
-    const gateChip=document.getElementById('gateChip'), gateText=document.getElementById('gateText');
-    const addrChip=document.getElementById('addrChip');
-
-    function setChip(el, show=true, text=null, ok=false){
-      if(!el) return; el.style.display=show?'flex':'none';
-      if(text){const span=el.querySelector('span'); if(span) span.textContent=text}
-      if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
-    }
-
-    async function connectWallet(){
-      try{
-        document.querySelector('#connectBtn span').textContent='Connecting…';
-        if(!web3Modal){
-          web3Modal=new window.Web3Modal.default({
-            cacheProvider:true,
-            providerOptions:{ walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{56:BSC_MAINNET.rpcUrls[0],97:BSC_TESTNET.rpcUrls[0]}, chainId:(USE_TESTNET?97:56) } } },
-            theme:'dark'
-          });
-        }
-        externalProvider=await web3Modal.connect();
-        ethersProvider=new ethers.providers.Web3Provider(externalProvider,'any');
-        signer=ethersProvider.getSigner();
-        externalProvider.on && externalProvider.on('accountsChanged', onAccountsChanged);
-        externalProvider.on && externalProvider.on('chainChanged', onChainChanged);
-        externalProvider.on && externalProvider.on('disconnect', async ()=>{await disconnectWallet()});
-        const ok=await ensureTargetChain(); if(!ok){await disconnectWallet();return}
-        userAddress=await signer.getAddress();
-        document.getElementById('addrShort').textContent=short(userAddress);
-        setChip(addrChip,true,null,true);
-        setChip(gateChip,true,'Checking access…',false);
-        document.querySelector('#connectBtn span').textContent='Disconnect';
-        showToast('Wallet connected ✔️');
-        await gateAccessAndEligibility();
-      }catch(e){console.error(e);showToast('Connection canceled');document.querySelector('#connectBtn span').textContent='Connect'}
-    }
-    async function disconnectWallet(){
-      try{ if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); }catch(_){}
-      externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
-      setChip(addrChip,false); setChip(gateChip,false);
-      document.querySelector('#connectBtn span').textContent='Connect';
-    }
-    async function ensureTargetChain(){
-      try{
-        const cid=await (ethersProvider?.send('eth_chainId',[])||'0x0');
-        if(cid && cid.toLowerCase()===TARGET_CHAIN.chainId.toLowerCase()) return true;
-        await externalProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:TARGET_CHAIN.chainId}]}); return true;
-      }catch(err){
-        try{ await externalProvider.request({method:'wallet_addEthereumChain',params:[TARGET_CHAIN]}); return true; }
-        catch(e){ showToast('Please switch to BNB Smart Chain ❗'); return false; }
+  /* ---------- Sticky nav active link ---------- */
+  const sections=['home','overview','progress','modules','tools','sovereign','community']
+    .map(id=>document.getElementById(id))
+    .filter(Boolean);
+  const links=[...document.querySelectorAll('.topnav a')];
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.toggle('active', l.getAttribute('href')==='#'+e.target.id))
       }
-    }
-    async function onAccountsChanged(accts){
-      if(!accts || !accts.length){ showToast('Wallet disconnected'); await disconnectWallet(); return; }
-      userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
-    }
-    async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
+    })
+  },{rootMargin:'-40% 0px -50% 0px',threshold:0});
+  sections.forEach(s=>io.observe(s));
 
-    async function checkSolGate(){
-      if(!ethersProvider || !userAddress){ setChip(gateChip,false); return {ok:false,have:0,sym:'SOL'} }
-      try{
-        const erc20=new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider);
-        const [dec,sym,bal]=await Promise.all([erc20.decimals(), erc20.symbol().catch(()=> 'SOL'), erc20.balanceOf(userAddress)]);
-        const have=parseFloat(ethers.utils.formatUnits(bal,dec)); const ok=have>=GATE_MIN_SOL;
-        setChip(gateChip,true, ok?`Access: ${have.toFixed(2)} ${sym} ✓`: `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`, ok);
-        return {ok,have,sym}
-      }catch(e){console.error(e);setChip(gateChip,true,'Unable to read SólCoin',false);return {ok:false,have:0,sym:'SOL'}}
-    }
-    async function gateAccessAndEligibility(){
-      updateEligibilityUI();
-      const { ok: solOk } = await checkSolGate();
-      const { ok: modulesOk } = computeEligibility();
-      const eligible = solOk && modulesOk;
-      document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
-      document.getElementById('eligibilityDesc').textContent = eligible ? 'All modules complete and SólCoin requirement met' :
-        solOk ? 'Finish all required modules to unlock your certificate' :
-        `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`;
-      document.getElementById('claimCert').disabled=!eligible;
-    }
-    async function claimCertificate(){
-      const { ok: modulesOk }=computeEligibility(); const { ok: solOk }=await checkSolGate();
-      if(!(modulesOk&&solOk)){showToast('Not eligible yet ❗');return}
-      try{
-        const nft=new ethers.Contract(NFT_CONTRACT,NFT_ABI,signer);
-        const tx=await nft.mintTo(userAddress,NFT_URI); showToast('Minting NFT…'); await tx.wait(); showToast('🎉 Certificate NFT minted!')
-      }catch(e){console.error(e);showToast('Mint failed ❗')}
-    }
-    document.getElementById('claimCert').addEventListener('click',claimCertificate);
-    document.getElementById('connectBtn').addEventListener('click',async()=>{
-      if(signer && userAddress){await disconnectWallet()} else {await connectWallet()}
-    });
-    document.getElementById('copyAddr').addEventListener('click',async()=>{
-      try{await navigator.clipboard.writeText(userAddress||'');showToast('Address copied ✔️')}catch{showToast('Copy failed')}
-    });
+  /* ---------- Print Workbook shortcut ---------- */
+  document.getElementById('printWorkbook').addEventListener('click',(e)=>{
+    e.preventDefault();
+    window.print();
+  });
 
-    /* ---------- Init ---------- */
-    function init(){
-      wireModuleButtons();
-      initPracticeTracker();
-      updateProgress();
-      updateEligibilityUI();
-      // auto-connect if cached
-      try{const cached=localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER'); if(cached) connectWallet()}catch{}
+  /* ---------- Module detail content ---------- */
+  const MODULE_AUDIO={'1':'','2':'','3':'','4':'','5':'','6':'','7':''}
+  const moduleContents={
+    '1':{title:'Foundation of Sovereignty',theme:'Understanding Personal Power',content:`
+      <h3>What is Sovereignty?</h3>
+      <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy.</p>
+      <div class="practice-box"><h4><i class="fas fa-pen-fancy"></i> Reflection</h4>
+        <ul><li>Where are you fully empowered?</li><li>Where do you defer to others?</li><li>What if you chose inner guidance first?</li></ul>
+      </div>
+      <label><input type="checkbox" id="completeModule1"> Mark complete</label>`},
+    '2':{title:'Boundaries & Energy Protection',theme:'Creating Safe Containers',content:`
+      <h3>The Power of Healthy Boundaries</h3>
+      <p>Boundaries are gates that allow you to choose what enters your field.</p>
+      <div class="practice-box"><h4><i class="fas fa-shield-alt"></i> Energy Sphere</h4><p>Visualize a sphere of golden light that filters what serves you.</p></div>
+      <label><input type="checkbox" id="completeModule2"> Mark complete</label>`},
+    '3':{title:'Authentic Decision Making',theme:'Listening to Inner Wisdom',content:`
+      <h3>Reclaim Decision Power</h3>
+      <p>Every decision either reinforces sovereignty or gives power away.</p>
+      <div class="practice-box"><h4><i class="fas fa-compass"></i> Body Compass</h4><p>Notice expansion vs. contraction for each option.</p></div>
+      <label><input type="checkbox" id="completeModule3"> Mark complete</label>`},
+    '4':{title:'Sovereign Communication',theme:'Expressing Truth with Power',content:`
+      <h3>Speak Your Truth</h3>
+      <p>Clarity, compassion, conviction—without controlling outcomes.</p>
+      <div class="practice-box"><h4><i class="fas fa-comments"></i> “I” Statements</h4><p>“I feel…” instead of “You never…”</p></div>
+      <label><input type="checkbox" id="completeModule4"> Mark complete</label>`},
+    '5':{title:'Financial Sovereignty',theme:'Wealth as Energy Exchange',content:`
+      <h3>Money as Energy</h3>
+      <p>Create a conscious, empowered relationship with money.</p>
+      <div class="practice-box"><h4><i class="fas fa-search-dollar"></i> Money Story</h4><p>Write your money autobiography.</p></div>
+      <label><input type="checkbox" id="completeModule5"> Mark complete</label>`},
+    '6':{title:'Sovereign Relationships',theme:'Connecting Without Losing Self',content:`
+      <h3>Relationships as Mirrors</h3>
+      <p>Honor connection and autonomy.</p>
+      <div class="practice-box"><h4><i class="fas fa-heart"></i> Relationship Inventory</h4><p>Which relationships support sovereignty?</p></div>
+      <label><input type="checkbox" id="completeModule6"> Mark complete</label>`},
+    '7':{title:'Living as Sovereign Being',theme:'Integration & Mastery',content:`
+      <h3>Embodied Sovereignty</h3>
+      <p>Integrate sovereignty into daily life.</p>
+      <div class="practice-box"><h4><i class="fas fa-calendar"></i> Routine Design</h4><p>Build a daily practice you’ll keep.</p></div>
+      <label><input type="checkbox" id="completeModule7"> Mark complete</label>`}
+  };
+
+  /* ---------- Open module modal ---------- */
+  function wireModuleButtons(){
+    document.querySelectorAll('.module-card[data-module] .module-button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const card=btn.closest('.module-card');
+        const id=card.dataset.module;
+        const data=moduleContents[id];
+        document.getElementById('detailTitle').textContent=data.title;
+        document.getElementById('detailTheme').textContent=data.theme;
+        document.getElementById('detailContent').innerHTML=(MODULE_AUDIO[id]?`<audio controls style="width:100%"><source src="${MODULE_AUDIO[id]}" type="audio/mpeg"></audio>`:'')+data.content;
+        openModal();
+        updateModuleStatus(id,'in-progress');
+        const ck=document.getElementById('completeModule'+id);
+        if(ck){ck.addEventListener('change',e=>updateModuleStatus(id,e.target.checked?'completed':'in-progress'))}
+      })
+    })
+  }
+  function openModal(){const m=document.getElementById('moduleModal');m.classList.add('open');m.setAttribute('aria-hidden','false')}
+  function closeModal(){const m=document.getElementById('moduleModal');m.classList.remove('open');m.setAttribute('aria-hidden','true')}
+  document.getElementById('closeDetail').addEventListener('click',closeModal);
+  document.getElementById('moduleModal').addEventListener('click',e=>{if(e.target.id==='moduleModal')closeModal()});
+
+  /* ---------- Sovereign Self tabs ---------- */
+  function showSV(id){
+    ['sv1','sv2','sv3','sv4','sv5','sv6','sv7'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none'});
+    const show=document.getElementById(id); if(show) show.style.display='block';
+    document.querySelectorAll('.sv-tab').forEach(t=>t.classList.toggle('active',t.dataset.sv===id));
+    if(show) show.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  document.querySelectorAll('.sv-tab').forEach(t=>t.addEventListener('click',()=>showSV(t.dataset.sv)));
+  document.querySelectorAll('[data-next]').forEach(a=>a.addEventListener('click',(e)=>{e.preventDefault();showSV(a.dataset.next)}));
+  document.querySelectorAll('[data-track^="sovereign-"]').forEach(cb =>
+    cb.addEventListener('change', () => { updateProgress(); gateAccessAndEligibility(); })
+  );
+
+  /* ---------- Progress + eligibility ---------- */
+  function updateModuleStatus(id,status){
+    const card=document.querySelector(`.module-card[data-module="${id}"]`);
+    if(!card){updateProgress();return}
+    const ind=card.querySelector('.status-indicator');const txt=card.querySelector('.status-text');
+    ind.className='status-indicator';
+    if(status==='completed'){ind.classList.add('completed');txt.textContent='Completed'}
+    else if(status==='in-progress'){ind.classList.add('in-progress');txt.textContent='In Progress'}
+    else{txt.textContent='Not Started'}
+    updateProgress();gateAccessAndEligibility();
+  }
+  function computeEligibility(){
+    const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
+    const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
+    const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
+    const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
+    const total=totalPrimary+totalSovereign, done=completedPrimary+completedSovereign;
+    return {ok: total>0 && done>=total, total, done}
+  }
+  function updateProgress(){
+    const completedPrimary=document.querySelectorAll('.module-card[data-module] .status-indicator.completed').length;
+    const totalPrimary=document.querySelectorAll('.module-card[data-module]').length;
+    const completedSovereign=document.querySelectorAll('[data-track^="sovereign-"]:checked').length;
+    const totalSovereign=document.querySelectorAll('[data-track^="sovereign-"]').length;
+    const totalCompleted=completedPrimary+completedSovereign;
+    const totalModules=totalPrimary+totalSovereign;
+    const pct=Math.round((totalCompleted/Math.max(totalModules,1))*100);
+    document.getElementById('progressFill').style.width=pct+'%';
+    document.getElementById('progressPct').textContent=`${pct}% Complete`;
+    document.getElementById('progressCount').textContent=`${totalCompleted} of ${totalModules} Modules Completed`;
+    if(pct===100) showToast('Congratulations! You completed the program! 🎉')
+  }
+  function updateEligibilityUI(){
+    const {ok,total,done}=computeEligibility();
+    document.getElementById('eligibilityStatus').textContent=ok?'Eligible ✅':'Not Eligible';
+    document.getElementById('eligibilityDesc').textContent= total ? `${done} of ${total} required modules completed` : 'No modules detected';
+  }
+
+  /* ---------- Export/Import (no daily tracker) ---------- */
+  document.getElementById('exportProgress').addEventListener('click',()=>{
+    const data={
+      version:2,
+      date:new Date().toISOString(),
+      modules:[...document.querySelectorAll('.module-card[data-module]')].map(c=>({
+        id:c.dataset.module,
+        status:c.querySelector('.status-indicator').classList.contains('completed')?'completed':
+               c.querySelector('.status-indicator').classList.contains('in-progress')?'in-progress':'not-started'
+      })),
+      sovereign:[...document.querySelectorAll('[data-track^="sovereign-"]')].map(cb=>({key:cb.dataset.track,checked:cb.checked}))
+    };
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sovereignty-progress.json';a.click();URL.revokeObjectURL(a.href);
+    showToast('Progress exported ✔️');
+  });
+  document.getElementById('importProgress').addEventListener('click',()=>document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change',e=>{
+    const f=e.target.files[0]; e.target.value='';
+    if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!Array.isArray(data.modules)) throw new Error('Invalid file');
+        document.querySelectorAll('.module-card[data-module]').forEach(card=>{
+          const id=card.dataset.module;
+          const found=data.modules.find(m=>m.id==id);
+          updateModuleStatus(id,found?found.status:'not-started');
+        });
+        (data.sovereign||[]).forEach(sv=>{
+          const cb=document.querySelector(`[data-track="${sv.key}"]`); if(cb) cb.checked=!!sv.checked;
+        });
+        gateAccessAndEligibility();
+        showToast('Progress imported ✔️');
+      }catch(err){console.error(err);showToast('Import failed ❗')}
+    };
+    r.readAsText(f);
+  });
+
+  /* ---------- Timer ---------- */
+  (function initTimer(){
+    const disp=document.getElementById('timerDisplay');
+    const start=document.getElementById('startTimer');
+    const pause=document.getElementById('pauseTimer');
+    const reset=document.getElementById('resetTimer');
+    const timeBtns=document.querySelectorAll('[data-time]');
+    let t,remain=600,running=false;
+    const draw=()=>{const m=Math.floor(remain/60),s=remain%60;disp.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
+    start.addEventListener('click',()=>{if(running)return;running=true;start.disabled=true;pause.disabled=false;t=setInterval(()=>{if(remain>0){remain--;draw()}else{clearInterval(t);running=false;start.disabled=false;pause.disabled=true;showToast('Meditation complete ✅')}},1000)});
+    pause.addEventListener('click',()=>{if(!running)return;clearInterval(t);running=false;start.disabled=false;pause.disabled=true});
+    reset.addEventListener('click',()=>{clearInterval(t);running=false;remain=600;draw();start.disabled=false;pause.disabled=true});
+    timeBtns.forEach(b=>b.addEventListener('click',()=>{remain=parseInt(b.dataset.time,10)*60;draw()}));
+    draw();
+  })();
+
+  /* ---------- Sovereign eligibility gate (Web3) ---------- */
+  // Chain config
+  const USE_TESTNET=false;
+  const BSC_MAINNET={chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/']};
+  const BSC_TESTNET={chainId:'0x61',chainName:'BNB Testnet',nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},rpcUrls:['https://bsc-testnet.publicnode.com'],blockExplorerUrls:['https://testnet.bscscan.com/']};
+  const TARGET_CHAIN=USE_TESTNET?BSC_TESTNET:BSC_MAINNET;
+
+  // Gate: SólCoin (must hold >= 5)
+  const SOLCOIN_ADDRESS='0x97A10b3889BdC8EE5EF937ebb75b91Ab1a7AA1F0';
+  const GATE_MIN_SOL=5;
+  const ERC20_MIN_ABI=['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+
+  // NFT Certificate
+  const NFT_CONTRACT='0xDA76d35742190283E340dbeE2038ecc978a56950';
+  const NFT_URI='ipfs://QmXCJjJJNU15vkha7e3sHTizcTNyDy7Mgqt8CjYMWheb1g/3';
+  const NFT_ABI=['function mintTo(address to, string uri)'];
+
+  let web3Modal, externalProvider, ethersProvider, signer, userAddress=null, userChainId=null;
+
+  const gateChip=document.getElementById('gateChip');
+  const addrChip=document.getElementById('addrChip');
+
+  function setChip(el, show=true, text=null, ok=false){
+    if(!el) return; el.style.display=show?'flex':'none';
+    if(text){const span=el.querySelector('span'); if(span) span.textContent=text}
+    if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
+  }
+
+  async function connectWallet(){
+    try{
+      document.querySelector('#connectBtn span').textContent='Connecting…';
+      if(!web3Modal){
+        web3Modal=new window.Web3Modal.default({
+          cacheProvider:true,
+          providerOptions:{ walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{56:BSC_MAINNET.rpcUrls[0],97:BSC_TESTNET.rpcUrls[0]}, chainId:(USE_TESTNET?97:56) } } },
+          theme:'dark'
+        });
+      }
+      externalProvider=await web3Modal.connect();
+      ethersProvider=new ethers.providers.Web3Provider(externalProvider,'any');
+      signer=ethersProvider.getSigner();
+      externalProvider.on && externalProvider.on('accountsChanged', onAccountsChanged);
+      externalProvider.on && externalProvider.on('chainChanged', onChainChanged);
+      externalProvider.on && externalProvider.on('disconnect', async ()=>{await disconnectWallet()});
+      const ok=await ensureTargetChain(); if(!ok){await disconnectWallet();return}
+      userAddress=await signer.getAddress();
+      document.getElementById('addrShort').textContent=short(userAddress);
+      setChip(addrChip,true,null,true);
+      setChip(gateChip,true,'Checking access…',false);
+      document.querySelector('#connectBtn span').textContent='Disconnect';
+      showToast('Wallet connected ✔️');
+      await gateAccessAndEligibility();
+    }catch(e){console.error(e);showToast('Connection canceled');document.querySelector('#connectBtn span').textContent='Connect'}
+  }
+  async function disconnectWallet(){
+    try{ if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); }catch(_){}
+    externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
+    setChip(addrChip,false); setChip(gateChip,false);
+    document.querySelector('#connectBtn span').textContent='Connect';
+  }
+  async function ensureTargetChain(){
+    try{
+      const cid=await (ethersProvider?.send('eth_chainId',[])||'0x0');
+      if(cid && cid.toLowerCase()===TARGET_CHAIN.chainId.toLowerCase()) return true;
+      await externalProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:TARGET_CHAIN.chainId}]}); return true;
+    }catch(err){
+      try{ await externalProvider.request({method:'wallet_addEthereumChain',params:[TARGET_CHAIN]}); return true; }
+      catch(e){ showToast('Please switch to BNB Smart Chain ❗'); return false; }
     }
-    document.addEventListener('DOMContentLoaded', init);
-  </script>
+  }
+  async function onAccountsChanged(accts){
+    if(!accts || !accts.length){ showToast('Wallet disconnected'); await disconnectWallet(); return; }
+    userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
+  }
+  async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
+
+  async function checkSolGate(){
+    if(!ethersProvider || !userAddress){ setChip(gateChip,false); return {ok:false,have:0,sym:'SOL'} }
+    try{
+      const erc20=new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider);
+      const [dec,sym,bal]=await Promise.all([erc20.decimals(), erc20.symbol().catch(()=> 'SOL'), erc20.balanceOf(userAddress)]);
+      const have=parseFloat(ethers.utils.formatUnits(bal,dec)); const ok=have>=GATE_MIN_SOL;
+      const gateText=document.getElementById('gateText');
+      if(gateText){ gateText.textContent = ok?`Access: ${have.toFixed(2)} ${sym} ✓`: `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`; }
+      setChip(gateChip,true,null,ok);
+      return {ok,have,sym}
+    }catch(e){console.error(e);const gateText=document.getElementById('gateText'); if(gateText) gateText.textContent='Unable to read SólCoin'; setChip(gateChip,true,null,false);return {ok:false,have:0,sym:'SOL'}}
+  }
+  async function gateAccessAndEligibility(){
+    updateEligibilityUI();
+    const { ok: solOk } = await checkSolGate();
+    const { ok: modulesOk } = computeEligibility();
+    const eligible = solOk && modulesOk;
+    document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
+    document.getElementById('eligibilityDesc').textContent = eligible ? 'All modules complete and SólCoin requirement met' :
+      solOk ? 'Finish all required modules to unlock your certificate' :
+      `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`;
+    document.getElementById('claimCert').disabled=!eligible;
+  }
+  async function claimCertificate(){
+    const { ok: modulesOk }=computeEligibility(); const { ok: solOk }=await checkSolGate();
+    if(!(modulesOk&&solOk)){showToast('Not eligible yet ❗');return}
+    try{
+      const nft=new ethers.Contract(NFT_CONTRACT,NFT_ABI,signer);
+      const tx=await nft.mintTo(userAddress,NFT_URI); showToast('Minting NFT…'); await tx.wait(); showToast('🎉 Certificate NFT minted!')
+    }catch(e){console.error(e);showToast('Mint failed ❗')}
+  }
+  document.getElementById('claimCert').addEventListener('click',claimCertificate);
+  document.getElementById('connectBtn').addEventListener('click',async()=>{
+    if(signer && userAddress){await disconnectWallet()} else {await connectWallet()}
+  });
+  document.getElementById('copyAddr').addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(userAddress||'');showToast('Address copied ✔️')}catch{showToast('Copy failed')}
+  });
+
+  /* ---------- Init ---------- */
+  function init(){
+    wireModuleButtons();
+    updateProgress();
+    updateEligibilityUI();
+    // auto-connect if cached
+    try{const cached=localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER'); if(cached) connectWallet()}catch{}
+  }
+  document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
