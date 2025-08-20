@@ -179,6 +179,40 @@ p+ul,p+ol{margin-top:.4rem}
 @media (max-width:768px){
   .hero-title{font-size:2.25rem}
 }
+
+  /* --- PATCH: modal close positioning --- */
+.panel{ position:relative; } /* keep .detail-close positioned within the panel */
+
+/* --- PATCH: modules grid + header bits --- */
+.modules-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:18px;
+  margin:1rem 0;
+}
+.module-header{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-rows:auto auto;
+  column-gap:.75rem;
+  align-items:center;
+}
+.module-badge{
+  height:38px;width:38px;border-radius:10px;
+  display:grid;place-items:center;
+  background:#1f2738;border:1px solid #2a3550;color:#bfc7da;font-weight:800;
+}
+.module-title{margin:0;font-size:1.15rem;font-weight:800}
+.module-theme{grid-column:2;color:var(--muted);font-size:.95rem;margin-top:-2px}
+
+/* --- PATCH: sv-nav container (match your HTML) --- */
+.sv-nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+
+/* --- Optional: little badge polish in header --- */
+.brand-badge{
+  height:28px;width:28px;border-radius:8px;display:grid;place-items:center;
+  background:linear-gradient(135deg,#5fe1b9,#7c7cff);color:#0b0f14;font-weight:900
+}
 </style>
 </head>
 <body>
@@ -965,11 +999,16 @@ p+ul,p+ol{margin-top:.4rem}
     document.getElementById('progressCount').textContent=`${totalCompleted} of ${totalModules} Modules Completed`;
     if(pct===100) showToast('Congratulations! You completed the program! 🎉')
   }
-  function updateEligibilityUI(){
-    const {ok,total,done}=computeEligibility();
-    document.getElementById('eligibilityStatus').textContent=ok?'Eligible ✅':'Not Eligible';
-    document.getElementById('eligibilityDesc').textContent= total ? `${done} of ${total} required modules completed` : 'No modules detected';
-  }
+function updateEligibilityUI(){
+  const {ok,total,done}=computeEligibility();
+  const walletReady = !!userAddress; // defined above in your script
+  document.getElementById('eligibilityStatus').textContent =
+    walletReady ? (ok ? 'Eligible ✅' : 'Not Eligible') : 'Connect Wallet';
+  document.getElementById('eligibilityDesc').textContent =
+    walletReady
+      ? (total ? `${done} of ${total} required modules completed` : 'No modules detected')
+      : 'Connect your wallet to check SólCoin requirement';
+}
 
   /* ---------- Export/Import (no daily tracker) ---------- */
   document.getElementById('exportProgress').addEventListener('click',()=>{
