@@ -13,6 +13,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   
+  <!-- Web3 Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
   <style>
     :root {
       --primary: #6C4DF6;
@@ -51,12 +56,7 @@
     /* Floating Particles Background */
     .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
     .particle { position: absolute; background: var(--accent); border-radius: 50%; opacity: 0.3; animation: float linear infinite; }
-   @keyframes float-lg {
-  0%   { transform: translateY(0) translateX(0); }
-  50%  { transform: translateY(-100px) translateX(50px); }
-  100% { transform: translateY(0) translateX(0); }
-}
-
+    @keyframes float { 0% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-100px) translateX(50px); } 100% { transform: translateY(0) translateX(0); } }
     
     /* Typography */
     h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin-bottom: 1rem; }
@@ -179,11 +179,7 @@
     .certificate-image:hover { opacity: 1; transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6); }
     
     /* Floating & Pulse */
-    @keyframes float-sm {
-  0%   { transform: translateY(0px); }
-  50%  { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
-}
+    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
     .floating { animation: float 6s ease-in-out infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     .pulse { animation: pulse 2s infinite; }
@@ -396,11 +392,11 @@
 
     <div class="main-content">
       <aside class="sidebar">
-        <div class="user-profile">
-          <div class="avatar">JD</div>
+        <div class="user-profile" id="userProfile">
+          <div class="avatar" id="userAvatar">?</div>
           <div class="wallet-info">
-            <div class="wallet-address">0x1a2b3c4d5e6f...</div>
-            <button class="disconnect-btn">
+            <div class="wallet-address" id="walletAddress">Not connected</div>
+            <button class="disconnect-btn" id="disconnectBtn" style="display: none;">
               <i class="fas fa-unlink"></i> Disconnect
             </button>
           </div>
@@ -409,117 +405,99 @@
         <div class="progress-container">
           <div class="progress-title">
             <span>Your Progress</span>
-            <span>25%</span>
+            <span id="progressPercentage">0%</span>
           </div>
           <div class="progress-bar">
-            <div class="progress-fill" style="width: 25%"></div>
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
           </div>
         </div>
 
         <div class="course-menu">
           <h3><i class="fas fa-graduation-cap"></i> Course Modules</h3>
-          <div class="course-list-container">
-            <div class="menu-item active">
-              <div class="menu-icon"><i class="fas fa-1"></i></div>
-              <div class="menu-text">Foundation of Sovereignty</div>
-              <div class="menu-badge">New</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-2"></i></div>
-              <div class="menu-text">Boundaries & Energy</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-3"></i></div>
-              <div class="menu-text">Authentic Decision Making</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-4"></i></div>
-              <div class="menu-text">Sovereign Communication</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-5"></i></div>
-              <div class="menu-text">Financial Sovereignty</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-6"></i></div>
-              <div class="menu-text">Sovereign Relationships</div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-icon"><i class="fas fa-7"></i></div>
-              <div class="menu-text">Living as Sovereign</div>
-            </div>
+          <div class="course-list-container" id="courseList">
+            <!-- Menu items will be generated dynamically -->
           </div>
         </div>
       </aside>
 
-      <main class="course-content">
-        <div class="module-header">
-          <div class="module-title">
-            <div class="module-number">1</div>
-            <span>Foundation of Sovereignty</span>
-          </div>
-          <div class="module-nav">
-            <button class="btn btn-outline btn-sm">
-              <i class="fas fa-chevron-left"></i> Previous
-            </button>
-            <button class="btn btn-primary btn-sm">
-              Next <i class="fas fa-chevron-right"></i>
-            </button>
+      <main class="course-content" id="courseContent">
+        <div class="connect-section" id="connectSection">
+          <h2>Connect Your Wallet</h2>
+          <p>Connect your Web3 wallet to access the complete Sovereignty Mastery Program, track your progress, and unlock all 14 modules.</p>
+          <div class="wallet-options">
+            <div class="wallet-option" id="connectWalletBtn">
+              <i class="fas fa-wallet wallet-icon"></i>
+              <span>Connect Wallet</span>
+            </div>
+            <div class="wallet-option">
+              <i class="fab fa-metamask wallet-icon"></i>
+              <span>MetaMask</span>
+            </div>
+            <div class="wallet-option">
+              <i class="fas fa-wallet wallet-icon"></i>
+              <span>WalletConnect</span>
+            </div>
           </div>
         </div>
 
-        <div class="module-body">
-          <div class="module-section">
-            <h3><i class="fas fa-bullseye"></i> Core Concept</h3>
-            <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy. This module establishes the foundational understanding of what it means to be truly sovereign.</p>
-          </div>
-
-          <div class="module-section">
-            <h3><i class="fas fa-tasks"></i> Learning Objectives</h3>
-            <ul>
-              <li>Understand the historical and philosophical roots of sovereignty</li>
-              <li>Identify areas where you've surrendered personal authority</li>
-              <li>Recognize the difference between ego-driven and soul-aligned power</li>
-              <li>Establish a daily practice to strengthen sovereign awareness</li>
-              <li>Create a personal sovereignty declaration</li>
-            </ul>
-          </div>
-
-          <div class="module-section">
-            <h3><i class="fas fa-book-open"></i> Key Lessons</h3>
-            <ul>
-              <li><strong>The Historical Context of Sovereignty</strong> - Explore how sovereignty has been understood across cultures and time periods, from ancient rulers to modern self-governance.</li>
-              <li><strong>Internal vs External Authority</strong> - Learn to distinguish between making decisions based on external validation versus internal wisdom.</li>
-              <li><strong>The Ego's Illusion of Control</strong> - Understand how the ego masquerades as sovereignty while actually keeping you trapped in patterns of control and fear.</li>
-              <li><strong>Sovereignty as a Daily Practice</strong> - Discover practical techniques for cultivating sovereignty in everyday life through mindfulness and conscious choice.</li>
-              <li><strong>Energy Management Basics</strong> - Learn to recognize and protect your energy as the fundamental resource of sovereign practice.</li>
-            </ul>
-          </div>
-
-          <div class="practice-box">
-            <div class="practice-title">
-              <i class="fas fa-pen-fancy"></i> Sovereignty Audit Worksheet
+        <div id="moduleContent" style="display: none;">
+          <div class="module-header">
+            <div class="module-title">
+              <div class="module-number" id="moduleNumber">1</div>
+              <span id="moduleTitle">Foundation of Sovereignty</span>
             </div>
-            <p><strong>Reflection Questions:</strong></p>
-            <ul>
-              <li>Where in my life do I consistently defer to others' opinions rather than trusting my own knowing?</li>
-              <li>What decisions have I made recently from fear of judgment rather than alignment with my truth?</li>
-              <li>Which relationships or situations require me to shrink or hide parts of myself?</li>
-              <li>What one decision this week would most restore my sense of personal power?</li>
-            </ul>
-            <p><strong>Action Step:</strong> Identify one area where you've given away power and take one concrete action to reclaim it within 48 hours.</p>
+            <div class="module-nav">
+              <button class="btn btn-outline btn-sm" id="prevModuleBtn" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+              </button>
+              <button class="btn btn-primary btn-sm" id="nextModuleBtn">
+                Next <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="callout">
-            <i class="fas fa-lightbulb callout-icon"></i>
-            <div class="callout-title">Sovereign Insight</div>
-            <p>True sovereignty begins not with controlling others, but with mastering yourself. The most powerful throne you will ever sit upon is the one within your own being.</p>
-          </div>
+          <div class="module-body">
+            <div class="module-section">
+              <h3><i class="fas fa-bullseye"></i> Core Concept</h3>
+              <p id="moduleConcept">Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy. This module establishes the foundational understanding of what it means to be truly sovereign.</p>
+            </div>
 
-          <div style="text-align: center; margin-top: 2.5rem;">
-            <button class="btn btn-primary" id="openModal">
-              <i class="fas fa-expand"></i> View Full Module Content
-            </button>
+            <div class="module-section">
+              <h3><i class="fas fa-tasks"></i> Learning Objectives</h3>
+              <ul id="moduleObjectives">
+                <!-- Objectives will be populated dynamically -->
+              </ul>
+            </div>
+
+            <div class="module-section">
+              <h3><i class="fas fa-book-open"></i> Key Lessons</h3>
+              <ul id="moduleLessons">
+                <!-- Lessons will be populated dynamically -->
+              </ul>
+            </div>
+
+            <div class="practice-box" id="modulePractice">
+              <div class="practice-title">
+                <i class="fas fa-pen-fancy"></i> Sovereignty Audit Worksheet
+              </div>
+              <p><strong>Reflection Questions:</strong></p>
+              <ul id="practiceQuestions">
+                <!-- Questions will be populated dynamically -->
+              </ul>
+              <p><strong>Action Step:</strong> <span id="actionStep">Identify one area where you've given away power and take one concrete action to reclaim it within 48 hours.</span></p>
+            </div>
+
+            <div class="callout">
+              <i class="fas fa-lightbulb callout-icon"></i>
+              <div class="callout-title">Sovereign Insight</div>
+              <p id="sovereignInsight">True sovereignty begins not with controlling others, but with mastering yourself. The most powerful throne you will ever sit upon is the one within your own being.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 2.5rem;">
+              <button class="btn btn-primary" id="openModal">
+                <i class="fas fa-expand"></i> View Full Module Content
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -535,97 +513,26 @@
 
       <div class="modal-header">
         <h2 class="modal-title">
-          <div class="module-number">1</div>
-          Foundation of Sovereignty
+          <div class="module-number" id="modalModuleNumber">1</div>
+          <span id="modalModuleTitle">Foundation of Sovereignty</span>
         </h2>
-        <div class="modal-subtitle">Understanding Personal Power</div>
+        <div class="modal-subtitle" id="modalModuleSubtitle">Understanding Personal Power</div>
       </div>
 
-      <div class="modal-body">
-        <div class="modal-section">
-          <h3><i class="fas fa-bullseye"></i> Core Concept</h3>
-          <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy. This module establishes the foundational understanding of what it means to be truly sovereign.</p>
-          <p>True power begins with recognizing you're more than compliant patterns—you are a sovereign soul called to reclaim your throne. Sovereignty is not about controlling others but about mastering yourself and your responses to the world around you.</p>
-        </div>
-
-        <div class="modal-section">
-          <h3><i class="fas fa-tasks"></i> Learning Objectives</h3>
-          <ul>
-            <li>Understand the historical and philosophical roots of sovereignty across different cultures and eras</li>
-            <li>Identify areas where you've surrendered personal authority to external systems, relationships, or internalized beliefs</li>
-            <li>Recognize the difference between ego-driven power (control) and soul-aligned power (authentic authority)</li>
-            <li>Establish a daily practice to strengthen sovereign awareness and decision-making</li>
-            <li>Create a personal sovereignty declaration to solidify your commitment to this path</li>
-            <li>Develop tools to recognize when you're operating from conditioned responses rather than conscious choice</li>
-          </ul>
-        </div>
-
-        <div class="modal-section">
-          <h3><i class="fas fa-book-open"></i> Key Lessons</h3>
-          <ul>
-            <li><strong>The Historical Context of Sovereignty</strong> - Explore how sovereignty has been understood across cultures and time periods, from ancient rulers to modern self-governance. Understand the evolution from external rulers to internal authority.</li>
-            <li><strong>Internal vs External Authority</strong> - Learn to distinguish between making decisions based on external validation versus internal wisdom. Develop practices to strengthen your connection to your inner guidance system.</li>
-            <li><strong>The Ego's Illusion of Control</strong> - Understand how the ego masquerades as sovereignty while actually keeping you trapped in patterns of control, fear, and manipulation. Recognize these patterns in yourself and others.</li>
-            <li><strong>Sovereignty as a Daily Practice</strong> - Discover practical techniques for cultivating sovereignty in everyday life through mindfulness, conscious choice, and boundary setting. Learn how small decisions build your sovereign muscle.</li>
-            <li><strong>Energy Management Basics</strong> - Learn to recognize and protect your energy as the fundamental resource of sovereign practice. Understand how energy leaks occur and how to prevent them.</li>
-            <li><strong>The Sovereignty Spectrum</strong> - Identify where you fall on the spectrum between full dependency and full sovereignty in different life areas: relationships, work, finances, and personal expression.</li>
-            <li><strong>Myths and Misconceptions</strong> - Debunk common misunderstandings about sovereignty, such as it meaning isolation, selfishness, or never considering others' perspectives.</li>
-          </ul>
-        </div>
-
-        <div class="practice-box">
-          <div class="practice-title">
-            <i class="fas fa-pen-fancy"></i> Sovereignty Audit Worksheet
-          </div>
-          <p><strong>Reflection Questions:</strong></p>
-          <ul>
-            <li>Where in my life do I consistently defer to others' opinions rather than trusting my own knowing?</li>
-            <li>What decisions have I made recently from fear of judgment rather than alignment with my truth?</li>
-            <li>Which relationships or situations require me to shrink or hide parts of myself?</li>
-            <li>What one decision this week would most restore my sense of personal power?</li>
-            <li>When do I notice myself seeking permission where none is needed?</li>
-            <li>What aspects of my life feel most authentically mine versus performed for others?</li>
-          </ul>
-          <p><strong>Action Step:</strong> Identify one area where you've given away power and take one concrete action to reclaim it within 48 hours. Document the experience and its impact on your sense of self.</p>
-          <p><strong>Sovereignty Declaration:</strong> Write a brief statement of personal sovereignty that begins with "I have the right to..." and "I am responsible for...". Place it where you'll see it daily.</p>
-        </div>
-
-        <div class="callout">
-          <i class="fas fa-lightbulb callout-icon"></i>
-          <div class="callout-title">Sovereign Insight</div>
-          <p>True sovereignty begins not with controlling others, but with mastering yourself. The most powerful throne you will ever sit upon is the one within your own being. Your sovereignty isn't something you need to earn or prove—it's your natural state waiting to be reclaimed.</p>
-        </div>
-
-        <div class="practice-box">
-          <div class="practice-title">
-            <i class="fas fa-hourglass-half"></i> Daily Sovereignty Practice
-          </div>
-          <p><strong>Morning Alignment (5 minutes):</strong></p>
-          <ol>
-            <li>Sit quietly and place a hand over your heart</li>
-            <li>Ask yourself: "What would sovereignty feel like in today's activities?"</li>
-            <li>Identify one opportunity to practice sovereign choice today</li>
-            <li>Set an intention to notice when you feel empowered versus disempowered</li>
-          </ol>
-          <p><strong>Evening Reflection (5 minutes):</strong></p>
-          <ol>
-            <li>Review your day and note moments of sovereign choice</li>
-            <li>Acknowledge without judgment where you gave your power away</li>
-            <li>Celebrate one conscious decision you made from your center</li>
-          </ol>
-        </div>
+      <div class="modal-body" id="modalModuleContent">
+        <!-- Modal content will be populated dynamically -->
       </div>
 
       <div class="modal-footer">
         <div class="module-status">
-          <span class="status-indicator in-progress"></span>
-          <span class="status-text">In Progress</span>
+          <span class="status-indicator" id="modalStatusIndicator"></span>
+          <span class="status-text" id="modalStatusText">Not Started</span>
         </div>
         <div>
-          <button class="btn btn-outline btn-sm">
+          <button class="btn btn-outline btn-sm" id="saveProgressBtn">
             <i class="fas fa-bookmark"></i> Save Progress
           </button>
-          <button class="btn btn-primary btn-sm">
+          <button class="btn btn-primary btn-sm" id="markCompleteBtn">
             Mark Complete <i class="fas fa-check"></i>
           </button>
         </div>
@@ -634,6 +541,251 @@
   </div>
 
   <script>
+    // Course data with all 14 modules
+    const courseModules = [
+      {
+        id: 1,
+        title: "Foundation of Sovereignty",
+        subtitle: "Understanding Personal Power",
+        concept: "Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy. This module establishes the foundational understanding of what it means to be truly sovereign.",
+        objectives: [
+          "Understand the historical and philosophical roots of sovereignty",
+          "Identify areas where you've surrendered personal authority",
+          "Recognize the difference between ego-driven and soul-aligned power",
+          "Establish a daily practice to strengthen sovereign awareness",
+          "Create a personal sovereignty declaration"
+        ],
+        lessons: [
+          "The Historical Context of Sovereignty - Explore how sovereignty has been understood across cultures and time periods",
+          "Internal vs External Authority - Learn to distinguish between making decisions based on external validation versus internal wisdom",
+          "The Ego's Illusion of Control - Understand how the ego masquerades as sovereignty while actually keeping you trapped",
+          "Sovereignty as a Daily Practice - Discover practical techniques for cultivating sovereignty in everyday life",
+          "Energy Management Basics - Learn to recognize and protect your energy as the fundamental resource of sovereign practice"
+        ],
+        questions: [
+          "Where in my life do I consistently defer to others' opinions rather than trusting my own knowing?",
+          "What decisions have I made recently from fear of judgment rather than alignment with my truth?",
+          "Which relationships or situations require me to shrink or hide parts of myself?",
+          "What one decision this week would most restore my sense of personal power?"
+        ],
+        actionStep: "Identify one area where you've given away power and take one concrete action to reclaim it within 48 hours.",
+        insight: "True sovereignty begins not with controlling others, but with mastering yourself. The most powerful throne you will ever sit upon is the one within your own being."
+      },
+      {
+        id: 2,
+        title: "Boundaries & Energy Protection",
+        subtitle: "Creating Safe Containers",
+        concept: "Boundaries are the foundation of sovereignty. They define where you end and others begin, protecting your energy and creating space for authentic expression.",
+        objectives: [
+          "Identify your current boundary patterns and where they need strengthening",
+          "Learn to set clear, compassionate boundaries without guilt",
+          "Develop techniques for protecting your energy in various situations",
+          "Recognize and respond to boundary violations effectively",
+          "Create a personalized boundary framework for different relationships"
+        ],
+        lessons: [
+          "The Spectrum of Boundaries - From rigid to porous to healthy",
+          "Energy Protection Techniques - Shielding, grounding, and cleansing practices",
+          "The Art of Saying No - Without explanation, guilt, or justification",
+          "Boundary Communication - Expressing your limits with clarity and compassion",
+          "Relationship-Specific Boundaries - Tailoring your approach for different contexts"
+        ],
+        questions: [
+          "Where do I notice my energy draining in relationships or situations?",
+          "What boundaries have I been afraid to set for fear of conflict or rejection?",
+          "How do I typically respond when someone crosses my boundaries?",
+          "What would change if I honored my limits without apology?"
+        ],
+        actionStep: "Identify one relationship or situation where you need to set a clearer boundary and communicate it this week.",
+        insight: "Boundaries aren't walls to keep people out, but gates that allow you to choose what enters your field. They are the foundation of self-respect."
+      },
+      {
+        id: 3,
+        title: "Authentic Decision Making",
+        subtitle: "Listening to Inner Wisdom",
+        concept: "Sovereign decision-making comes from alignment with your core truth, not external influences or conditioned responses. This module teaches you to access and trust your inner guidance system.",
+        objectives: [
+          "Distinguish between fear-based and aligned decision-making",
+          "Develop practices for accessing your inner wisdom consistently",
+          "Recognize and overcome conditioning that clouds your judgment",
+          "Create a decision-making framework based on your core values",
+          "Learn to trust and act on your intuitive guidance"
+        ],
+        lessons: [
+          "The Decision-Making Spectrum - From fear to alignment",
+          "Accessing Body Wisdom - Learning to read somatic signals",
+          "Values-Based Choices - Making decisions aligned with your core principles",
+          "Intuition Development - Strengthening your connection to inner knowing",
+          "Navigating Uncertainty - Making confident choices without all the information"
+        ],
+        questions: [
+          "What recent decision did I make from fear or external pressure rather than alignment?",
+          "How do I typically know when a decision feels right in my body?",
+          "What areas of my life feel most out of alignment with my true values?",
+          "How can I create more space for reflective decision-making?"
+        ],
+        actionStep: "Practice pausing before making decisions this week. Check in with your body and values before choosing.",
+        insight: "The most sovereign decision is the one that aligns with your soul's truth, regardless of external validation or approval."
+      },
+      // Additional modules would be defined here...
+      {
+        id: 4,
+        title: "Sovereign Communication",
+        subtitle: "Expressing Truth with Power",
+        concept: "Sovereign communication is the practice of expressing your truth with clarity, compassion, and conviction, without attachment to how it's received.",
+        objectives: [
+          "Develop clarity in expressing your needs and boundaries",
+          "Learn to communicate without blame, judgment, or defense",
+          "Practice active listening and presence in conversations",
+          "Express difficult truths with compassion and firmness",
+          "Recognize and transform communication patterns that diminish your power"
+        ],
+        lessons: [
+          "Nonviolent Communication - Expressing needs without blame",
+          "The Power of Presence - Bringing full attention to conversations",
+          "Authentic Expression - Speaking your truth without filters",
+          "Navigating Conflict - Maintaining sovereignty in difficult discussions",
+          "Conscious Language - Transforming disempowering speech patterns"
+        ],
+        questions: [
+          "Where do I hold back from expressing my truth in relationships?",
+          "What communication patterns make me feel diminished or powerless?",
+          "How can I express difficult truths with more compassion and clarity?",
+          "When do I prioritize harmony over authenticity in communication?"
+        ],
+        actionStep: "Identify one truth you've been avoiding expressing and communicate it clearly this week.",
+        insight: "Sovereign communication isn't about controlling how your message is received, but about taking responsibility for how it's delivered."
+      },
+      {
+        id: 5,
+        title: "Financial Sovereignty",
+        subtitle: "Wealth as Energy Exchange",
+        concept: "Financial sovereignty is about aligning your relationship with money to support your values and freedom, transforming scarcity consciousness into empowered stewardship.",
+        objectives: [
+          "Examine and transform limiting beliefs about money and abundance",
+          "Create systems for conscious earning, spending, and investing",
+          "Align financial decisions with your values and life purpose",
+          "Develop a healthy relationship with money as energy exchange",
+          "Create a financial foundation that supports your sovereignty"
+        ],
+        lessons: [
+          "Money Mindset - Identifying and transforming limiting beliefs",
+          "Conscious Earning - Aligning income with values and purpose",
+          "Value-Based Spending - Making financial choices that reflect priorities",
+          "Energy Exchange - Understanding money as flow rather than storage",
+          "Financial Systems - Creating structures that support freedom"
+        ],
+        questions: [
+          "What beliefs about money did I inherit from family or culture?",
+          "How does my current financial situation support or hinder my sovereignty?",
+          "What would change if I viewed money as energy rather than security?",
+          "How can I align my earning and spending with my core values?"
+        ],
+        actionStep: "Review your spending from the last month and identify one area where you can better align with your values.",
+        insight: "True financial sovereignty isn't about the amount of money you have, but about your relationship with it and how it flows through your life."
+      },
+      {
+        id: 6,
+        title: "Sovereign Relationships",
+        subtitle: "Connecting Without Losing Self",
+        concept: "Sovereign relationships honor both connection and autonomy, allowing for deep intimacy without enmeshment or loss of self.",
+        objectives: [
+          "Identify relationship patterns that diminish your sovereignty",
+          "Develop practices for maintaining self-connection in relationships",
+          "Create relationships based on mutual respect and autonomy",
+          "Navigate the balance between intimacy and independence",
+          "Communicate needs and boundaries clearly in relationships"
+        ],
+        lessons: [
+          "Attachment Patterns - Understanding how early patterns affect current relationships",
+          "The Autonomy-Intimacy Dance - Balancing connection and independence",
+          "Conscious Relating - Bringing presence and awareness to relationships",
+          "Navigating Differences - Honoring sovereignty in conflict and disagreement",
+          "Sovereign Partnerships - Creating relationships that empower both individuals"
+        ],
+        questions: [
+          "Where do I compromise myself to maintain harmony in relationships?",
+          "What patterns from past relationships continue to affect me?",
+          "How can I bring more authentic presence to my connections?",
+          "What would a truly sovereign relationship look and feel like?"
+        ],
+        actionStep: "Practice checking in with yourself during interactions this week. Notice where you might be abandoning yourself to please others.",
+        insight: "The most nourishing relationships are those where two sovereign beings choose to connect, not because they need to, but because they want to."
+      },
+      {
+        id: 7,
+        title: "Living as Sovereign Being",
+        subtitle: "Integration & Mastery",
+        concept: "Sovereignty becomes embodied when it infuses every aspect of your life. This module focuses on integrating all practices into a cohesive way of being.",
+        objectives: [
+          "Integrate sovereignty practices into daily routines and habits",
+          "Develop resilience in maintaining sovereignty during challenges",
+          "Create environments that support your sovereign expression",
+          "Embody sovereignty as your natural state of being",
+          "Become a conscious creator of your life experience"
+        ],
+        lessons: [
+          "Daily Sovereignty Practices - Rituals and routines that support empowerment",
+          "Resilience Building - Maintaining center during challenges and triggers",
+          "Environmental Design - Creating spaces that reflect and support sovereignty",
+          "Embodied Sovereignty - Living from alignment as your default state",
+          "Conscious Creation - Moving from reaction to intentional creation"
+        ],
+        questions: [
+          "What daily practices most support my sense of sovereignty?",
+          "How do I typically respond when my sovereignty is challenged?",
+          "What in my environment supports or hinders my empowered expression?",
+          "How can I make sovereignty my default way of being?"
+        ],
+        actionStep: "Create one daily ritual that reinforces your sovereignty and practice it consistently for the next month.",
+        insight: "Sovereignty isn't a destination to reach, but a way of traveling through life—a continuous practice of remembering and reclaiming your authentic power."
+      }
+      // Additional modules for the Sovereign Self section would be added here...
+    ];
+
+    // State management
+    let currentModule = 1;
+    let userProgress = {};
+    let userAddress = null;
+
+    // DOM elements
+    const connectSection = document.getElementById('connectSection');
+    const moduleContent = document.getElementById('moduleContent');
+    const courseList = document.getElementById('courseList');
+    const userAvatar = document.getElementById('userAvatar');
+    const walletAddress = document.getElementById('walletAddress');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const progressFill = document.getElementById('progressFill');
+    const prevModuleBtn = document.getElementById('prevModuleBtn');
+    const nextModuleBtn = document.getElementById('nextModuleBtn');
+    const openModalBtn = document.getElementById('openModal');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalClose = document.getElementById('modalClose');
+
+    // Initialize the application
+    function init() {
+      createParticles();
+      setupModal();
+      renderCourseMenu();
+      loadProgress();
+      updateUI();
+      
+      // Event listeners
+      connectWalletBtn.addEventListener('click', connectWallet);
+      disconnectBtn.addEventListener('click', disconnectWallet);
+      prevModuleBtn.addEventListener('click', () => navigateModule(-1));
+      nextModuleBtn.addEventListener('click', () => navigateModule(1));
+      openModalBtn.addEventListener('click', openModal);
+      modalClose.addEventListener('click', closeModal);
+      
+      // Close modal when clicking outside
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+      });
+    }
+
     // Create floating particles
     function createParticles() {
       const particlesContainer = document.getElementById('particles');
@@ -674,36 +826,319 @@
         particlesContainer.appendChild(particle);
       }
     }
-    
-    // Modal functionality
-    function setupModal() {
-      const modalOverlay = document.getElementById('modalOverlay');
-      const openModalBtn = document.getElementById('openModal');
-      const closeModalBtn = document.getElementById('modalClose');
+
+    // Render course menu
+    function renderCourseMenu() {
+      courseList.innerHTML = '';
       
-      openModalBtn.addEventListener('click', () => {
-        modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+      courseModules.forEach(module => {
+        const menuItem = document.createElement('div');
+        menuItem.classList.add('menu-item');
+        if (module.id === currentModule) menuItem.classList.add('active');
+        
+        menuItem.innerHTML = `
+          <div class="menu-icon"><i class="fas fa-${module.id}"></i></div>
+          <div class="menu-text">${module.title}</div>
+          ${module.id === 1 ? '<div class="menu-badge">New</div>' : ''}
+        `;
+        
+        menuItem.addEventListener('click', () => {
+          currentModule = module.id;
+          updateUI();
+        });
+        
+        courseList.appendChild(menuItem);
+      });
+    }
+
+    // Update UI based on current state
+    function updateUI() {
+      const module = courseModules.find(m => m.id === currentModule);
+      
+      if (!module) return;
+      
+      // Update main content
+      document.getElementById('moduleNumber').textContent = module.id;
+      document.getElementById('moduleTitle').textContent = module.title;
+      document.getElementById('moduleConcept').textContent = module.concept;
+      
+      // Update objectives
+      const objectivesList = document.getElementById('moduleObjectives');
+      objectivesList.innerHTML = '';
+      module.objectives.forEach(obj => {
+        const li = document.createElement('li');
+        li.textContent = obj;
+        objectivesList.appendChild(li);
       });
       
-      closeModalBtn.addEventListener('click', () => {
-        modalOverlay.classList.remove('active');
-        document.body.style.overflow = 'auto';
+      // Update lessons
+      const lessonsList = document.getElementById('moduleLessons');
+      lessonsList.innerHTML = '';
+      module.lessons.forEach(lesson => {
+        const li = document.createElement('li');
+        li.textContent = lesson;
+        lessonsList.appendChild(li);
       });
       
-      modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) {
-          modalOverlay.classList.remove('active');
-          document.body.style.overflow = 'auto';
+      // Update practice questions
+      const questionsList = document.getElementById('practiceQuestions');
+      questionsList.innerHTML = '';
+      module.questions.forEach(question => {
+        const li = document.createElement('li');
+        li.textContent = question;
+        questionsList.appendChild(li);
+      });
+      
+      // Update action step and insight
+      document.getElementById('actionStep').textContent = module.actionStep;
+      document.getElementById('sovereignInsight').textContent = module.insight;
+      
+      // Update navigation buttons
+      prevModuleBtn.disabled = currentModule === 1;
+      nextModuleBtn.disabled = currentModule === courseModules.length;
+      
+      // Update progress
+      updateProgressUI();
+      
+      // Update menu highlights
+      document.querySelectorAll('.menu-item').forEach((item, index) => {
+        if (index + 1 === currentModule) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
         }
       });
     }
-    
-    // Initialize everything when page loads
-    document.addEventListener('DOMContentLoaded', () => {
-      createParticles();
-      setupModal();
+
+    // Navigate between modules
+    function navigateModule(direction) {
+      const newModule = currentModule + direction;
+      
+      if (newModule >= 1 && newModule <= courseModules.length) {
+        currentModule = newModule;
+        updateUI();
+      }
+    }
+
+    // Update progress UI
+    function updateProgressUI() {
+      const totalModules = courseModules.length;
+      const completedModules = Object.values(userProgress).filter(status => status === 'completed').length;
+      const progress = Math.round((completedModules / totalModules) * 100);
+      
+      progressPercentage.textContent = `${progress}%`;
+      progressFill.style.width = `${progress}%`;
+    }
+
+    // Load progress from localStorage
+    function loadProgress() {
+      const savedProgress = localStorage.getItem('sovereigntyProgress');
+      if (savedProgress) {
+        userProgress = JSON.parse(savedProgress);
+      }
+    }
+
+    // Save progress to localStorage
+    function saveProgress() {
+      localStorage.setItem('sovereigntyProgress', JSON.stringify(userProgress));
+      updateProgressUI();
+    }
+
+    // Modal functionality
+    function setupModal() {
+      openModalBtn.addEventListener('click', openModal);
+      modalClose.addEventListener('click', closeModal);
+      
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+      });
+    }
+
+    function openModal() {
+      const module = courseModules.find(m => m.id === currentModule);
+      
+      if (!module) return;
+      
+      // Update modal content
+      document.getElementById('modalModuleNumber').textContent = module.id;
+      document.getElementById('modalModuleTitle').textContent = module.title;
+      document.getElementById('modalModuleSubtitle').textContent = module.subtitle;
+      
+      // Build modal content
+      const modalContent = document.getElementById('modalModuleContent');
+      modalContent.innerHTML = `
+        <div class="modal-section">
+          <h3><i class="fas fa-bullseye"></i> Core Concept</h3>
+          <p>${module.concept}</p>
+        </div>
+
+        <div class="modal-section">
+          <h3><i class="fas fa-tasks"></i> Learning Objectives</h3>
+          <ul>
+            ${module.objectives.map(obj => `<li>${obj}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="modal-section">
+          <h3><i class="fas fa-book-open"></i> Key Lessons</h3>
+          <ul>
+            ${module.lessons.map(lesson => `<li>${lesson}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="practice-box">
+          <div class="practice-title">
+            <i class="fas fa-pen-fancy"></i> Sovereignty Practice
+          </div>
+          <p><strong>Reflection Questions:</strong></p>
+          <ul>
+            ${module.questions.map(q => `<li>${q}</li>`).join('')}
+          </ul>
+          <p><strong>Action Step:</strong> ${module.actionStep}</p>
+        </div>
+
+        <div class="callout">
+          <i class="fas fa-lightbulb callout-icon"></i>
+          <div class="callout-title">Sovereign Insight</div>
+          <p>${module.insight}</p>
+        </div>
+      `;
+      
+      // Update status
+      const status = userProgress[currentModule] || 'not-started';
+      const statusIndicator = document.getElementById('modalStatusIndicator');
+      const statusText = document.getElementById('modalStatusText');
+      
+      statusIndicator.className = 'status-indicator';
+      if (status === 'completed') {
+        statusIndicator.classList.add('completed');
+        statusText.textContent = 'Completed';
+      } else if (status === 'in-progress') {
+        statusIndicator.classList.add('in-progress');
+        statusText.textContent = 'In Progress';
+      } else {
+        statusText.textContent = 'Not Started';
+      }
+      
+      // Show modal
+      modalOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+
+    // Mock wallet connection
+    function connectWallet() {
+      // Simulate wallet connection
+      userAddress = '0x1a2b3c4d5e6f7890abcdef1234567890';
+      
+      // Update UI
+      userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
+      walletAddress.textContent = `${userAddress.substring(0, 8)}...${userAddress.substring(36)}`;
+      disconnectBtn.style.display = 'flex';
+      connectSection.style.display = 'none';
+      moduleContent.style.display = 'block';
+      
+      // Show notification
+      showNotification('Wallet connected successfully', 'success');
+    }
+
+    function disconnectWallet() {
+      // Simulate wallet disconnection
+      userAddress = null;
+      
+      // Update UI
+      userAvatar.textContent = '?';
+      walletAddress.textContent = 'Not connected';
+      disconnectBtn.style.display = 'none';
+      connectSection.style.display = 'block';
+      moduleContent.style.display = 'none';
+      
+      // Show notification
+      showNotification('Wallet disconnected', 'info');
+    }
+
+    // Notification system
+    function showNotification(message, type = 'info') {
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.classList.add('notification', type);
+      
+      const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+      };
+      
+      notification.innerHTML = `
+        <i class="fas ${icons[type]} notification-icon"></i>
+        <div class="notification-content">
+          <div class="notification-message">${message}</div>
+        </div>
+        <button class="notification-close"><i class="fas fa-times"></i></button>
+      `;
+      
+      // Add to document
+      document.body.appendChild(notification);
+      
+      // Add event listener to close button
+      notification.querySelector('.notification-close').addEventListener('click', () => {
+        notification.remove();
+      });
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 5000);
+    }
+
+    // Mark module as complete
+    document.getElementById('markCompleteBtn').addEventListener('click', () => {
+      userProgress[currentModule] = 'completed';
+      saveProgress();
+      
+      // Update UI
+      const statusIndicator = document.getElementById('modalStatusIndicator');
+      const statusText = document.getElementById('modalStatusText');
+      statusIndicator.className = 'status-indicator completed';
+      statusText.textContent = 'Completed';
+      
+      // Show confetti if all modules are completed
+      const completedModules = Object.values(userProgress).filter(status => status === 'completed').length;
+      if (completedModules === courseModules.length) {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        showNotification('Congratulations! You completed all modules!', 'success');
+      } else {
+        showNotification('Module marked as complete', 'success');
+      }
     });
+
+    // Save progress button
+    document.getElementById('saveProgressBtn').addEventListener('click', () => {
+      userProgress[currentModule] = 'in-progress';
+      saveProgress();
+      
+      // Update UI
+      const statusIndicator = document.getElementById('modalStatusIndicator');
+      const statusText = document.getElementById('modalStatusText');
+      statusIndicator.className = 'status-indicator in-progress';
+      statusText.textContent = 'In Progress';
+      
+      showNotification('Progress saved', 'info');
+    });
+
+    // Initialize the application when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
