@@ -592,9 +592,11 @@ web3Modal = new window.Web3Modal.default({
 });
 
 // Auto-connect if cached
-if (web3Modal.cachedProvider) {
-  try { await connectWallet(); } catch {}
-}
+(async () => {
+  if (web3Modal.cachedProvider) {
+    try { await connectWallet(); } catch (e) { /* ignore */ }
+  }
+})();
 
     // Course data with all 14 modules
     const courseModules = [
@@ -1178,37 +1180,32 @@ if (web3Modal.cachedProvider) {
 
 async function disconnectWallet() {
   try {
-    // Close provider session when possible (WalletConnect, etc.)
-    if (extProvider?.disconnect && typeof extProvider.disconnect === 'function') {
+    if (extProvider?.disconnect && typeof extProvider.disconnect === "function") {
       await extProvider.disconnect();
     }
-  } catch {}
+  } catch (err) {
+    console.warn("Provider disconnect failed:", err);
+  }
 
-  try { await web3Modal.clearCachedProvider(); } catch {}
+  try {
+    await web3Modal.clearCachedProvider();
+  } catch (err) {
+    console.warn("Clear cache failed:", err);
+  }
 
-  // Reset state/UI
+  // Update UI after disconnect
   userAddress = null;
   provider = signer = tokenContract = null;
 
-  userAvatar.textContent = '?';
-  walletAddress.textContent = 'Not connected';
-  disconnectBtn.style.display = 'none';
-  connectSection.style.display = 'block';
-  moduleContent.style.display  = 'none';
+  userAvatar.textContent = "?";
+  walletAddress.textContent = "Not connected";
+  disconnectBtn.style.display = "none";
+  connectSection.style.display = "block";
+  moduleContent.style.display = "none";
 
-  showNotification('Wallet disconnected', 'info');
+  showNotification("Wallet disconnected", "info");
 }
-      // Update UI
-      userAvatar.textContent = '?';
-      walletAddress.textContent = 'Not connected';
-      disconnectBtn.style.display = 'none';
-      connectSection.style.display = 'block';
-      moduleContent.style.display = 'none';
-      
-      // Show notification
-      showNotification('Wallet disconnected', 'info');
-    }
-
+    
     // Notification system
     function showNotification(message, type = 'info') {
       // Create notification element
