@@ -1406,25 +1406,91 @@ function showUnlocked(){
     userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
   }
   async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
+  async function verifyReadProvider() {
+  try {
+    const net = await readProvider.getNetwork();
+    // BSC mainnet = 56, testnet = 97
+    const expected = (USE_TESTNET ? 97 : 56);
+    if (net?.chainId !== expected) {
+      console.warn('Read provider on unexpected chain:', net);
+      showToast(`Read RPC is on chainId ${net.chainId}, expected ${expected}`);
+      return { ok:false, reason:`Read RPC mismatch (on ${net.chainId}, need ${expected})`, net };
+    }
+    return { ok:true, net };
+  } catch (e) {
+    console.error('verifyReadProvider error', e);
+    return { ok:false, reason:'Read RPC unreachable' };
+  }
+}
+
+async function contractSanityCheck(address) {
+  try {
+    const code = await readProvider.getCode(address);
+    if (!code || code === '0x') {
+      return { ok:false, reason:'No contract at token address on this chain' };
+    }
+    return { ok:true };
+  } catch (e) {
+    console.error('getCode error', e);
+    return { ok:false, reason:'Unable to fetch contract code' };
+  }
+}
 
 async function checkSolGate(){
   if(!userAddress){
-    // wallet not connected: show helpful message instead of hiding
     setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
     return {ok:false,have:0,sym:'SOL'};
   }
-  try{
-    // ✅ use readProvider instead of ethersProvider
-    const erc20 = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, readProvider);
 
-    const [dec, symRaw, bal] = await Promise.all([
-      erc20.decimals().catch(() => 18),
-      erc20.symbol().catch(() => 'SOL'),
-      erc20.balanceOf(userAddress)
+  // Verify read provider + contract exist
+  const readOk = await verifyReadProvider();
+  if (!readOk.ok) {
+    setChip(gateChip, true, readOk.reason || 'RPC issue', false);
+    return {ok:false,have:0,sym:'SOL'};
+  }
+  const sanity = await contractSanityCheck(SOLCOIN_ADDRESS);
+  if (!sanity.ok) {
+    setChip(gateChip, true, sanity.reason, false);
+    return {ok:false,have:0,sym:'SOL'};
+  }
+
+  try{
+    const erc20Read   = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, readProvider);
+    const erc20Wallet = ethersProvider ? new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider) : null;
+
+    // Pull from read RPC
+    const [decR, symR, balR] = await Promise.all([
+      erc20Read.decimals().catch(() => 18),
+      erc20Read.symbol().catch(() => 'SOL'),
+      erc20Read.balanceOf(userAddress)
     ]);
 
+    // Also try from wallet RPC (sometimes read RPC is laggy)
+    let decW = decR, symW = symR, balW = null;
+    if (erc20Wallet) {
+      try {
+        [decW, symW, balW] = await Promise.all([
+          erc20Wallet.decimals().catch(() => decR),
+          erc20Wallet.symbol().catch(() => symR),
+          erc20Wallet.balanceOf(userAddress)
+        ]);
+      } catch (e) {
+        console.warn('Wallet RPC balance read failed (ok to ignore if readRPC works):', e);
+      }
+    }
+
+    // Prefer wallet read if present; else use read RPC
+    const dec = decW ?? decR;
+    const sym = (symW || symR) || 'SOL';
+    const bal = balW ?? balR;
+
+    // Show raw diagnostics in the console for us
+    console.log('[SólCoin debug] address:', userAddress);
+    console.log('[SólCoin debug] readRPC chainId:', readOk.net?.chainId);
+    console.log('[SólCoin debug] decimals:', dec, 'symbol:', sym);
+    console.log('[SólCoin debug] raw balance:', bal?.toString());
+
     const have = parseFloat(ethers.utils.formatUnits(bal, dec));
-    const sym  = symRaw || 'SOL';
     const ok   = have >= GATE_MIN_SOL;
 
     const gateText = document.getElementById('gateText');
@@ -1434,9 +1500,10 @@ async function checkSolGate(){
         : `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`;
     }
     setChip(gateChip, true, null, ok);
+
     return {ok, have, sym};
   }catch(e){
-    console.error(e);
+    console.error('checkSolGate error', e);
     const gateText = document.getElementById('gateText');
     if (gateText) gateText.textContent = 'Unable to read SólCoin';
     setChip(gateChip, true, null, false);
