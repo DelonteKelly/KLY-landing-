@@ -1229,6 +1229,29 @@ p+ul,p+ol{margin-top:.4rem}
     if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
   }
 
+  async function gateAccessAndEligibility(){
+  updateEligibilityUI(); // shows module progress
+
+  if(!userAddress){ // wallet not connected
+    document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
+    document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
+    document.getElementById('claimCert').disabled = true;
+    setChip(gateChip, false);
+    return;
+  }
+
+  const { ok: solOk } = await checkSolGate();
+  const { ok: modulesOk } = computeEligibility();
+  const eligible = solOk && modulesOk;
+
+  document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
+  document.getElementById('eligibilityDesc').textContent = eligible
+    ? 'All modules complete and SólCoin requirement met'
+    : (solOk ? 'Finish all required modules to unlock your certificate'
+             : `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`);
+  document.getElementById('claimCert').disabled = !eligible;
+}
+
   async function connectWallet(){
     try{
       document.querySelector('#connectBtn span').textContent='Connecting…';
@@ -1263,16 +1286,22 @@ p+ul,p+ol{margin-top:.4rem}
     setChip(addrChip,false); setChip(gateChip,false);
     document.querySelector('#connectBtn span').textContent='Connect';
   }
-  async function ensureTargetChain(){
+ async function ensureTargetChain(){
+  try{
+    const cid = await (ethersProvider?.send('eth_chainId',[]) || '0x0');
+    if (cid && cid.toLowerCase() === TARGET_CHAIN.chainId.toLowerCase()) return true;
+    await externalProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: TARGET_CHAIN.chainId }] });
+    return true;
+  }catch(err){
     try{
-      const cid=await (ethersProvider?.send('eth_chainId',[])||'0x0');
-      if(cid && cid.toLowerCase()===TARGET_CHAIN.chainId.toLowerCase()) return true;
-      await externalProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:TARGET_CHAIN.chainId}]}); return true;
-    }catch(err){
-      try{ await externalProvider.request({method:'wallet_addEhereumChain',params:[TARGET_CHAIN]}); return true; }
-      catch(e){ showToast('Please switch to BNB Smart Chain ❗'); return false; }
+      await externalProvider.request({ method:'wallet_addEthereumChain', params:[ TARGET_CHAIN ] }); // <-- fixed
+      return true;
+    }catch(e){
+      showToast('Please switch to BNB Smart Chain ❗'); 
+      return false;
     }
   }
+}
   async function onAccountsChanged(accts){
     if(!accts || !accts.length){ showToast('Wallet disconnected'); await disconnectWallet(); return; }
     userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
