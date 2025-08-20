@@ -290,20 +290,7 @@ p+ul,p+ol{margin-top:.4rem}
     display: flex;
     padding: 0.5rem 0;
   }
-  .topnav a {
-  position: relative;
-}
-.topnav a::after{
-  content:'';
-  position:absolute;left:10%;right:10%;bottom:-6px;height:2px;
-  background:transparent;
-  transform:scaleX(0);transform-origin:center;
-  transition:transform .25s ease, background-color .25s ease;
-}
-.topnav a.active::after{
-  background:var(--accent);
-  transform:scaleX(1);
-}
+ 
   .hero-cta {
     flex-direction: column;
     align-items: center;
@@ -347,6 +334,21 @@ p+ul,p+ol{margin-top:.4rem}
   .module-card {
     break-inside: avoid;
   }
+}
+
+   .topnav a {
+  position: relative;
+}
+.topnav a::after{
+  content:'';
+  position:absolute;left:10%;right:10%;bottom:-6px;height:2px;
+  background:transparent;
+  transform:scaleX(0);transform-origin:center;
+  transition:transform .25s ease, background-color .25s ease;
+}
+.topnav a.active::after{
+  background:var(--accent);
+  transform:scaleX(1);
 }
 </style>
 </head>
@@ -1011,18 +1013,15 @@ p+ul,p+ol{margin-top:.4rem}
     .filter(Boolean);
   const links=[...document.querySelectorAll('.topnav a')];
   
-  // Check if IntersectionObserver is available
- // --- Smooth, stable active link highlight
+// --- Smooth, stable active link highlight
 if ('IntersectionObserver' in window) {
   const io = new IntersectionObserver((entries) => {
-    // Pick the section most visible right now
     const visible = entries
       .filter(e => e.isIntersecting)
       .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-
     if (!visible) return;
-    const id = '#' + visible.target.id;
 
+    const id = '#' + visible.target.id;
     links.forEach(l => {
       const active = l.getAttribute('href') === id;
       l.classList.toggle('active', active);
@@ -1030,31 +1029,26 @@ if ('IntersectionObserver' in window) {
       else l.removeAttribute('aria-current');
     });
   }, {
-    // Center-biased viewport band; smooths the “jumpiness”
     rootMargin: '-30% 0px -50% 0px',
     threshold: [0.1, 0.25, 0.5, 0.75]
   });
 
   sections.forEach(s => io.observe(s));
 } else {
-  // keep your scroll fallback
-}
-    // Fallback for browsers without IntersectionObserver
-    window.addEventListener('scroll', () => {
-      const scrollPos = window.scrollY;
-      sections.forEach(section => {
-        const sectionTop = section.offsetTop - 100;
-        const sectionBottom = sectionTop + section.offsetHeight;
-        
-        if (scrollPos >= sectionTop && scrollPos < sectionBottom) {
-          links.forEach(link => {
-            link.classList.toggle('active', link.getAttribute('href') === '#' + section.id);
-          });
-        }
-      });
+  // Fallback for browsers without IntersectionObserver
+  window.addEventListener('scroll', () => {
+    const scrollPos = window.scrollY;
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop - 100;
+      const sectionBottom = sectionTop + section.offsetHeight;
+      if (scrollPos >= sectionTop && scrollPos < sectionBottom) {
+        links.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + section.id);
+        });
+      }
     });
-  }
-
+  });
+}
   /* ---------- Print Workbook shortcut ---------- */
   document.getElementById('printWorkbook').addEventListener('click',(e)=>{
     e.preventDefault();
@@ -1269,13 +1263,13 @@ const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
   async function gateAccessAndEligibility(){
   updateEligibilityUI(); // shows module progress
 
-  if(!userAddress){ // wallet not connected
-    document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
-    document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
-    document.getElementById('claimCert').disabled = true;
-    setChip(gateChip, false);
-    return;
-  }
+if(!userAddress){
+  document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
+  document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
+  document.getElementById('claimCert').disabled = true;
+  setChip(gateChip, true, 'Connect wallet to check SólCoin', false); // ✅ visible + helpful
+  return;
+}
 
   const { ok: solOk } = await checkSolGate();
   const { ok: modulesOk } = computeEligibility();
