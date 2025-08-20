@@ -1373,12 +1373,18 @@ function showUnlocked(){
       await gateAccessAndEligibility();
     }catch(e){console.error(e);showToast('Connection canceled');document.querySelector('#connectBtn span').textContent='Connect'}
   }
-  async function disconnectWallet(){
-    try{ if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); }catch(_){}
-    externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
-    setChip(addrChip,false); setChip(gateChip,false);
-    document.querySelector('#connectBtn span').textContent='Connect';
-  }
+ async function disconnectWallet(){
+  try{
+    if(web3Modal) await web3Modal.clearCachedProvider();
+    if(externalProvider?.disconnect) await externalProvider.disconnect();
+  }catch(_){}
+  externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
+  setChip(addrChip,false); setChip(gateChip,false);
+  document.querySelector('#connectBtn span').textContent='Connect';
+
+  // ↓ add this to re-lock UI
+  await gateAccessAndEligibility();
+}
  async function ensureTargetChain(){
   try{
     const cid = await (ethersProvider?.send('eth_chainId',[]) || '0x0');
