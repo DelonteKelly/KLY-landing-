@@ -423,7 +423,10 @@
       <main class="course-content" id="courseContent">
         <div class="connect-section" id="connectSection">
           <h2>Connect Your Wallet</h2>
-          <p>Connect your Web3 wallet to access the complete Sovereignty Mastery Program, track your progress, and unlock all 14 modules.</p>
+       <p>
+  Connect your Web3 wallet to access the complete <strong>Sovereignty Mastery Program</strong>, track your progress, and unlock all 14 modules.  
+  Access requires holding at least <strong>5 SolCoin</strong> on <strong>BNB Smart Chain</strong>.
+</p>
           <div class="wallet-options">
             <div class="wallet-option" id="connectWalletBtn">
               <i class="fas fa-wallet wallet-icon"></i>
@@ -540,7 +543,51 @@
     </div>
   </div>
 
-  <script>
+ <script>
+  // ====== CONFIG — UPDATE THESE ======
+  const TOKEN_ADDRESS   = '0xYourSolCoinAddressHere'; // <-- put SolCoin contract here
+  const REQUIRED_TOKENS = 5;                          // gate at 5 tokens
+
+  // Target network (defaults shown for BNB Smart Chain)
+  const CHAIN_ID   = 56; // 1=Ethereum, 56=BNB, 137=Polygon, etc.
+  const CHAIN_NAME = 'BNB Smart Chain';
+  const RPC_URL    = 'https://bsc-dataseed.binance.org';
+
+  // Minimal ERC-20 ABI
+  const ERC20_ABI = [
+    'function balanceOf(address) view returns (uint256)',
+    'function decimals() view returns (uint8)',
+    'function symbol() view returns (string)'
+  ];
+
+  // Globals for provider/session
+  let web3Modal, extProvider, provider, signer, tokenContract;
+
+  // Utils
+  const toHexChainId = (id) => '0x' + id.toString(16);
+
+   // Web3Modal setup
+const providerOptions = {
+  walletconnect: {
+    package: window.WalletConnectProvider.default,
+    options: {
+      rpc: { [CHAIN_ID]: RPC_URL },
+      chainId: CHAIN_ID
+    }
+  }
+};
+
+web3Modal = new window.Web3Modal.default({
+  cacheProvider: true,
+  providerOptions,
+  theme: 'dark'
+});
+
+// Auto-connect if cached
+if (web3Modal.cachedProvider) {
+  try { await connectWallet(); } catch {}
+}
+
     // Course data with all 14 modules
     const courseModules = [
       {
@@ -1030,26 +1077,119 @@
       document.body.style.overflow = 'auto';
     }
 
-    // Mock wallet connection
-    function connectWallet() {
-      // Simulate wallet connection
-      userAddress = '0x1a2b3c4d5e6f7890abcdef1234567890';
-      
-      // Update UI
-      userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
-      walletAddress.textContent = `${userAddress.substring(0, 8)}...${userAddress.substring(36)}`;
-      disconnectBtn.style.display = 'flex';
-      connectSection.style.display = 'none';
-      moduleContent.style.display = 'block';
-      
-      // Show notification
-      showNotification('Wallet connected successfully', 'success');
+  async function connectWallet() {
+  try {
+    extProvider = await web3Modal.connect();
+
+    // Ethers.js provider/signer
+    provider = new ethers.providers.Web3Provider(extProvider);
+    signer   = provider.getSigner();
+    const net = await provider.getNetwork();
+
+    // Network guard
+    if (net.chainId !== CHAIN_ID) {
+      try {
+        await extProvider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: toHexChainId(CHAIN_ID) }]
+        });
+      } catch (switchErr) {
+        // try adding the chain if not available
+        try {
+          await extProvider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: toHexChainId(CHAIN_ID),
+              chainName: CHAIN_NAME,
+              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+              rpcUrls: [RPC_URL],
+              blockExplorerUrls: ['https://bscscan.com']
+            }]
+          });
+        } catch (addErr) {
+          showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, 'warning');
+          throw addErr;
+        }
+      }
     }
 
-    function disconnectWallet() {
-      // Simulate wallet disconnection
-      userAddress = null;
-      
+    // Address
+    userAddress = await signer.getAddress();
+
+    // ERC-20 contract
+    tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
+
+    // Read balance/symbol/decimals concurrently
+    const [rawBal, decimals, symbol] = await Promise.all([
+      tokenContract.balanceOf(userAddress),
+      tokenContract.decimals().catch(() => 18),
+      tokenContract.symbol().catch(() => 'TOKEN')
+    ]);
+
+    const human = Number(ethers.utils.formatUnits(rawBal, decimals));
+
+    // Update UI header
+    userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
+    walletAddress.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`;
+    disconnectBtn.style.display = 'flex';
+
+    // Gate logic
+    if (human >= REQUIRED_TOKENS) {
+      connectSection.style.display = 'none';
+      moduleContent.style.display  = 'block';
+      showNotification(`Wallet connected. Balance: ${human.toLocaleString()} ${symbol}. Access granted.`, 'success');
+    } else {
+      connectSection.style.display = 'block';
+      moduleContent.style.display  = 'none';
+      showNotification(
+        `You have ${human.toLocaleString()} ${symbol}. You need at least ${REQUIRED_TOKENS} ${symbol} to unlock.`,
+        'warning'
+      );
+    }
+
+    // Wallet event listeners
+    extProvider.on?.('accountsChanged', async (accounts) => {
+      if (!accounts || accounts.length === 0) return disconnectWallet();
+      userAddress = accounts[0];
+      await connectWallet(); // re-run to refresh gating
+    });
+
+    extProvider.on?.('chainChanged', async () => {
+      await connectWallet(); // re-run on network change
+    });
+
+    extProvider.on?.('disconnect', () => {
+      disconnectWallet();
+    });
+
+  } catch (err) {
+    console.error(err);
+    showNotification('Connection failed or cancelled.', 'error');
+  }
+}
+
+async function disconnectWallet() {
+  try {
+    // Close provider session when possible (WalletConnect, etc.)
+    if (extProvider?.disconnect && typeof extProvider.disconnect === 'function') {
+      await extProvider.disconnect();
+    }
+  } catch {}
+
+  try { await web3Modal.clearCachedProvider(); } catch {}
+
+  // Reset state/UI
+  userAddress = null;
+  provider = signer = tokenContract = null;
+
+  userAvatar.textContent = '?';
+  walletAddress.textContent = 'Not connected';
+  disconnectBtn.style.display = 'none';
+  connectSection.style.display = 'block';
+  moduleContent.style.display  = 'none';
+
+  showNotification('Wallet disconnected', 'info');
+}
       // Update UI
       userAvatar.textContent = '?';
       walletAddress.textContent = 'Not connected';
