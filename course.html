@@ -350,6 +350,10 @@ p+ul,p+ol{margin-top:.4rem}
   background:var(--accent);
   transform:scaleX(1);
 }
+
+  /* gate UI */
+.gate-panel{background:#121825;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.2rem;margin:1.25rem 0;text-align:center}
+.gate-panel .need{color:#f6c667}
 </style>
 </head>
 <body>
@@ -1260,21 +1264,80 @@ const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
     if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
   }
 
-  async function gateAccessAndEligibility(){
-  updateEligibilityUI(); // shows module progress
+  // --- Gate: hide course until wallet has >= 5 SOL (SólCoin) ---
+const gatedSections = [
+  document.getElementById('modules'),
+  document.getElementById('sovereign')
+];
 
-if(!userAddress){
-  document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
-  document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
-  document.getElementById('claimCert').disabled = true;
-  setChip(gateChip, true, 'Connect wallet to check SólCoin', false); // ✅ visible + helpful
-  return;
+// create (or reuse) the lock panel right before #modules
+function ensureGatePanel(){
+  let panel = document.getElementById('gateLock');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'gateLock';
+    panel.className = 'gate-panel';
+    // insert the panel right before Modules section
+    const anchor = document.getElementById('modules');
+    anchor?.parentNode?.insertBefore(panel, anchor);
+  }
+  return panel;
 }
 
-  const { ok: solOk } = await checkSolGate();
+function showLocked(reasonText){
+  // hide gated sections
+  gatedSections.forEach(el => { if (el) el.style.display = 'none'; });
+  // show panel
+  const panel = ensureGatePanel();
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <h3>🔒 Course Locked</h3>
+    <p class="section-sub">Connect your wallet and hold <span class="need">${GATE_MIN_SOL} SólCoin</span> to unlock all lessons.</p>
+    <p class="section-sub" style="margin:.4rem 0 1rem">${reasonText || ''}</p>
+    <button class="wallet-btn" id="gateConnect"><i class="fa-solid fa-wallet"></i><span>Connect Wallet</span></button>
+  `;
+  // wire the connect button
+  panel.querySelector('#gateConnect')?.addEventListener('click', async ()=>{
+    if(!(signer && userAddress)) await connectWallet();
+  });
+}
+
+function showUnlocked(){
+  // show gated sections
+  gatedSections.forEach(el => { if (el) el.style.display = ''; });
+  // hide lock panel if present
+  const panel = document.getElementById('gateLock');
+  if (panel) panel.style.display = 'none';
+}
+
+  async function gateAccessAndEligibility(){
+  // Keep your progress/eligibility UI for certificate
+  updateEligibilityUI();
+
+  // If not connected: lock course, update chips, stop here
+  if (!userAddress) {
+    document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
+    document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
+    document.getElementById('claimCert').disabled = true;
+    setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
+
+    showLocked('Wallet not connected.');
+    return;
+  }
+
+  // Connected: check SólCoin balance via readProvider
+  const { ok: solOk, have, sym } = await checkSolGate();
+
+  if (solOk) {
+    showUnlocked(); // ✅ unlock course sections
+  } else {
+    const msg = `You have ${have.toFixed(2)} ${sym || 'SOL'}. Need at least ${GATE_MIN_SOL} ${sym || 'SOL'}.`;
+    showLocked(msg);
+  }
+
+  // Certificate button still depends on BOTH modules + SólCoin (your original logic)
   const { ok: modulesOk } = computeEligibility();
   const eligible = solOk && modulesOk;
-
   document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
   document.getElementById('eligibilityDesc').textContent = eligible
     ? 'All modules complete and SólCoin requirement met'
@@ -1282,7 +1345,6 @@ if(!userAddress){
              : `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`);
   document.getElementById('claimCert').disabled = !eligible;
 }
-
   async function connectWallet(){
     try{
       document.querySelector('#connectBtn span').textContent='Connecting…';
