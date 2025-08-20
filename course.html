@@ -870,48 +870,33 @@ p+ul,p+ol{margin-top:.4rem}
     .map(id=>document.getElementById(id))
     .filter(Boolean);
   const links=[...document.querySelectorAll('.topnav a')];
-  
-// --- Smooth, stable active link highlight
-if ('IntersectionObserver' in window) {
-  const io = new IntersectionObserver((entries) => {
-    const visible = entries
-      .filter(e => e.isIntersecting)
-      .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (!visible) return;
 
-    const id = '#' + visible.target.id;
-    links.forEach(l => {
-      const active = l.getAttribute('href') === id;
-      l.classList.toggle('active', active);
-      if (active) l.setAttribute('aria-current', 'page');
-      else l.removeAttribute('aria-current');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      const visible = entries.filter(e => e.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      const id = '#' + visible.target.id;
+      links.forEach(l => {
+        const active = l.getAttribute('href') === id;
+        l.classList.toggle('active', active);
+        if (active) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
+      });
+    }, { rootMargin: '-30% 0px -50% 0px', threshold: [0.1, 0.25, 0.5, 0.75] });
+    sections.forEach(s => io.observe(s));
+  } else {
+    window.addEventListener('scroll', () => {
+      const scrollPos = window.scrollY;
+      sections.forEach(section => {
+        const top = section.offsetTop - 100, bottom = top + section.offsetHeight;
+        if (scrollPos >= top && scrollPos < bottom) {
+          links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + section.id));
+        }
+      });
     });
-  }, {
-    rootMargin: '-30% 0px -50% 0px',
-    threshold: [0.1, 0.25, 0.5, 0.75]
-  });
+  }
 
-  sections.forEach(s => io.observe(s));
-} else {
-  // Fallback for browsers without IntersectionObserver
-  window.addEventListener('scroll', () => {
-    const scrollPos = window.scrollY;
-    sections.forEach(section => {
-      const sectionTop = section.offsetTop - 100;
-      const sectionBottom = sectionTop + section.offsetHeight;
-      if (scrollPos >= sectionTop && scrollPos < sectionBottom) {
-        links.forEach(link => {
-          link.classList.toggle('active', link.getAttribute('href') === '#' + section.id);
-        });
-      }
-    });
-  });
-}
   /* ---------- Print Workbook shortcut ---------- */
-  document.getElementById('printWorkbook').addEventListener('click',(e)=>{
-    e.preventDefault();
-    window.print();
-  });
+  document.getElementById('printWorkbook').addEventListener('click',(e)=>{e.preventDefault();window.print()});
 
   /* ---------- Module detail content ---------- */
   const MODULE_AUDIO={'1':'','2':'','3':'','4':'','5':'','6':'','7':''}
@@ -1028,7 +1013,7 @@ if ('IntersectionObserver' in window) {
     document.getElementById('eligibilityDesc').textContent= total ? `${done} of ${total} required modules completed` : 'No modules detected';
   }
 
-  /* ---------- Export/Import (no daily tracker) ---------- */
+  /* ---------- Export/Import ---------- */
   document.getElementById('exportProgress').addEventListener('click',()=>{
     const data={
       version:2,
@@ -1085,29 +1070,25 @@ if ('IntersectionObserver' in window) {
   })();
 
   /* ---------- Sovereign eligibility gate (Web3) ---------- */
-  // Chain config
   const USE_TESTNET=false;
   const BSC_MAINNET={chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/']};
   const BSC_TESTNET={chainId:'0x61',chainName:'BNB Testnet',nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},rpcUrls:['https://bsc-testnet.publicnode.com'],blockExplorerUrls:['https://testnet.bscscan.com/']};
   const TARGET_CHAIN=USE_TESTNET?BSC_TESTNET:BSC_MAINNET;
-  // Dedicated read-only provider (bypasses wallet issues)
-const READ_RPC = USE_TESTNET 
-  ? (BSC_TESTNET.rpcUrls[0] || 'https://bsc-testnet.publicnode.com') 
-  : (BSC_MAINNET.rpcUrls[0] || 'https://bsc-dataseed.binance.org');
 
-const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
+  const READ_RPC = USE_TESTNET ? (BSC_TESTNET.rpcUrls[0] || 'https://bsc-testnet.publicnode.com')
+                               : (BSC_MAINNET.rpcUrls[0] || 'https://bsc-dataseed.binance.org');
+  const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
 
-  // Gate: SólCoin (must hold >= 5)
-const SOLCOIN_ADDRESS='0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026';
+  // --- Gate: SÓL coin (>= 5 required) ---
+  const SOLCOIN_ADDRESS='0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026';
   const GATE_MIN_SOL=5;
   const ERC20_MIN_ABI=['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
 
-  // NFT Certificate
+  // --- NFT certificate (constants only; mint logic below) ---
   const NFT_CONTRACT='0xDA76d35742190283E340dbeE2038ecc978a56950';
   const NFT_URI='ipfs://QmXCJjJJNU15vkha7e3sHTizcTNyDy7Mgqt8CjYMWheb1g/3';
-  const NFT_ABI=['function mintTo(address to, string uri)'];
 
-  let web3Modal, externalProvider, ethersProvider, signer, userAddress=null, userChainId=null;
+  let web3Modal, externalProvider, ethersProvider, signer, userAddress=null;
 
   const gateChip=document.getElementById('gateChip');
   const addrChip=document.getElementById('addrChip');
@@ -1118,87 +1099,54 @@ const SOLCOIN_ADDRESS='0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026';
     if(ok){el.classList.add('ok')} else {el.classList.remove('ok')}
   }
 
-  // --- Gate: hide course until wallet has >= 5 SOL (SólCoin) ---
-const gatedSections = [
-  document.getElementById('modules'),
-  document.getElementById('sovereign')
-];
+  /* ----- Gate UI helpers ----- */
+  const gatedSections=[document.getElementById('modules'),document.getElementById('sovereign')];
 
-// create (or reuse) the lock panel right before #modules
-function ensureGatePanel(){
-  let panel = document.getElementById('gateLock');
-  if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'gateLock';
-    panel.className = 'gate-panel';
-    // insert the panel right before Modules section
-    const anchor = document.getElementById('modules');
-    anchor?.parentNode?.insertBefore(panel, anchor);
+  function ensureGatePanel(){
+    let panel=document.getElementById('gateLock');
+    if(!panel){
+      panel=document.createElement('section'); panel.id='gateLock'; panel.className='gate-panel';
+      const anchor=document.getElementById('modules'); anchor?.parentNode?.insertBefore(panel,anchor);
+    }
+    return panel;
   }
-  return panel;
-}
-
-function showLocked(reasonText){
-  // hide gated sections
-  gatedSections.forEach(el => { if (el) el.style.display = 'none'; });
-  // show panel
-  const panel = ensureGatePanel();
-  panel.style.display = 'block';
-  panel.innerHTML = `
-    <h3>🔒 Course Locked</h3>
-    <p class="section-sub">Connect your wallet and hold <span class="need">${GATE_MIN_SOL} SólCoin</span> to unlock all lessons.</p>
-    <p class="section-sub" style="margin:.4rem 0 1rem">${reasonText || ''}</p>
-    <button class="wallet-btn" id="gateConnect"><i class="fa-solid fa-wallet"></i><span>Connect Wallet</span></button>
-  `;
-  // wire the connect button
-  panel.querySelector('#gateConnect')?.addEventListener('click', async ()=>{
-    if(!(signer && userAddress)) await connectWallet();
-  });
-}
-
-function showUnlocked(){
-  // show gated sections
-  gatedSections.forEach(el => { if (el) el.style.display = ''; });
-  // hide lock panel if present
-  const panel = document.getElementById('gateLock');
-  if (panel) panel.style.display = 'none';
-}
+  function showLocked(reasonText){
+    gatedSections.forEach(el=>{if(el) el.style.display='none'});
+    const panel=ensureGatePanel();
+    panel.style.display='block';
+    panel.innerHTML=`
+      <h3>🔒 Course Locked</h3>
+      <p class="section-sub">Connect your wallet and hold <span class="need">${GATE_MIN_SOL} SólCoin</span> to unlock all lessons.</p>
+      <p class="section-sub" style="margin:.4rem 0 1rem">${reasonText||''}</p>
+      <button class="wallet-btn" id="gateConnect"><i class="fa-solid fa-wallet"></i><span>Connect Wallet</span></button>`;
+    panel.querySelector('#gateConnect')?.addEventListener('click', async ()=>{ if(!(signer&&userAddress)) await connectWallet() });
+  }
+  function showUnlocked(){
+    gatedSections.forEach(el=>{if(el) el.style.display=''});
+    const panel=document.getElementById('gateLock'); if(panel) panel.style.display='none';
+  }
 
   async function gateAccessAndEligibility(){
-  // Keep your progress/eligibility UI for certificate
-  updateEligibilityUI();
-
-  // If not connected: lock course, update chips, stop here
-  if (!userAddress) {
-    document.getElementById('eligibilityStatus').textContent = 'Connect Wallet';
-    document.getElementById('eligibilityDesc').textContent = 'Connect your wallet to check SólCoin requirement';
-    document.getElementById('claimCert').disabled = true;
-    setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
-
-    showLocked('Wallet not connected.');
-    return;
+    updateEligibilityUI();
+    if(!userAddress){
+      document.getElementById('eligibilityStatus').textContent='Connect Wallet';
+      document.getElementById('eligibilityDesc').textContent='Connect your wallet to check SólCoin requirement';
+      document.getElementById('claimCert').disabled=true;
+      setChip(gateChip,true,'Connect wallet to check SólCoin',false);
+      showLocked('Wallet not connected.');
+      return;
+    }
+    const { ok: solOk, have, sym } = await checkSolGate();
+    if (solOk) showUnlocked(); else showLocked(`You have ${have.toFixed(2)} ${sym||'SOL'}. Need at least ${GATE_MIN_SOL} ${sym||'SOL'}.`);
+    const { ok: modulesOk } = computeEligibility();
+    const eligible = solOk && modulesOk;
+    document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
+    document.getElementById('eligibilityDesc').textContent = eligible
+      ? 'All modules complete and SólCoin requirement met'
+      : (solOk ? 'Finish all required modules to unlock your certificate' : `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`);
+    document.getElementById('claimCert').disabled = !eligible;
   }
 
-  // Connected: check SólCoin balance via readProvider
-  const { ok: solOk, have, sym } = await checkSolGate();
-
-  if (solOk) {
-    showUnlocked(); // ✅ unlock course sections
-  } else {
-    const msg = `You have ${have.toFixed(2)} ${sym || 'SOL'}. Need at least ${GATE_MIN_SOL} ${sym || 'SOL'}.`;
-    showLocked(msg);
-  }
-
-  // Certificate button still depends on BOTH modules + SólCoin (your original logic)
-  const { ok: modulesOk } = computeEligibility();
-  const eligible = solOk && modulesOk;
-  document.getElementById('eligibilityStatus').textContent = eligible ? 'Eligible ✅' : (solOk ? 'Complete all modules' : 'Not Eligible');
-  document.getElementById('eligibilityDesc').textContent = eligible
-    ? 'All modules complete and SólCoin requirement met'
-    : (solOk ? 'Finish all required modules to unlock your certificate'
-             : `Hold at least ${GATE_MIN_SOL} SólCoins and complete modules`);
-  document.getElementById('claimCert').disabled = !eligible;
-}
   async function connectWallet(){
     try{
       document.querySelector('#connectBtn span').textContent='Connecting…';
@@ -1212,7 +1160,7 @@ function showUnlocked(){
       externalProvider=await web3Modal.connect();
       ethersProvider=new ethers.providers.Web3Provider(externalProvider,'any');
       signer=ethersProvider.getSigner();
-      if (externalProvider.on) {
+      if(externalProvider.on){
         externalProvider.on('accountsChanged', onAccountsChanged);
         externalProvider.on('chainChanged', onChainChanged);
         externalProvider.on('disconnect', async ()=>{await disconnectWallet()});
@@ -1227,155 +1175,189 @@ function showUnlocked(){
       await gateAccessAndEligibility();
     }catch(e){console.error(e);showToast('Connection canceled');document.querySelector('#connectBtn span').textContent='Connect'}
   }
- async function disconnectWallet(){
-  try{
-    if(web3Modal) await web3Modal.clearCachedProvider();
-    if(externalProvider?.disconnect) await externalProvider.disconnect();
-  }catch(_){}
-  externalProvider=null; ethersProvider=null; signer=null; userAddress=null; userChainId=null;
-  setChip(addrChip,false); setChip(gateChip,false);
-  document.querySelector('#connectBtn span').textContent='Connect';
-
-  // ↓ add this to re-lock UI
-  await gateAccessAndEligibility();
-}
- async function ensureTargetChain(){
-  try{
-    const cid = await (ethersProvider?.send('eth_chainId',[]) || '0x0');
-    if (cid && cid.toLowerCase() === TARGET_CHAIN.chainId.toLowerCase()) return true;
-    await externalProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: TARGET_CHAIN.chainId }] });
-    return true;
-  }catch(err){
+  async function disconnectWallet(){
+    try{ if(web3Modal) await web3Modal.clearCachedProvider(); if(externalProvider?.disconnect) await externalProvider.disconnect(); }catch(_){}
+    externalProvider=null; ethersProvider=null; signer=null; userAddress=null;
+    setChip(addrChip,false); setChip(gateChip,false);
+    document.querySelector('#connectBtn span').textContent='Connect';
+    await gateAccessAndEligibility();
+  }
+  async function ensureTargetChain(){
     try{
-      await externalProvider.request({ method:'wallet_addEthereumChain', params:[ TARGET_CHAIN ] }); // <-- fixed
+      const cid = await (ethersProvider?.send('eth_chainId',[]) || '0x0');
+      if (cid && cid.toLowerCase() === (USE_TESTNET?BSC_TESTNET:BSC_MAINNET).chainId.toLowerCase()) return true;
+      await externalProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: (USE_TESTNET?BSC_TESTNET:BSC_MAINNET).chainId }] });
       return true;
-    }catch(e){
-      showToast('Please switch to BNB Smart Chain ❗'); 
-      return false;
+    }catch(err){
+      try{
+        await externalProvider.request({ method:'wallet_addEthereumChain', params:[ (USE_TESTNET?BSC_TESTNET:BSC_MAINNET) ] });
+        return true;
+      }catch(e){ showToast('Please switch to BNB Smart Chain ❗'); return false; }
     }
   }
-}
   async function onAccountsChanged(accts){
     if(!accts || !accts.length){ showToast('Wallet disconnected'); await disconnectWallet(); return; }
     userAddress=ethers.utils.getAddress(accts[0]); document.getElementById('addrShort').textContent=short(userAddress); await gateAccessAndEligibility();
   }
   async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
+
   async function verifyReadProvider() {
-  try {
-    const net = await readProvider.getNetwork();
-    // BSC mainnet = 56, testnet = 97
-    const expected = (USE_TESTNET ? 97 : 56);
-    if (net?.chainId !== expected) {
-      console.warn('Read provider on unexpected chain:', net);
-      showToast(`Read RPC is on chainId ${net.chainId}, expected ${expected}`);
-      return { ok:false, reason:`Read RPC mismatch (on ${net.chainId}, need ${expected})`, net };
+    try{
+      const net = await readProvider.getNetwork();
+      const expected = (USE_TESTNET ? 97 : 56);
+      if (net?.chainId !== expected) {
+        console.warn('Read provider on unexpected chain:', net);
+        showToast(`Read RPC is on chainId ${net.chainId}, expected ${expected}`);
+        return { ok:false, reason:`Read RPC mismatch (on ${net.chainId}, need ${expected})`, net };
+      }
+      return { ok:true, net };
+    }catch(e){ console.error('verifyReadProvider error', e); return { ok:false, reason:'Read RPC unreachable' }; }
+  }
+  async function contractSanityCheck(address) {
+    try{
+      const code = await readProvider.getCode(address);
+      if (!code || code === '0x') return { ok:false, reason:'No contract at token address on this chain' };
+      return { ok:true };
+    }catch(e){ console.error('getCode error', e); return { ok:false, reason:'Unable to fetch contract code' }; }
+  }
+  async function checkSolGate(){
+    if(!userAddress){
+      setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
+      return {ok:false,have:0,sym:'SOL'};
     }
-    return { ok:true, net };
-  } catch (e) {
-    console.error('verifyReadProvider error', e);
-    return { ok:false, reason:'Read RPC unreachable' };
-  }
-}
-
-async function contractSanityCheck(address) {
-  try {
-    const code = await readProvider.getCode(address);
-    if (!code || code === '0x') {
-      return { ok:false, reason:'No contract at token address on this chain' };
+    const readOk = await verifyReadProvider();
+    if (!readOk.ok) { setChip(gateChip, true, readOk.reason||'RPC issue', false); return {ok:false,have:0,sym:'SOL'}; }
+    const sanity = await contractSanityCheck(SOLCOIN_ADDRESS);
+    if (!sanity.ok) { setChip(gateChip, true, sanity.reason, false); return {ok:false,have:0,sym:'SOL'}; }
+    try{
+      const erc20Read   = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, readProvider);
+      const erc20Wallet = ethersProvider ? new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider) : null;
+      const [decR, symR, balR] = await Promise.all([
+        erc20Read.decimals().catch(() => 18),
+        erc20Read.symbol().catch(() => 'SOL'),
+        erc20Read.balanceOf(userAddress)
+      ]);
+      let decW=decR, symW=symR, balW=null;
+      if(erc20Wallet){
+        try{
+          [decW, symW, balW] = await Promise.all([
+            erc20Wallet.decimals().catch(()=>decR),
+            erc20Wallet.symbol().catch(()=>symR),
+            erc20Wallet.balanceOf(userAddress)
+          ]);
+        }catch(e){ console.warn('Wallet RPC balance read failed:', e); }
+      }
+      const dec = decW ?? decR;
+      const sym = (symW || symR) || 'SOL';
+      const bal = balW ?? balR;
+      console.log('[SólCoin debug] address:', userAddress, 'decimals:', dec, 'symbol:', sym, 'raw balance:', bal?.toString());
+      const have = parseFloat(ethers.utils.formatUnits(bal, dec));
+      const ok   = have >= GATE_MIN_SOL;
+      const gateText=document.getElementById('gateText');
+      if(gateText){gateText.textContent = ok ? `Access: ${have.toFixed(2)} ${sym} ✓` : `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`;}
+      setChip(gateChip,true,null,ok);
+      return {ok, have, sym};
+    }catch(e){
+      console.error('checkSolGate error', e);
+      const gateText=document.getElementById('gateText'); if(gateText) gateText.textContent='Unable to read SólCoin';
+      setChip(gateChip,true,null,false);
+      return {ok:false, have:0, sym:'SOL'};
     }
-    return { ok:true };
-  } catch (e) {
-    console.error('getCode error', e);
-    return { ok:false, reason:'Unable to fetch contract code' };
-  }
-}
-
-async function checkSolGate(){
-  if(!userAddress){
-    setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
-    return {ok:false,have:0,sym:'SOL'};
   }
 
-  // Verify read provider + contract exist
-  const readOk = await verifyReadProvider();
-  if (!readOk.ok) {
-    setChip(gateChip, true, readOk.reason || 'RPC issue', false);
-    return {ok:false,have:0,sym:'SOL'};
+  /* ---------- NFT mint: robust implementation ---------- */
+  const NFT_CANDIDATE_ABIS = [
+    ['function mintTo(address to, string uri)'],
+    ['function mintTo(address to)'],
+    ['function safeMint(address to, string uri)'],
+    ['function safeMint(address to)'],
+    ['function mint(string uri)'],
+    ['function mint()']
+  ];
+
+  function parseTxError(err){
+    const m = err?.reason || err?.data?.message || err?.error?.message || err?.message;
+    return (m || 'Transaction reverted').replace(/^execution reverted:?/i,'').trim();
   }
-  const sanity = await contractSanityCheck(SOLCOIN_ADDRESS);
-  if (!sanity.ok) {
-    setChip(gateChip, true, sanity.reason, false);
-    return {ok:false,have:0,sym:'SOL'};
+
+  async function ensureGas() {
+    const addr = await signer.getAddress();
+    const [bal, feeData] = await Promise.all([ethersProvider.getBalance(addr), ethersProvider.getFeeData()]);
+    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || ethers.utils.parseUnits('2','gwei');
+    const need = gasPrice.mul(250000); // ~250k gas padded
+    return { hasGas: bal.gte(need), bal, need, gasPrice };
   }
 
-  try{
-    const erc20Read   = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, readProvider);
-    const erc20Wallet = ethersProvider ? new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider) : null;
+  async function tryMintWithAbi(abi, to, uri){
+    const c = new ethers.Contract(NFT_CONTRACT, abi, signer);
+    const fns = Object.keys(c.interface.functions);
+    const has = (sig)=>fns.includes(sig);
 
-    // Pull from read RPC
-    const [decR, symR, balR] = await Promise.all([
-      erc20Read.decimals().catch(() => 18),
-      erc20Read.symbol().catch(() => 'SOL'),
-      erc20Read.balanceOf(userAddress)
-    ]);
+    const attempt = async (sig, args)=>{
+      if(!has(sig)) return {ok:false, skipped:true};
+      await c.callStatic[sig](...args);             // preflight
+      const gas = await c.estimateGas[sig](...args); // estimate
+      const tx  = await c[sig](...args, { gasLimit: gas.mul(12).div(10) });
+      showToast('Minting NFT…');
+      await tx.wait();
+      return {ok:true};
+    };
 
-    // Also try from wallet RPC (sometimes read RPC is laggy)
-    let decW = decR, symW = symR, balW = null;
-    if (erc20Wallet) {
-      try {
-        [decW, symW, balW] = await Promise.all([
-          erc20Wallet.decimals().catch(() => decR),
-          erc20Wallet.symbol().catch(() => symR),
-          erc20Wallet.balanceOf(userAddress)
-        ]);
-      } catch (e) {
-        console.warn('Wallet RPC balance read failed (ok to ignore if readRPC works):', e);
+    const addrOnly=[to], addrUri=[to,uri], uriOnly=[uri];
+    const order = [
+      ['mintTo(address to, string uri)', addrUri],
+      ['safeMint(address to, string uri)', addrUri],
+      ['mintTo(address to)', addrOnly],
+      ['safeMint(address to)', addrOnly],
+      ['mint(string uri)', uriOnly],
+      ['mint()', []],
+    ];
+
+    for (const [sig,args] of order){
+      try{
+        const r = await attempt(sig,args);
+        if(r?.ok) return r;
+      }catch(e){
+        const msg=(e?.message||'').toLowerCase();
+        if (msg.includes('is not a function')) continue;
+        throw e;
       }
     }
-
-    // Prefer wallet read if present; else use read RPC
-    const dec = decW ?? decR;
-    const sym = (symW || symR) || 'SOL';
-    const bal = balW ?? balR;
-
-    // Show raw diagnostics in the console for us
-    console.log('[SólCoin debug] address:', userAddress);
-    console.log('[SólCoin debug] readRPC chainId:', readOk.net?.chainId);
-    console.log('[SólCoin debug] decimals:', dec, 'symbol:', sym);
-    console.log('[SólCoin debug] raw balance:', bal?.toString());
-
-    const have = parseFloat(ethers.utils.formatUnits(bal, dec));
-    const ok   = have >= GATE_MIN_SOL;
-
-    const gateText = document.getElementById('gateText');
-    if (gateText) {
-      gateText.textContent = ok
-        ? `Access: ${have.toFixed(2)} ${sym} ✓`
-        : `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`;
-    }
-    setChip(gateChip, true, null, ok);
-
-    return {ok, have, sym};
-  }catch(e){
-    console.error('checkSolGate error', e);
-    const gateText = document.getElementById('gateText');
-    if (gateText) gateText.textContent = 'Unable to read SólCoin';
-    setChip(gateChip, true, null, false);
-    return {ok:false, have:0, sym:'SOL'};
+    throw new Error('No compatible mint function found on contract');
   }
-}
+
   async function claimCertificate(){
-    const { ok: modulesOk }=computeEligibility(); 
+    const { ok: modulesOk }=computeEligibility();
     const { ok: solOk }=await checkSolGate();
-    if(!(modulesOk&&solOk)){showToast('Not eligible yet ❗');return}
+    if(!(modulesOk && solOk)){ showToast('Not eligible yet ❗'); return; }
+
     try{
-      const nft=new ethers.Contract(NFT_CONTRACT,NFT_ABI,signer);
-      const tx=await nft.mintTo(userAddress,NFT_URI); 
-      showToast('Minting NFT…'); 
-      await tx.wait(); 
-      showToast('🎉 Certificate NFT minted!')
-    }catch(e){console.error(e);showToast('Mint failed ❗')}
+      await ensureTargetChain();
+      const { hasGas } = await ensureGas();
+      if(!hasGas){ showToast('Not enough BNB for gas ❗'); return; }
+
+      const to = await signer.getAddress();
+
+      // Try your original signature first; fallback to probes
+      try{
+        const primary = new ethers.Contract(NFT_CONTRACT, ['function mintTo(address to, string uri)'], signer);
+        await primary.callStatic.mintTo(to, NFT_URI);
+        const gas = await primary.estimateGas.mintTo(to, NFT_URI);
+        const tx  = await primary.mintTo(to, NFT_URI, { gasLimit: gas.mul(12).div(10) });
+        showToast('Minting NFT…');
+        await tx.wait();
+      }catch(primaryErr){
+        console.warn('Primary mintTo(address,string) failed; probing alternates…', primaryErr);
+        await tryMintWithAbi(NFT_CANDIDATE_ABIS.flat(), to, NFT_URI);
+      }
+
+      showToast('🎉 Certificate NFT minted!');
+    }catch(err){
+      console.error('Mint error:', err);
+      showToast(`Mint failed ❗ ${parseTxError(err)}`);
+    }
   }
+
   document.getElementById('claimCert').addEventListener('click',claimCertificate);
   document.getElementById('connectBtn').addEventListener('click',async()=>{
     if(signer && userAddress){await disconnectWallet()} else {await connectWallet()}
@@ -1385,23 +1367,17 @@ async function checkSolGate(){
   });
 
   /* ---------- Init ---------- */
- function init(){
-  wireModuleButtons();
-  updateProgress();
-  updateEligibilityUI();
-
-  // ↓ add these two lines
-  showLocked('Checking access…');
-  gateAccessAndEligibility();
-
-  // auto-connect if cached
-  try{
-    const cached=localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER');
-    if(cached) connectWallet();
-  }catch{}
-}
-  
-  // Wait for DOM to be fully loaded
+  function init(){
+    wireModuleButtons();
+    updateProgress();
+    updateEligibilityUI();
+    showLocked('Checking access…');
+    gateAccessAndEligibility();
+    try{
+      const cached=localStorage.getItem('WEB3_CONNECT_CACHED_PROVIDER');
+      if(cached) connectWallet();
+    }catch{}
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
