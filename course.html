@@ -1089,92 +1089,111 @@ web3Modal = new window.Web3Modal.default({
 
   async function connectWallet() {
   try {
+    // Open wallet chooser (or re-use cached)
     extProvider = await web3Modal.connect();
 
-    // Ethers.js provider/signer
-    provider = new ethers.providers.Web3Provider(extProvider);
-    signer   = provider.getSigner();
-    const net = await provider.getNetwork();
+    // Wrap with ethers (use "any" to survive chain changes)
+    provider = new ethers.providers.Web3Provider(extProvider, "any");
 
-    // Network guard
+    // 👇 Explicitly request accounts (fixes many mobile wallet issues)
+    await provider.send("eth_requestAccounts", []);
+
+    // Make sure we’re on the target chain
+    const net = await provider.getNetwork();
     if (net.chainId !== CHAIN_ID) {
       try {
         await extProvider.request({
-          method: 'wallet_switchEthereumChain',
+          method: "wallet_switchEthereumChain",
           params: [{ chainId: toHexChainId(CHAIN_ID) }]
         });
       } catch (switchErr) {
-        // try adding the chain if not available
         try {
           await extProvider.request({
-            method: 'wallet_addEthereumChain',
+            method: "wallet_addEthereumChain",
             params: [{
               chainId: toHexChainId(CHAIN_ID),
               chainName: CHAIN_NAME,
-              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
               rpcUrls: [RPC_URL],
-              blockExplorerUrls: ['https://bscscan.com']
+              blockExplorerUrls: ["https://bscscan.com"]
             }]
           });
         } catch (addErr) {
-          showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, 'warning');
-          throw addErr;
+          showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, "warning");
+          return; // stop here, don’t error-loop
         }
       }
     }
 
-    // Address
+    // Get signer/address
+    signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    // ERC-20 contract
+    // Create contract once (or refresh after chain change)
     tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
 
-    // Read balance/symbol/decimals concurrently
-    const [rawBal, decimals, symbol] = await Promise.all([
-      tokenContract.balanceOf(userAddress),
-      tokenContract.decimals().catch(() => 18),
-      tokenContract.symbol().catch(() => 'TOKEN')
-    ]);
-
-    const human = Number(ethers.utils.formatUnits(rawBal, decimals));
-
-    // Update UI header
+    // Update header UI
     userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
     walletAddress.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`;
-    disconnectBtn.style.display = 'flex';
+    disconnectBtn.style.display = "flex";
 
-    // Gate logic
-    if (human >= REQUIRED_TOKENS) {
-      connectSection.style.display = 'none';
-      moduleContent.style.display  = 'block';
-      showNotification(`Wallet connected. Balance: ${human.toLocaleString()} ${symbol}. Access granted.`, 'success');
-    } else {
-      connectSection.style.display = 'block';
-      moduleContent.style.display  = 'none';
-      showNotification(
-        `You have ${human.toLocaleString()} ${symbol}. You need at least ${REQUIRED_TOKENS} ${symbol} to unlock.`,
-        'warning'
-      );
-    }
+    // Check access immediately
+    await checkAccess();
 
-    // Wallet event listeners
-    extProvider.on?.('accountsChanged', async (accounts) => {
+    // Avoid duplicate listeners if user reconnects
+    extProvider.removeAllListeners?.();
+
+    // Lightweight listeners (no full reconnects)
+    extProvider.on?.("accountsChanged", async (accounts) => {
       if (!accounts || accounts.length === 0) return disconnectWallet();
       userAddress = accounts[0];
-      await connectWallet(); // re-run to refresh gating
+      await checkAccess();
     });
 
-    extProvider.on?.('chainChanged', async () => {
-      await connectWallet(); // re-run on network change
+    extProvider.on?.("chainChanged", async () => {
+      provider = new ethers.providers.Web3Provider(extProvider, "any");
+      tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
+      await checkAccess();
     });
 
-    extProvider.on?.('disconnect', () => {
+    extProvider.on?.("disconnect", () => {
       disconnectWallet();
     });
 
   } catch (err) {
     console.error(err);
-    showNotification('Connection failed or cancelled.', 'error');
+    showNotification("Connection failed or cancelled.", "error");
+  }
+}
+}
+
+   async function checkAccess() {
+  try {
+    // Ensure we have signer & address
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    // Read token data
+    const [rawBal, decimals, symbol] = await Promise.all([
+      tokenContract.balanceOf(userAddress),
+      tokenContract.decimals().catch(() => 18),
+      tokenContract.symbol().catch(() => "TOKEN")
+    ]);
+
+    const human = Number(ethers.utils.formatUnits(rawBal, decimals));
+
+    if (human >= REQUIRED_TOKENS) {
+      connectSection.style.display = "none";
+      moduleContent.style.display  = "block";
+      showNotification(`Wallet connected. Balance: ${human.toLocaleString()} ${symbol}. Access granted.`, "success");
+    } else {
+      connectSection.style.display = "block";
+      moduleContent.style.display  = "none";
+      showNotification(`You have ${human.toLocaleString()} ${symbol}. Need at least ${REQUIRED_TOKENS} ${symbol} to unlock.`, "warning");
+    }
+  } catch (e) {
+    console.error(e);
+    showNotification("Could not read token balance. Check TOKEN_ADDRESS and network.", "error");
   }
 }
 
