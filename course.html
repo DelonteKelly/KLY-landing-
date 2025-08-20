@@ -290,6 +290,20 @@ p+ul,p+ol{margin-top:.4rem}
     display: flex;
     padding: 0.5rem 0;
   }
+  .topnav a {
+  position: relative;
+}
+.topnav a::after{
+  content:'';
+  position:absolute;left:10%;right:10%;bottom:-6px;height:2px;
+  background:transparent;
+  transform:scaleX(0);transform-origin:center;
+  transition:transform .25s ease, background-color .25s ease;
+}
+.topnav a.active::after{
+  background:var(--accent);
+  transform:scaleX(1);
+}
   .hero-cta {
     flex-direction: column;
     align-items: center;
@@ -998,16 +1012,33 @@ p+ul,p+ol{margin-top:.4rem}
   const links=[...document.querySelectorAll('.topnav a')];
   
   // Check if IntersectionObserver is available
-  if ('IntersectionObserver' in window) {
-    const io=new IntersectionObserver((entries)=>{
-      entries.forEach(e=>{
-        if(e.isIntersecting){
-          links.forEach(l=>l.classList.toggle('active', l.getAttribute('href')==='#'+e.target.id))
-        }
-      })
-    },{rootMargin:'-40% 0px -50% 0px',threshold:0});
-    sections.forEach(s=>io.observe(s));
-  } else {
+ // --- Smooth, stable active link highlight
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    // Pick the section most visible right now
+    const visible = entries
+      .filter(e => e.isIntersecting)
+      .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+    if (!visible) return;
+    const id = '#' + visible.target.id;
+
+    links.forEach(l => {
+      const active = l.getAttribute('href') === id;
+      l.classList.toggle('active', active);
+      if (active) l.setAttribute('aria-current', 'page');
+      else l.removeAttribute('aria-current');
+    });
+  }, {
+    // Center-biased viewport band; smooths the “jumpiness”
+    rootMargin: '-30% 0px -50% 0px',
+    threshold: [0.1, 0.25, 0.5, 0.75]
+  });
+
+  sections.forEach(s => io.observe(s));
+} else {
+  // keep your scroll fallback
+}
     // Fallback for browsers without IntersectionObserver
     window.addEventListener('scroll', () => {
       const scrollPos = window.scrollY;
@@ -1207,6 +1238,12 @@ p+ul,p+ol{margin-top:.4rem}
   const BSC_MAINNET={chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/']};
   const BSC_TESTNET={chainId:'0x61',chainName:'BNB Testnet',nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},rpcUrls:['https://bsc-testnet.publicnode.com'],blockExplorerUrls:['https://testnet.bscscan.com/']};
   const TARGET_CHAIN=USE_TESTNET?BSC_TESTNET:BSC_MAINNET;
+  // Dedicated read-only provider (bypasses wallet issues)
+const READ_RPC = USE_TESTNET 
+  ? (BSC_TESTNET.rpcUrls[0] || 'https://bsc-testnet.publicnode.com') 
+  : (BSC_MAINNET.rpcUrls[0] || 'https://bsc-dataseed.binance.org');
+
+const readProvider = new ethers.providers.JsonRpcProvider(READ_RPC);
 
   // Gate: SólCoin (must hold >= 5)
   const SOLCOIN_ADDRESS='0x97A10b3889BdC8EE5EF937ebb75b91Ab1a7AA1F0';
@@ -1308,32 +1345,42 @@ p+ul,p+ol{margin-top:.4rem}
   }
   async function onChainChanged(){ await ensureTargetChain(); await gateAccessAndEligibility(); }
 
-  async function checkSolGate(){
-    if(!ethersProvider || !userAddress){ setChip(gateChip,false); return {ok:false,have:0,sym:'SOL'} }
-    try{
-      const erc20=new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, ethersProvider);
-      const [dec,sym,bal]=await Promise.all([
-        erc20.decimals(), 
-        erc20.symbol().catch(()=> 'SOL'), 
-        erc20.balanceOf(userAddress)
-      ]);
-      const have=parseFloat(ethers.utils.formatUnits(bal,dec)); 
-      const ok=have>=GATE_MIN_SOL;
-      const gateText=document.getElementById('gateText');
-      if(gateText){ 
-        gateText.textContent = ok?`Access: ${have.toFixed(2)} ${sym} ✓`: `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`; 
-      }
-      setChip(gateChip,true,null,ok);
-      return {ok,have,sym}
-    }catch(e){
-      console.error(e);
-      const gateText=document.getElementById('gateText'); 
-      if(gateText) gateText.textContent='Unable to read SólCoin'; 
-      setChip(gateChip,true,null,false);
-      return {ok:false,have:0,sym:'SOL'}
-    }
+async function checkSolGate(){
+  if(!userAddress){
+    // wallet not connected: show helpful message instead of hiding
+    setChip(gateChip, true, 'Connect wallet to check SólCoin', false);
+    return {ok:false,have:0,sym:'SOL'};
   }
+  try{
+    // ✅ use readProvider instead of ethersProvider
+    const erc20 = new ethers.Contract(SOLCOIN_ADDRESS, ERC20_MIN_ABI, readProvider);
 
+    const [dec, symRaw, bal] = await Promise.all([
+      erc20.decimals().catch(() => 18),
+      erc20.symbol().catch(() => 'SOL'),
+      erc20.balanceOf(userAddress)
+    ]);
+
+    const have = parseFloat(ethers.utils.formatUnits(bal, dec));
+    const sym  = symRaw || 'SOL';
+    const ok   = have >= GATE_MIN_SOL;
+
+    const gateText = document.getElementById('gateText');
+    if (gateText) {
+      gateText.textContent = ok
+        ? `Access: ${have.toFixed(2)} ${sym} ✓`
+        : `Need ${GATE_MIN_SOL} ${sym} (you have ${have.toFixed(2)})`;
+    }
+    setChip(gateChip, true, null, ok);
+    return {ok, have, sym};
+  }catch(e){
+    console.error(e);
+    const gateText = document.getElementById('gateText');
+    if (gateText) gateText.textContent = 'Unable to read SólCoin';
+    setChip(gateChip, true, null, false);
+    return {ok:false, have:0, sym:'SOL'};
+  }
+}
   async function claimCertificate(){
     const { ok: modulesOk }=computeEligibility(); 
     const { ok: solOk }=await checkSolGate();
