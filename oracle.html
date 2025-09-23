@@ -126,9 +126,11 @@
     font-family:Cinzel,serif; letter-spacing:.14em; text-transform:uppercase; font-size:.98rem}
   .rule::before,.rule::after{content:""; height:1px; flex:1; background:linear-gradient(90deg, transparent, rgba(231,200,116,.38), transparent)}
   .grid{display:grid; grid-template-columns: repeat(12,1fr); gap:18px}
-  .col-7{grid-column: span 7}
   .col-5{grid-column: span 5}
-  @media (max-width:980px){ .col-7,.col-5{grid-column:1/-1} }
+  .col-6{grid-column: span 6}
+  .col-7{grid-column: span 7}
+  .col-12{grid-column: 1 / -1}
+  @media (max-width:980px){ .col-7,.col-5,.col-6,.col-12{grid-column:1/-1} }
 
   /* ===== SCROLL CARD (glass + foil edge + depth) ===== */
   .card{
@@ -236,6 +238,12 @@
     .nav__links.active { display: flex; }
     .nav__link { padding: 12px 0; }
   }
+
+  /* ===== REDUCED MOTION ===== */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .btn:hover { transform: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -259,7 +267,7 @@
     </svg>
     <span class="brand__text">Oracle • Scrolls</span>
   </div>
-  <button class="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+  <button class="mobile-menu-btn" aria-label="Toggle menu" aria-expanded="false">☰</button>
   <nav class="nav__links" aria-label="Primary">
     <a class="nav__link" href="#">Oracle</a>
     <a class="nav__link" href="#">Scrolls</a>
@@ -398,7 +406,7 @@
 </footer>
 
 <!-- Modal Structure -->
-<div class="modal" id="infoModal">
+<div class="modal" id="infoModal" aria-hidden="true" role="dialog" aria-modal="true">
   <div class="modal-content">
     <div class="modal-header">
       <h3 class="modal-title">Diamond Core NFT</h3>
@@ -420,10 +428,12 @@
 <script>
 /* ===================== AURORA FRAGMENT SHADER ===================== */
 const aurora = document.getElementById('aurora');
-const gl = aurora.getContext('webgl');
+const gl = aurora.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
+
 function resizeAurora(){
+  if(!gl){ return; }
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = innerWidth * dpr, h = innerHeight * dpr;
+  const w = Math.floor(innerWidth * dpr), h = Math.floor(innerHeight * dpr);
   if(aurora.width!==w || aurora.height!==h){ aurora.width=w; aurora.height=h; }
   gl.viewport(0,0,aurora.width, aurora.height);
 }
@@ -446,31 +456,65 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`;
 function shader(gl, vsrc, fsrc){
-  function C(t,src){ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s;}
-  const pr = gl.createProgram(); gl.attachShader(pr, C(gl.VERTEX_SHADER,vsrc)); gl.attachShader(pr, C(gl.FRAGMENT_SHADER,fsrc)); gl.linkProgram(pr);
-  if(!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw gl.getProgramInfoLog(pr); return pr;
+  function C(t,src){
+    const s=gl.createShader(t);
+    gl.shaderSource(s,src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const pr = gl.createProgram();
+  gl.attachShader(pr, C(gl.VERTEX_SHADER,vsrc));
+  gl.attachShader(pr, C(gl.FRAGMENT_SHADER,fsrc));
+  gl.linkProgram(pr);
+  if(!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+  return pr;
 }
-const pr = shader(gl, vert, frag);
-const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-const locP = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(locP); gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
-const uR = gl.getUniformLocation(pr, 'r'); const uT = gl.getUniformLocation(pr, 't');
-resizeAurora(); window.addEventListener('resize', resizeAurora);
-let st = performance.now();
-(function loop(){
-  gl.useProgram(pr);
-  gl.uniform2f(uR, aurora.width, aurora.height);
-  gl.uniform1f(uT, (performance.now()-st)/1000.0);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  requestAnimationFrame(loop);
-})();
+
+let uR,uT,locP,pr,buf;
+if(gl){
+  try{
+    pr = shader(gl, vert, frag);
+    buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    locP = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(locP); gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+    uR = gl.getUniformLocation(pr, 'r'); uT = gl.getUniformLocation(pr, 't');
+    resizeAurora(); window.addEventListener('resize', resizeAurora, { passive:true });
+    const st = performance.now();
+    (function loop(){
+      if(!gl) return;
+      gl.useProgram(pr);
+      gl.uniform2f(uR, aurora.width, aurora.height);
+      gl.uniform1f(uT, (performance.now()-st)/1000.0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(loop);
+    })();
+  }catch(e){
+    console.warn('Aurora shader failed; falling back.', e);
+    aurora.remove(); // fallback to static gradients beneath
+  }
+}else{
+  // If WebGL not supported, remove canvas so static layers show cleanly
+  aurora.remove();
+}
 </script>
 
 <script>
 /* ===================== ENHANCED INTERACTIVITY ===================== */
 
 // Mobile menu toggle
-document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
-  document.querySelector('.nav__links').classList.toggle('active');
+const mobileBtn = document.querySelector('.mobile-menu-btn');
+const navLinks = document.querySelector('.nav__links');
+mobileBtn.addEventListener('click', function() {
+  const active = navLinks.classList.toggle('active');
+  mobileBtn.setAttribute('aria-expanded', active ? 'true' : 'false');
+});
+
+// Close mobile menu on nav link click (mobile UX nicety)
+navLinks.addEventListener('click', (e)=>{
+  if(e.target.classList.contains('nav__link') && navLinks.classList.contains('active')){
+    navLinks.classList.remove('active');
+    mobileBtn.setAttribute('aria-expanded','false');
+  }
 });
 
 // Nav scroll effect
@@ -481,7 +525,7 @@ window.addEventListener('scroll', function() {
   } else {
     nav.classList.remove('scrolled');
   }
-});
+}, { passive:true });
 
 // Modal functionality
 const modal = document.getElementById('infoModal');
@@ -489,17 +533,22 @@ const modalClose = document.querySelector('.modal-close');
 
 function openModal() {
   modal.classList.add('active');
+  modal.setAttribute('aria-hidden','false');
   document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
   modal.classList.remove('active');
+  modal.setAttribute('aria-hidden','true');
   document.body.style.overflow = '';
 }
 
 modalClose.addEventListener('click', closeModal);
 modal.addEventListener('click', function(e) {
   if (e.target === modal) closeModal();
+});
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && modal.classList.contains('active')) closeModal();
 });
 
 // Audio preview simulation
@@ -579,8 +628,6 @@ function setStatus(icon, html, cls){
   els.accessBanner.className = 'access wrap ' + (cls||'');
   els.accessBanner.querySelector('.access__icon').textContent = icon;
   els.accessBanner.querySelector('.access__text').innerHTML = html;
-  
-  // Add animation to icon when status changes
   const iconEl = els.accessBanner.querySelector('.access__icon');
   iconEl.style.transform = 'scale(1.2)';
   setTimeout(() => { iconEl.style.transform = 'scale(1)'; }, 300);
@@ -603,17 +650,16 @@ function provider(){ return new ethers.providers.Web3Provider(window.ethereum); 
 
 async function connect(){
   if(!assertEth()) return;
-  
-  // Show loading state
   els.walletBtn.innerHTML = '<span class="spinner"></span>Connecting...';
-  
   try {
     await ensureBsc();
     const accs = await ethereum.request({ method:'eth_requestAccounts' });
     state.account = accs[0]; state.connected = true;
-    ethereum.removeAllListeners && ethereum.removeAllListeners('accountsChanged');
-    ethereum.on && ethereum.on('accountsChanged', a=>{ if(a.length===0){disconnect()} else {state.account=a[0]; refresh()}});
-    ethereum.on && ethereum.on('chainChanged', ()=> location.reload());
+    if(ethereum.removeAllListeners) ethereum.removeAllListeners('accountsChanged');
+    if(ethereum.on){
+      ethereum.on('accountsChanged', a=>{ if(a.length===0){disconnect()} else {state.account=a[0]; refresh()}});
+      ethereum.on('chainChanged', ()=> location.reload());
+    }
     await refresh();
   } catch (error) {
     console.error('Connection error:', error);
@@ -659,7 +705,8 @@ function render(){
   // buttons
   const wbtn = document.getElementById('walletBtn');
   wbtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
-  document.getElementById('primaryCta').textContent = state.connected ? 'Check Access' : 'Connect Wallet';
+  const pcta = document.getElementById('primaryCta');
+  pcta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
 
   // banner
   if(!state.connected){
@@ -675,6 +722,7 @@ function render(){
   if(state.connected && state.hasDiamondCore){
     if(lock) lock.style.display='none';
     els.unsealBtn.disabled=false; els.unsealBtn.removeAttribute('aria-disabled');
+    els.unsealBtn.textContent = 'Unseal the Scroll';
     els.scrollContent.classList.add('revealed');
   }else{
     if(lock) lock.style.display='flex';
@@ -713,7 +761,6 @@ document.getElementById('unsealBtn').addEventListener('click', function(){
   this.innerHTML = '<span class="spinner"></span>Unsealing...';
   setTimeout(() => {
     this.textContent = 'Unsealed ✨';
-    // Show scroll content with animation
     els.scrollContent.classList.add('revealed');
   }, 1500);
 });
