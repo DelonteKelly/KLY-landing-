@@ -1,398 +1,523 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Oracle Scrolls — Plug & Play</title>
-  <meta name="description" content="Oracle Scrolls: ancient-futurist Web3 page with wallet gating and KLY balance."/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Oracle Scrolls — Mastercrafted</title>
+<meta name="description" content="Ancient-futurist, premium Web3 Oracle Scrolls with cinematic hero, foil typography, ornamental frame, and NFT gating."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
-  <style>
-    :root{
-      --obsidian:#0A0B0D; --brass:#C5A25A; --gold:#D9B65D; --ether:#A9E0FF;
-      --ink:#EAE7DF; --muted:#9DA3AE; --ring: rgba(217,182,93,.45); --radius:14px;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{
-      margin:0; color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height:1.55;
-      background:
-        radial-gradient(1200px 600px at 50% -10%, rgba(169,224,255,.08), transparent),
-        linear-gradient(180deg, #0A0B0D 0%, #0A0B0D 30%, #0b0c0f 100%);
-    }
-    .bg{position:fixed; inset:0; pointer-events:none; z-index:-1}
-    .fx-vignette{box-shadow: inset 0 0 220px 80px #000;}
-    .fx-particles{
-      background-image:
-        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.12), transparent),
-        radial-gradient(1.5px 1.5px at 70% 60%, rgba(169,224,255,.2), transparent),
-        radial-gradient(1.5px 1.5px at 40% 80%, rgba(255,255,255,.08), transparent),
-        radial-gradient(2px 2px at 85% 25%, rgba(255,255,255,.14), transparent);
-      filter: blur(.3px) brightness(.8); animation: drift 40s linear infinite; opacity:.5;
-    }
-    @keyframes drift { 0%{transform:translateY(0)} 100%{transform:translateY(-120px)} }
+<style>
+  /* ————— Design Tokens ————— */
+  :root{
+    --obsidian:#0A0B0D; --night:#0b0c0f; --ink:#EAE7DF; --muted:#B7B0A2;
+    --gold1:#FBE7B0; --gold2:#E3C572; --gold3:#B78B35; --gold4:#7A5A1B;
+    --ether:#A9E0FF; --emerald:#7CF0B0;
+    --ring: rgba(227,197,114,.45);
+    --radius:16px; --max:1200px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:
+      radial-gradient(1600px 900px at 50% -10%, rgba(169,224,255,.08), transparent),
+      linear-gradient(180deg, var(--obsidian), var(--night));
+    overflow-x:hidden;
+  }
 
-    .nav{
-      position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
-      padding:12px 24px; background:rgba(10,11,13,.4); backdrop-filter:saturate(140%) blur(8px);
-      border-bottom:1px solid rgba(217,182,93,.12);
-    }
-    .nav__left{display:flex; align-items:center; gap:.6rem}
-    .brand{font-family:Cinzel,serif; letter-spacing:.08em; text-transform:uppercase; font-weight:700; font-size:.95rem; color:#f2eada}
-    .nav__links{display:flex; gap:1rem}
-    .nav__link{color:#cfc7b6; text-decoration:none; font-size:.95rem; opacity:.86}
-    .nav__link:hover{opacity:1}
+  /* Subtle global grain for richness */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.06) 0, rgba(255,255,255,0) 50%),
+      radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,.04) 0, rgba(255,255,255,0) 50%);
+    mix-blend-mode:overlay; opacity:.35;
+  }
 
-    .btn{
-      --py:12px; --px:18px; padding:var(--py) var(--px); border-radius:999px; border:1px solid rgba(217,182,93,.35);
-      background:transparent; color:#f9f6ee; font-weight:600; letter-spacing:.02em; cursor:pointer;
-      transition: transform .15s ease, box-shadow .15s ease, background .2s ease; outline:none;
-    }
-    .btn:focus-visible{box-shadow:0 0 0 4px var(--ring)}
-    .btn:hover{transform:translateY(-1px)} .btn:active{transform:translateY(0)}
-    .btn--gold{background:linear-gradient(180deg, var(--gold), var(--brass)); color:#1b1206; border-color:rgba(0,0,0,.15); text-shadow:0 1px 0 rgba(255,255,255,.3)}
-    .btn--gold:disabled{opacity:.55; cursor:not-allowed; filter:grayscale(.2)}
-    .btn--ghost{background:rgba(255,255,255,.04)}
+  /* WebGL canvas (stars/sigils) */
+  #stage{position:fixed; inset:0; z-index:-2}
 
-    .hero{padding: clamp(48px,6vw,96px) 24px 24px; text-align:center; position:relative}
-    .hero__sealwrap{position:relative; width:140px; height:140px; margin:0 auto 16px}
-    .hero__halo{position:absolute; inset:-12px; border-radius:50%; background:radial-gradient(60% 60% at 50% 50%, rgba(217,182,93,.18), transparent 70%); filter: blur(10px)}
-    .hero__title{font-family:Cinzel,serif; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(28px,6vw,52px); margin:6px 0 8px}
-    .hero__subtitle{color:#d9d4c7; margin:0 0 18px; font-size:clamp(14px,2.4vw,18px)}
-    .hero__ctas{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
+  /* Vignette + soft glow */
+  .fx-top{position:fixed; inset:0; z-index:-1; pointer-events:none}
+  .fx-top::before{
+    content:""; position:absolute; inset:0;
+    box-shadow: inset 0 0 240px 80px #000;
+  }
+  .fx-top::after{
+    content:""; position:absolute; left:50%; top:-6%;
+    width:1200px; height:600px; transform:translateX(-50%);
+    background: radial-gradient(50% 50% at 50% 50%, rgba(169,224,255,.12), transparent 70%);
+    filter: blur(6px); opacity:.35;
+  }
 
-    .access{
-      --bg: rgba(255,255,255,.035);
-      margin:18px auto; border:1px solid rgba(217,182,93,.22); background:var(--bg);
-      width:min(1100px, 92%); border-radius:var(--radius);
-      display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; padding:12px 16px;
-    }
-    .access__icon{font-size:20px}
-    .access__text{font-weight:600}
-    .access__meta{color:var(--muted); font-size:.92rem}
-    .badge{display:inline-block; padding:.2rem .55rem; border-radius:999px; border:1px solid rgba(217,182,93,.28); color:#eaddc6;
-      background:linear-gradient(180deg, rgba(217,182,93,.16), rgba(197,162,90,.08));}
-    .access--ok{border-color: rgba(90,201,120,.45)}
-    .access--ok .access__icon{filter: drop-shadow(0 0 8px rgba(90,201,120,.4))}
+  /* ————— Navigation ————— */
+  .nav{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 22px; gap:16px;
+    background:rgba(12,12,14,.38); backdrop-filter:blur(10px) saturate(140%);
+    border-bottom:1px solid rgba(227,197,114,.18);
+  }
+  .brand{display:flex; align-items:center; gap:.7rem}
+  .brand__mark{width:30px; height:30px; filter: drop-shadow(0 0 12px rgba(227,197,114,.25))}
+  .brand__text{
+    font-family:Cinzel,serif; letter-spacing:.12em; text-transform:uppercase;
+    font-weight:800; font-size:.95rem; color:#f2ead7;
+  }
+  .nav__links{display:flex; gap:18px}
+  .nav__link{color:#d9d1bd; text-decoration:none; font-size:.95rem; opacity:.9}
+  .nav__link:hover{opacity:1}
+  .btn{
+    --py:12px; --px:18px; padding:var(--py) var(--px);
+    border-radius:999px; border:1px solid rgba(227,197,114,.35);
+    background:rgba(255,255,255,.03); color:#f6f2e8; font-weight:600; letter-spacing:.02em; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease, background .2s ease;
+  }
+  .btn:focus-visible{outline:none; box-shadow:0 0 0 4px var(--ring)}
+  .btn:hover{transform:translateY(-1px)}
+  .btn--gold{
+    background:linear-gradient(180deg,var(--gold1),var(--gold2));
+    color:#1b1206; border-color:rgba(0,0,0,.12); text-shadow:0 1px 0 rgba(255,255,255,.35);
+    position:relative; overflow:hidden;
+  }
+  /* Foil shimmer */
+  .btn--gold::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(120deg, transparent 10%, rgba(255,255,255,.55) 40%, transparent 60%);
+    transform:skewX(-20deg) translateX(-120%);
+    animation:shine 2.6s cubic-bezier(.22,.61,.36,1) infinite;
+    mix-blend-mode:screen; opacity:.35;
+  }
+  @keyframes shine { 60%{transform:skewX(-20deg) translateX(120%)} 100%{transform:skewX(-20deg) translateX(120%)} }
 
-    .main{width:min(1100px, 92%); margin:18px auto 64px}
-    .section-title{font-family:Cinzel,serif; text-transform:uppercase; letter-spacing:.1em; font-size:1rem; color:#d6cfbf; opacity:.9; margin:8px 0 16px}
+  /* ————— Hero ————— */
+  .hero{
+    width:min(var(--max), 92%); margin: 40px auto 0; position:relative; text-align:center;
+    padding: clamp(28px,5vw,48px) 0 8px;
+  }
+  /* Ornamental temple frame */
+  .frame{
+    position:absolute; inset:-24px 0 0; width:100%; height:100%;
+    pointer-events:none; opacity:.55;
+    background:
+      radial-gradient(120px 120px at 0% 0%, rgba(227,197,114,.25), transparent 60%),
+      radial-gradient(120px 120px at 100% 0%, rgba(227,197,114,.25), transparent 60%),
+      radial-gradient(120px 120px at 0% 100%, rgba(227,197,114,.25), transparent 60%),
+      radial-gradient(120px 120px at 100% 100%, rgba(227,197,114,.25), transparent 60%);
+    mask:
+      linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
+    padding:20px; border:1px solid rgba(227,197,114,.25); border-radius:22px;
+  }
 
-    .scroll__frame{
-      position:relative; padding:18px 18px 16px; border-radius:var(--radius);
-      background:
-        radial-gradient(80% 60% at 50% 0%, rgba(169,224,255,.05), transparent 70%),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border:1px solid rgba(217,182,93,.22);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.35);
-      overflow:hidden;
-    }
-    .scroll__frame::before{
-      content:""; position:absolute; inset:-2px;
-      background:conic-gradient(from 180deg at 50% 50%, rgba(217,182,93,.0), rgba(217,182,93,.15), rgba(217,182,93,.0));
-      filter: blur(16px); opacity:.22; pointer-events:none;
-    }
-    .scroll__top{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
-    .pill{font-size:.78rem; padding:.25rem .6rem; border-radius:999px; background:rgba(217,182,93,.08); border:1px solid rgba(217,182,93,.25)}
-    .pill--rarity{background:linear-gradient(180deg, rgba(217,182,93,.22), rgba(197,162,90,.08)); color:#1a1208; border-color:rgba(0,0,0,.2)}
-    .pill--len,.pill--drop{color:#eae4d5}
-    .scroll__title{font-family:Cinzel,serif; font-weight:700; font-size:clamp(18px,3.5vw,26px); letter-spacing:.02em; margin:6px 0 6px}
-    .scroll__tease{color:#d9d4c7; margin:0 0 10px}
-    .scroll__meta{display:flex; gap:14px; color:var(--muted); font-size:.92rem}
-    .scroll__lock{display:flex; align-items:center; gap:8px; margin:12px 0 14px; color:#e8dfc9; opacity:.9}
-    .scroll__actions{display:flex; gap:10px; flex-wrap:wrap}
+  .seal-wrap{position:relative; width:180px; height:180px; margin:0 auto 18px}
+  .seal{width:100%; height:100%; display:block; animation:spin 26s linear infinite}
+  .halo{
+    position:absolute; inset:-14px; border-radius:50%;
+    background:radial-gradient(60% 60% at 50% 50%, rgba(227,197,114,.22), transparent 70%);
+    filter:blur(10px)
+  }
+  @keyframes spin{from{transform:rotate(0)} to{transform:rotate(360deg)}}
 
-    .footer{display:flex; gap:.6rem; align-items:center; justify-content:center; color:#bfb9a7; padding:36px 12px 48px; border-top:1px solid rgba(217,182,93,.12)}
-    .footer__text{font-size:.95rem}
+  /* Gold-foil headline */
+  .display{
+    font-family:Cinzel,serif; font-weight:900; letter-spacing:.1em; text-transform:uppercase;
+    font-size:clamp(28px,6vw,60px); margin:8px 0 10px; line-height:1.08;
+    background: linear-gradient(90deg, var(--gold4), var(--gold3), var(--gold2), var(--gold1), var(--gold2), var(--gold3));
+    background-size: 200% auto; color:transparent; -webkit-background-clip:text; background-clip:text;
+    animation:foil 9s linear infinite;
+    text-shadow: 0 0 20px rgba(227,197,114,.12);
+  }
+  @keyframes foil{ 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+  .sub{color:#dcd4c5; font-size:clamp(14px,2.4vw,18px); margin:0 0 18px}
 
-    @media (max-width:780px){
-      .nav__links{display:none}
-      .access{grid-template-columns:24px 1fr; gap:10px}
-      .access__meta{grid-column:1 / -1}
-    }
-  </style>
+  .hero__cta{display:flex; justify-content:center; gap:12px; flex-wrap:wrap}
+
+  /* ————— Access Banner ————— */
+  .access{
+    margin: 18px auto 8px; padding:14px 16px;
+    width:min(var(--max), 92%); border-radius:16px;
+    border:1px solid rgba(227,197,114,.22);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+    display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center;
+  }
+  .access__icon{font-size:20px}
+  .access__text{font-weight:700}
+  .access__meta{color:var(--muted); font-size:.95rem}
+  .badge{
+    display:inline-block; padding:.24rem .6rem; border-radius:999px;
+    border:1px solid rgba(227,197,114,.28); color:#f0e6d3;
+    background:linear-gradient(180deg, rgba(227,197,114,.18), rgba(183,139,53,.08));
+  }
+  .access--ok{border-color: rgba(124,240,176,.45)}
+  .access--ok .access__icon{filter: drop-shadow(0 0 8px rgba(124,240,176,.4))}
+
+  /* ————— Scroll Gallery ————— */
+  .main{width:min(var(--max), 92%); margin: 26px auto 80px}
+  .divider{
+    display:flex; align-items:center; gap:14px; color:#d6cfbf; opacity:.9; margin: 10px 0 18px;
+    font-family:Cinzel,serif; letter-spacing:.14em; text-transform:uppercase; font-size:.95rem;
+  }
+  .divider::before,.divider::after{
+    content:""; height:1px; flex:1;
+    background:linear-gradient(90deg, transparent, rgba(227,197,114,.35), transparent);
+  }
+
+  .grid{display:grid; grid-template-columns: repeat(12,1fr); gap:18px}
+  .col-7{grid-column: span 7}
+  .col-5{grid-column: span 5}
+  @media (max-width:980px){ .col-7,.col-5{grid-column:1/-1} }
+
+  /* — Scroll Card (embossed parchment with foil edge) */
+  .scroll{
+    position:relative; border-radius:20px; overflow:hidden;
+    border:1px solid rgba(227,197,114,.22);
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(169,224,255,.06), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 40px rgba(0,0,0,.35);
+  }
+  .scroll::after{ /* foil bevel edge */
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: conic-gradient(from 120deg at 50% 50%, rgba(255,255,255,.0), rgba(227,197,114,.25), rgba(255,255,255,.0));
+    mix-blend-mode:screen; opacity:.25; filter: blur(10px);
+  }
+  .scroll__inner{padding:20px 18px}
+  .pills{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px}
+  .pill{font-size:.78rem; padding:.28rem .66rem; border-radius:999px; border:1px solid rgba(227,197,114,.28); background:rgba(227,197,114,.08)}
+  .pill--rarity{background:linear-gradient(180deg, rgba(227,197,114,.24), rgba(183,139,53,.08)); color:#1a1208; border-color:rgba(0,0,0,.2)}
+  .title{font-family:Cinzel,serif; font-weight:800; font-size:clamp(18px,3.5vw,26px); letter-spacing:.02em; margin: 4px 0 8px}
+  .tease{color:#ded6c7; margin:0 0 10px}
+  .meta{display:flex; gap:14px; color:#bdb6a6; font-size:.95rem}
+  .lock{display:flex; align-items:center; gap:8px; margin:12px 0 14px; color:#f2e6cd; opacity:.95}
+  .actions{display:flex; gap:10px; flex-wrap:wrap}
+
+  .callout{
+    position:relative; padding:16px; border-radius:16px; margin:10px 0 0;
+    border:1px dashed rgba(227,197,114,.3); color:#e7dec8; background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  }
+
+  .footer{display:flex; justify-content:center; align-items:center; gap:.7rem; padding:40px 12px 56px; color:#cfc6b1; border-top:1px solid rgba(227,197,114,.16)}
+
+  @media (max-width:780px){
+    .nav__links{display:none}
+    .access{grid-template-columns:24px 1fr; gap:10px}
+    .access__meta{grid-column:1 / -1}
+  }
+</style>
 </head>
 <body>
-  <div class="bg fx-particles" aria-hidden="true"></div>
-  <div class="bg fx-vignette" aria-hidden="true"></div>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="fx-top" aria-hidden="true"></div>
 
-  <header class="nav">
-    <div class="nav__left">
-      <!-- Inline golden seal -->
-      <svg width="32" height="32" viewBox="0 0 512 512" aria-hidden="true">
-        <defs>
-          <radialGradient id="g" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stop-color="#FFDFA3"/><stop offset="55%" stop-color="#D9B65D"/><stop offset="100%" stop-color="#8C6B2A"/>
-          </radialGradient>
-        </defs>
-        <circle cx="256" cy="256" r="238" fill="url(#g)" stroke="#2a1b06" stroke-opacity=".35" stroke-width="6"/>
-        <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
-      </svg>
-      <span class="brand">Oracle • Scrolls</span>
-    </div>
-    <nav class="nav__links" aria-label="Primary">
-      <a href="#" class="nav__link">Oracle</a>
-      <a href="#" class="nav__link">Scrolls</a>
-      <a href="#" class="nav__link">Vault</a>
-      <a href="#" class="nav__link">Academy</a>
-    </nav>
-    <div class="nav__right">
-      <button id="walletBtn" class="btn btn--ghost" aria-live="polite">Connect Wallet</button>
-    </div>
-  </header>
+<header class="nav">
+  <div class="brand">
+    <!-- Premium seal (inline SVG) -->
+    <svg class="brand__mark" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <radialGradient id="gMark" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#FBE7B0"/><stop offset="55%" stop-color="#E3C572"/><stop offset="100%" stop-color="#7A5A1B"/>
+        </radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#gMark)" stroke="#000" stroke-opacity=".2" stroke-width="1.5"/>
+      <g fill="#1e1509" fill-opacity=".55" transform="translate(32,32)">
+        <circle r="2.2" cx="0" cy="-20"/><circle r="2.2" cx="17.3" cy="-10"/><circle r="2.2" cx="20" cy="0"/><circle r="2.2" cx="17.3" cy="10"/><circle r="2.2" cx="0" cy="20"/><circle r="2.2" cx="-17.3" cy="10"/><circle r="2.2" cx="-20" cy="0"/><circle r="2.2" cx="-17.3" cy="-10"/>
+      </g>
+    </svg>
+    <span class="brand__text">Oracle • Scrolls</span>
+  </div>
+  <nav class="nav__links" aria-label="Primary">
+    <a class="nav__link" href="#">Oracle</a>
+    <a class="nav__link" href="#">Scrolls</a>
+    <a class="nav__link" href="#">Vault</a>
+    <a class="nav__link" href="#">Academy</a>
+  </nav>
+  <div class="nav__cta">
+    <button id="walletBtn" class="btn">Connect Wallet</button>
+  </div>
+</header>
 
-  <section class="hero">
-    <div class="hero__sealwrap">
-      <!-- Larger seal -->
-      <svg width="140" height="140" viewBox="0 0 512 512" style="animation:slowspin 18s linear infinite; filter: drop-shadow(0 0 24px rgba(217,182,93,.16));">
-        <defs>
-          <radialGradient id="g2" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stop-color="#FFDFA3"/><stop offset="55%" stop-color="#D9B65D"/><stop offset="100%" stop-color="#8C6B2A"/>
-          </radialGradient>
-        </defs>
-        <circle cx="256" cy="256" r="238" fill="url(#g2)" stroke="#2a1b06" stroke-opacity=".35" stroke-width="6"/>
-        <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
-      </svg>
-      <div class="hero__halo" aria-hidden="true"></div>
-    </div>
-    <h1 class="hero__title">Oracle Scrolls</h1>
-    <p class="hero__subtitle">Transmissions for those who answer the call.</p>
-    <div class="hero__ctas">
-      <button id="primaryCta" class="btn btn--gold">Connect Wallet</button>
-      <a href="#" class="btn btn--ghost">Browse Public Scrolls</a>
-    </div>
-  </section>
+<section class="hero">
+  <div class="frame" aria-hidden="true"></div>
+  <div class="seal-wrap">
+    <svg class="seal" viewBox="0 0 512 512" aria-hidden="true">
+      <defs>
+        <radialGradient id="g2" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#FBE7B0"/><stop offset="55%" stop-color="#E3C572"/><stop offset="100%" stop-color="#7A5A1B"/>
+        </radialGradient>
+      </defs>
+      <circle cx="256" cy="256" r="238" fill="url(#g2)" stroke="#2a1b06" stroke-opacity=".35" stroke-width="6"/>
+      <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity=".26" stroke-width="3"/>
+      <!-- inner sigil -->
+      <g stroke="#2a1b06" stroke-opacity=".35" stroke-width="2" fill="none" transform="translate(256,256)">
+        <polygon points="0,-110 95,55 -95,55" />
+        <circle r="76"/>
+        <path d="M0,-110 L0,110 M-95,55 L95,55 M-66,-12 L66,-12" />
+      </g>
+    </svg>
+    <div class="halo"></div>
+  </div>
 
-  <section id="accessBanner" class="access access--disconnected" role="status" aria-live="polite">
-    <div class="access__icon" aria-hidden="true">🔒</div>
-    <div class="access__text">
-      <strong>Access Locked.</strong> Connect wallet to check gate status.
-    </div>
-    <div class="access__meta">
-      Chain: <span class="badge">BNB Smart Chain</span> • Gate: <span class="badge">Diamond Core NFT (ID 3)</span>
-    </div>
-  </section>
+  <h1 class="display">Oracle Scrolls</h1>
+  <p class="sub">Transmissions for those who answer the call.</p>
+  <div class="hero__cta">
+    <button id="primaryCta" class="btn btn--gold">Connect Wallet</button>
+    <button id="publicCta" class="btn">Browse Public Scrolls</button>
+  </div>
+</section>
 
-  <main class="main">
-    <h2 class="section-title">Latest Scroll</h2>
+<section id="accessBanner" class="access" role="status" aria-live="polite">
+  <div class="access__icon" aria-hidden="true">🔒</div>
+  <div class="access__text"><strong>Access Locked.</strong> Connect wallet to check gate status.</div>
+  <div class="access__meta">
+    Chain: <span class="badge">BNB Smart Chain</span> • Gate: <span class="badge">Diamond Core NFT (ID 3)</span>
+  </div>
+</section>
 
-    <article class="scroll">
-      <div class="scroll__frame">
-        <div class="scroll__top">
+<main class="main">
+  <div class="divider">Latest Transmission</div>
+  <div class="grid">
+    <article class="scroll col-7">
+      <div class="scroll__inner">
+        <div class="pills">
           <span class="pill pill--rarity">Diamond</span>
-          <span class="pill pill--len">12 min</span>
-          <span class="pill pill--drop">Drop #07</span>
+          <span class="pill">12 min</span>
+          <span class="pill">Drop #07</span>
         </div>
-
-        <h3 class="scroll__title">Keys of Sovereignty: The Unsealing</h3>
-        <p class="scroll__tease">Not for the curious—only the called.</p>
-
-        <div class="scroll__meta">
-          <span class="meta">Updated: 2025-09-18</span>
-          <span class="meta">Category: Prophecy</span>
+        <h3 class="title">Keys of Sovereignty: The Unsealing</h3>
+        <p class="tease">Not for the curious—only the called.</p>
+        <div class="meta">
+          <span>Updated: 2025-09-18</span>
+          <span>Category: Prophecy</span>
         </div>
-
-        <div class="scroll__lock">
-          <span class="lock__icon" aria-hidden="true">🔒</span>
-          <span class="lock__text">Gate required: Diamond Core NFT</span>
+        <div class="lock"><span aria-hidden="true">🗝️</span><span>Gate required: Diamond Core NFT</span></div>
+        <div class="actions">
+          <button class="btn btn--gold" disabled aria-disabled="true" id="unsealBtn">Unseal the Scroll</button>
+          <button class="btn" id="mintInfoBtn">Learn How to Mint</button>
         </div>
-
-        <div class="scroll__actions">
-          <button class="btn btn--gold" disabled aria-disabled="true">Unseal the Scroll</button>
-          <button class="btn btn--ghost" id="learnMintBtn">Learn How to Mint</button>
+        <div class="callout" id="callout" hidden>
+          <strong>Unsealed:</strong> this could open a cinematic modal (video/audio) or route to your gated lesson. Tell me the target and I’ll wire it.
         </div>
       </div>
     </article>
-  </main>
 
-  <footer class="footer">
-    <span class="footer__text">© Tamaquah Nation • KLY • The Call Continues</span>
-  </footer>
+    <aside class="col-5">
+      <div class="scroll">
+        <div class="scroll__inner">
+          <div class="pills"><span class="pill">Public</span><span class="pill">Audio</span></div>
+          <h3 class="title">Invocation • “The Call Within”</h3>
+          <p class="tease">A short sample transmission to meet the frequency.</p>
+          <div class="actions">
+            <button class="btn">Play Preview</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
 
-  <!-- ethers v5 CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    // CONFIG
-    const CONFIG = {
-      chainIdHex: '0x38', // 56
-      chainIdDec: 56,
-      chainName: 'BNB Smart Chain',
-      rpcUrl: 'https://bsc-dataseed.binance.org/',
-      blockExplorer: 'https://bscscan.com',
-      klyErc20: '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52',
-      diamondNft721: '0xDA76d35742190283E340dbeE2038ecc978a56950',
-      diamondTokenId: '3',
-      selectors: { walletBtn:'#walletBtn', primaryCta:'#primaryCta', accessBanner:'#accessBanner' }
-    };
+<footer class="footer">
+  <span>© Tamaquah Nation • KLY • The Call Continues</span>
+</footer>
 
-    const ERC20_ABI = [
-      "function balanceOf(address owner) view returns (uint256)",
-      "function decimals() view returns (uint8)",
-      "function symbol() view returns (string)"
-    ];
-    const ERC721_ABI = [
-      "function ownerOf(uint256 tokenId) view returns (address)",
-      "function balanceOf(address owner) view returns (uint256)"
-    ];
+<!-- Three.js (lightweight star/sigil field) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!-- ethers v5 -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
-    const els = {
-      walletBtn: document.querySelector(CONFIG.selectors.walletBtn),
-      primaryCta: document.querySelector(CONFIG.selectors.primaryCta),
-      accessBanner: document.querySelector(CONFIG.selectors.accessBanner),
-      learnMintBtn: document.getElementById('learnMintBtn'),
-      klyBadge: null
-    };
+<script>
+/* ========== Cinematic Background (Three.js) ========== */
+(() => {
+  const canvas = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+  camera.position.z = 8;
 
-    let state = {
-      connected:false, account:null, hasDiamondCore:false,
-      kly:{ balance:null, symbol:'KLY', decimals:18 }
-    };
+  // Stars
+  const starGeo = new THREE.BufferGeometry();
+  const COUNT = 800;
+  const pos = new Float32Array(COUNT*3);
+  for(let i=0;i<COUNT;i++){
+    pos[i*3+0] = (Math.random()-0.5)*40;
+    pos[i*3+1] = (Math.random()-0.5)*24;
+    pos[i*3+2] = -Math.random()*30 - 4;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const starMat = new THREE.PointsMaterial({ size:0.04, transparent:true, opacity:0.85 });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
 
-    function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
-    function setStatus(icon, html, cls){
-      els.accessBanner.className = 'access ' + (cls || '');
-      els.accessBanner.querySelector('.access__icon').textContent = icon;
-      els.accessBanner.querySelector('.access__text').innerHTML = html;
+  // Floating sigils (simple planes with additive glow)
+  const sigilGeo = new THREE.PlaneGeometry(1.2,1.2);
+  const rt = `
+    <svg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'>
+      <defs><radialGradient id='g' cx='50%' cy='50%' r='60%'>
+        <stop offset='0%' stop-color='#FBE7B0'/><stop offset='70%' stop-color='#E3C572'/><stop offset='100%' stop-color='#7A5A1B'/>
+      </radialGradient></defs>
+      <circle cx='128' cy='128' r='124' fill='none' stroke='#E3C572' stroke-opacity='.5' stroke-width='2'/>
+      <g stroke='#E3C572' stroke-opacity='.9' stroke-width='3' fill='none' transform='translate(128,128)'>
+        <polygon points='0,-60 52,30 -52,30'/>
+        <circle r='42'/>
+      </g>
+    </svg>`;
+  const tex = new THREE.TextureLoader().load('data:image/svg+xml;utf8,' + encodeURIComponent(rt));
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sigMat = new THREE.MeshBasicMaterial({ map: tex, transparent:true, opacity:.22, depthWrite:false, blending:THREE.AdditiveBlending });
+  const sig1 = new THREE.Mesh(sigilGeo, sigMat); sig1.position.set(-3, 1.2, -6);
+  const sig2 = new THREE.Mesh(sigilGeo, sigMat); sig2.position.set( 3.2,-0.5, -7); sig2.scale.set(0.9,0.9,0.9);
+  scene.add(sig1, sig2);
+
+  function resize(){
+    const dpr = Math.min(2, window.devicePixelRatio||1);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let t=0;
+  (function loop(){
+    t += 0.003;
+    stars.rotation.z += 0.0007;
+    sig1.rotation.z = t*0.3; sig2.rotation.z = -t*0.25;
+    sig1.position.y = 1.2 + Math.sin(t*1.6)*0.25;
+    sig2.position.y = -0.5 + Math.cos(t*1.3)*0.25;
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ========== Web3 Wiring ========== */
+const CONFIG = {
+  chainIdHex: '0x38', chainIdDec: 56, chainName: 'BNB Smart Chain',
+  rpcUrl: 'https://bsc-dataseed.binance.org/', blockExplorer: 'https://bscscan.com',
+  klyErc20: '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52',
+  diamondNft721: '0xDA76d35742190283E340dbeE2038ecc978a56950',
+  diamondTokenId: '3'
+};
+const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
+const ERC721_ABI = [
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function balanceOf(address owner) view returns (uint256)"
+];
+
+const els = {
+  walletBtn: document.getElementById('walletBtn'),
+  primaryCta: document.getElementById('primaryCta'),
+  accessBanner: document.getElementById('accessBanner'),
+  unsealBtn: document.getElementById('unsealBtn'),
+  mintInfoBtn: document.getElementById('mintInfoBtn'),
+  callout: document.getElementById('callout')
+};
+let state = { connected:false, account:null, hasDiamondCore:false, kly:{balance:null, symbol:'KLY', decimals:18} };
+
+function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
+function setStatus(icon, html, cls){
+  els.accessBanner.className = 'access ' + (cls || '');
+  els.accessBanner.querySelector('.access__icon').textContent = icon;
+  els.accessBanner.querySelector('.access__text').innerHTML = html;
+}
+function assertEthereum(){ if(!window.ethereum){ alert('No wallet found. Install MetaMask or a Web3 browser.'); return false; } return true; }
+async function switchToBsc(){
+  try{ await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: CONFIG.chainIdHex }] }); }
+  catch(e){ if(e.code===4902){
+    await ethereum.request({ method:'wallet_addEthereumChain', params:[{ chainId:CONFIG.chainIdHex, chainName:CONFIG.chainName, nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18}, rpcUrls:[CONFIG.rpcUrl], blockExplorerUrls:[CONFIG.blockExplorer] }] });
+  }else{ throw e; } }
+}
+async function ensureBsc(){ const cur = await ethereum.request({ method:'eth_chainId' }); if(cur.toLowerCase()!==CONFIG.chainIdHex.toLowerCase()) await switchToBsc(); }
+function provider(){ return new ethers.providers.Web3Provider(window.ethereum); }
+
+async function connect(){
+  if(!assertEthereum()) return;
+  await ensureBsc();
+  const accounts = await ethereum.request({ method:'eth_requestAccounts' });
+  state.account = accounts[0]; state.connected = true;
+
+  ethereum.removeAllListeners && ethereum.removeAllListeners('accountsChanged');
+  ethereum.on && ethereum.on('accountsChanged', accs => { if(accs.length===0){disconnect();} else { state.account=accs[0]; refresh(); }});
+  ethereum.on && ethereum.on('chainChanged', ()=> location.reload());
+
+  await refresh();
+}
+async function disconnect(){ state = { connected:false, account:null, hasDiamondCore:false, kly:{balance:null,symbol:'KLY',decimals:18}}; render(); }
+async function refresh(){ try{ await Promise.all([checkDiamondCore(), readKlyBalance()]); } catch(e){ console.error(e);} render(); }
+
+async function checkDiamondCore(){
+  try{
+    const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider());
+    const owner = await nft.ownerOf(CONFIG.diamondTokenId);
+    state.hasDiamondCore = owner.toLowerCase() === state.account.toLowerCase();
+  }catch(e){
+    try{ const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider()); const bal = await nft.balanceOf(state.account); state.hasDiamondCore = bal && bal.gt(0); }
+    catch(err){ state.hasDiamondCore=false; }
+  }
+}
+async function readKlyBalance(){
+  try{
+    const erc20 = new ethers.Contract(CONFIG.klyErc20, ERC20_ABI, provider());
+    const [raw,dec,sym] = await Promise.all([erc20.balanceOf(state.account), erc20.decimals(), erc20.symbol().catch(()=> 'KLY')]);
+    state.kly.decimals = dec; state.kly.symbol = sym||'KLY'; state.kly.balance = Number(ethers.utils.formatUnits(raw, dec));
+  }catch(e){ state.kly.balance=null; }
+}
+
+function render(){
+  // nav/hero buttons
+  els.walletBtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
+  els.primaryCta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
+
+  // banner states
+  if(!state.connected){
+    setStatus('🔒','<strong>Access Locked.</strong> Connect wallet to check gate status.');
+  } else if(!state.hasDiamondCore){
+    setStatus('🗝️', `<strong>Connected ${short(state.account)}.</strong> Gate required: Diamond Core NFT (ID ${CONFIG.diamondTokenId}).`);
+  } else {
+    setStatus('✅', `<strong>Access Granted.</strong> Diamond Core verified for ${short(state.account)}.`, 'access--ok');
+  }
+
+  // scroll card CTA
+  const lock = document.querySelector('.lock');
+  if(state.connected && state.hasDiamondCore){
+    if(lock) lock.style.display='none';
+    els.unsealBtn.disabled=false; els.unsealBtn.removeAttribute('aria-disabled');
+  } else {
+    if(lock) lock.style.display='flex';
+    els.unsealBtn.disabled=true; els.unsealBtn.setAttribute('aria-disabled','true');
+    els.unsealBtn.textContent = state.connected ? 'Locked (Need Diamond Core)' : 'Unseal the Scroll';
+  }
+
+  // KLY badge in banner
+  const meta = document.querySelector('.access__meta');
+  let badge = document.getElementById('klyBadge');
+  if(state.connected){
+    if(!badge){
+      badge = document.createElement('span'); badge.className='badge'; badge.id='klyBadge';
+      meta.appendChild(document.createTextNode(' • ')); meta.appendChild(badge);
     }
-    function assertEthereum(){
-      if(!window.ethereum){ alert('No wallet found. Install MetaMask or use a Web3-enabled browser.'); return false; }
-      return true;
-    }
-    async function switchToBsc(){
-      try{
-        await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: CONFIG.chainIdHex }] });
-      }catch(e){
-        if(e.code === 4902){
-          await window.ethereum.request({
-            method:'wallet_addEthereumChain',
-            params:[{ chainId:CONFIG.chainIdHex, chainName:CONFIG.chainName,
-              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
-              rpcUrls:[CONFIG.rpcUrl], blockExplorerUrls:[CONFIG.blockExplorer] }]
-          });
-        } else { throw e; }
-      }
-    }
-    async function ensureBsc(){
-      const cur = await window.ethereum.request({ method:'eth_chainId' });
-      if(cur.toLowerCase() !== CONFIG.chainIdHex.toLowerCase()) await switchToBsc();
-    }
-    function getProvider(){ return new ethers.providers.Web3Provider(window.ethereum); }
+    badge.textContent = 'KLY: ' + (state.kly.balance==null ? '—' : `${state.kly.balance.toFixed(2)} ${state.kly.symbol}`);
+  } else if(badge){ badge.remove(); }
+}
 
-    async function connect(){
-      if(!assertEthereum()) return;
-      await ensureBsc();
-      const accounts = await window.ethereum.request({ method:'eth_requestAccounts' });
-      state.account = accounts[0]; state.connected = true;
+// events
+els.walletBtn.addEventListener('click', async ()=>{ state.connected ? await disconnect() : await connect(); });
+els.primaryCta.addEventListener('click', async ()=>{ !state.connected ? await connect() : await refresh(); });
+els.mintInfoBtn.addEventListener('click', ()=> window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract','_blank'));
+els.unsealBtn.addEventListener('click', ()=>{
+  if(els.unsealBtn.disabled) return;
+  els.callout.hidden = false;
+  els.unsealBtn.textContent = 'Opened ✨';
+});
 
-      window.ethereum.removeAllListeners && window.ethereum.removeAllListeners('accountsChanged');
-      window.ethereum.on && window.ethereum.on('accountsChanged', (accs)=>{ if(accs.length===0){disconnect();} else {state.account=accs[0]; refresh();}});
-      window.ethereum.on && window.ethereum.on('chainChanged', ()=> location.reload());
-
-      await refresh();
-    }
-    async function disconnect(){
-      state.connected=false; state.account=null; state.hasDiamondCore=false; state.kly.balance=null; render();
-    }
-    async function refresh(){
-      try{
-        await Promise.all([checkDiamondCore(), readKlyBalance()]);
-      }catch(err){ console.error(err); }
-      render();
-    }
-
-    async function checkDiamondCore(){
-      try{
-        const provider = getProvider();
-        const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider);
-        const owner = await nft.ownerOf(CONFIG.diamondTokenId);
-        state.hasDiamondCore = owner.toLowerCase() === state.account.toLowerCase();
-      }catch(err){
-        // fallback: any NFT balance
-        try{
-          const provider = getProvider();
-          const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider);
-          const bal = await nft.balanceOf(state.account);
-          state.hasDiamondCore = bal && bal.gt(0);
-        }catch(e){ state.hasDiamondCore=false; }
-      }
-    }
-
-    async function readKlyBalance(){
-      try{
-        const provider = getProvider();
-        const erc20 = new ethers.Contract(CONFIG.klyErc20, ERC20_ABI, provider);
-        const [raw, decimals, symbol] = await Promise.all([
-          erc20.balanceOf(state.account),
-          erc20.decimals(),
-          erc20.symbol().catch(()=> 'KLY')
-        ]);
-        state.kly.decimals = decimals; state.kly.symbol = symbol || 'KLY';
-        state.kly.balance = Number(ethers.utils.formatUnits(raw, decimals));
-      }catch(err){ state.kly.balance=null; }
-    }
-
-    function render(){
-      // buttons
-      els.walletBtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
-      els.primaryCta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
-
-      // banner
-      if(!state.connected){
-        setStatus('🔒', '<strong>Access Locked.</strong> Connect wallet to check gate status.');
-      } else if(!state.hasDiamondCore){
-        setStatus('🗝️', `<strong>Connected ${short(state.account)}.</strong> Gate required: Diamond Core NFT (ID ${CONFIG.diamondTokenId}).`);
-      } else {
-        setStatus('✅', `<strong>Access Granted.</strong> Diamond Core verified for ${short(state.account)}.`, 'access--ok');
-      }
-
-      // card controls
-      const lock = document.querySelector('.scroll__lock');
-      const actionBtn = document.querySelector('.scroll__actions .btn--gold');
-      const learnBtn = els.learnMintBtn;
-
-      if(state.connected && state.hasDiamondCore){
-        if(lock) lock.style.display = 'none';
-        if(actionBtn){ actionBtn.disabled=false; actionBtn.removeAttribute('aria-disabled'); actionBtn.textContent='Unseal the Scroll'; }
-        if(learnBtn) learnBtn.style.display='none';
-      } else {
-        if(lock) lock.style.display = 'flex';
-        if(actionBtn){
-          actionBtn.disabled=true; actionBtn.setAttribute('aria-disabled','true');
-          actionBtn.textContent = state.connected ? 'Locked (Need Diamond Core)' : 'Unseal the Scroll';
-        }
-        if(learnBtn) learnBtn.style.display='inline-flex';
-      }
-
-      // KLY badge
-      const meta = document.querySelector('.access__meta');
-      if(state.connected){
-        if(!document.getElementById('klyBadge')){
-          const s = document.createElement('span'); s.className='badge'; s.id='klyBadge';
-          meta && meta.appendChild(document.createTextNode(' • ')); meta && meta.appendChild(s);
-        }
-        const v = state.kly.balance==null ? '—' : `${state.kly.balance.toFixed(2)} ${state.kly.symbol}`;
-        document.getElementById('klyBadge').textContent = `KLY: ${v}`;
-      }else{
-        const b = document.getElementById('klyBadge'); if(b) b.remove();
-      }
-    }
-
-    // events
-    document.getElementById('walletBtn').addEventListener('click', async () => {
-      if(state.connected){ await disconnect(); } else { await connect(); }
-    });
-    document.getElementById('primaryCta').addEventListener('click', async () => {
-      if(!state.connected){ await connect(); } else { await refresh(); }
-    });
-    document.getElementById('learnMintBtn').addEventListener('click', () => {
-      window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract', '_blank');
-    });
-
-    // initial
-    render();
-  </script>
-
-  <style>@keyframes slowspin { from{transform:rotate(0)} to{transform:rotate(360deg)} }</style>
+render();
+</script>
 </body>
 </html>
