@@ -1,515 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cosmic Navigator — Starship Guidance System</title>
-
-  <!-- Fonts & tiny animation lib -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Oracle Scrolls — Plug & Play</title>
+  <meta name="description" content="Oracle Scrolls: ancient-futurist Web3 page with wallet gating and KLY balance."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      --space-dark:#0a0a20;
-      --energy-blue:#00b4ff;
-      --hologram-teal:#00ffcc;
-      --star-gold:#ffd700;
-      --panel-glow:rgba(0,180,255,0.22);
-      --muted:#9aa0c7;
-      --warn:#ff5577;
-      --ok:#2ecc71;
-      --bsc:#F0B90B;
+      --obsidian:#0A0B0D; --brass:#C5A25A; --gold:#D9B65D; --ether:#A9E0FF;
+      --ink:#EAE7DF; --muted:#9DA3AE; --ring: rgba(217,182,93,.45); --radius:14px;
     }
-
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%}
-
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      font-family: 'Exo 2', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--space-dark);
-      color: #e8eefc;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:2rem;
-      overflow-x:hidden;
+      margin:0; color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height:1.55;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(169,224,255,.08), transparent),
+        linear-gradient(180deg, #0A0B0D 0%, #0A0B0D 30%, #0b0c0f 100%);
     }
-
-    .container{width:100%;max-width:980px;z-index:10;position:relative;text-align:center}
-
-    h1{
-      font-family:'Orbitron', monospace;color:var(--energy-blue);
-      font-weight:900;letter-spacing:3px;font-size:2.6rem;text-transform:uppercase;
-      text-shadow:0 0 18px rgba(0,180,255,0.18);margin-bottom:.5rem;
+    .bg{position:fixed; inset:0; pointer-events:none; z-index:-1}
+    .fx-vignette{box-shadow: inset 0 0 220px 80px #000;}
+    .fx-particles{
+      background-image:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.12), transparent),
+        radial-gradient(1.5px 1.5px at 70% 60%, rgba(169,224,255,.2), transparent),
+        radial-gradient(1.5px 1.5px at 40% 80%, rgba(255,255,255,.08), transparent),
+        radial-gradient(2px 2px at 85% 25%, rgba(255,255,255,.14), transparent);
+      filter: blur(.3px) brightness(.8); animation: drift 40s linear infinite; opacity:.5;
     }
-    .subtitle{color:var(--hologram-teal);margin-bottom:1.35rem;font-size:1rem;font-weight:300}
+    @keyframes drift { 0%{transform:translateY(0)} 100%{transform:translateY(-120px)} }
 
-    .panel{
-      background: rgba(8, 12, 25, 0.86);
-      border-radius:12px;padding:2rem;
-      box-shadow: 0 0 38px var(--panel-glow), inset 0 0 18px rgba(0,180,255,0.03);
-      border:1px solid rgba(0,180,255,0.08);backdrop-filter: blur(6px);transform: translateZ(0);
+    .nav{
+      position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
+      padding:12px 24px; background:rgba(10,11,13,.4); backdrop-filter:saturate(140%) blur(8px);
+      border-bottom:1px solid rgba(217,182,93,.12);
     }
+    .nav__left{display:flex; align-items:center; gap:.6rem}
+    .brand{font-family:Cinzel,serif; letter-spacing:.08em; text-transform:uppercase; font-weight:700; font-size:.95rem; color:#f2eada}
+    .nav__links{display:flex; gap:1rem}
+    .nav__link{color:#cfc7b6; text-decoration:none; font-size:.95rem; opacity:.86}
+    .nav__link:hover{opacity:1}
 
-    .prompt{font-size:1.05rem;color:var(--muted);margin-bottom:1rem;max-width:820px;margin-inline:auto}
-
-    .gate{
-      margin: .6rem auto 1rem auto;max-width:820px;text-align:center;font-size:.95rem;
-      padding:.6rem .8rem;border-radius:8px;border-left:4px solid rgba(255,255,255,0.12);
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+    .btn{
+      --py:12px; --px:18px; padding:var(--py) var(--px); border-radius:999px; border:1px solid rgba(217,182,93,.35);
+      background:transparent; color:#f9f6ee; font-weight:600; letter-spacing:.02em; cursor:pointer;
+      transition: transform .15s ease, box-shadow .15s ease, background .2s ease; outline:none;
     }
+    .btn:focus-visible{box-shadow:0 0 0 4px var(--ring)}
+    .btn:hover{transform:translateY(-1px)} .btn:active{transform:translateY(0)}
+    .btn--gold{background:linear-gradient(180deg, var(--gold), var(--brass)); color:#1b1206; border-color:rgba(0,0,0,.15); text-shadow:0 1px 0 rgba(255,255,255,.3)}
+    .btn--gold:disabled{opacity:.55; cursor:not-allowed; filter:grayscale(.2)}
+    .btn--ghost{background:rgba(255,255,255,.04)}
 
-    .wallet-row{
-      display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:.6rem
+    .hero{padding: clamp(48px,6vw,96px) 24px 24px; text-align:center; position:relative}
+    .hero__sealwrap{position:relative; width:140px; height:140px; margin:0 auto 16px}
+    .hero__halo{position:absolute; inset:-12px; border-radius:50%; background:radial-gradient(60% 60% at 50% 50%, rgba(217,182,93,.18), transparent 70%); filter: blur(10px)}
+    .hero__title{font-family:Cinzel,serif; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(28px,6vw,52px); margin:6px 0 8px}
+    .hero__subtitle{color:#d9d4c7; margin:0 0 18px; font-size:clamp(14px,2.4vw,18px)}
+    .hero__ctas{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
+
+    .access{
+      --bg: rgba(255,255,255,.035);
+      margin:18px auto; border:1px solid rgba(217,182,93,.22); background:var(--bg);
+      width:min(1100px, 92%); border-radius:var(--radius);
+      display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; padding:12px 16px;
     }
+    .access__icon{font-size:20px}
+    .access__text{font-weight:600}
+    .access__meta{color:var(--muted); font-size:.92rem}
+    .badge{display:inline-block; padding:.2rem .55rem; border-radius:999px; border:1px solid rgba(217,182,93,.28); color:#eaddc6;
+      background:linear-gradient(180deg, rgba(217,182,93,.16), rgba(197,162,90,.08));}
+    .access--ok{border-color: rgba(90,201,120,.45)}
+    .access--ok .access__icon{filter: drop-shadow(0 0 8px rgba(90,201,120,.4))}
 
-    .status{
-      display:flex;gap:.5rem;align-items:center;justify-content:center;flex-wrap:wrap;
-      font-size:.95rem;color:var(--muted);margin-bottom:.6rem
+    .main{width:min(1100px, 92%); margin:18px auto 64px}
+    .section-title{font-family:Cinzel,serif; text-transform:uppercase; letter-spacing:.1em; font-size:1rem; color:#d6cfbf; opacity:.9; margin:8px 0 16px}
+
+    .scroll__frame{
+      position:relative; padding:18px 18px 16px; border-radius:var(--radius);
+      background:
+        radial-gradient(80% 60% at 50% 0%, rgba(169,224,255,.05), transparent 70%),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(217,182,93,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.35);
+      overflow:hidden;
     }
-    .badge{
-      display:inline-flex;align-items:center;gap:.4rem;
-      padding:.35rem .6rem;border-radius:999px;font-size:.85rem;border:1px solid rgba(255,255,255,.1)
+    .scroll__frame::before{
+      content:""; position:absolute; inset:-2px;
+      background:conic-gradient(from 180deg at 50% 50%, rgba(217,182,93,.0), rgba(217,182,93,.15), rgba(217,182,93,.0));
+      filter: blur(16px); opacity:.22; pointer-events:none;
     }
-    .bsc{ background: rgba(240,185,11,.12); color:#fff; border-color: rgba(240,185,11,.4) }
-    .locked{ background: rgba(255,85,119,.12); color:#fff; border-color: rgba(255,85,119,.4) }
-    .unlocked{ background: rgba(46,204,113,.12); color:#fff; border-color: rgba(46,204,113,.4) }
+    .scroll__top{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+    .pill{font-size:.78rem; padding:.25rem .6rem; border-radius:999px; background:rgba(217,182,93,.08); border:1px solid rgba(217,182,93,.25)}
+    .pill--rarity{background:linear-gradient(180deg, rgba(217,182,93,.22), rgba(197,162,90,.08)); color:#1a1208; border-color:rgba(0,0,0,.2)}
+    .pill--len,.pill--drop{color:#eae4d5}
+    .scroll__title{font-family:Cinzel,serif; font-weight:700; font-size:clamp(18px,3.5vw,26px); letter-spacing:.02em; margin:6px 0 6px}
+    .scroll__tease{color:#d9d4c7; margin:0 0 10px}
+    .scroll__meta{display:flex; gap:14px; color:var(--muted); font-size:.92rem}
+    .scroll__lock{display:flex; align-items:center; gap:8px; margin:12px 0 14px; color:#e8dfc9; opacity:.9}
+    .scroll__actions{display:flex; gap:10px; flex-wrap:wrap}
 
-    .input-row{display:flex;gap:1rem;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin:1rem 0}
-    textarea#query{
-      width:100%;max-width:740px;min-height:100px;padding:14px;border-radius:8px;
-      border:1px solid rgba(0,180,255,0.14);background: rgba(2,8,20,0.6);color:#eaf6ff;
-      resize:vertical;font-size:1rem;font-family: inherit;
-    }
-    textarea#query::placeholder{ color: #8f95b8 }
+    .footer{display:flex; gap:.6rem; align-items:center; justify-content:center; color:#bfb9a7; padding:36px 12px 48px; border-top:1px solid rgba(217,182,93,.12)}
+    .footer__text{font-size:.95rem}
 
-    .controls{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:.75rem}
-    button.btn{
-      background: linear-gradient(135deg,var(--energy-blue), #9c27b0);
-      border:none;color:#071226;padding:14px 26px;border-radius:8px;
-      font-weight:700;letter-spacing:.8px;cursor:pointer;min-width:200px;
-      transition: transform .18s ease, box-shadow .18s ease, opacity .18s;
-      font-family: 'Orbitron', monospace;
-    }
-    button.btn.secondary{background: linear-gradient(135deg,#2b2b4d,#4a4a8a);color:#e8eefc;min-width:160px}
-    button.btn:active{ transform:translateY(2px) }
-    button.btn:disabled{ opacity:.55; cursor:not-allowed; transform:none }
-
-    .loading{color:var(--hologram-teal);font-family:'Orbitron', monospace;margin-top:.6rem;display:none}
-    .loading.show{ display:inline-block }
-
-    .response{
-      margin-top:1.25rem;max-width:820px;margin-inline:auto;
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border-left:4px solid var(--hologram-teal);padding:1.15rem 1.25rem;border-radius:8px;
-      color:#e9f7ff;font-style:italic;display:none;text-align:left;white-space:pre-wrap;font-size:1rem;
-    }
-    .response.revealed{ display:block; animation: fadeInUp .9s ease both }
-    @keyframes fadeInUp { from { opacity:0; transform: translateY(8px) } to { opacity:1; transform: translateY(0) } }
-
-    .meta{margin-top:1rem;color:var(--muted);font-size:.9rem}
-
-    .starfield{position:fixed; inset:0; z-index:0; pointer-events:none}
-    .star{ position:absolute; background:white; border-radius:50%; opacity:.9 }
-
-    .sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
-
-    @media (prefers-reduced-motion:reduce) {
-      .star { animation:none !important; }
-      .container, .panel, button { transition:none !important; animation:none !important; }
-    }
-    @media (max-width:720px) {
-      h1{ font-size:1.9rem }
-      .prompt{ font-size:.95rem }
-      button.btn{ min-width: 140px; padding:12px 16px }
-      textarea#query{ min-height:90px }
+    @media (max-width:780px){
+      .nav__links{display:none}
+      .access{grid-template-columns:24px 1fr; gap:10px}
+      .access__meta{grid-column:1 / -1}
     }
   </style>
 </head>
 <body>
-  <!-- Starfield background -->
-  <div class="starfield" id="starfield" aria-hidden="true"></div>
+  <div class="bg fx-particles" aria-hidden="true"></div>
+  <div class="bg fx-vignette" aria-hidden="true"></div>
 
-  <main class="container" role="main">
-    <h1 class="animate__animated animate__fadeInDown">COSMIC NAVIGATOR</h1>
-    <p class="subtitle">Starship Guidance System — wallet-gated by 100 KLY (BSC)</p>
+  <header class="nav">
+    <div class="nav__left">
+      <!-- Inline golden seal -->
+      <svg width="32" height="32" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <radialGradient id="g" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#FFDFA3"/><stop offset="55%" stop-color="#D9B65D"/><stop offset="100%" stop-color="#8C6B2A"/>
+          </radialGradient>
+        </defs>
+        <circle cx="256" cy="256" r="238" fill="url(#g)" stroke="#2a1b06" stroke-opacity=".35" stroke-width="6"/>
+        <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
+      </svg>
+      <span class="brand">Oracle • Scrolls</span>
+    </div>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#" class="nav__link">Oracle</a>
+      <a href="#" class="nav__link">Scrolls</a>
+      <a href="#" class="nav__link">Vault</a>
+      <a href="#" class="nav__link">Academy</a>
+    </nav>
+    <div class="nav__right">
+      <button id="walletBtn" class="btn btn--ghost" aria-live="polite">Connect Wallet</button>
+    </div>
+  </header>
 
-    <section class="panel" aria-labelledby="panelTitle">
-      <h2 id="panelTitle" class="sr-only">Navigation Panel</h2>
-      <p class="prompt">
-        Connect your wallet on <strong>BSC</strong>. Holding <strong>≥ 100 KLY</strong> unlocks the Navigator.<br/>
-        Type your route request and plot your course through the blockchain cosmos.
-      </p>
+  <section class="hero">
+    <div class="hero__sealwrap">
+      <!-- Larger seal -->
+      <svg width="140" height="140" viewBox="0 0 512 512" style="animation:slowspin 18s linear infinite; filter: drop-shadow(0 0 24px rgba(217,182,93,.16));">
+        <defs>
+          <radialGradient id="g2" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#FFDFA3"/><stop offset="55%" stop-color="#D9B65D"/><stop offset="100%" stop-color="#8C6B2A"/>
+          </radialGradient>
+        </defs>
+        <circle cx="256" cy="256" r="238" fill="url(#g2)" stroke="#2a1b06" stroke-opacity=".35" stroke-width="6"/>
+        <circle cx="256" cy="256" r="206" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
+      </svg>
+      <div class="hero__halo" aria-hidden="true"></div>
+    </div>
+    <h1 class="hero__title">Oracle Scrolls</h1>
+    <p class="hero__subtitle">Transmissions for those who answer the call.</p>
+    <div class="hero__ctas">
+      <button id="primaryCta" class="btn btn--gold">Connect Wallet</button>
+      <a href="#" class="btn btn--ghost">Browse Public Scrolls</a>
+    </div>
+  </section>
 
-      <!-- Wallet + gate -->
-      <div class="wallet-row">
-        <button id="connectBtn" class="btn secondary">Connect Wallet</button>
-        <button id="refreshBtn" class="btn secondary">Refresh Balance</button>
+  <section id="accessBanner" class="access access--disconnected" role="status" aria-live="polite">
+    <div class="access__icon" aria-hidden="true">🔒</div>
+    <div class="access__text">
+      <strong>Access Locked.</strong> Connect wallet to check gate status.
+    </div>
+    <div class="access__meta">
+      Chain: <span class="badge">BNB Smart Chain</span> • Gate: <span class="badge">Diamond Core NFT (ID 3)</span>
+    </div>
+  </section>
+
+  <main class="main">
+    <h2 class="section-title">Latest Scroll</h2>
+
+    <article class="scroll">
+      <div class="scroll__frame">
+        <div class="scroll__top">
+          <span class="pill pill--rarity">Diamond</span>
+          <span class="pill pill--len">12 min</span>
+          <span class="pill pill--drop">Drop #07</span>
+        </div>
+
+        <h3 class="scroll__title">Keys of Sovereignty: The Unsealing</h3>
+        <p class="scroll__tease">Not for the curious—only the called.</p>
+
+        <div class="scroll__meta">
+          <span class="meta">Updated: 2025-09-18</span>
+          <span class="meta">Category: Prophecy</span>
+        </div>
+
+        <div class="scroll__lock">
+          <span class="lock__icon" aria-hidden="true">🔒</span>
+          <span class="lock__text">Gate required: Diamond Core NFT</span>
+        </div>
+
+        <div class="scroll__actions">
+          <button class="btn btn--gold" disabled aria-disabled="true">Unseal the Scroll</button>
+          <button class="btn btn--ghost" id="learnMintBtn">Learn How to Mint</button>
+        </div>
       </div>
-
-      <div class="status" id="statusBar">
-        <span class="badge bsc" id="netBadge">Network: unknown</span>
-        <span class="badge locked" id="gateBadge">Gate: locked (need ≥ 100 KLY)</span>
-      </div>
-      <div class="gate" id="gateInfo">
-        Address: <span id="addr">Not connected</span> • KLY Balance: <span id="klyBal">0</span>
-      </div>
-
-      <div class="input-row" role="form" aria-labelledby="panelTitle">
-        <label for="query" class="sr-only">Navigation query</label>
-        <textarea id="query" placeholder="e.g. 'Route to liquidity pool X. Avoid whales.'"></textarea>
-      </div>
-
-      <div class="controls">
-        <button id="plotBtn" class="btn" aria-controls="navigationResponse" disabled>Plot Course</button>
-        <button id="clearBtn" class="btn secondary" aria-label="Clear input">Clear</button>
-      </div>
-
-      <div class="loading" id="loading" aria-live="polite">Calculating trajectory…</div>
-
-      <div id="navigationResponse" class="response" role="status" aria-live="polite"></div>
-
-      <p class="meta">Demo uses faux AI responses locally. Wallet balance read comes from your wallet’s BSC RPC. No backend or keys required.</p>
-    </section>
+    </article>
   </main>
 
-  <!-- Web3.js for wallet & contract reads -->
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <footer class="footer">
+    <span class="footer__text">© Tamaquah Nation • KLY • The Call Continues</span>
+  </footer>
+
+  <!-- ethers v5 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
-    /******************************************************************
-     * Config — BSC + KLY
-     ******************************************************************/
-    const REQUIRED_KLY = 100; // gate threshold
-    const BSC_MAINNET = {
-      chainId: '0x38',
-      chainName: 'Binance Smart Chain Mainnet',
-      nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-      rpcUrls: ['https://bsc-dataseed.binance.org/'],
-      blockExplorerUrls: ['https://bscscan.com']
+    // CONFIG
+    const CONFIG = {
+      chainIdHex: '0x38', // 56
+      chainIdDec: 56,
+      chainName: 'BNB Smart Chain',
+      rpcUrl: 'https://bsc-dataseed.binance.org/',
+      blockExplorer: 'https://bscscan.com',
+      klyErc20: '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52',
+      diamondNft721: '0xDA76d35742190283E340dbeE2038ecc978a56950',
+      diamondTokenId: '3',
+      selectors: { walletBtn:'#walletBtn', primaryCta:'#primaryCta', accessBanner:'#accessBanner' }
     };
 
-    const KLY_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
     const ERC20_ABI = [
-      { "constant":true,"inputs":[{"name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function" },
-      { "constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function" },
-      { "constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"type":"function" }
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function symbol() view returns (string)"
+    ];
+    const ERC721_ABI = [
+      "function ownerOf(uint256 tokenId) view returns (address)",
+      "function balanceOf(address owner) view returns (uint256)"
     ];
 
-    let web3, provider, accounts = [], chainId, klyDecimals = 18;
+    const els = {
+      walletBtn: document.querySelector(CONFIG.selectors.walletBtn),
+      primaryCta: document.querySelector(CONFIG.selectors.primaryCta),
+      accessBanner: document.querySelector(CONFIG.selectors.accessBanner),
+      learnMintBtn: document.getElementById('learnMintBtn'),
+      klyBadge: null
+    };
 
-    function isWeb3Installed(){ return typeof window.ethereum !== 'undefined'; }
+    let state = {
+      connected:false, account:null, hasDiamondCore:false,
+      kly:{ balance:null, symbol:'KLY', decimals:18 }
+    };
 
-    async function switchToBSC(){
+    function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
+    function setStatus(icon, html, cls){
+      els.accessBanner.className = 'access ' + (cls || '');
+      els.accessBanner.querySelector('.access__icon').textContent = icon;
+      els.accessBanner.querySelector('.access__text').innerHTML = html;
+    }
+    function assertEthereum(){
+      if(!window.ethereum){ alert('No wallet found. Install MetaMask or use a Web3-enabled browser.'); return false; }
+      return true;
+    }
+    async function switchToBsc(){
       try{
-        await window.ethereum.request({ method:'wallet_addEthereumChain', params:[BSC_MAINNET] });
-        return true;
-      }catch(e){ console.error('Switch to BSC error:', e); return false; }
+        await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: CONFIG.chainIdHex }] });
+      }catch(e){
+        if(e.code === 4902){
+          await window.ethereum.request({
+            method:'wallet_addEthereumChain',
+            params:[{ chainId:CONFIG.chainIdHex, chainName:CONFIG.chainName,
+              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+              rpcUrls:[CONFIG.rpcUrl], blockExplorerUrls:[CONFIG.blockExplorer] }]
+          });
+        } else { throw e; }
+      }
+    }
+    async function ensureBsc(){
+      const cur = await window.ethereum.request({ method:'eth_chainId' });
+      if(cur.toLowerCase() !== CONFIG.chainIdHex.toLowerCase()) await switchToBsc();
+    }
+    function getProvider(){ return new ethers.providers.Web3Provider(window.ethereum); }
+
+    async function connect(){
+      if(!assertEthereum()) return;
+      await ensureBsc();
+      const accounts = await window.ethereum.request({ method:'eth_requestAccounts' });
+      state.account = accounts[0]; state.connected = true;
+
+      window.ethereum.removeAllListeners && window.ethereum.removeAllListeners('accountsChanged');
+      window.ethereum.on && window.ethereum.on('accountsChanged', (accs)=>{ if(accs.length===0){disconnect();} else {state.account=accs[0]; refresh();}});
+      window.ethereum.on && window.ethereum.on('chainChanged', ()=> location.reload());
+
+      await refresh();
+    }
+    async function disconnect(){
+      state.connected=false; state.account=null; state.hasDiamondCore=false; state.kly.balance=null; render();
+    }
+    async function refresh(){
+      try{
+        await Promise.all([checkDiamondCore(), readKlyBalance()]);
+      }catch(err){ console.error(err); }
+      render();
     }
 
-    async function connectWallet(){
-      if(!isWeb3Installed()){
-        alert('Please install MetaMask or a Web3 wallet extension.');
-        return;
-      }
+    async function checkDiamondCore(){
       try{
-        provider = window.ethereum;
-        accounts = await provider.request({ method: 'eth_requestAccounts' });
-        chainId = await provider.request({ method: 'eth_chainId' });
-
-        if(chainId !== BSC_MAINNET.chainId){
-          if(confirm('This app uses BSC. Switch now?')){
-            const ok = await switchToBSC();
-            if(!ok) alert('Please switch to BSC in your wallet.');
-            chainId = await provider.request({ method:'eth_chainId' });
-          }
-        }
-
-        web3 = new Web3(provider);
-        await updateNetworkBadge();
-        await refreshKly();
-
-        // listeners
-        provider.on('accountsChanged', async (a)=>{
-          accounts = a;
-          await refreshKly();
-        });
-        provider.on('chainChanged', async (cid)=>{
-          chainId = cid;
-          await updateNetworkBadge();
-          await refreshKly();
-        });
+        const provider = getProvider();
+        const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider);
+        const owner = await nft.ownerOf(CONFIG.diamondTokenId);
+        state.hasDiamondCore = owner.toLowerCase() === state.account.toLowerCase();
       }catch(err){
-        console.error('Wallet connect error:', err);
+        // fallback: any NFT balance
+        try{
+          const provider = getProvider();
+          const nft = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider);
+          const bal = await nft.balanceOf(state.account);
+          state.hasDiamondCore = bal && bal.gt(0);
+        }catch(e){ state.hasDiamondCore=false; }
       }
     }
 
-    function shortAddr(addr){
-      return (addr && addr.length > 8) ? `${addr.slice(0,6)}...${addr.slice(-4)}` : addr || 'Not connected';
+    async function readKlyBalance(){
+      try{
+        const provider = getProvider();
+        const erc20 = new ethers.Contract(CONFIG.klyErc20, ERC20_ABI, provider);
+        const [raw, decimals, symbol] = await Promise.all([
+          erc20.balanceOf(state.account),
+          erc20.decimals(),
+          erc20.symbol().catch(()=> 'KLY')
+        ]);
+        state.kly.decimals = decimals; state.kly.symbol = symbol || 'KLY';
+        state.kly.balance = Number(ethers.utils.formatUnits(raw, decimals));
+      }catch(err){ state.kly.balance=null; }
     }
 
-    async function updateNetworkBadge(){
-      const netBadge = document.getElementById('netBadge');
-      if(chainId === '0x38'){
-        netBadge.textContent = 'Network: BSC Mainnet';
-        netBadge.className = 'badge bsc';
-      }else if(chainId){
-        netBadge.textContent = `Network: ${chainId}`;
-        netBadge.className = 'badge';
+    function render(){
+      // buttons
+      els.walletBtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
+      els.primaryCta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
+
+      // banner
+      if(!state.connected){
+        setStatus('🔒', '<strong>Access Locked.</strong> Connect wallet to check gate status.');
+      } else if(!state.hasDiamondCore){
+        setStatus('🗝️', `<strong>Connected ${short(state.account)}.</strong> Gate required: Diamond Core NFT (ID ${CONFIG.diamondTokenId}).`);
+      } else {
+        setStatus('✅', `<strong>Access Granted.</strong> Diamond Core verified for ${short(state.account)}.`, 'access--ok');
+      }
+
+      // card controls
+      const lock = document.querySelector('.scroll__lock');
+      const actionBtn = document.querySelector('.scroll__actions .btn--gold');
+      const learnBtn = els.learnMintBtn;
+
+      if(state.connected && state.hasDiamondCore){
+        if(lock) lock.style.display = 'none';
+        if(actionBtn){ actionBtn.disabled=false; actionBtn.removeAttribute('aria-disabled'); actionBtn.textContent='Unseal the Scroll'; }
+        if(learnBtn) learnBtn.style.display='none';
+      } else {
+        if(lock) lock.style.display = 'flex';
+        if(actionBtn){
+          actionBtn.disabled=true; actionBtn.setAttribute('aria-disabled','true');
+          actionBtn.textContent = state.connected ? 'Locked (Need Diamond Core)' : 'Unseal the Scroll';
+        }
+        if(learnBtn) learnBtn.style.display='inline-flex';
+      }
+
+      // KLY badge
+      const meta = document.querySelector('.access__meta');
+      if(state.connected){
+        if(!document.getElementById('klyBadge')){
+          const s = document.createElement('span'); s.className='badge'; s.id='klyBadge';
+          meta && meta.appendChild(document.createTextNode(' • ')); meta && meta.appendChild(s);
+        }
+        const v = state.kly.balance==null ? '—' : `${state.kly.balance.toFixed(2)} ${state.kly.symbol}`;
+        document.getElementById('klyBadge').textContent = `KLY: ${v}`;
       }else{
-        netBadge.textContent = 'Network: unknown';
-        netBadge.className = 'badge';
+        const b = document.getElementById('klyBadge'); if(b) b.remove();
       }
     }
 
-    async function refreshKly(){
-      const addrEl = document.getElementById('addr');
-      const balEl = document.getElementById('klyBal');
-      const gateBadge = document.getElementById('gateBadge');
-      const plotBtn = document.getElementById('plotBtn');
-
-      const addr = accounts && accounts[0] ? accounts[0] : null;
-      addrEl.textContent = shortAddr(addr);
-
-      if(!addr || chainId !== BSC_MAINNET.chainId){
-        balEl.textContent = '0';
-        gateBadge.textContent = 'Gate: locked (need ≥ 100 KLY)';
-        gateBadge.className = 'badge locked';
-        plotBtn.disabled = true;
-        return;
-      }
-
-      try{
-        const token = new web3.eth.Contract(ERC20_ABI, KLY_ADDRESS);
-        // get decimals once (cache)
-        try { klyDecimals = await token.methods.decimals().call(); } catch(_) {}
-        const raw = await token.methods.balanceOf(addr).call();
-        const human = Number(web3.utils.fromWei(raw, 'ether')) * Math.pow(10, 18 - klyDecimals); // adjust if decimals ≠ 18
-        // Safer: use formatUnits logic equivalent (when decimals ≠ 18)
-        const adj = Number(raw) / Math.pow(10, klyDecimals);
-        const display = isFinite(adj) ? adj : human;
-
-        balEl.textContent = display.toLocaleString(undefined, { maximumFractionDigits: 6 });
-
-        if(display >= REQUIRED_KLY){
-          gateBadge.textContent = 'Gate: unlocked (≥ 100 KLY)';
-          gateBadge.className = 'badge unlocked';
-          plotBtn.disabled = false;
-        }else{
-          gateBadge.textContent = 'Gate: locked (need ≥ 100 KLY)';
-          gateBadge.className = 'badge locked';
-          plotBtn.disabled = true;
-        }
-      }catch(err){
-        console.error('KLY read error:', err);
-        balEl.textContent = '—';
-        gateBadge.textContent = 'Gate: error reading KLY';
-        gateBadge.className = 'badge locked';
-        plotBtn.disabled = true;
-      }
-    }
-
-    /******************************************************************
-     * Faux AI (50 responses) — local only, no backend needed
-     ******************************************************************/
-    const FAUX_RESPONSES = [
-      "Course plotted. Stellar confirmations align within three cycles.",
-      "Quantum drive engaged. Liquidity nebula ahead — maintain thrust.",
-      "Decentralized wormhole detected. Path is optimal.",
-      "Thrusters balanced. Transaction warp speed nominal.",
-      "Stellar ledger synchronization complete. Proceed.",
-      "Cosmic validators approve your trajectory.",
-      "Fuel cells stable. Layer-2 shortcut recommended.",
-      "Course intersects with starlight of governance. Safe passage.",
-      "Covenant coordinates verified. Navigation greenlit.",
-      "Consensus achieved — route secure.",
-      "Space-time hash locked. Prepare for confirmation.",
-      "Entropy low. Gas costs minimal. Warp drive optimal.",
-      "Orbital nodes report: stability confirmed.",
-      "Stellar relay confirms quorum. Push forward.",
-      "Nebula cleared. Multi-sig constellations aligned.",
-      "Solar beacon detected — route efficiency high.",
-      "Your signal echoes across validator galaxies. Safe to proceed.",
-      "Planetary chain finality assured.",
-      "Protocol stargate open. Warp complete in 2 blocks.",
-      "Quantum checksum verified. No anomalies.",
-      "Stellar liquidity pools detected — path smooth.",
-      "Energy resonance matches covenant frequency.",
-      "Your ship aligns with covenant star charts.",
-      "Navigation satellites approve trajectory.",
-      "Wormhole to Layer-2 active. Course accelerated.",
-      "Zero-knowledge veil engaged — stealth passage guaranteed.",
-      "Cross-chain constellations visible. Bridge stable.",
-      "The block horizon clears. Your path is luminous.",
-      "Validators chant in harmony. Proceed through cosmos.",
-      "Time dilation minimal. Gas stable.",
-      "Stellar hash sync verified. Warp countdown initiated.",
-      "Governance council approves quantum route.",
-      "Liquidity gravity wells avoided. Path secure.",
-      "Entropy mitigation successful. Navigation clear.",
-      "Your signal encoded in cosmic scrolls. Proceed.",
-      "Multiverse routers confirm the way is open.",
-      "Covenant stars align. Trajectory flawless.",
-      "Starlight index stable — no slippage expected.",
-      "Comet trail confirms fast settlement.",
-      "Nebula hash scatter balanced. Travel smooth.",
-      "Plasma conduits charge complete.",
-      "Prophecy of the Oracle: confirmations flow soon.",
-      "Staking constellations lend stability to your course.",
-      "Signal to chain noise ratio excellent.",
-      "Finality horizon visible — secure destination ahead.",
-      "Quantum entanglement lock established. No drift.",
-      "The great validator ring hums in approval.",
-      "Energy cores resonate with covenant pulse.",
-      "Navigation matrix locked. Stellar epoch aligned.",
-      "Your course is woven into the cosmic chain. Destiny awaits."
-    ];
-
-    function seedFromString(str) {
-      let seed = 0;
-      for (let i = 0; i < str.length; i++) {
-        seed = ((seed << 5) - seed) + str.charCodeAt(i);
-        seed |= 0;
-      }
-      return Math.abs(seed);
-    }
-
-    function fauxAI(query) {
-      if (!query || !query.trim()) {
-        return "Please enter a navigation query. Try: “Route to liquidity pool X, avoid large slippage.”";
-      }
-      const baseSeed = seedFromString(query);
-      const timeSlice = Math.floor(Date.now() / (1000 * 60 * 60));
-      const mixed = (baseSeed ^ timeSlice) >>> 0;
-
-      const idx = mixed % FAUX_RESPONSES.length;
-      const etaBlocks = 1 + (mixed % 4);
-      const tips = [
-        "Consider a staggered approach to reduce slip.",
-        "Keep gas limits conservative during high volatility.",
-        "If bridged, verify bridge contract addresses.",
-        "A small delay reduces MEV risk.",
-        "Use a reputable relayer for cross-chain hops.",
-        "Split into smaller transactions if whale activity is suspected."
-      ];
-      const tip = tips[(mixed >>> 3) % tips.length];
-
-      const main = FAUX_RESPONSES[idx];
-      return `${main}\n\nGuidance: ${tip}\nETA: approx. ${etaBlocks} block(s).`;
-    }
-
-    /******************************************************************
-     * UI Wiring
-     ******************************************************************/
-    const plotBtn = document.getElementById('plotBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const connectBtn = document.getElementById('connectBtn');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const queryEl = document.getElementById('query');
-    const loadingEl = document.getElementById('loading');
-    const respEl = document.getElementById('navigationResponse');
-
-    plotBtn.addEventListener('click', async () => {
-      // hard gate: must have wallet + ≥ 100 KLY
-      if(!(accounts && accounts[0]) || chainId !== BSC_MAINNET.chainId){
-        alert('Connect your wallet on BSC to proceed.');
-        return;
-      }
-      if(plotBtn.disabled){
-        alert('Gate locked — you need ≥ 100 KLY to access the Navigator.');
-        return;
-      }
-
-      const q = queryEl.value.trim();
-      if (!q) {
-        alert('Please enter a navigation query or coordinates.');
-        queryEl.focus();
-        return;
-      }
-
-      loadingEl.classList.add('show');
-      plotBtn.disabled = true;
-      clearBtn.disabled = true;
-      respEl.className = 'response';
-      respEl.style.display = 'none';
-      respEl.textContent = '';
-
-      setTimeout(() => {
-        try {
-          const answer = fauxAI(q);
-          respEl.textContent = answer;
-          respEl.classList.add('revealed');
-          respEl.setAttribute('aria-live', 'polite');
-        } catch (e) {
-          respEl.textContent = 'Navigation systems offline. Try again later.';
-          respEl.classList.add('revealed');
-        } finally {
-          loadingEl.classList.remove('show');
-          // Keep gate enforced; user can clear and ask again
-          clearBtn.disabled = false;
-        }
-      }, 650 + (Math.random() * 600));
+    // events
+    document.getElementById('walletBtn').addEventListener('click', async () => {
+      if(state.connected){ await disconnect(); } else { await connect(); }
+    });
+    document.getElementById('primaryCta').addEventListener('click', async () => {
+      if(!state.connected){ await connect(); } else { await refresh(); }
+    });
+    document.getElementById('learnMintBtn').addEventListener('click', () => {
+      window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract', '_blank');
     });
 
-    clearBtn.addEventListener('click', () => {
-      queryEl.value = '';
-      respEl.className = 'response';
-      respEl.style.display = 'none';
-      respEl.textContent = '';
-      // Re-enable plot only if gate is satisfied; refreshKly controls disabled state
-      refreshKly();
-      queryEl.focus();
-    });
-
-    connectBtn.addEventListener('click', connectWallet);
-    refreshBtn.addEventListener('click', refreshKly);
-
-    queryEl.addEventListener('keydown', (ev) => {
-      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') {
-        plotBtn.click();
-      }
-    });
-
-    /********** Starfield generation **********/
-    function createStarfield() {
-      const container = document.getElementById('starfield');
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const total = reduceMotion ? 40 : 140;
-
-      for (let i = 0; i < total; i++) {
-        const s = document.createElement('div');
-        s.className = 'star';
-        const size = (Math.random() * 2.8) + 0.6;
-        s.style.width = `${size}px`;
-        s.style.height = `${size}px`;
-        s.style.left = `${Math.random() * 100}%`;
-        s.style.top = `${Math.random() * 100}%`;
-        const dur = (Math.random() * 8) + 3;
-        if (!reduceMotion) {
-          s.style.animation = `twinkle ${dur}s linear ${Math.random() * 5}s infinite`;
-        }
-        s.style.opacity = `${0.3 + Math.random() * 0.9}`;
-        container.appendChild(s);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      createStarfield();
-      queryEl.focus();
-      // If wallet already authorized in some browsers, attempt silent init
-      if(window.ethereum && window.ethereum.selectedAddress){
-        connectWallet();
-      }
-    });
+    // initial
+    render();
   </script>
 
-  <style>
-    /* Twinkle animation (kept separate so JS can toggle it via reduced motion) */
-    @keyframes twinkle {
-      0%, 100% { opacity: 0.25; }
-      50% { opacity: 1; }
-    }
-  </style>
+  <style>@keyframes slowspin { from{transform:rotate(0)} to{transform:rotate(360deg)} }</style>
 </body>
 </html>
