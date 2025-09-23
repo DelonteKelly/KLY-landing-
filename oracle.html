@@ -4,7 +4,8 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Oracle Scrolls — AURORA VAULT</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -13,6 +14,9 @@
     --glow:#a9e0ff; --emerald:#79eeb5; --glass:rgba(255,255,255,.06); --brd:rgba(231,200,116,.22);
     --ring: rgba(231,200,116,.45);
     --r:18px; --w:1200px;
+    --success: rgba(121,238,178,.46);
+    --warning: rgba(238,190,121,.46);
+    --error: rgba(238,121,121,.46);
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -34,17 +38,27 @@
   .nav{
     position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:16px;
     padding:12px 22px; background:rgba(10,11,13,.38); backdrop-filter:blur(12px) saturate(140%);
-    border-bottom:1px solid var(--brd);
+    border-bottom:1px solid var(--brd); transition: all 0.3s ease;
+  }
+  .nav.scrolled {
+    background: rgba(10,11,13,.85);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }
   .brand{display:flex; align-items:center; gap:.75rem}
-  .mark{width:32px; height:32px; filter:drop-shadow(0 0 12px rgba(231,200,116,.28))}
+  .mark{width:32px; height:32px; filter:drop-shadow(0 0 12px rgba(231,200,116,.28)); transition: transform 0.3s ease;}
+  .brand:hover .mark { transform: rotate(15deg); }
   .brand__text{font-family:Cinzel,serif; font-weight:900; letter-spacing:.14em; text-transform:uppercase; color:#f5ead4; font-size:.98rem}
   .nav__links{display:flex; gap:18px}
-  .nav__link{color:#e1d7c2; text-decoration:none; opacity:.9}
-  .nav__link:hover{opacity:1}
+  .nav__link{color:#e1d7c2; text-decoration:none; opacity:.9; position: relative; padding: 8px 0; transition: all 0.2s ease;}
+  .nav__link:hover{opacity:1; color: var(--gold2);}
+  .nav__link::after {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1px;
+    background: var(--gold2); transition: width 0.3s ease;
+  }
+  .nav__link:hover::after { width: 100%; }
   .btn{
     padding:12px 18px; border-radius:999px; border:1px solid var(--brd); background:rgba(255,255,255,.04); color:#f7f3e8; font-weight:700; letter-spacing:.02em; cursor:pointer;
-    transition:transform .15s ease, box-shadow .2s ease, background .2s ease; outline:none;
+    transition:transform .15s ease, box-shadow .2s ease, background .2s ease; outline:none; position: relative; overflow: hidden;
   }
   .btn:focus-visible{box-shadow:0 0 0 4px var(--ring)}
   .btn:hover{transform:translateY(-1px)}
@@ -54,6 +68,14 @@
     transform:skewX(-20deg) translateX(-120%); mix-blend-mode:screen; opacity:.35; animation:shine 2.8s ease-in-out infinite;
   }
   @keyframes shine{ 60%{transform:skewX(-20deg) translateX(120%)} 100%{transform:skewX(-20deg) translateX(120%)} }
+  
+  /* Loading spinner */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3);
+    border-radius: 50%; border-top-color: var(--gold2); animation: spin 1s ease-in-out infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ===== HERO ===== */
   .wrap{width:min(var(--w),92%); margin:0 auto}
@@ -61,7 +83,7 @@
   .halo{position:absolute; inset:-20px 0 auto; height:280px; pointer-events:none; background:
       radial-gradient(60% 60% at 50% 40%, rgba(231,200,116,.22), transparent 70%); filter:blur(8px); opacity:.6}
   .sigils{position:absolute; inset:0; pointer-events:none}
-  .sigil{position:absolute; width:120px; height:120px; opacity:.2; filter:drop-shadow(0 0 12px rgba(231,200,116,.2))}
+  .sigil{position:absolute; width:120px; height:120px; opacity:.2; filter:drop-shadow(0 0 12px rgba(231,200,116,.2)); transition: all 0.5s ease;}
   .sigil--l{left:4%; top:18%; transform:rotate(-8deg)}
   .sigil--r{right:6%; top:34%; transform:rotate(12deg)}
   .display{
@@ -83,13 +105,20 @@
     background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
     backdrop-filter: blur(10px) saturate(130%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 18px 60px rgba(0,0,0,.32);
+    transition: all 0.3s ease;
   }
-  .access__icon{font-size:20px}
+  .access__icon{font-size:20px; transition: transform 0.3s ease;}
   .access__text{font-weight:800}
   .access__meta{color:var(--muted); font-size:.96rem}
   .badge{display:inline-block; padding:.26rem .6rem; border-radius:999px; border:1px solid var(--brd); background:linear-gradient(180deg, rgba(231,200,116,.18), rgba(182,136,54,.08)); color:#f0e6d3}
-  .access--ok{border-color: rgba(121,238,178,.46)}
-  .access--ok .access__icon{filter: drop-shadow(0 0 10px rgba(121,238,178,.5))}
+  .access--ok{border-color: var(--success); animation: pulse 2s infinite;}
+  .access--warn{border-color: var(--warning)}
+  .access--error{border-color: var(--error)}
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(121,238,178,0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(121,238,178,0); }
+    100% { box-shadow: 0 0 0 0 rgba(121,238,178,0); }
+  }
 
   /* ===== GRID ===== */
   .main{width:min(var(--w),92%); margin:26px auto 90px}
@@ -108,6 +137,7 @@
     backdrop-filter: blur(8px) saturate(130%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 22px 80px rgba(0,0,0,.45);
     transform-style:preserve-3d; perspective:1000px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
   .card::before{ /* animated border glow */
     content:""; position:absolute; inset:-2px; pointer-events:none; border-radius:22px;
@@ -125,19 +155,86 @@
   .lock{display:flex; align-items:center; gap:8px; margin:12px 0 14px; color:#f2e6cd}
   .actions{display:flex; gap:10px; flex-wrap:wrap}
   .callout{margin-top:12px; border-radius:16px; border:1px dashed var(--brd); padding:14px; color:#efe2c8; background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03)); display:none}
-
-  /* tilt hover */
-  .card[data-tilt="1"]:hover{transform:translateY(-2px)}
+  
+  /* Card hover effects */
+  .card[data-tilt="1"]:hover{
+    transform:translateY(-6px) rotateX(2deg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 30px 100px rgba(0,0,0,.6);
+  }
   .card[data-tilt="1"]{transition: transform .15s ease}
 
-  /* FOOTER */
+  /* Scroll content reveal */
+  .scroll-content {
+    max-height: 0; overflow: hidden; transition: max-height 0.5s ease;
+    background: rgba(0,0,0,0.2); border-radius: 12px; margin-top: 16px;
+  }
+  .scroll-content.revealed {
+    max-height: 500px; padding: 20px;
+  }
+  .scroll-content p { margin: 0 0 16px; line-height: 1.6; }
+  .scroll-content p:last-child { margin-bottom: 0; }
+
+  /* ===== FOOTER ===== */
   .footer{display:flex; justify-content:center; align-items:center; gap:.7rem; padding:40px 12px 64px; color:#d2c9b4; border-top:1px solid var(--brd)}
 
-  /* MOBILE */
+  /* ===== MODAL ===== */
+  .modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(7,8,11,0.9); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+  }
+  .modal.active {
+    opacity: 1; visibility: visible;
+  }
+  .modal-content {
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    border: 1px solid var(--brd); border-radius: var(--r);
+    padding: 30px; max-width: 500px; width: 90%;
+    backdrop-filter: blur(12px) saturate(130%);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+    transform: translateY(20px); transition: transform 0.3s ease;
+  }
+  .modal.active .modal-content {
+    transform: translateY(0);
+  }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; border-bottom: 1px solid var(--brd); padding-bottom: 15px;
+  }
+  .modal-title {
+    font-family: Cinzel, serif; font-weight: 800; font-size: 1.5rem;
+    margin: 0;
+  }
+  .modal-close {
+    background: none; border: none; color: var(--muted); font-size: 1.5rem;
+    cursor: pointer; transition: color 0.2s ease;
+  }
+  .modal-close:hover { color: var(--ink); }
+
+  /* ===== MOBILE ===== */
   @media (max-width:780px){
     .nav__links{display:none}
     .access{grid-template-columns:24px 1fr; gap:10px}
     .access__meta{grid-column:1 / -1}
+    .modal-content { padding: 20px; }
+  }
+
+  /* Mobile menu */
+  .mobile-menu-btn {
+    display: none; background: none; border: none; color: var(--ink);
+    font-size: 1.5rem; cursor: pointer; padding: 5px;
+  }
+  @media (max-width: 780px) {
+    .mobile-menu-btn { display: block; }
+    .nav__links {
+      position: absolute; top: 100%; left: 0; width: 100%;
+      background: rgba(10,11,13,.95); backdrop-filter: blur(12px);
+      flex-direction: column; padding: 20px; display: none;
+      border-bottom: 1px solid var(--brd);
+    }
+    .nav__links.active { display: flex; }
+    .nav__link { padding: 12px 0; }
   }
 </style>
 </head>
@@ -162,6 +259,7 @@
     </svg>
     <span class="brand__text">Oracle • Scrolls</span>
   </div>
+  <button class="mobile-menu-btn" aria-label="Toggle menu">☰</button>
   <nav class="nav__links" aria-label="Primary">
     <a class="nav__link" href="#">Oracle</a>
     <a class="nav__link" href="#">Scrolls</a>
@@ -221,7 +319,13 @@
           <button class="btn btn--gold" disabled aria-disabled="true" id="unsealBtn">Unseal the Scroll</button>
           <button class="btn" id="mintInfoBtn">Learn How to Mint</button>
         </div>
-        <div class="callout" id="callout"><strong>Unsealed ✨</strong> Wire this to your video/audio/modal destination.</div>
+        <div class="scroll-content" id="scrollContent">
+          <p>Within the silent chambers of the heart, the keys await. They are not forged of metal, but of intention. Not held in hand, but in consciousness.</p>
+          <p>The first key is remembrance—the recognition of your eternal nature beyond the veil of forgetting.</p>
+          <p>The second key is sovereignty—the unwavering claim to your divine authority as a creator being.</p>
+          <p>The third key is alignment—the harmonious resonance with the cosmic frequencies that guide your path.</p>
+          <p>These keys unlock not doors, but dimensions of being. They are the legacy of the Anunna, the star-born architects who seeded this reality.</p>
+        </div>
       </div>
     </article>
 
@@ -229,9 +333,9 @@
       <article class="card" data-tilt="1">
         <div class="card__in">
           <div class="pills"><span class="pill">Public</span><span class="pill">Audio</span></div>
-          <h3 class="title">Invocation • “The Call Within”</h3>
+          <h3 class="title">Invocation • "The Call Within"</h3>
           <p class="tease">A luminous preview to tune your field.</p>
-          <div class="actions"><button class="btn">Play Preview</button></div>
+          <div class="actions"><button class="btn" id="audioPreviewBtn">Play Preview</button></div>
         </div>
       </article>
       <article class="card" data-tilt="1" style="margin-top:18px">
@@ -239,7 +343,7 @@
           <div class="pills"><span class="pill">Public</span><span class="pill">Scroll</span></div>
           <h3 class="title">Anunna Archives: Blood of the Builders</h3>
           <p class="tease">Symbols and timelines for the returning ones.</p>
-          <div class="actions"><button class="btn">Read</button></div>
+          <div class="actions"><button class="btn" id="publicScrollBtn">Read</button></div>
         </div>
       </article>
     </aside>
@@ -249,6 +353,23 @@
 <footer class="footer">
   <span>© Tamaquah Nation • KLY • The Call Continues</span>
 </footer>
+
+<!-- Modal Structure -->
+<div class="modal" id="infoModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Diamond Core NFT</h3>
+      <button class="modal-close" aria-label="Close modal">&times;</button>
+    </div>
+    <p>To access the Diamond-tier scrolls, you need to own the Diamond Core NFT (Token ID: 3).</p>
+    <p>This NFT serves as your key to the highest level transmissions within the Oracle Scrolls vault.</p>
+    <p>You can mint this NFT directly on the BNB Smart Chain by interacting with the contract.</p>
+    <div class="actions" style="margin-top: 20px;">
+      <button class="btn btn--gold" id="mintDirectBtn">Mint Diamond Core</button>
+      <button class="btn" id="viewContractBtn">View Contract</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== LIBS ===== -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -302,6 +423,72 @@ let st = performance.now();
 </script>
 
 <script>
+/* ===================== ENHANCED INTERACTIVITY ===================== */
+
+// Mobile menu toggle
+document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+  document.querySelector('.nav__links').classList.toggle('active');
+});
+
+// Nav scroll effect
+window.addEventListener('scroll', function() {
+  const nav = document.querySelector('.nav');
+  if (window.scrollY > 50) {
+    nav.classList.add('scrolled');
+  } else {
+    nav.classList.remove('scrolled');
+  }
+});
+
+// Modal functionality
+const modal = document.getElementById('infoModal');
+const modalClose = document.querySelector('.modal-close');
+
+function openModal() {
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+modalClose.addEventListener('click', closeModal);
+modal.addEventListener('click', function(e) {
+  if (e.target === modal) closeModal();
+});
+
+// Audio preview simulation
+document.getElementById('audioPreviewBtn').addEventListener('click', function() {
+  const btn = this;
+  const originalText = btn.textContent;
+  btn.innerHTML = '<span class="spinner"></span>Loading...';
+  
+  setTimeout(() => {
+    btn.textContent = 'Playing...';
+    // In a real implementation, you would play audio here
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 3000);
+  }, 1000);
+});
+
+// Public scroll simulation
+document.getElementById('publicScrollBtn').addEventListener('click', function() {
+  const btn = this;
+  const originalText = btn.textContent;
+  btn.innerHTML = '<span class="spinner"></span>Opening...';
+  
+  setTimeout(() => {
+    btn.textContent = 'Opened';
+    // In a real implementation, you would show the scroll content here
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 2000);
+  }, 1000);
+});
+
 /* ===================== PARALLAX + CARD TILT ===================== */
 const sigL = document.querySelector('.sigil--l');
 const sigR = document.querySelector('.sigil--r');
@@ -314,7 +501,7 @@ document.querySelectorAll('.card[data-tilt="1"]').forEach(card=>{
   const r=12;
   card.addEventListener('mousemove', e=>{
     const b=card.getBoundingClientRect(), dx=(e.clientX-b.left)/b.width-.5, dy=(e.clientY-b.top)/b.height-.5;
-    card.style.transform = `rotateX(${(-dy*r)}deg) rotateY(${(dx*r)}deg) translateY(-2px)`;
+    card.style.transform = `rotateX(${(-dy*r)}deg) rotateY(${(dx*r)}deg) translateY(-6px)`;
   });
   card.addEventListener('mouseleave', ()=> card.style.transform = '');
 });
@@ -341,7 +528,7 @@ const els = {
   accessBanner:document.getElementById('accessBanner'),
   unsealBtn:document.getElementById('unsealBtn'),
   mintInfoBtn:document.getElementById('mintInfoBtn'),
-  callout:document.getElementById('callout')
+  scrollContent: document.getElementById('scrollContent')
 };
 let state = { connected:false, account:null, hasDiamondCore:false, kly:{balance:null, symbol:'KLY', decimals:18} };
 function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
@@ -349,6 +536,11 @@ function setStatus(icon, html, cls){
   els.accessBanner.className = 'access wrap ' + (cls||'');
   els.accessBanner.querySelector('.access__icon').textContent = icon;
   els.accessBanner.querySelector('.access__text').innerHTML = html;
+  
+  // Add animation to icon when status changes
+  const iconEl = els.accessBanner.querySelector('.access__icon');
+  iconEl.style.transform = 'scale(1.2)';
+  setTimeout(() => { iconEl.style.transform = 'scale(1)'; }, 300);
 }
 function assertEth(){ if(!window.ethereum){ alert('No wallet found. Install MetaMask or use a Web3 browser.'); return false } return true }
 async function ensureBsc(){
@@ -368,16 +560,37 @@ function provider(){ return new ethers.providers.Web3Provider(window.ethereum); 
 
 async function connect(){
   if(!assertEth()) return;
-  await ensureBsc();
-  const accs = await ethereum.request({ method:'eth_requestAccounts' });
-  state.account = accs[0]; state.connected = true;
-  ethereum.removeAllListeners && ethereum.removeAllListeners('accountsChanged');
-  ethereum.on && ethereum.on('accountsChanged', a=>{ if(a.length===0){disconnect()} else {state.account=a[0]; refresh()}});
-  ethereum.on && ethereum.on('chainChanged', ()=> location.reload());
-  await refresh();
+  
+  // Show loading state
+  els.walletBtn.innerHTML = '<span class="spinner"></span>Connecting...';
+  
+  try {
+    await ensureBsc();
+    const accs = await ethereum.request({ method:'eth_requestAccounts' });
+    state.account = accs[0]; state.connected = true;
+    ethereum.removeAllListeners && ethereum.removeAllListeners('accountsChanged');
+    ethereum.on && ethereum.on('accountsChanged', a=>{ if(a.length===0){disconnect()} else {state.account=a[0]; refresh()}});
+    ethereum.on && ethereum.on('chainChanged', ()=> location.reload());
+    await refresh();
+  } catch (error) {
+    console.error('Connection error:', error);
+    setStatus('❌', '<strong>Connection Failed.</strong> Please try again.', 'access--error');
+    els.walletBtn.textContent = 'Connect Wallet';
+  }
 }
-async function disconnect(){ state={connected:false,account:null,hasDiamondCore:false,kly:{balance:null,symbol:'KLY',decimals:18}}; render(); }
-async function refresh(){ try{ await Promise.all([checkNFT(), readKLY()]); } catch(e){ console.error(e) } render(); }
+async function disconnect(){ 
+  state={connected:false,account:null,hasDiamondCore:false,kly:{balance:null,symbol:'KLY',decimals:18}}; 
+  render(); 
+}
+async function refresh(){ 
+  try{ 
+    await Promise.all([checkNFT(), readKLY()]); 
+  } catch(e){ 
+    console.error(e);
+    setStatus('⚠️', `<strong>Error checking status.</strong> Please try again.`, 'access--warn');
+  } 
+  render(); 
+}
 
 async function checkNFT(){
   try{
@@ -409,7 +622,7 @@ function render(){
   if(!state.connected){
     setStatus('🔒','<strong>Access Locked.</strong> Connect wallet to check gate status.');
   } else if(!state.hasDiamondCore){
-    setStatus('🗝️', `<strong>Connected ${short(state.account)}.</strong> Gate required: Diamond Core NFT (ID 3).`);
+    setStatus('🗝️', `<strong>Connected ${short(state.account)}.</strong> Gate required: Diamond Core NFT (ID 3).`, 'access--warn');
   } else {
     setStatus('✅', `<strong>Access Granted.</strong> Diamond Core verified for ${short(state.account)}.`, 'access--ok');
   }
@@ -419,12 +632,12 @@ function render(){
   if(state.connected && state.hasDiamondCore){
     if(lock) lock.style.display='none';
     els.unsealBtn.disabled=false; els.unsealBtn.removeAttribute('aria-disabled');
-    document.getElementById('callout').style.display='block';
+    els.scrollContent.classList.add('revealed');
   }else{
     if(lock) lock.style.display='flex';
     els.unsealBtn.disabled=true; els.unsealBtn.setAttribute('aria-disabled','true');
     els.unsealBtn.textContent = state.connected ? 'Locked (Need Diamond Core)' : 'Unseal the Scroll';
-    document.getElementById('callout').style.display='none';
+    els.scrollContent.classList.remove('revealed');
   }
 
   // KLY badge
@@ -436,14 +649,33 @@ function render(){
   }else if(badge){ badge.remove(); }
 }
 
+// Event listeners
 document.getElementById('walletBtn').addEventListener('click', async ()=> state.connected ? disconnect() : connect());
 document.getElementById('primaryCta').addEventListener('click', async ()=> !state.connected ? connect() : refresh());
-document.getElementById('mintInfoBtn').addEventListener('click', ()=> window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract','_blank'));
-document.getElementById('unsealBtn').addEventListener('click', ()=>{
-  if(els.unsealBtn.disabled) return;
-  els.unsealBtn.textContent='Opened ✨';
+document.getElementById('mintInfoBtn').addEventListener('click', ()=> openModal());
+document.getElementById('viewContractBtn').addEventListener('click', ()=> window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract','_blank'));
+document.getElementById('mintDirectBtn').addEventListener('click', function() {
+  this.innerHTML = '<span class="spinner"></span>Minting...';
+  // In a real implementation, you would initiate the minting process here
+  setTimeout(() => {
+    this.textContent = 'Transaction Sent';
+    setTimeout(() => {
+      closeModal();
+      this.textContent = 'Mint Diamond Core';
+    }, 2000);
+  }, 2000);
+});
+document.getElementById('unsealBtn').addEventListener('click', function(){
+  if(this.disabled) return;
+  this.innerHTML = '<span class="spinner"></span>Unsealing...';
+  setTimeout(() => {
+    this.textContent = 'Unsealed ✨';
+    // Show scroll content with animation
+    els.scrollContent.classList.add('revealed');
+  }, 1500);
 });
 
+// Initialize
 render();
 </script>
 </body>
