@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KLY Sovereign Marketplace</title>
+  <meta name="description" content="The official KLY Sovereign Marketplace on BNB Chain — buy and sell Sovereign Art & Tamaquah Nation NFTs." />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --card: #101010;
+      --ink: #ededed;
+      --line: #2a2a2a;
+      --gold: #d6b25e;
+    }
+    * { box-sizing: border-box }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header {
+      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); padding-bottom: 14px;
+    }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: radial-gradient(60% 60% at 50% 50%, #2e2e2e 0%, #111 100%);
+      border: 1px solid #3a3a3a; display:grid; place-items:center; font-weight:800; color: var(--gold);
+      letter-spacing: 0.5px;
+    }
+    .title { line-height: 1.1; margin: 0; font-size: clamp(18px, 3.6vw, 28px); }
+    .actions { display:flex; gap:10px; align-items:center; }
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
+      background: #171717; color: var(--ink); cursor: pointer; font-weight: 600;
+    }
+    .btn:hover { background:#1f1f1f }
+    .btn.gold { background: linear-gradient(180deg, #f2d88a, #b9943a); color: #121212; border: none; }
+    .grid {
+      display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      padding-top: 18px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background:#0f0f0f }
+    .pad { padding: 12px 12px 14px; display:flex; flex-direction:column; gap:8px; }
+    .name { font-weight: 700; font-size: 15px; margin: 2px 0 0; }
+    .muted { opacity: .8; font-size: 13px; }
+    .foot { display:flex; align-items:center; gap:8px; margin-top: 6px; }
+    .badge { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; }
+    .buy { margin-left: auto; }
+    footer { margin: 26px 0 10px; opacity: .8; font-size: 12px; text-align:center; }
+    .notice { border:1px dashed var(--line); padding:10px 12px; border-radius:10px; margin-top:14px; opacity:.95 }
+    a { color: var(--gold); text-decoration: none }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">KLY</div>
+        <div>
+          <h1 class="title">KLY Sovereign Marketplace</h1>
+          <div style="font-size:12px; opacity:.8">BNB Smart Chain · Powered by Thirdweb</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="connect" class="btn">Connect Wallet</button>
+        <button id="switch" class="btn">Switch to BNB</button>
+      </div>
+    </header>
+
+    <div id="alert" class="notice" style="display:none"></div>
+    <div id="grid" class="grid"></div>
+
+    <footer>
+      1% fee funds KLY staking & Tamaquah Nation development. Thirdweb platform fee 2.5% also applies.
+    </footer>
+  </div>
+
+  <!-- Thirdweb UMD build -->
+  <script src="https://unpkg.com/thirdweb@latest/dist/thirdweb.umd.js"></script>
+  <script>
+    (async () => {
+      // ==== CONFIG ====
+      const CLIENT_ID = "REPLACE_WITH_YOUR_PUBLIC_CLIENT_ID"; // Thirdweb Dashboard → API Keys
+      const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
+      const CHAIN = thirdweb.chains.binance; // BNB mainnet. Use binanceTestnet for testing.
+
+      // ==== INIT ====
+      const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
+      const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
+
+      // Wallet (user connects in browser)
+      let wallet = null;
+      const $connect = document.getElementById("connect");
+      const $switch  = document.getElementById("switch");
+      const $grid    = document.getElementById("grid");
+      const $alert   = document.getElementById("alert");
+
+      function showAlert(msg) {
+        $alert.style.display = "block";
+        $alert.textContent = msg;
+        setTimeout(() => ($alert.style.display = "none"), 4500);
+      }
+
+      $connect.onclick = async () => {
+        try {
+          wallet = await thirdweb.connect({
+            client,
+            wallets: [thirdweb.wallets.metamask(), thirdweb.wallets.walletConnect()],
+            chain: CHAIN,
+          });
+          showAlert("Wallet connected.");
+        } catch (e) {
+          console.error(e);
+          showAlert("Failed to connect wallet.");
+        }
+      };
+
+      $switch.onclick = async () => {
+        try {
+          if (!wallet) {
+            showAlert("Connect a wallet first.");
+            return;
+          }
+          await wallet.switchChain(CHAIN);
+          showAlert("Switched to BNB Chain.");
+        } catch (e) {
+          console.error(e);
+          showAlert("Could not switch chain (open wallet and approve).");
+        }
+      };
+
+      // ==== LOAD LISTINGS (DIRECT LISTINGS) ====
+      async function loadListings() {
+        try {
+          const listings = await contract.read("getAllValidListings", []); // MarketplaceV3
+          if (!listings || listings.length === 0) {
+            $grid.innerHTML = '<div class="notice">No active listings yet. Add listings in your Thirdweb dashboard.</div>';
+            return;
+          }
+
+          $grid.innerHTML = "";
+          listings.forEach((l) => {
+            // pricePerToken is a uint256 (wei). Format safely:
+            const priceWei = typeof l.pricePerToken === "bigint" ? l.pricePerToken : BigInt(l.pricePerToken);
+            const priceBNB = Number(priceWei) / 1e18;
+
+            const img = (l.asset && (l.asset.image || l.asset.imageUri || l.asset.image_url)) || "";
+            const name = (l.asset && (l.asset.name || l.asset.metadata?.name)) || `Listing #${l.id}`;
+
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <img class="img" src="${img}" alt="${name}" onerror="this.style.display='none'"/>
+              <div class="pad">
+                <div class="name">${name}</div>
+                <div class="muted">${priceBNB} BNB</div>
+                <div class="foot">
+                  <span class="badge">Direct</span>
+                  <button class="btn gold buy">Buy</button>
+                </div>
+              </div>
+            `;
+
+            const buyBtn = card.querySelector(".buy");
+            buyBtn.onclick = async () => {
+              try {
+                if (!wallet) return showAlert("Connect wallet first.");
+                await wallet.switchChain(CHAIN);
+
+                // For direct listings on MarketplaceV3:
+                // buyFromListing(listingId, quantity, receiver)
+                await contract.write("buyFromListing", [
+                  l.id,                // listing id
+                  1n,                  // quantity
+                  "0x0000000000000000000000000000000000000000" // receiver = msg.sender
+                ]);
+
+                showAlert("Purchase sent. Check wallet for tx.");
+              } catch (e) {
+                console.error(e);
+                showAlert("Buy failed. Make sure you have enough BNB and the listing is active.");
+              }
+            };
+
+            $grid.appendChild(card);
+          });
+        } catch (e) {
+          console.error(e);
+          $grid.innerHTML = '<div class="notice">Couldn’t load listings. Check contract address & client ID.</div>';
+        }
+      }
+
+      await loadListings();
+    })();
+  </script>
+</body>
+</html>
