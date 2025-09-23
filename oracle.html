@@ -1,1158 +1,275 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oracle Codex: Scrolls of the Chain</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --parchment: #f5e9d9;
-            --ink: #3a3226;
-            --gold: #d4af37;
-            --magic-blue: #4fc3f7;
-            --magic-purple: #9c27b0;
-            --shadow-blue: rgba(79, 195, 247, 0.5);
-            --shadow-purple: rgba(156, 39, 176, 0.5);
-        }
-        
-        body {
-            font-family: 'Cinzel', 'Times New Roman', serif;
-            background-color: #0a0a12;
-            color: var(--ink);
-            text-align: center;
-            padding: 0;
-            margin: 0;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(79, 195, 247, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(156, 39, 176, 0.1) 0%, transparent 20%),
-                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a0a12"/><path d="M0,0 L100,100 M100,0 L0,100" stroke="%23333" stroke-width="0.5"/></svg>');
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 2rem auto;
-            position: relative;
-            perspective: 1000px;
-            z-index: 10;
-        }
-        
-        h1 {
-            font-size: 3.5em;
-            color: var(--gold);
-            text-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
-            margin-bottom: 2rem;
-            position: relative;
-            letter-spacing: 2px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        h1::after {
-            content: "";
-            display: block;
-            width: 200px;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
-            margin: 15px auto;
-            box-shadow: 0 0 15px var(--gold);
-        }
-        
-        .scroll-container {
-            position: relative;
-            padding: 2rem 0;
-            overflow: hidden;
-            transform-style: preserve-3d;
-        }
-        
-        .scroll {
-            background-color: var(--parchment);
-            background-image: 
-                linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 5%),
-                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20,20 Q30,10 40,20 T60,20 T80,20" fill="none" stroke="%233a3226" stroke-width="0.3" opacity="0.2"/></svg>');
-            padding: 4rem 5rem;
-            margin: 0 auto;
-            border-radius: 5px;
-            box-shadow: 
-                0 0 30px rgba(212, 175, 55, 0.5),
-                0 0 60px rgba(79, 195, 247, 0.3);
-            position: relative;
-            transform-style: preserve-3d;
-            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            border: 1px solid rgba(212, 180, 131, 0.7);
-            transform: rotateX(15deg) translateY(50px);
-        }
-        
-        .scroll.active {
-            max-height: 1200px;
-            opacity: 1;
-            animation: fadeIn 1.5s ease-out, glowPulse 8s infinite alternate;
-            transform: rotateX(0) translateY(0);
-        }
-        
-        .scroll::before, .scroll::after {
-            content: "";
-            position: absolute;
-            height: 100%;
-            width: 50px;
-            top: 0;
-            background: 
-                linear-gradient(to right, var(--parchment), 
-                rgba(212, 180, 131, 0.8), 
-                var(--parchment));
-            box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
-            z-index: 5;
-        }
-        
-        .scroll::before {
-            left: -25px;
-            border-radius: 8px 0 0 8px;
-            transform: rotateY(-30deg) translateX(-10px);
-        }
-        
-        .scroll::after {
-            right: -25px;
-            border-radius: 0 8px 8px 0;
-            transform: rotateY(30deg) translateX(10px);
-        }
-        
-        .scroll-content {
-            min-height: 400px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            z-index: 2;
-            transform-style: preserve-3d;
-        }
-        
-        .initial-prompt {
-            font-size: 1.4em;
-            margin-bottom: 2rem;
-            line-height: 1.8;
-            text-align: center;
-            max-width: 700px;
-            position: relative;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            border-left: 4px solid var(--gold);
-            font-family: 'MedievalSharp', cursive;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 1.5rem 0;
-        }
-        
-        button {
-            background: linear-gradient(135deg, var(--magic-purple), var(--magic-blue));
-            color: white;
-            border: none;
-            padding: 14px 35px;
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            font-family: 'Cinzel', serif;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-            min-width: 220px;
-            z-index: 1;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        button:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-        }
-        
-        button::before {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                to bottom right, 
-                rgba(255,255,255,0) 0%, 
-                rgba(255,255,255,0.8) 50%, 
-                rgba(255,255,255,0) 100%
-            );
-            transform: rotate(30deg);
-            transition: all 0.7s;
-            z-index: -1;
-        }
-        
-        button:hover::before {
-            left: 100%;
-        }
-        
-        button.secondary {
-            background: linear-gradient(135deg, #3a3226, #5d5342);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .oracle-message {
-            font-style: italic;
-            font-size: 1.5em;
-            line-height: 1.8;
-            margin: 2.5rem 0;
-            padding: 2rem;
-            border-radius: 8px;
-            background-color: rgba(255, 255, 255, 0.4);
-            border-left: 4px solid var(--gold);
-            position: relative;
-            display: none;
-            max-width: 700px;
-            font-family: 'MedievalSharp', cursive;
-            backdrop-filter: blur(5px);
-            transform: scale(0.95);
-            transition: all 0.5s ease;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .oracle-message.revealed {
-            display: block;
-            animation: messageAppear 1s forwards;
-        }
-        
-        .oracle-message::before, .oracle-message::after {
-            content: """;
-            font-size: 3.5em;
-            color: var(--gold);
-            opacity: 0.3;
-            position: absolute;
-            font-family: serif;
-        }
-        
-        .oracle-message::before {
-            top: -20px;
-            left: -10px;
-        }
-        
-        .oracle-message::after {
-            bottom: -40px;
-            right: -10px;
-        }
-        
-        .creature {
-            position: absolute;
-            width: 180px;
-            height: 180px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            opacity: 0.9;
-            z-index: 1;
-            transition: all 0.8s ease;
-            filter: drop-shadow(0 0 10px currentColor);
-        }
-        
-        .phoenix {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,10 L60,40 L90,50 L60,60 L50,90 L40,60 L10,50 L40,40 Z" fill="%23d4af37"/><path d="M50,20 L55,35 L70,40 L55,45 L50,60 L45,45 L30,40 L45,35 Z" fill="%23f7d560"/></svg>');
-            top: -60px;
-            right: -60px;
-            animation: float 6s ease-in-out infinite, glow 4s infinite alternate;
-            color: var(--gold);
-        }
-        
-        .dragon {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,50 Q30,30 50,50 Q70,70 90,50 L80,40 Q60,50 50,30 Q40,50 20,40 Z" fill="%239c27b0"/><path d="M50,50 Q55,45 60,50 Q55,55 50,50 Z" fill="%23d4af37"/></svg>');
-            bottom: -60px;
-            left: -60px;
-            animation: float 8s ease-in-out infinite 2s, glow 5s infinite alternate 1s;
-            color: var(--magic-purple);
-        }
-        
-        .web3-section {
-            margin-top: 2.5rem;
-            padding: 2rem;
-            background-color: rgba(15, 15, 25, 0.8);
-            border-radius: 12px;
-            border: 1px solid var(--magic-blue);
-            display: none;
-            width: 100%;
-            max-width: 700px;
-            backdrop-filter: blur(5px);
-            transform: translateY(20px);
-            opacity: 0;
-            transition: all 0.8s ease;
-            box-shadow: 0 0 30px rgba(79, 195, 247, 0.2);
-        }
-        
-        .web3-section.visible {
-            transform: translateY(0);
-            opacity: 1;
-            display: block;
-        }
-        
-        .web3-section h3 {
-            color: var(--magic-blue);
-            margin-top: 0;
-            font-size: 1.8em;
-            text-shadow: 0 0 10px var(--shadow-blue);
-            border-bottom: 1px solid var(--magic-blue);
-            padding-bottom: 0.5rem;
-            display: inline-block;
-        }
-        
-        .wallet-address {
-            font-family: monospace;
-            word-break: break-all;
-            color: var(--gold);
-            background: rgba(0,0,0,0.3);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            display: inline-block;
-            margin: 0.5rem 0;
-            border: 1px solid rgba(212, 175, 55, 0.3);
-        }
-        
-        .nft-gallery {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1.5rem;
-            margin: 1.5rem 0;
-        }
-        
-        .nft-item {
-            width: 120px;
-            height: 120px;
-            background-color: rgba(79, 195, 247, 0.15);
-            border: 2px solid var(--magic-blue);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3em;
-            transition: all 0.4s;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .nft-item::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(79, 195, 247, 0.1), rgba(156, 39, 176, 0.1));
-            z-index: -1;
-        }
-        
-        .nft-item:hover {
-            transform: scale(1.1) translateY(-5px);
-            box-shadow: 0 10px 25px var(--shadow-blue);
-            border-color: var(--magic-purple);
-        }
-        
-        .nft-item .nft-tooltip {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 0.5rem;
-            font-size: 0.6rem;
-            transform: translateY(100%);
-            transition: transform 0.3s;
-            font-family: sans-serif;
-        }
-        
-        .nft-item:hover .nft-tooltip {
-            transform: translateY(0);
-        }
-        
-        .token-balance {
-            font-size: 1.2em;
-            margin: 1rem 0;
-            color: var(--magic-blue);
-        }
-        
-        .token-balance span {
-            color: var(--gold);
-            font-weight: bold;
-        }
-        
-        .network-info {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-        
-        .network-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            box-shadow: 0 0 10px #4CAF50;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes glowPulse {
-            0% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.5), 0 0 60px rgba(79, 195, 247, 0.3); }
-            50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.7), 0 0 100px rgba(79, 195, 247, 0.5); }
-            100% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.5), 0 0 60px rgba(79, 195, 247, 0.3); }
-        }
-        
-        @keyframes float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-25px) rotate(5deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-        }
-        
-        @keyframes glow {
-            0% { filter: drop-shadow(0 0 5px currentColor); }
-            100% { filter: drop-shadow(0 0 15px currentColor); }
-        }
-        
-        @keyframes messageAppear {
-            0% { transform: scale(0.95); opacity: 0; }
-            80% { transform: scale(1.02); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .constellation {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        .star {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background-color: white;
-            border-radius: 50%;
-            animation: twinkle 3s infinite alternate;
-        }
-        
-        @keyframes twinkle {
-            0% { opacity: 0.2; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1.2); }
-        }
-        
-        .floating-tokens {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            z-index: -1;
-        }
-        
-        .token {
-            position: absolute;
-            font-size: 1.5rem;
-            opacity: 0;
-            animation: float-up 15s linear infinite;
-        }
-        
-        @keyframes float-up {
-            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
-            10% { opacity: 0.7; }
-            90% { opacity: 0.7; }
-            100% { transform: translateY(-100px) translateX(50px); opacity: 0; }
-        }
-        
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            background-color: var(--gold);
-            opacity: 0;
-            z-index: 100;
-            animation: confetti-fall 3s linear forwards;
-        }
-        
-        @keyframes confetti-fall {
-            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2.5em;
-            }
-            
-            .scroll {
-                padding: 2rem;
-            }
-            
-            .scroll::before, .scroll::after {
-                width: 30px;
-            }
-            
-            .scroll::before {
-                left: -15px;
-            }
-            
-            .scroll::after {
-                right: -15px;
-            }
-            
-            .creature {
-                width: 120px;
-                height: 120px;
-            }
-            
-            .phoenix {
-                top: -40px;
-                right: -40px;
-            }
-            
-            .dragon {
-                bottom: -40px;
-                left: -40px;
-            }
-            
-            .initial-prompt, .oracle-message {
-                font-size: 1.2em;
-                padding: 1rem;
-            }
-            
-            .button-group {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            button {
-                width: 100%;
-                max-width: 280px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 2em;
-            }
-            
-            .scroll {
-                padding: 1.5rem;
-            }
-            
-            .creature {
-                width: 80px;
-                height: 80px;
-            }
-            
-            .phoenix {
-                top: -30px;
-                right: -30px;
-            }
-            
-            .dragon {
-                bottom: -30px;
-                left: -30px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Oracle Codex: Scrolls of the Chain</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
+  <style>
+    /* ---------- your original styles (trimmed) ---------- */
+    :root{--parchment:#f5e9d9;--ink:#3a3226;--gold:#d4af37;--magic-blue:#4fc3f7;--magic-purple:#9c27b0;--shadow-blue:rgba(79,195,247,.5);--shadow-purple:rgba(156,39,176,.5)}
+    body{font-family:'Cinzel','Times New Roman',serif;background:#0a0a12;color:var(--ink);text-align:center;margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-x:hidden;background-image:
+      radial-gradient(circle at 10% 20%, rgba(79,195,247,.1) 0%, transparent 20%),
+      radial-gradient(circle at 90% 80%, rgba(156,39,176,.1) 0%, transparent 20%),
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a0a12"/><path d="M0,0 L100,100 M100,0 L0,100" stroke="%23333" stroke-width="0.5"/></svg>')}
+    .container{max-width:900px;margin:2rem auto;position:relative;perspective:1000px;z-index:10}
+    h1{font-size:3.5em;color:var(--gold);text-shadow:0 0 10px rgba(212,175,55,.7);margin-bottom:2rem;letter-spacing:2px;font-weight:700;text-transform:uppercase}
+    h1::after{content:"";display:block;width:200px;height:4px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:15px auto;box-shadow:0 0 15px var(--gold)}
+    .scroll-container{position:relative;padding:2rem 0;overflow:hidden;transform-style:preserve-3d}
+    .scroll{background:var(--parchment);padding:4rem 5rem;margin:0 auto;border-radius:5px;box-shadow:0 0 30px rgba(212,175,55,.5),0 0 60px rgba(79,195,247,.3);position:relative;transform-style:preserve-3d;transition:all .8s cubic-bezier(.175,.885,.32,1.275);max-height:0;opacity:0;overflow:hidden;border:1px solid rgba(212,180,131,.7);transform:rotateX(15deg) translateY(50px)}
+    .scroll.active{max-height:1600px;opacity:1;animation:fadeIn 1.5s ease-out,glowPulse 8s infinite alternate;transform:rotateX(0) translateY(0)}
+    .scroll::before,.scroll::after{content:"";position:absolute;height:100%;width:50px;top:0;background:linear-gradient(to right,var(--parchment),rgba(212,180,131,.8),var(--parchment));box-shadow:0 0 25px rgba(212,175,55,.7);z-index:5}
+    .scroll::before{left:-25px;border-radius:8px 0 0 8px;transform:rotateY(-30deg) translateX(-10px)}
+    .scroll::after{right:-25px;border-radius:0 8px 8px 0;transform:rotateY(30deg) translateX(10px)}
+    .scroll-content{min-height:400px;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;z-index:2}
+    .initial-prompt{font-size:1.2em;margin-bottom:1.25rem;line-height:1.6;max-width:700px;padding:1rem;background:rgba(255,255,255,.2);border-radius:8px;border-left:4px solid var(--gold);font-family:'MedievalSharp',cursive}
+    .qbox{width:100%;max-width:700px;margin:0 0 1rem 0;display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center}
+    .qbox textarea{flex:1;min-height:80px;padding:12px;border-radius:8px;border:1px solid rgba(212,175,55,.4);background:rgba(255,255,255,.9);font-family:serif;font-size:1rem}
+    .button-group{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin:1rem 0}
+    button{background:linear-gradient(135deg,var(--magic-purple),var(--magic-blue));color:#fff;border:none;padding:14px 28px;font-size:1.05em;border-radius:30px;cursor:pointer;transition:.3s;box-shadow:0 5px 20px rgba(0,0,0,.3);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:1px;min-width:220px;border:1px solid rgba(255,255,255,.2)}
+    button.secondary{background:linear-gradient(135deg,#3a3226,#5d5342)}
+    .oracle-message{font-style:italic;font-size:1.3em;line-height:1.7;margin:1.25rem 0;padding:1.25rem;border-radius:8px;background:rgba(255,255,255,.4);border-left:4px solid var(--gold);display:none;max-width:700px;font-family:'MedievalSharp',cursive;backdrop-filter:blur(5px)}
+    .oracle-message.revealed{display:block;animation:messageAppear 1s forwards}
+    /* FIX: real quotes instead of """ */
+    .oracle-message::before{content:"“";font-size:2.2em;color:var(--gold);opacity:.35;position:absolute;top:-10px;left:-6px}
+    .oracle-message::after{content:"”";font-size:2.2em;color:var(--gold);opacity:.35;position:absolute;bottom:-20px;right:-6px}
+    .web3-section{margin-top:1rem;padding:1.25rem;background:rgba(15,15,25,.8);border-radius:12px;border:1px solid var(--magic-blue);display:none;width:100%;max-width:700px;backdrop-filter:blur(5px);box-shadow:0 0 30px rgba(79,195,247,.2)}
+    .web3-section.visible{display:block}
+    .wallet-address{font-family:monospace;word-break:break-all;color:var(--gold);background:rgba(0,0,0,.3);padding:.5rem 1rem;border-radius:4px;border:1px solid rgba(212,175,55,.3)}
+    .network-info{display:flex;justify-content:center;align-items:center;gap:.5rem;margin:.5rem 0}
+    .network-indicator{width:12px;height:12px;border-radius:50%;background:#4CAF50;box-shadow:0 0 10px #4CAF50}
+    .spinner{display:none;margin-top:.5rem;font-size:.95rem;color:#ddd}
+    .spinner.show{display:inline-block}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes glowPulse{0%{box-shadow:0 0 30px rgba(212,175,55,.5),0 0 60px rgba(79,195,247,.3)}50%{box-shadow:0 0 50px rgba(212,175,55,.7),0 0 100px rgba(79,195,247,.5)}100%{box-shadow:0 0 30px rgba(212,175,55,.5),0 0 60px rgba(79,195,247,.3)}}
+    @keyframes messageAppear{0%{transform:scale(.97);opacity:0}80%{transform:scale(1.01);opacity:1}100%{transform:scale(1);opacity:1}}
+    /* responsive rules kept as-is or trimmed for brevity */
+  </style>
 </head>
 <body>
-    <div class="constellation" id="constellation"></div>
-    <div class="floating-tokens" id="floatingTokens"></div>
-    
-    <div class="container">
-        <h1 class="animate__animated animate__fadeInDown">Web3 Oracle Scrolls</h1>
-        
-        <div class="scroll-container">
-            <div class="creature phoenix"></div>
-            <div class="creature dragon"></div>
-            
-            <div class="scroll" id="oracleScroll">
-                <div class="scroll-content">
-                    <div class="initial-prompt animate__animated animate__fadeIn">
-                        Focus your mind on your question, then invoke the Oracle to reveal your destiny. 
-                        The ancient wisdom of the blockchain awaits...
-                    </div>
-                    
-                    <div class="button-group">
-                        <button id="consultButton" class="animate__animated animate__pulse animate__infinite">Invoke the Oracle</button>
-                        <button id="connectWallet" class="secondary">Connect Web3 Wallet</button>
-                    </div>
-                    
-                    <div class="oracle-message" id="oracleMessage"></div>
-                    
-                    <div class="web3-section" id="web3Section">
-                        <h3>Web3 Revelation</h3>
-                        <div id="walletInfo">
-                            <div class="network-info">
-                                <div class="network-indicator" id="networkIndicator"></div>
-                                <span id="networkName">Binance Smart Chain</span>
-                            </div>
-                            <p>Connected Wallet: <span class="wallet-address" id="walletAddress">Not connected</span></p>
-                            <p class="token-balance">Balance: <span id="tokenBalance">0</span> <span id="tokenSymbol">BNB</span></p>
-                        </div>
-                        <div id="nftSection">
-                            <h4>Your Oracle NFTs</h4>
-                            <div class="nft-gallery" id="nftGallery">
-                                <!-- NFT items will be added here dynamically -->
-                            </div>
-                        </div>
-                        <button id="mintScroll">Mint Your Prophecy as NFT</button>
-                    </div>
-                    
-                    <button id="tryAgain" class="secondary" style="display: none;">Seek Further Wisdom</button>
-                </div>
+  <div class="container">
+    <h1 class="animate__animated animate__fadeInDown">Web3 Oracle Scrolls</h1>
+
+    <div class="scroll-container">
+      <div class="scroll" id="oracleScroll">
+        <div class="scroll-content">
+          <div class="initial-prompt">
+            Ask one clear question below and invoke the Oracle. Wisdom returns with on-chain precision.
+          </div>
+
+          <!-- NEW: user question box -->
+          <div class="qbox">
+            <textarea id="userQuestion" placeholder="Type your question for the Oracle..."></textarea>
+          </div>
+
+          <div class="button-group">
+            <button id="consultButton" class="animate__animated animate__pulse animate__infinite">Invoke the Oracle</button>
+            <button id="connectWallet" class="secondary">Connect Web3 Wallet</button>
+          </div>
+
+          <div class="spinner" id="loadingSpinner">Consulting the Oracle…</div>
+          <div class="oracle-message" id="oracleMessage"></div>
+
+          <div class="web3-section" id="web3Section">
+            <h3>Web3 Revelation</h3>
+            <div id="walletInfo">
+              <div class="network-info">
+                <div class="network-indicator" id="networkIndicator"></div>
+                <span id="networkName">Binance Smart Chain</span>
+              </div>
+              <p>Connected Wallet: <span class="wallet-address" id="walletAddress">Not connected</span></p>
+              <p class="token-balance">Balance: <span id="tokenBalance">0</span> <span id="tokenSymbol">BNB</span></p>
             </div>
+          </div>
+
+          <button id="tryAgain" class="secondary" style="display:none;">Seek Further Wisdom</button>
         </div>
+      </div>
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
-    <script>
-        // Enhanced Oracle messages with Web3 themes
-        const messages = [
-            {
-                text: "The blockchain whispers of a coming transformation. Prepare your wallet for unexpected abundance.",
-                rarity: "common",
-                web3: true
-            },
-            {
-                text: "When the gas fees are low and the moon is in retrograde, your transaction shall find favor.",
-                rarity: "uncommon",
-                web3: true
-            },
-            {
-                text: "A smart contract in your future bears unexpected fruit. Verify all variables before signing.",
-                rarity: "rare",
-                web3: true
-            },
-            {
-                text: "The DAO of your destiny votes unanimously: the path forward is decentralized.",
-                rarity: "epic",
-                web3: true
-            },
-            {
-                text: "Beware the 51st hour, when whales may surface to test your resolve.",
-                rarity: "legendary",
-                web3: true
-            },
-            {
-                text: "Your seed phrase holds more power than you know. Guard it as the dragons guard their gold.",
-                rarity: "mythic",
-                web3: true
-            },
-            {
-                text: "The merge is coming, and with it, a new era for your digital assets.",
-                rarity: "rare",
-                web3: true
-            },
-            {
-                text: "Look to Layer 2 for solutions when the mainnet grows congested.",
-                rarity: "uncommon",
-                web3: true
-            },
-            {
-                text: "The NFTs in your collection will soon reveal their true utility.",
-                rarity: "epic",
-                web3: true
-            },
-            {
-                text: "A cross-chain bridge appears in your future. Tread carefully and verify all contracts.",
-                rarity: "rare",
-                web3: true
-            },
-            {
-                text: "The oracle nodes speak as one: your verification is imminent.",
-                rarity: "legendary",
-                web3: true
-            },
-            {
-                text: "When the bear market ends, your patience will be rewarded sevenfold.",
-                rarity: "mythic",
-                web3: true
-            }
-        ];
-        
-        // Web3 and wallet state
-        let web3;
-        let provider;
-        let accounts = [];
-        let chainId;
-        let walletConnected = false;
-        
-        // BSC Network configurations
-        const BSC_MAINNET = {
-            chainId: '0x38', // 56 in decimal
-            chainName: 'Binance Smart Chain Mainnet',
-            nativeCurrency: {
-                name: 'BNB',
-                symbol: 'BNB',
-                decimals: 18
-            },
-            rpcUrls: ['https://bsc-dataseed.binance.org/'],
-            blockExplorerUrls: ['https://bscscan.com']
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script>
+    /* ------------------ CONFIG ------------------ */
+    // Point this to your real backend route
+    const ORACLE_ENDPOINT = '/api/oracle';  // e.g. '/api/oracle' or 'https://yourdomain.com/api/oracle'
+
+    // Minimal random lines kept as a graceful fallback
+    const fallbackMessages = [
+      "The DAO of your destiny votes unanimously: the path forward is decentralized.",
+      "A smart contract in your future bears unexpected fruit. Verify all variables before signing.",
+      "Look to Layer 2 when the mainnet grows congested.",
+      "When patience meets the next epoch, your transaction confirms in abundance."
+    ];
+
+    /* ------------- Wallet / Web3 state ---------- */
+    let web3, provider, accounts = [], chainId, walletConnected = false;
+
+    const BSC_MAINNET = {
+      chainId: '0x38',
+      chainName: 'Binance Smart Chain Mainnet',
+      nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+      rpcUrls: ['https://bsc-dataseed.binance.org/'],
+      blockExplorerUrls: ['https://bscscan.com']
+    };
+
+    function isWeb3Installed(){ return typeof window.ethereum !== 'undefined'; }
+
+    async function switchToBSC(){
+      try{
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [BSC_MAINNET] });
+        return true;
+      }catch(e){ console.error('Failed to switch to BSC:', e); return false; }
+    }
+
+    async function initWeb3(){
+      if(!isWeb3Installed()){
+        alert('Please install MetaMask or a Web3 wallet extension!');
+        const btn = document.getElementById('connectWallet');
+        btn.textContent = 'Install Wallet';
+        btn.onclick = ()=> window.open('https://metamask.io/', '_blank');
+        return;
+      }
+      try{
+        const btn = document.getElementById('connectWallet');
+        btn.textContent = 'Connecting...'; btn.disabled = true;
+
+        provider = window.ethereum;
+        accounts = await provider.request({ method: 'eth_requestAccounts' });
+        chainId = await provider.request({ method: 'eth_chainId' });
+
+        if(chainId !== BSC_MAINNET.chainId){
+          if(confirm('This dapp works on BSC. Switch now?')){
+            const switched = await switchToBSC();
+            if(!switched) alert('Please switch to BSC manually in your wallet.');
+            chainId = await provider.request({ method: 'eth_chainId' });
+          }
+        }
+
+        web3 = new Web3(provider);
+        updateWalletInfo(accounts[0], chainId);
+        walletConnected = true;
+        setupEventListeners();
+        loadWalletData(accounts[0]);
+
+      }catch(err){
+        console.error('Wallet connect error:', err);
+        resetWalletConnection();
+      }
+    }
+
+    function updateWalletInfo(address, chainIdHex){
+      const short = `${address.slice(0,6)}...${address.slice(-4)}`;
+      document.getElementById('walletAddress').textContent = short;
+      document.getElementById('walletAddress').title = address;
+
+      const btn = document.getElementById('connectWallet');
+      btn.textContent = 'Connected';
+      btn.style.background = 'linear-gradient(135deg,#4CAF50,#2E7D32)';
+      btn.disabled = false;
+
+      const indicator = document.getElementById('networkIndicator');
+      const nameEl = document.getElementById('networkName');
+      const map = { '0x1': {name:'Ethereum Mainnet', color:'#29b6af'}, '0x38': {name:'BSC Mainnet', color:'#F0B90B'} };
+      const meta = map[chainIdHex] || { name:`Unsupported (${chainIdHex})`, color:'#ff5722' };
+      nameEl.textContent = meta.name; indicator.style.backgroundColor = meta.color; indicator.style.boxShadow = `0 0 10px ${meta.color}`;
+    }
+
+    async function loadWalletData(address){
+      try{
+        document.getElementById('tokenBalance').textContent = 'Loading...';
+        const balWei = await web3.eth.getBalance(address);
+        document.getElementById('tokenBalance').textContent = parseFloat(web3.utils.fromWei(balWei,'ether')).toFixed(4);
+        document.getElementById('web3Section').classList.add('visible');
+      }catch(e){
+        console.error('Balance error:', e);
+        document.getElementById('tokenBalance').textContent = 'Error';
+      }
+    }
+
+    function setupEventListeners(){
+      if(!provider) return;
+      provider.on('accountsChanged', (a)=>{ accounts = a; a.length ? (updateWalletInfo(a[0], chainId), loadWalletData(a[0])) : resetWalletConnection(); });
+      provider.on('chainChanged', (cid)=>{ chainId = cid; updateWalletInfo(accounts[0]||'0x0', cid); if(accounts.length) loadWalletData(accounts[0]); });
+    }
+
+    function resetWalletConnection(){
+      walletConnected = false; accounts = [];
+      document.getElementById('walletAddress').textContent = 'Not connected';
+      const btn = document.getElementById('connectWallet');
+      btn.textContent = 'Connect Web3 Wallet';
+      btn.style.background = 'linear-gradient(135deg,var(--magic-purple),var(--magic-blue))';
+      btn.disabled = false;
+      document.getElementById('tokenBalance').textContent = '0';
+    }
+
+    /* ------------- ORACLE CALL --------------- */
+    async function callOracle(question){
+      const spinner = document.getElementById('loadingSpinner');
+      const msgEl = document.getElementById('oracleMessage');
+      spinner.classList.add('show');
+      msgEl.className = 'oracle-message'; msgEl.style.display = 'none'; msgEl.textContent = '';
+
+      try{
+        const payload = {
+          question,
+          address: (accounts[0] || null),
+          chainId: chainId || null
         };
-        
-        // Check if Web3 provider is installed
-        function isWeb3Installed() {
-            return typeof window.ethereum !== 'undefined';
-        }
 
-        // Switch to BSC network
-        async function switchToBSC() {
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [BSC_MAINNET]
-                });
-                return true;
-            } catch (switchError) {
-                console.error('Failed to switch to BSC:', switchError);
-                return false;
-            }
-        }
-
-        // Initialize Web3 with BSC connection
-        async function initWeb3() {
-            if (!isWeb3Installed()) {
-                alert('Please install MetaMask or a Web3 wallet extension!');
-                document.getElementById('connectWallet').textContent = "Install Wallet";
-                document.getElementById('connectWallet').onclick = () => {
-                    window.open('https://metamask.io/', '_blank');
-                };
-                return;
-            }
-            
-            try {
-                document.getElementById('connectWallet').textContent = "Connecting...";
-                document.getElementById('connectWallet').disabled = true;
-                
-                provider = window.ethereum;
-                try {
-                    // Request account access
-                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                    
-                    // Check if we're on BSC, if not prompt to switch
-                    if (chainId !== BSC_MAINNET.chainId) {
-                        const shouldSwitch = confirm("This dapp works on Binance Smart Chain. Switch to BSC now?");
-                        if (shouldSwitch) {
-                            const switched = await switchToBSC();
-                            if (!switched) {
-                                alert("Please switch to BSC manually in your wallet");
-                            }
-                            // Refresh chainId after switching
-                            chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                        }
-                    }
-                    
-                    // Initialize Web3
-                    web3 = new Web3(window.ethereum);
-                    
-                    // Update UI
-                    updateWalletInfo(accounts[0], chainId);
-                    walletConnected = true;
-                    
-                    // Set up event listeners
-                    setupEventListeners();
-                    
-                    // Load additional wallet data
-                    loadWalletData(accounts[0], chainId);
-                    
-                } catch (error) {
-                    console.error("User denied account access", error);
-                    resetWalletConnection();
-                }
-            } catch (error) {
-                console.error("Error connecting to wallet:", error);
-                resetWalletConnection();
-            }
-        }
-        
-        // Update wallet information in the UI
-        function updateWalletInfo(address, chainId) {
-            const shortenedAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-            document.getElementById('walletAddress').textContent = shortenedAddress;
-            document.getElementById('walletAddress').setAttribute('title', address);
-            
-            document.getElementById('connectWallet').textContent = "Connected";
-            document.getElementById('connectWallet').style.background = "linear-gradient(135deg, #4CAF50, #2E7D32)";
-            document.getElementById('connectWallet').disabled = false;
-            
-            // Update network info
-            updateNetworkInfo(chainId);
-        }
-        
-        // Update network information with BSC support
-        function updateNetworkInfo(chainId) {
-            const networkIndicator = document.getElementById('networkIndicator');
-            const networkName = document.getElementById('networkName');
-            
-            const networks = {
-                '0x1': { name: 'Ethereum Mainnet', color: '#29b6af' },
-                '0x38': { name: 'BSC Mainnet', color: '#F0B90B' } // BSC Mainnet
-            };
-            
-            if (networks[chainId]) {
-                networkName.textContent = networks[chainId].name;
-                networkIndicator.style.backgroundColor = networks[chainId].color;
-                networkIndicator.style.boxShadow = `0 0 10px ${networks[chainId].color}`;
-            } else {
-                networkName.textContent = `Unsupported Network (${chainId})`;
-                networkIndicator.style.backgroundColor = '#ff5722';
-                networkIndicator.style.boxShadow = '0 0 10px #ff5722';
-            }
-        }
-        
-        // Load wallet data (balance, NFTs, etc.)
-        async function loadWalletData(address, chainId) {
-            try {
-                // Show loading state
-                document.getElementById('tokenBalance').textContent = "Loading...";
-                
-                // Get balance
-                const balance = await web3.eth.getBalance(address);
-                const balanceInEth = web3.utils.fromWei(balance, 'ether');
-                document.getElementById('tokenBalance').textContent = parseFloat(balanceInEth).toFixed(4);
-                
-                // Show Web3 section
-                const web3Section = document.getElementById('web3Section');
-                web3Section.classList.add('visible');
-                
-                // For demo purposes, we'll use mock NFTs
-                loadMockNFTs();
-                
-                // Create floating tokens
-                createFloatingTokens();
-                
-            } catch (error) {
-                console.error("Error loading wallet data:", error);
-                document.getElementById('tokenBalance').textContent = "Error";
-            }
-        }
-
-        // Load mock NFTs for demonstration
-        function loadMockNFTs() {
-            const nftGallery = document.getElementById('nftGallery');
-            nftGallery.innerHTML = '';
-            
-            const nfts = [
-                { emoji: "🔮", name: "Oracle's Crystal Ball", rarity: "rare" },
-                { emoji: "🌌", name: "Galactic Smart Contract", rarity: "epic" },
-                { emoji: "⚡", name: "Lightning Network Token", rarity: "uncommon" },
-                { emoji: "♞", name: "Knight's DAO Badge", rarity: "legendary" },
-                { emoji: "♛", name: "Crypto Queen NFT", rarity: "mythic" }
-            ];
-            
-            nfts.forEach(nft => {
-                const nftItem = document.createElement('div');
-                nftItem.className = 'nft-item';
-                nftItem.innerHTML = `
-                    ${nft.emoji}
-                    <div class="nft-tooltip">${nft.name}<br>Rarity: ${nft.rarity}</div>
-                `;
-                nftGallery.appendChild(nftItem);
-            });
-        }
-        
-        // Set up Ethereum event listeners
-        function setupEventListeners() {
-            if (provider) {
-                // Accounts changed
-                provider.on('accountsChanged', (newAccounts) => {
-                    accounts = newAccounts;
-                    if (newAccounts.length > 0) {
-                        updateWalletInfo(newAccounts[0], chainId);
-                        loadWalletData(newAccounts[0], chainId);
-                    } else {
-                        // Wallet disconnected
-                        resetWalletConnection();
-                    }
-                });
-                
-                // Chain changed
-                provider.on('chainChanged', (newChainId) => {
-                    // Handle chain change
-                    chainId = newChainId;
-                    updateNetworkInfo(newChainId);
-                    if (accounts.length > 0) {
-                        loadWalletData(accounts[0], newChainId);
-                    }
-                    
-                    // If switched away from BSC, suggest switching back
-                    if (newChainId !== BSC_MAINNET.chainId) {
-                        alert("Please switch back to Binance Smart Chain for full functionality");
-                    }
-                });
-            }
-        }
-        
-        // Reset wallet connection
-        function resetWalletConnection() {
-            walletConnected = false;
-            accounts = [];
-            document.getElementById('walletAddress').textContent = "Not connected";
-            document.getElementById('connectWallet').textContent = "Connect Web3 Wallet";
-            document.getElementById('connectWallet').style.background = "linear-gradient(135deg, var(--magic-purple), var(--magic-blue))";
-            document.getElementById('connectWallet').disabled = false;
-            document.getElementById('tokenBalance').textContent = "0";
-            document.getElementById('nftGallery').innerHTML = "";
-        }
-        
-        // Generate constellation with more complexity
-        function createConstellation() {
-            const container = document.getElementById('constellation');
-            const starCount = 100;
-            
-            // Create stars
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * 100}%`;
-                star.style.animationDelay = `${Math.random() * 3}s`;
-                star.style.width = `${1 + Math.random() * 3}px`;
-                star.style.height = star.style.width;
-                
-                // Randomize star colors slightly
-                const hue = 200 + Math.random() * 40;
-                const saturation = 70 + Math.random() * 30;
-                star.style.backgroundColor = `hsl(${hue}, ${saturation}%, 80%)`;
-                
-                container.appendChild(star);
-            }
-            
-            // Connect stars to form constellations
-            const stars = document.querySelectorAll('.star');
-            const connections = Math.floor(starCount / 2);
-            
-            for (let i = 0; i < connections; i++) {
-                const star1 = stars[Math.floor(Math.random() * stars.length)];
-                const star2 = stars[Math.floor(Math.random() * stars.length)];
-                
-                const distance = Math.sqrt(
-                    Math.pow(parseFloat(star2.style.left) - parseFloat(star1.style.left), 2) + 
-                    Math.pow(parseFloat(star2.style.top) - parseFloat(star1.style.top), 2)
-                );
-                
-                // Only connect relatively close stars
-                if (distance < 20) {
-                    const line = document.createElement('div');
-                    line.style.position = 'absolute';
-                    
-                    // Random line color based on distance
-                    const hue = 200 + Math.random() * 40;
-                    line.style.backgroundColor = `hsla(${hue}, 70%, 70%, 0.3)`;
-                    line.style.height = '1px';
-                    
-                    const x1 = parseFloat(star1.style.left);
-                    const y1 = parseFloat(star1.style.top);
-                    const x2 = parseFloat(star2.style.left);
-                    const y2 = parseFloat(star2.style.top);
-                    
-                    const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-                    
-                    line.style.width = `${length}%`;
-                    line.style.left = `${x1}%`;
-                    line.style.top = `${y1}%`;
-                    line.style.transformOrigin = '0 0';
-                    line.style.transform = `rotate(${angle}deg)`;
-                    line.style.zIndex = '0';
-                    
-                    container.appendChild(line);
-                }
-            }
-        }
-        
-        // Create floating tokens animation
-        function createFloatingTokens() {
-            const container = document.getElementById('floatingTokens');
-            const tokens = ['Ξ', '♦', '♠', '♣', '♥', '∞', '⚡', '♞', '♛', '★'];
-            
-            for (let i = 0; i < 15; i++) {
-                const token = document.createElement('div');
-                token.className = 'token';
-                token.textContent = tokens[Math.floor(Math.random() * tokens.length)];
-                token.style.left = `${Math.random() * 100}%`;
-                token.style.animationDelay = `${Math.random() * 15}s`;
-                
-                // Random color
-                const colors = ['#d4af37', '#4fc3f7', '#9c27b0', '#ffffff'];
-                token.style.color = colors[Math.floor(Math.random() * colors.length)];
-                
-                container.appendChild(token);
-            }
-        }
-        
-        // Create confetti effect
-        function createConfetti() {
-            const colors = ['#d4af37', '#4fc3f7', '#9c27b0', '#ffffff'];
-            
-            for (let i = 0; i < 100; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = `${Math.random() * 100}%`;
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = `${Math.random() * 2}s`;
-                confetti.style.width = `${5 + Math.random() * 10}px`;
-                confetti.style.height = `${5 + Math.random() * 10}px`;
-                
-                document.body.appendChild(confetti);
-                
-                // Remove confetti after animation
-                setTimeout(() => {
-                    confetti.remove();
-                }, 3000);
-            }
-        }
-        
-        // Unfurl the scroll with enhanced animation
-        function unfurlScroll() {
-            const scroll = document.getElementById('oracleScroll');
-            setTimeout(() => {
-                scroll.classList.add('active');
-            }, 500);
-        }
-        
-        // Display a random oracle message with enhanced effects
-        function displayOracleMessage() {
-            const randomMessageObj = messages[Math.floor(Math.random() * messages.length)];
-            const messageElement = document.getElementById('oracleMessage');
-            
-            // Apply rarity styling
-            messageElement.className = 'oracle-message';
-            messageElement.classList.add('revealed');
-            messageElement.classList.add(`rarity-${randomMessageObj.rarity}`);
-            
-            // Typewriter effect
-            const text = randomMessageObj.text;
-            let i = 0;
-            messageElement.textContent = '';
-            
-            const typing = setInterval(() => {
-                if (i < text.length) {
-                    messageElement.textContent += text.charAt(i);
-                    i++;
-                } else {
-                    clearInterval(typing);
-                    
-                    // Show Web3 section for messages marked with web3: true
-                    if (randomMessageObj.web3) {
-                        const web3Section = document.getElementById('web3Section');
-                        web3Section.classList.add('visible');
-                        
-                        // Initialize Web3 if not already connected
-                        if (!walletConnected) {
-                            initWeb3();
-                        }
-                    }
-                    
-                    document.getElementById('consultButton').style.display = 'none';
-                    document.getElementById('tryAgain').style.display = 'block';
-                    
-                    // Create confetti for rare or better messages
-                    if (['rare', 'epic', 'legendary', 'mythic'].includes(randomMessageObj.rarity)) {
-                        createConfetti();
-                    }
-                }
-            }, 30);
-        }
-        
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            createConstellation();
-            unfurlScroll();
-            
-            document.getElementById('consultButton').addEventListener('click', displayOracleMessage);
-            
-            document.getElementById('connectWallet').addEventListener('click', initWeb3);
-            
-            document.getElementById('tryAgain').addEventListener('click', () => {
-                document.getElementById('oracleMessage').className = 'oracle-message';
-                document.getElementById('oracleMessage').style.display = 'none';
-                document.getElementById('web3Section').classList.remove('visible');
-                document.getElementById('consultButton').style.display = 'block';
-                document.getElementById('tryAgain').style.display = 'none';
-            });
-            
-            document.getElementById('mintScroll').addEventListener('click', async () => {
-                const messageElement = document.getElementById('oracleMessage');
-                if (!walletConnected) {
-                    alert("Please connect your wallet first!");
-                    initWeb3();
-                    return;
-                }
-                
-                if (messageElement.textContent) {
-                    try {
-                        // First check if we're on BSC
-                        if (chainId !== BSC_MAINNET.chainId) {
-                            const switched = await switchToBSC();
-                            if (!switched) {
-                                alert("Please switch to BSC to mint your prophecy NFT");
-                                return;
-                            }
-                        }
-                        
-                        // Here you would add your actual BSC contract interaction
-                        alert(`Ready to mint on BSC:\n\n"${messageElement.textContent}"`);
-                        createConfetti();
-                        
-                    } catch (error) {
-                        console.error("Minting error:", error);
-                        alert("Error attempting to mint. See console for details.");
-                    }
-                } else {
-                    alert("First consult the Oracle to receive a prophecy worth minting!");
-                }
-            });
-            
-            // Add subtle parallax effect
-            document.addEventListener('mousemove', (e) => {
-                const x = e.clientX / window.innerWidth;
-                const y = e.clientY / window.innerHeight;
-                
-                const scroll = document.getElementById('oracleScroll');
-                scroll.style.transform = `rotateX(${15 - y * 10}deg) rotateY(${-10 + x * 20}deg)`;
-                
-                const phoenix = document.querySelector('.phoenix');
-                const dragon = document.querySelector('.dragon');
-                
-                phoenix.style.transform = `translate(${x * 20 - 10}px, ${y * 20 - 10}px)`;
-                dragon.style.transform = `translate(${-x * 20 + 10}px, ${-y * 20 + 10}px)`;
-            });
-            
-            // Check if wallet is already connected
-            if (window.ethereum && window.ethereum.selectedAddress) {
-                initWeb3();
-            }
+        const res = await fetch(ORACLE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-    </script>
+
+        if(!res.ok){
+          // Show any error string sent by backend if present
+          const maybeText = await res.text().catch(()=> '');
+          throw new Error(maybeText || `Oracle HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const answer = (data && (data.answer || data.message)) || 'The Oracle is silent…';
+        msgEl.textContent = answer;
+      }catch(err){
+        console.error('Oracle error:', err);
+        // graceful fallback so the UI still “works”
+        const fallback = fallbackMessages[Math.floor(Math.random()*fallbackMessages.length)];
+        msgEl.textContent = `${fallback}\n\n[offline fallback shown due to: ${err.message}]`;
+      }finally{
+        spinner.classList.remove('show');
+        msgEl.classList.add('revealed');
+        msgEl.style.display = 'block';
+        document.getElementById('consultButton').style.display = 'none';
+        document.getElementById('tryAgain').style.display = 'block';
+      }
+    }
+
+    /* ------------- UI EVENTS ----------------- */
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // simple “unfurl”
+      setTimeout(()=> document.getElementById('oracleScroll').classList.add('active'), 400);
+
+      document.getElementById('consultButton').addEventListener('click', ()=>{
+        const q = (document.getElementById('userQuestion').value || '').trim();
+        if(!q){ alert('Ask the Oracle a clear question first.'); return; }
+        callOracle(q);
+      });
+
+      document.getElementById('connectWallet').addEventListener('click', initWeb3);
+
+      document.getElementById('tryAgain').addEventListener('click', ()=>{
+        document.getElementById('oracleMessage').className = 'oracle-message';
+        document.getElementById('oracleMessage').style.display = 'none';
+        document.getElementById('consultButton').style.display = 'block';
+        document.getElementById('tryAgain').style.display = 'none';
+        document.getElementById('userQuestion').focus();
+      });
+
+      // Auto-connect if wallet already authorized in some browsers
+      if(window.ethereum && window.ethereum.selectedAddress){ initWeb3(); }
+    });
+  </script>
 </body>
 </html>
