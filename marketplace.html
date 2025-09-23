@@ -12,16 +12,19 @@
       --ink: #ededed;
       --line: #2a2a2a;
       --gold: #d6b25e;
+      --success: #10b981;
+      --error: #ef4444;
     }
-    * { box-sizing: border-box }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       margin: 0; background: var(--bg); color: var(--ink);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      min-height: 100vh;
     }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
     header {
       display: flex; gap: 12px; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid var(--line); padding-bottom: 14px;
+      border-bottom: 1px solid var(--line); padding-bottom: 14px; flex-wrap: wrap;
     }
     .brand { display:flex; gap:12px; align-items:center; }
     .logo {
@@ -31,32 +34,79 @@
       letter-spacing: 0.5px;
     }
     .title { line-height: 1.1; margin: 0; font-size: clamp(18px, 3.6vw, 28px); }
-    .actions { display:flex; gap:10px; align-items:center; }
+    .actions { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
     .btn {
       display:inline-flex; align-items:center; justify-content:center;
       padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
       background: #171717; color: var(--ink); cursor: pointer; font-weight: 600;
+      transition: all 0.2s ease; white-space: nowrap;
     }
-    .btn:hover { background:#1f1f1f }
+    .btn:hover { background:#1f1f1f; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn.gold { background: linear-gradient(180deg, #f2d88a, #b9943a); color: #121212; border: none; }
+    .btn.gold:hover { background: linear-gradient(180deg, #f4dc94, #c19d42); }
+    .btn.success { background: var(--success); color: white; border: none; }
     .grid {
-      display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-      padding-top: 18px;
+      display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      padding-top: 24px;
     }
     .card {
       background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-      display: flex; flex-direction: column;
+      display: flex; flex-direction: column; transition: all 0.3s ease;
     }
-    .img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background:#0f0f0f }
-    .pad { padding: 12px 12px 14px; display:flex; flex-direction:column; gap:8px; }
-    .name { font-weight: 700; font-size: 15px; margin: 2px 0 0; }
-    .muted { opacity: .8; font-size: 13px; }
-    .foot { display:flex; align-items:center; gap:8px; margin-top: 6px; }
-    .badge { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; }
+    .card:hover { transform: translateY(-4px); border-color: var(--gold); box-shadow: 0 8px 24px rgba(214, 178, 94, 0.1); }
+    .img-container { width: 100%; aspect-ratio: 1 / 1; background: #0f0f0f; position: relative; overflow: hidden; }
+    .img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+    .card:hover .img { transform: scale(1.05); }
+    .img-placeholder { 
+      width: 100%; height: 100%; display: grid; place-items: center; 
+      background: linear-gradient(45deg, #1a1a1a, #2a2a2a); color: var(--gold);
+    }
+    .pad { padding: 16px; display:flex; flex-direction:column; gap:12px; flex-grow: 1; }
+    .name { font-weight: 700; font-size: 16px; margin: 0; line-height: 1.3; }
+    .description { opacity: 0.7; font-size: 14px; line-height: 1.4; margin: 4px 0; }
+    .price { font-size: 18px; font-weight: 700; color: var(--gold); margin: 4px 0; }
+    .foot { display:flex; align-items:center; gap:8px; margin-top: auto; }
+    .badge { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; background: #1a1a1a; }
     .buy { margin-left: auto; }
-    footer { margin: 26px 0 10px; opacity: .8; font-size: 12px; text-align:center; }
-    .notice { border:1px dashed var(--line); padding:10px 12px; border-radius:10px; margin-top:14px; opacity:.95 }
-    a { color: var(--gold); text-decoration: none }
+    footer { margin: 40px 0 20px; opacity: .8; font-size: 12px; text-align:center; }
+    .notice { 
+      border: 1px dashed var(--line); padding: 16px; border-radius: 10px; margin: 20px 0;
+      background: #151515; opacity: .95; 
+    }
+    .notice.success { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+    .notice.error { border-color: var(--error); background: rgba(239, 68, 68, 0.1); }
+    a { color: var(--gold); text-decoration: none; transition: opacity 0.2s; }
+    a:hover { opacity: 0.8; }
+    .loading { 
+      display: inline-block; width: 20px; height: 20px; border: 2px solid transparent;
+      border-top: 2px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .wallet-info { 
+      background: #151515; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
+      font-size: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .connected-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+    .filters { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+    .filter-btn { 
+      padding: 8px 16px; border-radius: 20px; border: 1px solid var(--line); 
+      background: #151515; color: var(--ink); cursor: pointer; transition: all 0.2s;
+    }
+    .filter-btn.active { background: var(--gold); color: #121212; border-color: var(--gold); }
+    @media (max-width: 768px) {
+      header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .actions { width: 100%; justify-content: flex-end; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; width: 100%; }
+      .btn { width: 100%; justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -70,51 +120,122 @@
         </div>
       </div>
       <div class="actions">
-        <button id="connect" class="btn">Connect Wallet</button>
+        <div id="walletInfo" class="wallet-info" style="display: none;">
+          <span class="connected-dot"></span>
+          <span id="walletAddress"></span>
+        </div>
+        <button id="connect" class="btn">
+          <span id="connectText">Connect Wallet</span>
+          <span id="connectSpinner" class="loading" style="display: none; margin-left: 8px;"></span>
+        </button>
         <button id="switch" class="btn">Switch to BNB</button>
       </div>
     </header>
 
     <div id="alert" class="notice" style="display:none"></div>
-    <div id="grid" class="grid"></div>
+    
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All Listings</button>
+      <button class="filter-btn" data-filter="available">Available</button>
+      <button class="filter-btn" data-filter="sold">Sold</button>
+    </div>
+    
+    <div id="grid" class="grid">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+        <div class="loading" style="width: 40px; height: 40px; margin: 0 auto 16px;"></div>
+        <div>Loading marketplace...</div>
+      </div>
+    </div>
 
     <footer>
       1% fee funds KLY staking & Tamaquah Nation development. Thirdweb platform fee 2.5% also applies.
     </footer>
   </div>
 
-<!-- Thirdweb UMD build --><script src="https://unpkg.com/thirdweb/dist/thirdweb.umd.js"></script>
+<!-- Thirdweb UMD build -->
+<script src="https://unpkg.com/thirdweb/dist/thirdweb.umd.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
+  // Configuration
+  const CLIENT_ID = "";   // Your public Client ID
+  const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
+  const CHAIN = thirdweb.chains.binance;
+
+  // DOM Elements
+  const $alert = document.getElementById("alert");
+  const $connect = document.getElementById("connect");
+  const $connectText = document.getElementById("connectText");
+  const $connectSpinner = document.getElementById("connectSpinner");
+  const $switch = document.getElementById("switch");
+  const $grid = document.getElementById("grid");
+  const $walletInfo = document.getElementById("walletInfo");
+  const $walletAddress = document.getElementById("walletAddress");
+  const $filters = document.querySelectorAll('.filter-btn');
+
+  let wallet = null;
+  let allListings = [];
+  let currentFilter = 'all';
+
+  // Initialize Thirdweb
   if (!window.thirdweb) {
-    const a = document.getElementById("alert");
-    if (a) { a.style.display="block"; a.textContent="Thirdweb SDK did not load. Check CDN path."; }
+    showAlert("Thirdweb SDK did not load. Check CDN path.", "error");
     return;
   }
 
-  const CLIENT_ID   = "8f565f3207b79f423c869244e75d34ae";   // your public Client ID
-  const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
-  const CHAIN       = thirdweb.chains.binance;                // mainnet BNB (chainId 56)
-
-  const client   = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
+  const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
   const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
 
-  const $alert   = document.getElementById("alert");
-  const $connect = document.getElementById("connect");
-  const $switch  = document.getElementById("switch");
-  let wallet = null;
+  // Utility Functions
+  function showAlert(message, type = "info") {
+    if (!$alert) return;
+    $alert.style.display = "block";
+    $alert.textContent = message;
+    $alert.className = `notice ${type}`;
+    setTimeout(() => {
+      $alert.style.display = "none";
+      $alert.className = "notice";
+    }, type === "error" ? 10000 : 5000);
+  }
 
-  const show = (m) => { if (!$alert) return; $alert.style.display="block"; $alert.textContent=m; };
+  function setLoading(loading) {
+    $connect.disabled = loading;
+    $connectText.textContent = loading ? "Connecting" : "Connect Wallet";
+    $connectSpinner.style.display = loading ? "inline-block" : "none";
+  }
 
-  // --- Auto-add BNB if missing (EIP-3085) ---
+  function formatAddress(address) {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }
+
+  function updateWalletInfo(address) {
+    if (address) {
+      $walletAddress.textContent = formatAddress(address);
+      $walletInfo.style.display = "flex";
+      $connect.style.display = "none";
+    } else {
+      $walletInfo.style.display = "none";
+      $connect.style.display = "inline-flex";
+    }
+  }
+
+  // IPFS Helper
+  const ipfs = (url) => {
+    if (!url) return "";
+    if (url.startsWith("ipfs://")) {
+      return "https://ipfs.io/ipfs/" + url.slice(7);
+    }
+    return url;
+  };
+
+  // Network Functions
   async function ensureBnbChain() {
     try {
       if (!window.ethereum?.request) return;
-      // Ask wallet to add BNB Smart Chain mainnet
+      
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: "0x38",                      // 56
+          chainId: "0x38",
           chainName: "BNB Smart Chain",
           nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
           rpcUrls: ["https://bsc-dataseed.binance.org/"],
@@ -122,14 +243,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         }]
       });
     } catch (e) {
-      // If the chain already exists, wallets usually throw; it's safe to ignore.
-      console.debug("addChain result:", e?.message || e);
+      console.debug("Chain addition result:", e?.message || e);
     }
   }
 
+  // Wallet Connection
   async function connectWallet() {
     try {
+      setLoading(true);
       await ensureBnbChain();
+      
       wallet = await thirdweb.connect({
         client,
         wallets: [
@@ -139,24 +262,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         ],
         chain: CHAIN,
       });
-      show("Wallet connected.");
+
+      const address = await wallet.getAddress();
+      updateWalletInfo(address);
+      showAlert("Wallet connected successfully!", "success");
       return wallet;
     } catch (e) {
-      console.error("connect error:", e);
-      // Mobile fallback: open MetaMask deep link to your page
+      console.error("Connection error:", e);
+      
+      // Mobile fallback
       const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
       if (isMobile && !window.ethereum) {
         const deeplink = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
         window.location.href = deeplink;
       } else {
-        show("Could not open wallet. Make sure a wallet is installed or use WalletConnect.");
+        showAlert("Could not connect wallet. Please make sure a wallet is installed.", "error");
       }
       throw e;
+    } finally {
+      setLoading(false);
     }
   }
 
+  // Event Listeners
   $connect.onclick = async () => {
-    try { await connectWallet(); } catch (_) {}
+    try { 
+      await connectWallet(); 
+    } catch (e) {
+      // Error handled in connectWallet
+    }
   };
 
   $switch.onclick = async () => {
@@ -164,76 +298,133 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!wallet) await connectWallet();
       await ensureBnbChain();
       await wallet.switchChain(CHAIN);
-      show("Switched to BNB Chain.");
+      showAlert("Switched to BNB Chain successfully!", "success");
     } catch (e) {
-      console.error("switch error:", e);
-      show("Switch failed. Approve in your wallet or try again.");
+      console.error("Switch error:", e);
+      showAlert("Failed to switch network. Please approve in your wallet.", "error");
     }
   };
 
-  // Load listings (unchanged)
-  try {
-    const listings = await contract.read("getAllValidListings", []);
-    const grid = document.getElementById("grid");
-    if (!Array.isArray(listings) || listings.length === 0) {
-      grid.innerHTML = '<div class="notice">No active listings yet. Create a direct listing in your admin page or Thirdweb.</div>';
-    } else {
-      const ipfs = (u)=>!u?"":u.startsWith("ipfs://")?"https://ipfs.io/ipfs/"+u.slice(7):u;
-      grid.innerHTML = "";
-      for (const l of listings) {
-        const priceWei = typeof l.pricePerToken === "bigint" ? l.pricePerToken : BigInt(l.pricePerToken || 0);
-        const priceBNB = Number(priceWei)/1e18;
+  // Filter functionality
+  $filters.forEach(btn => {
+    btn.addEventListener('click', () => {
+      $filters.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderListings();
+    });
+  });
 
-        // Try to resolve metadata from the NFT contract if not embedded
-        let name = `Listing #${l.id}`, image = "";
-        try {
-          const assetAddr = l.assetContract || l.asset?.contractAddress;
-          const tokenId   = l.tokenId ?? l.asset?.id;
-          if (assetAddr != null && tokenId != null) {
-            const nft = thirdweb.getContract({ client, chain: CHAIN, address: assetAddr });
-            try {
-              const uri = await nft.read("tokenURI", [tokenId]);          // ERC721
-              const meta = await (await fetch(ipfs(uri))).json();
-              name  = meta.name || name;
-              image = ipfs(meta.image || meta.image_url || "");
-            } catch {}
-          }
-        } catch {}
-
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <img class="img" src="${image}" alt="${name}" onerror="this.style.display='none'"/>
-          <div class="pad">
-            <div class="name">${name}</div>
-            <div class="muted">${priceBNB} BNB</div>
-            <div class="foot">
-              <span class="badge">Direct</span>
-              <button class="btn gold buy">Buy</button>
-            </div>
-          </div>`;
-        card.querySelector(".buy").onclick = async () => {
-          try {
-            if (!wallet) await connectWallet();
-            await ensureBnbChain();
-            await wallet.switchChain(CHAIN);
-            await contract.write("buyFromListing", [
-              l.id, 1n, "0x0000000000000000000000000000000000000000"
-            ]);
-            show("Purchase sent — check your wallet.");
-          } catch (e) {
-            console.error("buy error:", e);
-            show("Buy failed. Ensure BNB balance and that the listing is active.");
-          }
-        };
-        grid.appendChild(card);
-      }
+  // Marketplace Functions
+  async function loadListings() {
+    try {
+      const listings = await contract.read("getAllValidListings", []);
+      allListings = Array.isArray(listings) ? listings : [];
+      renderListings();
+    } catch (e) {
+      console.error("Load listings error:", e);
+      $grid.innerHTML = `
+        <div class="notice error" style="display: block; grid-column: 1 / -1;">
+          Couldn't load listings. Please check your Client ID, domain allowlist, and contract configuration.
+        </div>`;
     }
-  } catch (e) {
-    console.error("loadListings error:", e);
-    document.getElementById("grid").innerHTML =
-      '<div class="notice">Couldn’t load listings. Check Client ID, domain allowlist, and contract.</div>';
   }
+
+  function renderListings() {
+    if (!Array.isArray(allListings) || allListings.length === 0) {
+      $grid.innerHTML = `
+        <div class="notice" style="display: block; grid-column: 1 / -1;">
+          No active listings found. Create a direct listing in your admin page or Thirdweb dashboard.
+        </div>`;
+      return;
+    }
+
+    const filteredListings = allListings.filter(listing => {
+      if (currentFilter === 'available') return listing.quantity > 0;
+      if (currentFilter === 'sold') return listing.quantity === 0;
+      return true;
+    });
+
+    if (filteredListings.length === 0) {
+      $grid.innerHTML = `
+        <div class="notice" style="display: block; grid-column: 1 / -1;">
+          No listings match the current filter.
+        </div>`;
+      return;
+    }
+
+    $grid.innerHTML = filteredListings.map(listing => createListingCard(listing)).join('');
+    attachBuyHandlers();
+  }
+
+  function createListingCard(listing) {
+    const priceWei = typeof listing.pricePerToken === "bigint" ? listing.pricePerToken : BigInt(listing.pricePerToken || 0);
+    const priceBNB = Number(priceWei) / 1e18;
+    const isSold = listing.quantity === 0;
+
+    return `
+      <div class="card" data-listing-id="${listing.id}">
+        <div class="img-container">
+          <div class="img-placeholder">
+            ${isSold ? '<div style="text-align: center; padding: 20px;"><span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">SOLD</span></div>' : 'NFT'}
+          </div>
+        </div>
+        <div class="pad">
+          <h3 class="name">Listing #${listing.id.toString()}</h3>
+          <div class="price">${priceBNB.toFixed(4)} BNB</div>
+          <div class="description">Direct listing on BNB Chain</div>
+          <div class="foot">
+            <span class="badge">${isSold ? 'Sold Out' : 'Available'}</span>
+            <span class="badge">Qty: ${listing.quantity.toString()}</span>
+            ${!isSold ? '<button class="btn gold buy">Buy Now</button>' : '<button class="btn" disabled>Sold Out</button>'}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function attachBuyHandlers() {
+    document.querySelectorAll('.btn.buy').forEach(btn => {
+      btn.onclick = async () => {
+        const card = btn.closest('.card');
+        const listingId = card.dataset.listingId;
+        const listing = allListings.find(l => l.id.toString() === listingId);
+
+        if (!listing) {
+          showAlert("Listing not found.", "error");
+          return;
+        }
+
+        try {
+          if (!wallet) await connectWallet();
+          
+          await ensureBnbChain();
+          await wallet.switchChain(CHAIN);
+
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loading" style="width: 16px; height: 16px;"></span> Buying...';
+
+          await contract.write("buyFromListing", [
+            listing.id, 
+            1n, 
+            "0x0000000000000000000000000000000000000000"
+          ]);
+
+          showAlert("Purchase completed successfully!", "success");
+          
+          // Reload listings to update quantities
+          await loadListings();
+        } catch (e) {
+          console.error("Buy error:", e);
+          showAlert("Purchase failed. Please ensure you have enough BNB and the listing is still active.", "error");
+          btn.disabled = false;
+          btn.textContent = 'Buy Now';
+        }
+      };
+    });
+  }
+
+  // Initialize Marketplace
+  await loadListings();
 });
 </script>
 </body>
