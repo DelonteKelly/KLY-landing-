@@ -82,10 +82,7 @@
       display: inline-block; width: 20px; height: 20px; border: 2px solid transparent;
       border-top: 2px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .wallet-info { 
       background: #151515; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
       font-size: 14px; display: flex; align-items: center; gap: 8px;
@@ -152,280 +149,317 @@
     </footer>
   </div>
 
-<!-- Thirdweb UMD build -->
-<script src="https://unpkg.com/thirdweb/dist/thirdweb.umd.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-  // Configuration
-  const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae";   // Your public Client ID
-  const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
-  const CHAIN = thirdweb.chains.binance;
+  <!-- Pin Thirdweb v5 UMD build -->
+  <script src="https://unpkg.com/thirdweb@5/dist/thirdweb.umd.js"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    // ===== Configuration =====
+    const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae";   // Thirdweb clientId
+    const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A"; // Marketplace V3 address
+    const CHAIN = thirdweb.chains.binance;
+    const WC_PROJECT_ID = "YOUR_WALLETCONNECT_PROJECT_ID"; // <-- replace this
 
-  // DOM Elements
-  const $alert = document.getElementById("alert");
-  const $connect = document.getElementById("connect");
-  const $connectText = document.getElementById("connectText");
-  const $connectSpinner = document.getElementById("connectSpinner");
-  const $switch = document.getElementById("switch");
-  const $grid = document.getElementById("grid");
-  const $walletInfo = document.getElementById("walletInfo");
-  const $walletAddress = document.getElementById("walletAddress");
-  const $filters = document.querySelectorAll('.filter-btn');
+    // ===== DOM =====
+    const $alert = document.getElementById("alert");
+    const $connect = document.getElementById("connect");
+    const $connectText = document.getElementById("connectText");
+    const $connectSpinner = document.getElementById("connectSpinner");
+    const $switch = document.getElementById("switch");
+    const $grid = document.getElementById("grid");
+    const $walletInfo = document.getElementById("walletInfo");
+    const $walletAddress = document.getElementById("walletAddress");
+    const $filters = document.querySelectorAll(".filter-btn");
 
-  let wallet = null;
-  let allListings = [];
-  let currentFilter = 'all';
+    let wallet = null;
+    let allListings = [];
+    let currentFilter = "all";
 
-  // Initialize Thirdweb
-  if (!window.thirdweb) {
-    showAlert("Thirdweb SDK did not load. Check CDN path.", "error");
-    return;
-  }
+    // ===== Art Map (Token IDs 0..8) =====
+    const ART = [
+      { name: "Ra — Flame of Sovereignty", cid: "bafybeiccdpbxu6vptsrug34cvkp2roinrpz5jtzdwwa73pxzienpmr7fjy" },
+      { name: "Ma’at", cid: "bafybeicrw3kpcjzyb7qxtzha2kzkwuf4rg7lcoaqy7hem6f2nmdpmk6dcy" },
+      { name: "Thoth — Keeper of Codes", cid: "bafybeif7c3mjplu6i5yevvbgjbsfnfzgnfiojgq5z3b4fqciry5wzd7jk4" },
+      { name: "Ausar — Eternal Legacy", cid: "bafybeiclcwltvocyx3tq6mgldbgjkbgtup2qji6um6mf6zbtiotj7ufuzm" },
+      { name: "Auset — Divine Mother", cid: "bafybeie5g5ysxbuoeqqtt7flm7w33kpasxjpcqbdjgg7axr7svixu3eemy" },
+      { name: "Heru — Eye of Victory", cid: "bafybeifiyl2syrq6ngxb7s4aj3c7ldblebakhhk3otpoim2suklp7reaoe" },
+      { name: "Sekhmet — Fire of Renewal", cid: "bafybeib425keyil6fkpkokinbzkrpndzw72aoirkhvspk5rmtgb6q6zwh4" },
+      { name: "Anubis — Guardian of Realms", cid: "bafybeihti6nrmxp2ybinouhtprw66csdhr5gi6kzoj4vsomcd47zdlh24q" },
+      { name: "Ptah — Architect of Worlds", cid: "bafybeigysblmer4edcp2imgo2awqbwhnzv5bnc2u274n6lqxxr572zwedu" },
+    ];
 
-  const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
-  const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
+    const ipfsCIDToHTTP = (cid) => `https://ipfs.io/ipfs/${cid}`; // swap gateway if desired
 
-  // Utility Functions
-  function showAlert(message, type = "info") {
-    if (!$alert) return;
-    $alert.style.display = "block";
-    $alert.textContent = message;
-    $alert.className = `notice ${type}`;
-    setTimeout(() => {
-      $alert.style.display = "none";
-      $alert.className = "notice";
-    }, type === "error" ? 10000 : 5000);
-  }
-
-  function setLoading(loading) {
-    $connect.disabled = loading;
-    $connectText.textContent = loading ? "Connecting" : "Connect Wallet";
-    $connectSpinner.style.display = loading ? "inline-block" : "none";
-  }
-
-  function formatAddress(address) {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }
-
-  function updateWalletInfo(address) {
-    if (address) {
-      $walletAddress.textContent = formatAddress(address);
-      $walletInfo.style.display = "flex";
-      $connect.style.display = "none";
-    } else {
-      $walletInfo.style.display = "none";
-      $connect.style.display = "inline-flex";
+    // ===== Thirdweb Init =====
+    if (!window.thirdweb) {
+      showAlert("Thirdweb SDK did not load. Check CDN path.", "error");
+      return;
     }
-  }
+    const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
+    const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
 
-  // IPFS Helper
-  const ipfs = (url) => {
-    if (!url) return "";
-    if (url.startsWith("ipfs://")) {
-      return "https://ipfs.io/ipfs/" + url.slice(7);
+    // Pre-configured wallet list w/ options
+    const wallets = [
+      thirdweb.wallets.metamask(),
+      thirdweb.wallets.walletConnect({ projectId: WC_PROJECT_ID }),
+      thirdweb.wallets.coinbaseWallet({ appName: "KLY Sovereign Marketplace" }),
+    ];
+
+    // ===== Utils =====
+    function showAlert(message, type = "info") {
+      if (!$alert) return;
+      $alert.style.display = "block";
+      $alert.textContent = message;
+      $alert.className = `notice ${type}`;
+      setTimeout(() => {
+        $alert.style.display = "none";
+        $alert.className = "notice";
+      }, type === "error" ? 10000 : 5000);
     }
-    return url;
-  };
 
-  // Network Functions
-  async function ensureBnbChain() {
-    try {
-      if (!window.ethereum?.request) return;
-      
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x38",
-          chainName: "BNB Smart Chain",
-          nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-          rpcUrls: ["https://bsc-dataseed.binance.org/"],
-          blockExplorerUrls: ["https://bscscan.com"]
-        }]
-      });
-    } catch (e) {
-      console.debug("Chain addition result:", e?.message || e);
+    function setLoading(loading) {
+      $connect.disabled = loading;
+      $connectText.textContent = loading ? "Connecting" : "Connect Wallet";
+      $connectSpinner.style.display = loading ? "inline-block" : "none";
     }
-  }
 
-  // Wallet Connection
-  async function connectWallet() {
-    try {
-      setLoading(true);
-      await ensureBnbChain();
-      
-      wallet = await thirdweb.connect({
-        client,
-        wallets: [
-          thirdweb.wallets.metamask(),
-          thirdweb.wallets.walletConnect(),
-          thirdweb.wallets.coinbaseWallet()
-        ],
-        chain: CHAIN,
-      });
+    function formatAddress(address) {
+      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
 
-      const address = await wallet.getAddress();
-      updateWalletInfo(address);
-      showAlert("Wallet connected successfully!", "success");
-      return wallet;
-    } catch (e) {
-      console.error("Connection error:", e);
-      
-      // Mobile fallback
-      const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-      if (isMobile && !window.ethereum) {
-        const deeplink = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
-        window.location.href = deeplink;
+    function updateWalletInfo(address) {
+      if (address) {
+        $walletAddress.textContent = formatAddress(address);
+        $walletInfo.style.display = "flex";
+        $connect.style.display = "none";
       } else {
-        showAlert("Could not connect wallet. Please make sure a wallet is installed.", "error");
+        $walletInfo.style.display = "none";
+        $connect.style.display = "inline-flex";
       }
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Event Listeners
-  $connect.onclick = async () => {
-    try { 
-      await connectWallet(); 
-    } catch (e) {
-      // Error handled in connectWallet
-    }
-  };
-
-  $switch.onclick = async () => {
-    try {
-      if (!wallet) await connectWallet();
-      await ensureBnbChain();
-      await wallet.switchChain(CHAIN);
-      showAlert("Switched to BNB Chain successfully!", "success");
-    } catch (e) {
-      console.error("Switch error:", e);
-      showAlert("Failed to switch network. Please approve in your wallet.", "error");
-    }
-  };
-
-  // Filter functionality
-  $filters.forEach(btn => {
-    btn.addEventListener('click', () => {
-      $filters.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = btn.dataset.filter;
-      renderListings();
-    });
-  });
-
-  // Marketplace Functions
-  async function loadListings() {
-    try {
-      const listings = await contract.read("getAllValidListings", []);
-      allListings = Array.isArray(listings) ? listings : [];
-      renderListings();
-    } catch (e) {
-      console.error("Load listings error:", e);
-      $grid.innerHTML = `
-        <div class="notice error" style="display: block; grid-column: 1 / -1;">
-          Couldn't load listings. Please check your Client ID, domain allowlist, and contract configuration.
-        </div>`;
-    }
-  }
-
-  function renderListings() {
-    if (!Array.isArray(allListings) || allListings.length === 0) {
-      $grid.innerHTML = `
-        <div class="notice" style="display: block; grid-column: 1 / -1;">
-          No active listings found. Create a direct listing in your admin page or Thirdweb dashboard.
-        </div>`;
-      return;
     }
 
-    const filteredListings = allListings.filter(listing => {
-      if (currentFilter === 'available') return listing.quantity > 0;
-      if (currentFilter === 'sold') return listing.quantity === 0;
-      return true;
-    });
+    // ===== Wallet Connection =====
+    async function connectWallet() {
+      try {
+        setLoading(true);
 
-    if (filteredListings.length === 0) {
-      $grid.innerHTML = `
-        <div class="notice" style="display: block; grid-column: 1 / -1;">
-          No listings match the current filter.
-        </div>`;
-      return;
-    }
+        // 1) Prompt user for wallet
+        wallet = await thirdweb.connect({
+          client,
+          wallets,
+          chain: CHAIN, // preferred chain
+        });
 
-    $grid.innerHTML = filteredListings.map(listing => createListingCard(listing)).join('');
-    attachBuyHandlers();
-  }
-
-  function createListingCard(listing) {
-    const priceWei = typeof listing.pricePerToken === "bigint" ? listing.pricePerToken : BigInt(listing.pricePerToken || 0);
-    const priceBNB = Number(priceWei) / 1e18;
-    const isSold = listing.quantity === 0;
-
-    return `
-      <div class="card" data-listing-id="${listing.id}">
-        <div class="img-container">
-          <div class="img-placeholder">
-            ${isSold ? '<div style="text-align: center; padding: 20px;"><span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">SOLD</span></div>' : 'NFT'}
-          </div>
-        </div>
-        <div class="pad">
-          <h3 class="name">Listing #${listing.id.toString()}</h3>
-          <div class="price">${priceBNB.toFixed(4)} BNB</div>
-          <div class="description">Direct listing on BNB Chain</div>
-          <div class="foot">
-            <span class="badge">${isSold ? 'Sold Out' : 'Available'}</span>
-            <span class="badge">Qty: ${listing.quantity.toString()}</span>
-            ${!isSold ? '<button class="btn gold buy">Buy Now</button>' : '<button class="btn" disabled>Sold Out</button>'}
-          </div>
-        </div>
-      </div>`;
-  }
-
-  function attachBuyHandlers() {
-    document.querySelectorAll('.btn.buy').forEach(btn => {
-      btn.onclick = async () => {
-        const card = btn.closest('.card');
-        const listingId = card.dataset.listingId;
-        const listing = allListings.find(l => l.id.toString() === listingId);
-
-        if (!listing) {
-          showAlert("Listing not found.", "error");
-          return;
-        }
-
+        // 2) Ensure BNB Chain
         try {
-          if (!wallet) await connectWallet();
-          
-          await ensureBnbChain();
           await wallet.switchChain(CHAIN);
-
-          btn.disabled = true;
-          btn.innerHTML = '<span class="loading" style="width: 16px; height: 16px;"></span> Buying...';
-
-          await contract.write("buyFromListing", [
-            listing.id, 
-            1n, 
-            "0x0000000000000000000000000000000000000000"
-          ]);
-
-          showAlert("Purchase completed successfully!", "success");
-          
-          // Reload listings to update quantities
-          await loadListings();
-        } catch (e) {
-          console.error("Buy error:", e);
-          showAlert("Purchase failed. Please ensure you have enough BNB and the listing is still active.", "error");
-          btn.disabled = false;
-          btn.textContent = 'Buy Now';
+        } catch (switchErr) {
+          const provider = await wallet.getEthereumProvider();
+          if (provider?.request) {
+            try {
+              await provider.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: "0x38",
+                  chainName: "BNB Smart Chain",
+                  nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+                  rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                  blockExplorerUrls: ["https://bscscan.com"]
+                }]
+              });
+              await wallet.switchChain(CHAIN);
+            } catch (addErr) {
+              console.debug("Add/switch chain failed:", addErr);
+            }
+          }
         }
-      };
-    });
-  }
 
-  // Initialize Marketplace
-  await loadListings();
-});
-</script>
+        const address = await wallet.getAddress();
+        updateWalletInfo(address);
+        showAlert("Wallet connected successfully!", "success");
+        return wallet;
+      } catch (e) {
+        console.error("Connection error:", e);
+        // Mobile fallback (deep link with full encoded URL)
+        const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+        if (isMobile && !window.ethereum) {
+          const dappUrl = encodeURIComponent(window.location.href);
+          window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
+        } else {
+          showAlert("Could not connect wallet. Make sure a wallet is installed.", "error");
+        }
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ===== Events =====
+    $connect.onclick = async () => {
+      try { await connectWallet(); } catch {}
+    };
+
+    $switch.onclick = async () => {
+      try {
+        if (!wallet) await connectWallet();
+        await wallet.switchChain(CHAIN);
+        showAlert("Switched to BNB Chain successfully!", "success");
+      } catch (e) {
+        console.error("Switch error:", e);
+        showAlert("Failed to switch network. Please approve in your wallet.", "error");
+      }
+    };
+
+    // Filters
+    $filters.forEach(btn => {
+      btn.addEventListener("click", () => {
+        $filters.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderListings();
+      });
+    });
+
+    // ===== Marketplace (V3) =====
+    async function loadListings() {
+      try {
+        // Get valid Direct Listings from Marketplace V3 extension
+        const direct = await thirdweb.extensions.marketplace.directListings.getAllValid({ contract });
+
+        // Normalize for rendering
+        allListings = (direct || []).map(d => ({
+          type: "direct",
+          id: d.id, // bigint
+          currency: (d.currency || "").toLowerCase(),
+          pricePerToken: d.pricePerToken, // bigint
+          quantity: d.quantity, // bigint
+          tokenId: d.tokenId, // bigint
+          assetContract: d.assetContract,
+        }));
+
+        renderListings();
+      } catch (e) {
+        console.error("Load listings error:", e);
+        $grid.innerHTML = `
+          <div class="notice error" style="display: block; grid-column: 1 / -1;">
+            Couldn't load listings. Ensure this is a Marketplace V3 contract, your clientId allowlist includes this domain, and listings exist.
+          </div>`;
+      }
+    }
+
+    function toBNB(weiBigInt) {
+      const n = typeof weiBigInt === "bigint" ? Number(weiBigInt) : Number(weiBigInt || 0);
+      return (n / 1e18).toFixed(4);
+    }
+
+    function createListingCard(listing) {
+      const idStr = listing.id.toString();
+      const qty = BigInt(listing.quantity || 0n);
+      const isSold = qty === 0n;
+
+      const tokenIdNum = Number(listing.tokenId ?? 0n);
+      const art = ART[tokenIdNum];
+      const imgSrc = art ? ipfsCIDToHTTP(art.cid) : "";
+      const title = art ? art.name : `Listing #${idStr}`;
+
+      const priceStr = toBNB(listing.pricePerToken);
+
+      return `
+        <div class="card" data-listing-id="${idStr}">
+          <div class="img-container">
+            ${
+              imgSrc
+                ? `<img src="${imgSrc}" class="img" alt="${title}" loading="lazy" />`
+                : `<div class="img-placeholder">${isSold ? '<span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">SOLD</span>' : 'NFT'}</div>`
+            }
+          </div>
+          <div class="pad">
+            <h3 class="name">${title}</h3>
+            <div class="price">${priceStr} BNB</div>
+            <div class="description">Direct listing on BNB Chain</div>
+            <div class="foot">
+              <span class="badge">${isSold ? 'Sold Out' : 'Available'}</span>
+              <span class="badge">Qty: ${qty.toString()}</span>
+              ${!isSold ? '<button class="btn gold buy">Buy Now</button>' : '<button class="btn" disabled>Sold Out</button>'}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderListings() {
+      if (!Array.isArray(allListings) || allListings.length === 0) {
+        $grid.innerHTML = `
+          <div class="notice" style="display: block; grid-column: 1 / -1;">
+            No active listings found. Create a Direct Listing for your NFTs in the Thirdweb dashboard.
+          </div>`;
+        return;
+      }
+
+      const filtered = allListings.filter(l => {
+        if (currentFilter === "available") return BigInt(l.quantity) > 0n;
+        if (currentFilter === "sold") return BigInt(l.quantity) === 0n;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        $grid.innerHTML = `
+          <div class="notice" style="display: block; grid-column: 1 / -1;">
+            No listings match the current filter.
+          </div>`;
+        return;
+      }
+
+      $grid.innerHTML = filtered.map(createListingCard).join("");
+      attachBuyHandlers();
+    }
+
+    function attachBuyHandlers() {
+      document.querySelectorAll(".btn.buy").forEach(btn => {
+        btn.onclick = async () => {
+          const card = btn.closest(".card");
+          const listingId = BigInt(card.dataset.listingId);
+          const listing = allListings.find(l => l.id === listingId);
+
+          if (!listing) {
+            showAlert("Listing not found.", "error");
+            return;
+          }
+
+          try {
+            if (!wallet) await connectWallet();
+            await wallet.switchChain(CHAIN);
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading" style="width: 16px; height: 16px;"></span> Buying...';
+
+            const quantity = 1n;
+            const recipient = await wallet.getAddress();
+            const isNative = listing.currency === "0x0000000000000000000000000000000000000000";
+            const total = BigInt(listing.pricePerToken) * quantity;
+
+            await thirdweb.extensions.marketplace.directListings.buyFromListing({
+              contract,
+              listingId,
+              quantity,
+              recipient,
+              account: wallet,
+              value: isNative ? total : undefined, // send BNB if native listing
+            });
+
+            showAlert("Purchase completed successfully!", "success");
+            await loadListings();
+          } catch (e) {
+            console.error("Buy error:", e);
+            showAlert("Purchase failed. Ensure you have enough BNB and the listing is still active.", "error");
+            btn.disabled = false;
+            btn.textContent = "Buy Now";
+          }
+        };
+      });
+    }
+
+    // ===== Init =====
+    await loadListings();
+  });
+  </script>
 </body>
 </html>
