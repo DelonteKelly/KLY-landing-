@@ -154,7 +154,7 @@
   <script>
   document.addEventListener("DOMContentLoaded", async () => {
     // ===== Configuration =====
-const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae"; // Thirdweb Client ID
+    const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae"; // Thirdweb Client ID
     const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A"; // Marketplace V3 address
     const CHAIN = thirdweb.chains.binance;
     const WC_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // <-- replace this
@@ -174,39 +174,7 @@ const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae"; // Thirdweb Client ID
     let allListings = [];
     let currentFilter = "all";
 
-// --- Token URIs for each tokenId (0..8) ---
-const TOKEN_URIS = [
-  "ipfs://QmSGdLf2c41i3xTx3xThxRPz4odSfKyVUqS7Ge32ApYLFc/0", // 0 Ra
-  "ipfs://QmaqA6QrAy6gwCVagaAwbjVtYuLmDmBpvgsMb8PYKMkc2H/0", // 1 Ma’at
-  "ipfs://QmQRjMqLmeCaqd5zjauTEWAKyUNHij9xgQgsq82s6THcdw/0", // 2 Thoth
-  "ipfs://QmNcwXte3ntx7fydpMBdDUHcgtyChXqpPYifBmYtrA29Kc/0", // 3 Ausar
-  "ipfs://QmR3YF7gDhPvUrTAtnFW7fJoVus9VbkMdbk7FcCMjDJu7R/0", // 4 Auset
-  "ipfs://QmcYkH1WYy5Nk4ZmnZwuiymgpZz6cbDw4htx4UNoQDVafo/0", // 5 Heru
-  "ipfs://QmYYDMPhZHP7Mi5RBdYDfKqTucQ1bAnLhQN4ucjCQNuhdw/0", // 6 Sekhmet
-  "ipfs://QmbY48EY7mg5dQLpa4ubzeEUQthCvDx7sfo1hbTxK68tyw/0", // 7 Anubis
-  "ipfs://QmWPoXRcG2VMRiFSjAHZGvETDmoj5jzRUv1roAyedG7x4Q/0"  // 8 Ptah
-];
-
-const ipfsToHttp = (uri) =>
-  uri.startsWith("ipfs://")
-    ? `https://ipfs.io/ipfs/${uri.replace("ipfs://","")}`
-    : uri;
-
-const metaCache = new Map();
-async function loadMetadataForTokenId(tokenId) {
-  if (metaCache.has(tokenId)) return metaCache.get(tokenId);
-  const uri = TOKEN_URIS[tokenId];
-  if (!uri) return null;
-  try {
-    const res = await fetch(ipfsToHttp(uri));
-    const json = await res.json();
-    metaCache.set(tokenId, json);
-    return json;
-  } catch (e) {
-    console.warn("Metadata fetch failed for token", tokenId, e);
-    return null;
-  }
-}
+    // ===== Thirdweb Setup =====
     const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
     const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
 
@@ -249,6 +217,12 @@ async function loadMetadataForTokenId(tokenId) {
         $connect.style.display = "inline-flex";
       }
     }
+
+    // Convert IPFS URIs to HTTP
+    const ipfsToHttp = (uri) =>
+      uri && uri.startsWith("ipfs://")
+        ? `https://ipfs.io/ipfs/${uri.replace("ipfs://", "")}`
+        : uri;
 
     // ===== Wallet Connection =====
     async function connectWallet() {
@@ -336,31 +310,63 @@ async function loadMetadataForTokenId(tokenId) {
     async function loadListings() {
       try {
         // Get valid Direct Listings from Marketplace V3 extension
-         const direct = await thirdweb.extensions.marketplace.getAllValidListings({ contract });
+        const direct = await thirdweb.extensions.marketplace.getAllValidListings({ contract });
 
         // Normalize for rendering
-    allListings = (direct || []).map(d => ({
-  type: "direct",
-  id: d.id,
-  currency: (d.currency || "").toLowerCase(),
-  pricePerToken: d.pricePerToken,
-  quantity: d.quantity,
-  tokenId: d.tokenId,
-  assetContract: d.assetContract,
-}));
+        allListings = (direct || []).map(d => ({
+          type: "direct",
+          id: d.id,
+          currency: (d.currency || "").toLowerCase(),
+          pricePerToken: d.pricePerToken,
+          quantity: d.quantity,
+          tokenId: d.tokenId,
+          assetContract: d.assetContract,
+          asset: d.asset || null
+        }));
 
-// hydrate metadata
-await Promise.all(allListings.map(async (l) => {
-  const tId = Number(l.tokenId ?? 0n);
-  l.metadata = await loadMetadataForTokenId(tId);
-}));
+        // Try to load metadata for each listing
+        for (let listing of allListings) {
+          try {
+            // Use the asset metadata if available
+            if (listing.asset) {
+              listing.metadata = listing.asset;
+            } else {
+              // Fallback: Try to fetch metadata from the asset contract
+              const assetContract = thirdweb.getContract({ 
+                client, 
+                chain: CHAIN, 
+                address: listing.assetContract 
+              });
+              
+              try {
+                const metadata = await thirdweb.extensions.erc721.getTokenMetadata({
+                  contract: assetContract,
+                  tokenId: listing.tokenId
+                });
+                listing.metadata = metadata;
+              } catch (e) {
+                console.warn("Could not fetch metadata for token", listing.tokenId, e);
+                listing.metadata = {
+                  name: `Listing #${listing.id.toString()}`,
+                  description: "Direct listing on BNB Chain"
+                };
+              }
+            }
+          } catch (e) {
+            console.warn("Error processing listing metadata", e);
+            listing.metadata = {
+              name: `Listing #${listing.id.toString()}`,
+              description: "Direct listing on BNB Chain"
+            };
+          }
+        }
 
-renderListings();
+        renderListings();
       } catch (e) {
         console.error("Load listings error:", e);
         $grid.innerHTML = `
           <div class="notice error" style="display: block; grid-column: 1 / -1;">
-            Couldn't load listings. Ensure this is a Marketplace V3 contract, your clientId allowlist includes this domain, and listings exist.
+            Couldn't load listings. Error: ${e.message || "Unknown error"}
           </div>`;
       }
     }
@@ -375,10 +381,10 @@ renderListings();
       const qty = BigInt(listing.quantity || 0n);
       const isSold = qty === 0n;
 
-      const tokenIdNum = Number(listing.tokenId ?? 0n);
-      const md = listing.metadata || null;
-const title = md?.name ? md.name : `Listing #${idStr}`;
-const imgSrc = md?.image ? ipfsToHttp(md.image) : "";
+      const md = listing.metadata || {};
+      const title = md.name || `Listing #${idStr}`;
+      const description = md.description || "Direct listing on BNB Chain";
+      const imageUri = md.image ? ipfsToHttp(md.image) : null;
 
       const priceStr = toBNB(listing.pricePerToken);
 
@@ -386,15 +392,15 @@ const imgSrc = md?.image ? ipfsToHttp(md.image) : "";
         <div class="card" data-listing-id="${idStr}">
           <div class="img-container">
             ${
-              imgSrc
-                ? `<img src="${imgSrc}" class="img" alt="${title}" loading="lazy" />`
+              imageUri
+                ? `<img src="${imageUri}" class="img" alt="${title}" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'img-placeholder\\'>NFT</div>';" />`
                 : `<div class="img-placeholder">${isSold ? '<span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">SOLD</span>' : 'NFT'}</div>`
             }
           </div>
           <div class="pad">
             <h3 class="name">${title}</h3>
             <div class="price">${priceStr} BNB</div>
-            <div class="description">Direct listing on BNB Chain</div>
+            <div class="description">${description}</div>
             <div class="foot">
               <span class="badge">${isSold ? 'Sold Out' : 'Available'}</span>
               <span class="badge">Qty: ${qty.toString()}</span>
@@ -455,17 +461,18 @@ const imgSrc = md?.image ? ipfsToHttp(md.image) : "";
             const isNative = listing.currency === "0x0000000000000000000000000000000000000000";
             const total = BigInt(listing.pricePerToken) * quantity;
 
- const tx = thirdweb.extensions.marketplace.buyFromListing({
-   contract,
-  listingId,
-   quantity,
-  recipient,
- });
- await thirdweb.sendTransaction({
-   transaction: tx,
-   account: wallet,
-   value: isNative ? total : undefined,
- });
+            const tx = thirdweb.extensions.marketplace.buyFromListing({
+              contract,
+              listingId,
+              quantity,
+              recipient,
+            });
+            
+            await thirdweb.sendTransaction({
+              transaction: tx,
+              account: wallet,
+              value: isNative ? total : undefined,
+            });
 
             showAlert("Purchase completed successfully!", "success");
             await loadListings();
