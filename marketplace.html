@@ -154,7 +154,7 @@
   <script>
   document.addEventListener("DOMContentLoaded", async () => {
     // ===== Configuration =====
-    const CLIENT_ID = "prj_cm8q7pgqx00751134f561wgx5";   // Thirdweb clientId
+    const CLIENT_ID = "const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae"; // <-- your real Thirdweb Client ID";   // Thirdweb clientId
     const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A"; // Marketplace V3 address
     const CHAIN = thirdweb.chains.binance;
     const WC_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // <-- replace this
@@ -174,26 +174,39 @@
     let allListings = [];
     let currentFilter = "all";
 
-    // ===== Art Map (Token IDs 0..8) =====
-    const ART = [
-      { name: "Ra — Flame of Sovereignty", cid: "bafybeiccdpbxu6vptsrug34cvkp2roinrpz5jtzdwwa73pxzienpmr7fjy" },
-      { name: "Ma’at", cid: "bafybeicrw3kpcjzyb7qxtzha2kzkwuf4rg7lcoaqy7hem6f2nmdpmk6dcy" },
-      { name: "Thoth — Keeper of Codes", cid: "bafybeif7c3mjplu6i5yevvbgjbsfnfzgnfiojgq5z3b4fqciry5wzd7jk4" },
-      { name: "Ausar — Eternal Legacy", cid: "bafybeiclcwltvocyx3tq6mgldbgjkbgtup2qji6um6mf6zbtiotj7ufuzm" },
-      { name: "Auset — Divine Mother", cid: "bafybeie5g5ysxbuoeqqtt7flm7w33kpasxjpcqbdjgg7axr7svixu3eemy" },
-      { name: "Heru — Eye of Victory", cid: "bafybeifiyl2syrq6ngxb7s4aj3c7ldblebakhhk3otpoim2suklp7reaoe" },
-      { name: "Sekhmet — Fire of Renewal", cid: "bafybeib425keyil6fkpkokinbzkrpndzw72aoirkhvspk5rmtgb6q6zwh4" },
-      { name: "Anubis — Guardian of Realms", cid: "bafybeihti6nrmxp2ybinouhtprw66csdhr5gi6kzoj4vsomcd47zdlh24q" },
-      { name: "Ptah — Architect of Worlds", cid: "bafybeigysblmer4edcp2imgo2awqbwhnzv5bnc2u274n6lqxxr572zwedu" },
-    ];
+// --- Token URIs for each tokenId (0..8) ---
+const TOKEN_URIS = [
+  "ipfs://QmSGdLf2c41i3xTx3xThxRPz4odSfKyVUqS7Ge32ApYLFc/0", // 0 Ra
+  "ipfs://QmaqA6QrAy6gwCVagaAwbjVtYuLmDmBpvgsMb8PYKMkc2H/0", // 1 Ma’at
+  "ipfs://QmQRjMqLmeCaqd5zjauTEWAKyUNHij9xgQgsq82s6THcdw/0", // 2 Thoth
+  "ipfs://QmNcwXte3ntx7fydpMBdDUHcgtyChXqpPYifBmYtrA29Kc/0", // 3 Ausar
+  "ipfs://QmR3YF7gDhPvUrTAtnFW7fJoVus9VbkMdbk7FcCMjDJu7R/0", // 4 Auset
+  "ipfs://QmcYkH1WYy5Nk4ZmnZwuiymgpZz6cbDw4htx4UNoQDVafo/0", // 5 Heru
+  "ipfs://QmYYDMPhZHP7Mi5RBdYDfKqTucQ1bAnLhQN4ucjCQNuhdw/0", // 6 Sekhmet
+  "ipfs://QmbY48EY7mg5dQLpa4ubzeEUQthCvDx7sfo1hbTxK68tyw/0", // 7 Anubis
+  "ipfs://QmWPoXRcG2VMRiFSjAHZGvETDmoj5jzRUv1roAyedG7x4Q/0"  // 8 Ptah
+];
 
-    const ipfsCIDToHTTP = (cid) => `https://ipfs.io/ipfs/${cid}`; // swap gateway if desired
+const ipfsToHttp = (uri) =>
+  uri.startsWith("ipfs://")
+    ? `https://ipfs.io/ipfs/${uri.replace("ipfs://","")}`
+    : uri;
 
-    // ===== Thirdweb Init =====
-    if (!window.thirdweb) {
-      showAlert("Thirdweb SDK did not load. Check CDN path.", "error");
-      return;
-    }
+const metaCache = new Map();
+async function loadMetadataForTokenId(tokenId) {
+  if (metaCache.has(tokenId)) return metaCache.get(tokenId);
+  const uri = TOKEN_URIS[tokenId];
+  if (!uri) return null;
+  try {
+    const res = await fetch(ipfsToHttp(uri));
+    const json = await res.json();
+    metaCache.set(tokenId, json);
+    return json;
+  } catch (e) {
+    console.warn("Metadata fetch failed for token", tokenId, e);
+    return null;
+  }
+}
     const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
     const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
 
@@ -326,17 +339,23 @@
          const direct = await thirdweb.extensions.marketplace.getAllValidListings({ contract });
 
         // Normalize for rendering
-        allListings = (direct || []).map(d => ({
-          type: "direct",
-          id: d.id, // bigint
-          currency: (d.currency || "").toLowerCase(),
-          pricePerToken: d.pricePerToken, // bigint
-          quantity: d.quantity, // bigint
-          tokenId: d.tokenId, // bigint
-          assetContract: d.assetContract,
-        }));
+    allListings = (direct || []).map(d => ({
+  type: "direct",
+  id: d.id,
+  currency: (d.currency || "").toLowerCase(),
+  pricePerToken: d.pricePerToken,
+  quantity: d.quantity,
+  tokenId: d.tokenId,
+  assetContract: d.assetContract,
+}));
 
-        renderListings();
+// hydrate metadata
+await Promise.all(allListings.map(async (l) => {
+  const tId = Number(l.tokenId ?? 0n);
+  l.metadata = await loadMetadataForTokenId(tId);
+}));
+
+renderListings();
       } catch (e) {
         console.error("Load listings error:", e);
         $grid.innerHTML = `
@@ -357,9 +376,9 @@
       const isSold = qty === 0n;
 
       const tokenIdNum = Number(listing.tokenId ?? 0n);
-      const art = ART[tokenIdNum];
-      const imgSrc = art ? ipfsCIDToHTTP(art.cid) : "";
-      const title = art ? art.name : `Listing #${idStr}`;
+      const md = listing.metadata || null;
+const title = md?.name ? md.name : `Listing #${idStr}`;
+const imgSrc = md?.image ? ipfsToHttp(md.image) : "";
 
       const priceStr = toBNB(listing.pricePerToken);
 
