@@ -1415,6 +1415,102 @@ function openLore(){
   // Lore/archive experience
   window.location.href = '/lore.html';
 }
+    /***** Vault actions — plug & play *****/
+
+// If your showStatus/simulateProgress aren’t defined yet, create light fallbacks:
+const _hasShowStatus = typeof showStatus === 'function';
+function toast(msg, type='info'){ _hasShowStatus ? showStatus(msg, type) : console.log(`[${type}] ${msg}`); }
+if (typeof simulateProgress !== 'function') {
+  window.simulateProgress = () => {};
+}
+
+// Centralized routes (EDIT these to your real pages/links)
+const VAULT_ROUTES = {
+  snapshot: 'https://snapshot.org/#/kly.eth',
+  academy : '/kly-academy.html',
+  staking : 'https://staking.kellylegacyestates.com',   // or internal: '/staking.html'
+  oracle  : '/oracle.html',
+  security: 'https://revoke.cash',
+  lore    : '/lore.html'
+};
+
+// Small helper for external links (new tab + security flags)
+function openExternal(url){ window.open(url, '_blank', 'noopener,noreferrer'); }
+
+// Visual feedback when clicking a relic card
+function interactWithRelic(el, type){
+  el.classList.add('relic-active');
+  setTimeout(()=> el.classList.remove('relic-active'), 500);
+  // optional: lil haptic on mobile (ignored if unsupported)
+  try { window.navigator.vibrate?.(10); } catch(_) {}
+  // optional analytics hook
+  window.dispatchEvent(new CustomEvent('vault:relicClick', { detail: { type, ts: Date.now() }}));
+}
+
+/* ==== Actions for each CTA ==== */
+async function openSnapshot(){
+  toast('Opening Snapshot…', 'info');
+  openExternal(VAULT_ROUTES.snapshot);
+}
+
+async function openAcademy(){
+  // If your Academy is gated behind the Key, you can re-run verify here if you want:
+  // await verifyNFTAccess();
+  toast('Entering Academy…', 'success');
+  location.href = VAULT_ROUTES.academy;
+}
+
+async function openStaking(){
+  toast('Opening Staking…', 'info');
+  openExternal(VAULT_ROUTES.staking);
+}
+
+async function launchOracle(){
+  toast('Consulting the Oracle…', 'info');
+  location.href = VAULT_ROUTES.oracle;
+}
+
+async function openSecurityCheck(){
+  toast('Running security tools…', 'info');
+  openExternal(VAULT_ROUTES.security);
+}
+
+async function openLore(){
+  toast('Opening Lore Archives…', 'info');
+  location.href = VAULT_ROUTES.lore;
+}
+
+/* ==== (Optional) gate helper: require wallet + network before certain actions ==== */
+// Call this inside any action if you want to enforce wallet/BSC before continuing.
+async function requireWalletBSC(){
+  if (!window.ethereum) { toast('⚠️ Wallet not found', 'error'); throw new Error('no wallet'); }
+  // request account if not connected
+  if (!window.ethereum.selectedAddress) {
+    try { await window.ethereum.request({ method:'eth_requestAccounts' }); }
+    catch(e){ toast('Connection cancelled', 'warning'); throw e; }
+  }
+  // ensure BSC
+  const chain = await window.ethereum.request({ method:'eth_chainId' });
+  if (String(chain).toLowerCase() !== '0x38') {
+    try {
+      await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x38' }] });
+    } catch(e){ toast('Please switch to BSC', 'error'); throw e; }
+  }
+}
+
+/* ==== expose to window so inline onclick="" works in module context ==== */
+window.interactWithRelic   = interactWithRelic;
+window.openSnapshot        = openSnapshot;
+window.openAcademy         = openAcademy;
+window.openStaking         = openStaking;
+window.launchOracle        = launchOracle;
+window.openSecurityCheck   = openSecurityCheck;
+window.openLore            = openLore;
+// If you added the Altar earlier, make sure these are also exposed:
+// window.openAltarModal = openAltarModal;
+// window.performBurn    = performBurn;
+// window.setAltarPercent= setAltarPercent;
+// window.closeAltarModal= closeAltarModal;
   </script>
 </body>
 </html>
