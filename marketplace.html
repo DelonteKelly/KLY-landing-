@@ -323,7 +323,7 @@
     async function loadListings() {
       try {
         // Get valid Direct Listings from Marketplace V3 extension
-        const direct = await thirdweb.extensions.marketplace.directListings.getAllValid({ contract });
+         const direct = await thirdweb.extensions.marketplace.getAllValidListings({ contract });
 
         // Normalize for rendering
         allListings = (direct || []).map(d => ({
@@ -436,14 +436,17 @@
             const isNative = listing.currency === "0x0000000000000000000000000000000000000000";
             const total = BigInt(listing.pricePerToken) * quantity;
 
-            await thirdweb.extensions.marketplace.directListings.buyFromListing({
-              contract,
-              listingId,
-              quantity,
-              recipient,
-              account: wallet,
-              value: isNative ? total : undefined, // send BNB if native listing
-            });
+ const tx = thirdweb.extensions.marketplace.buyFromListing({
+   contract,
+  listingId,
+   quantity,
+  recipient,
+ });
+ await thirdweb.sendTransaction({
+   transaction: tx,
+   account: wallet,
+   value: isNative ? total : undefined,
+ });
 
             showAlert("Purchase completed successfully!", "success");
             await loadListings();
