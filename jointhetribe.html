@@ -300,264 +300,293 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-  <script>
-    /********** Constants **********/
-    const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
-    const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950';
-    const NFT_TOKEN_ID = 2;
-    const KLY_MIN_REQUIRED = 100;
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
-    const BNB_CHAIN_ID_HEX = '0x38';
-    const BNB_CHAIN_ID_DEC = 56;
-    const BNB_RPC = 'https://bsc-dataseed.binance.org/';
-    const BNB_EXPLORER = 'https://bscscan.com';
+<script>
+  /********** Constants **********/
+  const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
+  const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950';
+  const NFT_TOKEN_ID = 2;
+  const KLY_MIN_REQUIRED = 100;
 
-    /********** DOM **********/
-    const walletButton = document.getElementById('walletButton');
-    const statusMessage = document.getElementById('status-message');
-    const statusIcon = document.getElementById('status-icon');
-    const statusText = document.getElementById('status-text');
-    const pageLoader = document.getElementById('page-loader');
-    const navToggle = document.getElementById('nav-toggle');
-    const navMenu = document.getElementById('nav-menu');
-    const mainHeader = document.getElementById('main-header');
-    const particlesContainer = document.getElementById('particles');
+  const BNB_CHAIN_ID_HEX = '0x38';
+  const BNB_CHAIN_ID_DEC = 56;
+  const BNB_RPC = 'https://bsc-dataseed.binance.org/';
+  const BNB_EXPLORER = 'https://bscscan.com';
 
-    /********** Web3 state **********/
-    let web3Modal, extProvider, provider, signer, selectedAccount;
+  /********** DOM **********/
+  const walletButton = document.getElementById('walletButton');
+  const statusMessage = document.getElementById('status-message');
+  const statusIcon = document.getElementById('status-icon');
+  const statusText = document.getElementById('status-text');
+  const pageLoader = document.getElementById('page-loader');
+  const navToggle = document.getElementById('nav-toggle');
+  const navMenu = document.getElementById('nav-menu');
+  const mainHeader = document.getElementById('main-header');
+  const particlesContainer = document.getElementById('particles');
 
-    /********** Init **********/
-    document.addEventListener('DOMContentLoaded', () => {
-      // Simulated loader (optional)
-      setTimeout(() => {
-        pageLoader.style.opacity = '0';
-        setTimeout(() => { pageLoader.style.display = 'none'; }, 800);
-      }, 1200);
+  /********** Web3 state **********/
+  let Web3ModalCtor, WalletConnectProviderCtor;
+  let web3Modal, extProvider, provider, signer, selectedAccount;
 
-      setupWeb3Modal();
-      walletButton.addEventListener('click', connectWallet);
+  /********** Init **********/
+  document.addEventListener('DOMContentLoaded', () => {
+    // Loader
+    setTimeout(() => {
+      pageLoader.style.opacity = '0';
+      setTimeout(() => { pageLoader.style.display = 'none'; }, 800);
+    }, 1200);
 
-      // header + menu
-      window.addEventListener('scroll', handleHeaderScroll);
-      navToggle.addEventListener('click', toggleMobileMenu);
-      document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => {
-        if(navMenu.classList.contains('active')) toggleMobileMenu();
-      }));
+    // Resolve UMD/ES exports safely
+    Web3ModalCtor = window.Web3Modal && (window.Web3Modal.default || window.Web3Modal);
+    WalletConnectProviderCtor = window.WalletConnectProvider && (window.WalletConnectProvider.default || window.WalletConnectProvider);
 
-      // particles + reveal
-      createParticles();
-      initRevealObserver();
+    setupWeb3Modal();
+    walletButton.addEventListener('click', connectWallet);
 
-      // initial connected state (nice-to-have)
-      if (window.ethereum) {
-        window.ethereum.request({ method:'eth_accounts' }).then(accs => {
-          if (accs?.[0]) updateWalletButton(true, shorten(accs[0]));
-        });
-      }
-    });
+    // header + menu
+    window.addEventListener('scroll', handleHeaderScroll);
+    navToggle.addEventListener('click', toggleMobileMenu);
+    document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => {
+      if (navMenu.classList.contains('active')) toggleMobileMenu();
+    }));
 
-    /********** Particles **********/
-    function createParticles(){
-      const count = window.innerWidth < 768 ? 14 : 28;
-      for(let i=0;i<count;i++){
-        const p = document.createElement('div');
-        p.className = 'particle';
-        const size = Math.random()*5+2;
-        const left = Math.random()*100;
-        const dur = Math.random()*20+10;
-        const delay = Math.random()*10;
-        p.style.width = `${size}px`;
-        p.style.height = `${size}px`;
-        p.style.left = `${left}%`;
-        p.style.animationDuration = `${dur}s`;
-        p.style.animationDelay = `-${delay}s`;
-        p.style.opacity = (Math.random()*0.5+0.1).toFixed(2);
-        particlesContainer.appendChild(p);
-      }
+    // particles + reveal
+    createParticles();
+    initRevealObserver();
+
+    // Show connected state (no auto connect)
+    if (window.ethereum && window.ethereum.selectedAddress) {
+      updateWalletButton(true, shorten(window.ethereum.selectedAddress));
+    }
+  });
+
+  /********** Web3Modal (v1) **********/
+  function setupWeb3Modal(){
+    if (!Web3ModalCtor) {
+      showStatus('Web3Modal failed to load', 'error');
+      return;
     }
 
-    /********** Reveal on scroll **********/
-    function initRevealObserver(){
-      const hero = document.querySelector('.hero'); if (hero) hero.classList.add('loaded');
-      const obs = new IntersectionObserver((entries)=>{
-        entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
-      },{threshold:0.1});
-      document.querySelectorAll('.section,.pathway,.testimonial').forEach(el=>obs.observe(el));
-    }
-
-    /********** Header + Menu **********/
-    function handleHeaderScroll(){ if(window.scrollY>50) mainHeader.classList.add('header-scrolled'); else mainHeader.classList.remove('header-scrolled'); }
-    function toggleMobileMenu(){ navMenu.classList.toggle('active'); navToggle.innerHTML = navMenu.classList.contains('active')?'<i class="fas fa-times"></i>':'<i class="fas fa-bars"></i>'; }
-    function scrollToSection(id){ document.getElementById(id).scrollIntoView({ behavior:'smooth' }); }
-
-    /********** Web3Modal (v1) **********/
-    function setupWeb3Modal(){
-      const providerOptions = {
-        walletconnect: {
-          package: window.WalletConnectProvider.default,
-          options: {
-            rpc: { [BNB_CHAIN_ID_DEC]: BNB_RPC },
-            chainId: BNB_CHAIN_ID_DEC,
-            bridge: 'https://bridge.walletconnect.org',
-            qrcode: true
-          }
+    const providerOptions = {};
+    // Add WalletConnect if available (v1 is deprecated; best-effort only)
+    if (WalletConnectProviderCtor) {
+      providerOptions.walletconnect = {
+        package: WalletConnectProviderCtor,
+        options: {
+          rpc: { [BNB_CHAIN_ID_DEC]: BNB_RPC },
+          chainId: BNB_CHAIN_ID_DEC,
+          // bridge intentionally omitted; the public v1 bridge was sunset.
+          qrcode: true
         }
       };
-      web3Modal = new window.Web3Modal.default({
-        cacheProvider: true,
-        providerOptions,
-        theme: { background:'#0b0b0b', main:'#f5f5f5', secondary:'#cfcfcf', border:'rgba(255,215,0,.2)', hover:'rgba(255,215,0,.1)' }
-      });
-
-      // Auto-connect if previously cached
-      if (web3Modal.cachedProvider) connectWallet();
     }
 
-    async function connectWallet(){
-      try{
-        if (!web3Modal) setupWeb3Modal();
-        extProvider = await web3Modal.connect();
-        provider = new ethers.providers.Web3Provider(extProvider);
-        signer = provider.getSigner();
-        selectedAccount = await signer.getAddress();
-        updateWalletButton(true, shorten(selectedAccount));
-        showStatus('Wallet connected successfully!', 'success');
+    web3Modal = new Web3ModalCtor({
+      cacheProvider: false, // avoid mobile/iOS auto-connect race
+      providerOptions,
+      theme: { background:'#0b0b0b', main:'#f5f5f5', secondary:'#cfcfcf', border:'rgba(255,215,0,.2)', hover:'rgba(255,215,0,.1)' }
+    });
+  }
 
-        // events
-        if (extProvider.on){
-          extProvider.on('accountsChanged', (accs)=>{
-            if(!accs?.length){ resetWalletUI(); showStatus('Wallet disconnected', 'warning'); }
-            else { selectedAccount = accs[0]; updateWalletButton(true, shorten(selectedAccount)); }
-          });
-          extProvider.on('chainChanged', ()=> window.location.reload());
-          extProvider.on('disconnect', ()=> { resetWalletUI(); showStatus('Wallet disconnected', 'warning'); });
-        }
-      }catch(e){
-        console.error(e);
-        showStatus('Could not connect wallet', 'error');
+  async function connectWallet(){
+    try{
+      if (!web3Modal) setupWeb3Modal();
+      extProvider = await web3Modal.connect();
+
+      // Ethers v5 provider
+      provider = new ethers.providers.Web3Provider(extProvider, 'any'); // 'any' to handle chain switches
+      signer = provider.getSigner();
+      selectedAccount = await signer.getAddress();
+
+      updateWalletButton(true, shorten(selectedAccount));
+      showStatus('Wallet connected successfully!', 'success');
+
+      // events
+      if (extProvider && extProvider.on){
+        extProvider.on('accountsChanged', (accs)=>{
+          if(!accs?.length){ resetWalletUI(); showStatus('Wallet disconnected', 'warning'); }
+          else { selectedAccount = accs[0]; updateWalletButton(true, shorten(selectedAccount)); }
+        });
+        extProvider.on('chainChanged', async (_hex)=>{
+          try { await ensureBNBChain(); } catch(e){ /* surfaced in ensureBNBChain */ }
+        });
+        extProvider.on('disconnect', ()=> { resetWalletUI(); showStatus('Wallet disconnected', 'warning'); });
+      }
+
+      // Enforce BNB chain
+      await ensureBNBChain();
+
+    }catch(e){
+      console.error(e);
+      const msg = e && (e.message || e.toString());
+      showStatus(msg?.includes('Modal closed') ? 'Connection cancelled' : 'Could not connect wallet', 'error');
+    }
+  }
+
+  function resetWalletUI(){ selectedAccount = null; updateWalletButton(false); }
+
+  async function ensureBNBChain(){
+    if (!provider) throw new Error('Provider not ready');
+    const chainId = await provider.send('eth_chainId', []);
+    if (chainId === BNB_CHAIN_ID_HEX) return;
+
+    try{
+      await provider.send('wallet_switchEthereumChain', [{ chainId: BNB_CHAIN_ID_HEX }]);
+    }catch(err){
+      if (err?.code === 4902){
+        await provider.send('wallet_addEthereumChain',[{
+          chainId: BNB_CHAIN_ID_HEX, chainName:'BNB Smart Chain',
+          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+          rpcUrls:[BNB_RPC], blockExplorerUrls:[BNB_EXPLORER]
+        }]);
+      } else {
+        console.warn(err);
+        showStatus('Please switch to BNB Smart Chain in your wallet', 'error');
+        throw err;
       }
     }
+  }
 
-    function resetWalletUI(){ selectedAccount = null; updateWalletButton(false); }
+  async function connectWalletAndVerifyNetwork(){
+    if(!selectedAccount){ await connectWallet(); if(!selectedAccount) throw new Error('No wallet connected'); }
+    await ensureBNBChain();
+    return provider;
+  }
 
-    /********** Network guard + Provider **********/
-    async function connectWalletAndVerifyNetwork(){
-      // ensure connected
-      if(!selectedAccount){ await connectWallet(); if(!selectedAccount) throw new Error('No wallet connected'); }
-      const chainId = await provider.send('eth_chainId', []);
-      if (chainId !== BNB_CHAIN_ID_HEX){
-        try{
-          await provider.send('wallet_switchEthereumChain', [{ chainId: BNB_CHAIN_ID_HEX }]);
-        }catch(err){
-          if (err?.code === 4902){
-            await provider.send('wallet_addEthereumChain',[{
-              chainId: BNB_CHAIN_ID_HEX, chainName:'BNB Smart Chain',
-              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
-              rpcUrls:[BNB_RPC], blockExplorerUrls:[BNB_EXPLORER]
-            }]);
-          } else {
-            showStatus('Please switch to BNB Smart Chain', 'error');
-            throw err;
-          }
-        }
+  /********** Gates **********/
+  async function checkKLYAccess(){
+    try{
+      showStatus('Checking KLY balance...', 'info');
+      const provider = await connectWalletAndVerifyNetwork();
+      const signer = provider.getSigner();
+      const user = await signer.getAddress();
+
+      const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
+      const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
+
+      let dec = 18;
+      try { dec = await kly.decimals(); } catch (_) { /* fallback to 18 */ }
+
+      const raw = await kly.balanceOf(user);
+      const need = ethers.utils.parseUnits(String(KLY_MIN_REQUIRED), dec);
+
+      if (raw.gte(need)) {
+        showStatus("Access granted. Redirecting...", 'success');
+        setTimeout(() => { window.location.href = "/course.html"; }, 1000);
+      } else {
+        const human = ethers.utils.formatUnits(raw, dec);
+        showStatus(`You need at least ${KLY_MIN_REQUIRED} KLY. You have ${Number(human).toFixed(2)} KLY.`, 'warning');
+        openModal('nft-modal');
       }
-      return provider;
+    }catch(e){
+      console.error(e);
+      showStatus('Could not verify token balance', 'error');
     }
+  }
 
-    /********** Gates **********/
-    async function checkKLYAccess(){
-      try{
-        showStatus('Checking KLY balance...', 'info');
-        const provider = await connectWalletAndVerifyNetwork();
-        const signer = provider.getSigner();
-        const user = await signer.getAddress();
+  async function checkNFTAccess(){
+    try{
+      showStatus('Verifying NFT ownership...', 'info');
+      const provider = await connectWalletAndVerifyNetwork();
+      const signer = provider.getSigner();
+      const user = await signer.getAddress();
 
-        const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
-        const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
+      // ERC-1155
+      const abi = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+      const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+      const bal = await nft.balanceOf(user, NFT_TOKEN_ID);
 
-        let dec = 18;
-        try { dec = await kly.decimals(); } catch (_) { /* fallback to 18 */ }
+      const holds = ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0;
 
-        const raw = await kly.balanceOf(user);
-        const need = ethers.utils.parseUnits(String(KLY_MIN_REQUIRED), dec);
-
-        if (raw.gte(need)) {
-          showStatus("Access granted. Redirecting...", 'success');
-          setTimeout(() => { window.location.href = "/course.html"; }, 1000);
-        } else {
-          const human = ethers.utils.formatUnits(raw, dec);
-          showStatus(`You need at least ${KLY_MIN_REQUIRED} KLY. You have ${Number(human).toFixed(2)} KLY.`, 'warning');
-          openModal('nft-modal');
-        }
-      }catch(e){
-        console.error(e);
-        showStatus('Could not verify token balance', 'error');
+      if (holds){
+        showStatus('NFT verified. Unlocking Portal...', 'success');
+        setTimeout(()=>{ window.location.href='/portal.html'; }, 900);
+      } else {
+        showStatus("You must hold the 'Key of Ascension' NFT", 'warning');
+        openModal('nft-modal');
       }
+    }catch(e){
+      console.error(e);
+      showStatus('NFT verification failed', 'error');
     }
+  }
 
-    async function checkNFTAccess(){
-      try{
-        showStatus('Verifying NFT ownership...', 'info');
-        const provider = await connectWalletAndVerifyNetwork();
-        const signer = provider.getSigner();
-        const user = await signer.getAddress();
+  /********** UI helpers **********/
+  function updateWalletButton(connected, addr=''){
+    walletButton.innerHTML = connected
+      ? `<i class="fas fa-check-circle"></i><span>${addr}</span>`
+      : `<i class="fas fa-wallet"></i><span>Connect Wallet</span>`;
+    walletButton.classList.toggle('connected', connected);
+  }
+  function shorten(a){ return `${a.slice(0,6)}...${a.slice(-4)}`; }
 
-        // ERC-1155
-        const abi = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
-        const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
-        const bal = await nft.balanceOf(user, NFT_TOKEN_ID);
+  let hideTimer;
+  function showStatus(msg, type='info'){
+    statusMessage.classList.remove('status-success','status-error','status-warning');
+    if(type==='success') statusMessage.classList.add('status-success');
+    if(type==='error')   statusMessage.classList.add('status-error');
+    if(type==='warning') statusMessage.classList.add('status-warning');
 
-        const holds = ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0;
+    const icon = type==='success' ? 'fa-check-circle' :
+                 type==='error'   ? 'fa-exclamation-circle' :
+                 type==='warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    statusIcon.innerHTML = `<i class="fas ${icon}"></i>`;
+    statusText.textContent = msg;
 
-        if (holds){
-          showStatus('NFT verified. Unlocking Portal...', 'success');
-          setTimeout(()=>{ window.location.href='/portal.html'; }, 900);
-        } else {
-          showStatus("You must hold the 'Key of Ascension' NFT", 'warning');
-          openModal('nft-modal');
-        }
-      }catch(e){
-        console.error(e);
-        showStatus('NFT verification failed', 'error');
-      }
+    statusMessage.classList.remove('hidden');
+    statusMessage.classList.add('visible');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(()=>{
+      statusMessage.classList.remove('visible');
+      statusMessage.classList.add('hidden');
+    }, 5000);
+  }
+
+  function openModal(id){ document.getElementById(id).classList.add('active'); document.body.style.overflow='hidden'; }
+  function closeModal(id){ document.getElementById(id).classList.remove('active'); document.body.style.overflow='auto'; }
+
+  /********** Particles **********/
+  function createParticles(){
+    const count = window.innerWidth < 768 ? 14 : 28;
+    for(let i=0;i<count;i++){
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random()*5+2;
+      const left = Math.random()*100;
+      const dur = Math.random()*20+10;
+      const delay = Math.random()*10;
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.left = `${left}%`;
+      p.style.animationDuration = `${dur}s`;
+      p.style.animationDelay = `-${delay}s`;
+      p.style.opacity = (Math.random()*0.5+0.1).toFixed(2);
+      particlesContainer.appendChild(p);
     }
+  }
 
-    /********** UI helpers **********/
-    function updateWalletButton(connected, addr=''){
-      walletButton.innerHTML = connected
-        ? `<i class="fas fa-check-circle"></i><span>${addr}</span>`
-        : `<i class="fas fa-wallet"></i><span>Connect Wallet</span>`;
-      walletButton.classList.toggle('connected', connected);
-    }
-    function shorten(a){ return `${a.slice(0,6)}...${a.slice(-4)}`; }
+  /********** Reveal on scroll **********/
+  function initRevealObserver(){
+    const hero = document.querySelector('.hero'); if (hero) hero.classList.add('loaded');
+    const obs = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+    },{threshold:0.1});
+    document.querySelectorAll('.section,.pathway,.testimonial').forEach(el=>obs.observe(el));
+  }
 
-    let hideTimer;
-    function showStatus(msg, type='info'){
-      statusMessage.classList.remove('status-success','status-error','status-warning');
-      if(type==='success') statusMessage.classList.add('status-success');
-      if(type==='error')   statusMessage.classList.add('status-error');
-      if(type==='warning') statusMessage.classList.add('status-warning');
-
-      const icon = type==='success' ? 'fa-check-circle' :
-                   type==='error'   ? 'fa-exclamation-circle' :
-                   type==='warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
-      statusIcon.innerHTML = `<i class="fas ${icon}"></i>`;
-      statusText.textContent = msg;
-
-      statusMessage.classList.remove('hidden');
-      statusMessage.classList.add('visible');
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(()=>{
-        statusMessage.classList.remove('visible');
-        statusMessage.classList.add('hidden');
-      }, 5000);
-    }
-
-    function openModal(id){ document.getElementById(id).classList.add('active'); document.body.style.overflow='hidden'; }
-    function closeModal(id){ document.getElementById(id).classList.remove('active'); document.body.style.overflow='auto'; }
-  </script>
+  /********** Header + Menu **********/
+  function handleHeaderScroll(){
+    if(window.scrollY>50) mainHeader.classList.add('header-scrolled');
+    else mainHeader.classList.remove('header-scrolled');
+  }
+  function toggleMobileMenu(){
+    navMenu.classList.toggle('active');
+    navToggle.innerHTML = navMenu.classList.contains('active') ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+  }
+  function scrollToSection(id){ document.getElementById(id).scrollIntoView({ behavior:'smooth' }); }
+</script>
 </body>
 </html>
