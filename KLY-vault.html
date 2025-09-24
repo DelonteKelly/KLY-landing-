@@ -940,577 +940,374 @@
   </footer>
 
   <!-- Font Awesome for icons -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-  
-  <script type="module">
-    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
 
-    // Constants
-    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-    const CONTRACT_ABI = [
-      {
-        inputs: [{ internalType: "address", name: "owner", type: "address" }],
-        name: "balanceOf",
-        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-        stateMutability: "view",
-        type: "function",
-      },
-    ];
-    const BNB_CHAIN_ID = "0x38";
-    
-    // DOM elements
-    const walletButton = document.getElementById("connectWalletBtn");
-    const walletAddress = document.getElementById("walletAddress");
-    const unlockBtn = document.getElementById("unlockBtn");
-    const vaultItems = document.getElementById("vaultItems");
-    const statusOverlay = document.getElementById("statusOverlay");
-    const statusIcon = document.getElementById("statusIcon");
-    const statusText = document.getElementById("statusText");
-    const progressFill = document.getElementById("progressFill");
-    const pageLoader = document.getElementById("pageLoader");
-    const mainHeader = document.getElementById("mainHeader");
-    const particlesContainer = document.getElementById("particles");
+  // ================== Constants ==================
+  const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
+  const CONTRACT_ABI = [
+    {
+      inputs: [{ internalType: "address", name: "owner", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ];
+  const BNB_CHAIN_ID = "0x38";
 
-    // Initialize page
-    document.addEventListener('DOMContentLoaded', () => {
-      // Simulate loading (remove this in production)
+  // ================== DOM ==================
+  const walletButton = document.getElementById("connectWalletBtn");
+  const walletAddress = document.getElementById("walletAddress");
+  const unlockBtn = document.getElementById("unlockBtn");
+  const vaultItems = document.getElementById("vaultItems");
+  const statusOverlay = document.getElementById("statusOverlay");
+  const statusIcon = document.getElementById("statusIcon");
+  const statusText = document.getElementById("statusText");
+  const progressFill = document.getElementById("progressFill");
+  const pageLoader = document.getElementById("pageLoader");
+  const mainHeader = document.getElementById("mainHeader");
+  const particlesContainer = document.getElementById("particles");
+
+  // ================== Init ==================
+  document.addEventListener('DOMContentLoaded', () => {
+    // Simulated loader (optional)
+    setTimeout(() => {
+      pageLoader.style.opacity = '0';
       setTimeout(() => {
-        pageLoader.style.opacity = '0';
-        setTimeout(() => {
-          pageLoader.style.display = 'none';
-          initScrollHandler();
-          createParticles();
-          initThreeJS();
-          
-          // Check if wallet is already connected
-          if (window.ethereum && window.ethereum.selectedAddress) {
-            updateWalletButton(true, shortenAddress(window.ethereum.selectedAddress));
-          }
-        }, 800);
-      }, 1500);
-      
-      // Add event listeners
-      walletButton.addEventListener('click', connectWallet);
-      unlockBtn.addEventListener('click', verifyNFTAccess);
-    });
+        pageLoader.style.display = 'none';
+        initScrollHandler();
+        createParticles();
+        initThreeJS();
 
-    // Create floating particles
-    function createParticles() {
-      const particleCount = window.innerWidth < 768 ? 30 : 60;
-      
-      for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.classList.add('particle');
-        
-        // Random properties
-        const size = Math.random() * 4 + 1;
-        const posX = Math.random() * 100;
-        const posY = Math.random() * 100;
-        const duration = Math.random() * 15 + 10;
-        const delay = Math.random() * 10;
-        const opacity = Math.random() * 0.5 + 0.1;
-        
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
-        particle.style.left = `${posX}%`;
-        particle.style.top = `${posY}%`;
-        particle.style.opacity = opacity;
-        
-        // Animate particle
-        animateParticle(particle, duration, delay);
-        
-        particlesContainer.appendChild(particle);
-      }
+        // Show connected state if already connected
+        if (window.ethereum && window.ethereum.selectedAddress) {
+          updateWalletButton(true, shortenAddress(window.ethereum.selectedAddress));
+        }
+      }, 800);
+    }, 1500);
+
+    // Events
+    walletButton.addEventListener('click', connectWallet);
+    unlockBtn.addEventListener('click', verifyNFTAccess);
+  });
+
+  // ================== Particles ==================
+  function createParticles() {
+    const particleCount = window.innerWidth < 768 ? 30 : 60;
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      const size = Math.random() * 4 + 1;
+      const posX = Math.random() * 100;
+      const posY = Math.random() * 100;
+      const duration = Math.random() * 15 + 10;
+      const delay = Math.random() * 10;
+      const opacity = Math.random() * 0.5 + 0.1;
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.left = `${posX}%`;
+      p.style.top = `${posY}%`;
+      p.style.opacity = opacity;
+      animateParticle(p, duration, delay);
+      particlesContainer.appendChild(p);
     }
+  }
 
-    // Animate individual particle
-    function animateParticle(particle, duration, delay) {
-      let start = null;
-      const initialX = parseFloat(particle.style.left);
-      const initialY = parseFloat(particle.style.top);
-      
-      function step(timestamp) {
-        if (!start) start = timestamp;
-        const progress = (timestamp - start) / (duration * 1000);
-        
-        if (progress < 1) {
-          // Move in gentle waves
-          const newX = initialX + Math.sin(progress * Math.PI * 2) * 5;
-          const newY = initialY - progress * 100;
-          const opacity = 0.1 + 0.4 * (1 - progress);
-          
-          particle.style.left = `${newX}%`;
-          particle.style.top = `${newY}%`;
-          particle.style.opacity = opacity;
-          
-          // Reset particle when it goes off screen
-          if (newY < -5) {
-            particle.style.top = '105%';
-            particle.style.left = `${initialX}%`;
-            particle.style.opacity = '0.1';
-            start = timestamp - delay * 1000;
-          }
-          
-          requestAnimationFrame(step);
-        } else {
-          // Restart animation
+  function animateParticle(particle, duration, delay) {
+    let start = null;
+    const initialX = parseFloat(particle.style.left);
+    const initialY = parseFloat(particle.style.top);
+
+    function step(timestamp) {
+      if (!start) start = timestamp;
+      const progress = (timestamp - start) / (duration * 1000);
+
+      if (progress < 1) {
+        const newX = initialX + Math.sin(progress * Math.PI * 2) * 5;
+        const newY = initialY - progress * 100;
+        const opacity = 0.1 + 0.4 * (1 - progress);
+        particle.style.left = `${newX}%`;
+        particle.style.top = `${newY}%`;
+        particle.style.opacity = opacity;
+
+        if (newY < -5) {
           particle.style.top = '105%';
           particle.style.left = `${initialX}%`;
           particle.style.opacity = '0.1';
-          start = null;
-          setTimeout(() => {
-            start = timestamp;
-            requestAnimationFrame(step);
-          }, delay * 1000);
+          start = timestamp - delay * 1000;
         }
-      }
-      
-      setTimeout(() => {
         requestAnimationFrame(step);
-      }, delay * 1000);
+      } else {
+        particle.style.top = '105%';
+        particle.style.left = `${initialX}%`;
+        particle.style.opacity = '0.1';
+        start = null;
+        setTimeout(() => {
+          start = timestamp;
+          requestAnimationFrame(step);
+        }, delay * 1000);
+      }
     }
+    setTimeout(() => requestAnimationFrame(step), delay * 1000);
+  }
 
-    // Initialize Three.js scene
-    function initThreeJS() {
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-      );
-      const renderer = new THREE.WebGLRenderer({
-        canvas: document.getElementById("threejs-canvas"),
-        alpha: true,
-        antialias: true
-      });
-      renderer.setPixelRatio(window.devicePixelRatio);
+  // ================== Three.js BG ==================
+  function initThreeJS() {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("threejs-canvas"), alpha: true, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const geometry = new THREE.TorusKnotGeometry(12, 3, 256, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xd4af37, wireframe: true, transparent: true, opacity: 0.2 });
+    const knot = new THREE.Mesh(geometry, material);
+    scene.add(knot);
+
+    const glowGeometry = new THREE.SphereGeometry(15, 32, 32);
+    const glowMaterial = new THREE.MeshBasicMaterial({ color: 0xd4af37, transparent: true, opacity: 0.05 });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    scene.add(glow);
+
+    camera.position.z = 30;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      knot.rotation.x += 0.001;
+      knot.rotation.y += 0.002;
+      glow.rotation.x += 0.0005;
+      glow.rotation.y += 0.0005;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      
-      // Create torus knot geometry
-      const geometry = new THREE.TorusKnotGeometry(12, 3, 256, 32);
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xd4af37,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.2
-      });
-      const knot = new THREE.Mesh(geometry, material);
-      scene.add(knot);
-      
-      // Add ambient glow
-      const glowGeometry = new THREE.SphereGeometry(15, 32, 32);
-      const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0xd4af37,
-        transparent: true,
-        opacity: 0.05,
-        wireframe: false
-      });
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-      scene.add(glow);
-      
-      camera.position.z = 30;
+    });
+  }
 
-      // Animation loop
-      function animate() {
-        requestAnimationFrame(animate);
-        knot.rotation.x += 0.001;
-        knot.rotation.y += 0.002;
-        glow.rotation.x += 0.0005;
-        glow.rotation.y += 0.0005;
-        renderer.render(scene, camera);
-      }
-      animate();
+  // ================== Header Scroll ==================
+  function initScrollHandler() {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) mainHeader.classList.add('scrolled');
+      else mainHeader.classList.remove('scrolled');
+    });
+  }
 
-      // Handle window resize
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-    }
-
-    // Initialize scroll handler for header effect
-    function initScrollHandler() {
-      window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-          mainHeader.classList.add('scrolled');
-        } else {
-          mainHeader.classList.remove('scrolled');
-        }
-      });
-    }
-
-    // Wallet connection functions
-    async function connectWallet() {
-      try {
-        if (typeof window.ethereum === 'undefined') {
-          showStatus('⚠️ MetaMask not found', 'error');
-          setTimeout(() => {
-            window.open('https://metamask.io/download.html', '_blank');
-          }, 2000);
-          return;
-        }
-
-        // Request account access
-        showStatus('🔓 Connecting wallet...', 'info');
-        const accounts = await window.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        });
-        
-        // Verify network
-        await verifyNetwork();
-        
-        updateWalletButton(true, shortenAddress(accounts[0]));
-        showStatus('✅ Wallet connected', 'success');
-        
-        // Set up event listeners
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
-        
-      } catch (error) {
-        console.error('Wallet connection error:', error);
-        showStatus('⚠️ Connection failed', 'error');
-      }
-    }
-
-    async function verifyNetwork() {
-      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
-      
-      if (currentChainId !== BNB_CHAIN_ID) {
-        showStatus('🌐 Switching to BSC...', 'info');
-        
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: BNB_CHAIN_ID }],
-          });
-        } catch (switchError) {
-          // This error code indicates that the chain has not been added to MetaMask
-          if (switchError.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: BNB_CHAIN_ID,
-                  chainName: 'Binance Smart Chain',
-                  nativeCurrency: {
-                    name: 'BNB',
-                    symbol: 'BNB',
-                    decimals: 18
-                  },
-                  rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                  blockExplorerUrls: ['https://bscscan.com']
-                }]
-              });
-            } catch (addError) {
-              showStatus('⚠️ Please switch to BSC', 'error');
-              throw addError;
-            }
-          } else {
-            showStatus('⚠️ Please switch to BSC', 'error');
-            throw switchError;
-          }
-        }
-      }
-    }
-
-    function handleAccountsChanged(accounts) {
-      if (accounts.length === 0) {
-        // Wallet disconnected
-        updateWalletButton(false);
-        showStatus('⚠️ Wallet disconnected', 'warning');
-      } else {
-        // Account changed
-        updateWalletButton(true, shortenAddress(accounts[0]));
-      }
-    }
-
-    function handleChainChanged() {
-      window.location.reload();
-    }
-
-    function updateWalletButton(connected, address = '') {
-      if (connected) {
-        walletButton.innerHTML = `<i class="fas fa-check-circle"></i><span>${address}</span>`;
-        walletButton.classList.add('connected');
-        walletAddress.textContent = address;
-        walletAddress.classList.remove('hidden');
-      } else {
-        walletButton.innerHTML = '<i class="fas fa-wallet"></i><span>Connect Wallet</span>';
-        walletButton.classList.remove('connected');
-        walletAddress.classList.add('hidden');
-      }
-    }
-
-    function shortenAddress(address) {
-      return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-    }
-
-    // NFT verification
-    async function verifyNFTAccess() {
-      if (!window.ethereum || !window.ethereum.selectedAddress) {
-        showStatus('🔑 Connect wallet first', 'warning');
+  // ================== Wallet ==================
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        showStatus('⚠️ MetaMask not found', 'error');
+        setTimeout(() => window.open('https://metamask.io/download.html', '_blank'), 2000);
         return;
       }
+      showStatus('🔓 Connecting wallet...', 'info');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      await verifyNetwork();
+      updateWalletButton(true, shortenAddress(accounts[0]));
+      showStatus('✅ Wallet connected', 'success');
 
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      showStatus('⚠️ Connection failed', 'error');
+    }
+  }
+
+  async function verifyNetwork() {
+    const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (currentChainId !== BNB_CHAIN_ID) {
+      showStatus('🌐 Switching to BSC...', 'info');
       try {
-        showStatus('🔍 Verifying NFT...', 'info');
-        simulateProgress();
-        
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-        
-        const balance = await contract.balanceOf(await signer.getAddress());
-        
-        if (balance.gt(0)) {
-          showStatus('✅ Access granted!', 'success');
-          unlockVault();
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BNB_CHAIN_ID }] });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: BNB_CHAIN_ID,
+                chainName: 'Binance Smart Chain',
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                blockExplorerUrls: ['https://bscscan.com']
+              }]
+            });
+          } catch (addError) {
+            showStatus('⚠️ Please switch to BSC', 'error'); throw addError;
+          }
         } else {
-          showStatus('⛔ Key of Ascension required', 'error');
+          showStatus('⚠️ Please switch to BSC', 'error'); throw switchError;
         }
-      } catch (error) {
-        console.error('NFT verification error:', error);
-        showStatus('⚠️ Verification failed', 'error');
       }
     }
+  }
 
-    function simulateProgress() {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        if (progress >= 100) {
-          clearInterval(interval);
-          progressFill.style.width = '100%';
-        } else {
-          progressFill.style.width = `${progress}%`;
-        }
-      }, 200);
+  function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) { updateWalletButton(false); showStatus('⚠️ Wallet disconnected', 'warning'); }
+    else { updateWalletButton(true, shortenAddress(accounts[0])); }
+  }
+  function handleChainChanged() { window.location.reload(); }
+
+  function updateWalletButton(connected, address = '') {
+    if (connected) {
+      walletButton.innerHTML = `<i class="fas fa-check-circle"></i><span>${address}</span>`;
+      walletButton.classList.add('connected');
+      walletAddress.textContent = address;
+      walletAddress.classList.remove('hidden');
+    } else {
+      walletButton.innerHTML = '<i class="fas fa-wallet"></i><span>Connect Wallet</span>';
+      walletButton.classList.remove('connected');
+      walletAddress.classList.add('hidden');
     }
+  }
+  const shortenAddress = (a) => `${a.substring(0, 6)}...${a.substring(a.length - 4)}`;
 
-    function unlockVault() {
-      // Animate door opening
-      const doorOverlay = document.querySelector('.door-overlay');
-      doorOverlay.style.animation = 'doorOpen 1s forwards';
-      
-      // Show vault items with staggered animation
-      setTimeout(() => {
-        doorOverlay.style.display = 'none';
-        vaultItems.classList.add('visible');
-        
-        // Animate each item individually
-        const items = document.querySelectorAll('.vault-item');
-        items.forEach((item, index) => {
-          setTimeout(() => {
-            item.classList.add('visible');
-          }, index * 100);
-        });
-        
-        // Scroll to items
-        setTimeout(() => {
-          vaultItems.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
-      }, 1000);
+  // ================== Gate: NFT Verify ==================
+  async function verifyNFTAccess() {
+    if (!window.ethereum || !window.ethereum.selectedAddress) {
+      showStatus('🔑 Connect wallet first', 'warning'); return;
     }
-
-    // Status message functions
-    function showStatus(message, type = 'info') {
-      // Set icon based on type
-      let icon;
-      switch(type) {
-        case 'success':
-          icon = '✅';
-          break;
-        case 'error':
-          icon = '❌';
-          break;
-        case 'warning':
-          icon = '⚠️';
-          break;
-        default:
-          icon = '🔍';
+    try {
+      showStatus('🔍 Verifying NFT...', 'info');
+      simulateProgress();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      const balance = await contract.balanceOf(await signer.getAddress());
+      if (ethers.BigNumber.isBigNumber(balance) ? balance.gt(0) : Number(balance) > 0) {
+        showStatus('✅ Access granted!', 'success');
+        unlockVault();
+      } else {
+        showStatus('⛔ Key of Ascension required', 'error');
       }
-      
-      statusIcon.textContent = icon;
-      statusText.textContent = message;
-      progressFill.style.width = '0';
-      
-      // Show overlay
-      statusOverlay.classList.add('visible');
-      
-      // Auto-hide after delay for non-error messages
-      if (type !== 'error') {
-        setTimeout(() => {
-          statusOverlay.classList.remove('visible');
-        }, type === 'success' ? 2000 : 3000);
-      }
+    } catch (error) {
+      console.error('NFT verification error:', error);
+      showStatus('⚠️ Verification failed', 'error');
     }
+  }
 
-    // Track clicks for Easter egg
-    let vaultClicks = 0;
-    const vaultContainer = document.querySelector('.vault-container');
+  function simulateProgress() {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 10;
+      progressFill.style.width = `${Math.min(progress, 100)}%`;
+      if (progress >= 100) clearInterval(interval);
+    }, 200);
+  }
 
+  function unlockVault() {
+    const doorOverlay = document.querySelector('.door-overlay');
+    doorOverlay.style.animation = 'doorOpen 1s forwards';
+    setTimeout(() => {
+      doorOverlay.style.display = 'none';
+      vaultItems.classList.add('visible');
+      document.querySelectorAll('.vault-item').forEach((item, idx) => {
+        setTimeout(() => item.classList.add('visible'), idx * 100);
+      });
+      setTimeout(() => vaultItems.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+    }, 1000);
+  }
+
+  // ================== Status Overlay ==================
+  function showStatus(message, type = 'info') {
+    let icon = '🔍';
+    if (type === 'success') icon = '✅';
+    else if (type === 'error') icon = '❌';
+    else if (type === 'warning') icon = '⚠️';
+
+    statusIcon.textContent = icon;
+    statusText.textContent = message;
+    progressFill.style.width = '0';
+    statusOverlay.classList.add('visible');
+    if (type !== 'error') setTimeout(() => statusOverlay.classList.remove('visible'), type === 'success' ? 2000 : 3000);
+  }
+
+  // ================== Easter Egg ==================
+  let vaultClicks = 0;
+  const vaultContainer = document.querySelector('.vault-container');
+  if (vaultContainer) {
     vaultContainer.addEventListener('click', () => {
       vaultClicks++;
       if (vaultClicks >= 7) {
-        document.getElementById('thirdEyeRelic').style.display = 'block';
-        // Play special sound effect
-        const audio = new Audio('mystical_chime.mp3');
-        audio.play();
+        const egg = document.getElementById('thirdEyeRelic');
+        if (egg) egg.style.display = 'block';
+        try { new Audio('mystical_chime.mp3').play(); } catch(_) {}
       }
     });
-
-    function interactWithRelic(element, relicType) {
-      // Add visual feedback
-      element.classList.add('relic-active');
-      setTimeout(() => element.classList.remove('relic-active'), 1000);
-      
-      // Play interaction sound
-      const audio = new Audio('relic_interaction.mp3');
-      audio.play();
-      
-      // Log interaction
-      console.log(`Interacted with ${relicType} relic`);
-    }
-
-    function viewOnExplorer(contractAddress) {
-      console.log(`Viewing contract ${contractAddress} on explorer`);
-      // Your explorer logic here
-    }
-
-    function initiateAscension() {
-      alert('The initiation begins... Prepare for the unveiling.');
-      // Your Easter egg content reveal logic here
-    }
-
-    // ===== Vault item actions (edit URLs to your real pages) =====
-function openSnapshot(){
-  // Example Snapshot space
-  window.open('https://snapshot.org/#/kly.eth', '_blank');
-}
-
-function openAcademy(){
-  // Gate-protected page for course library
-  window.location.href = '/kly-academy.html';
-}
-
-function openStaking(){
-  // Your staking dapp (can be internal or external)
-  window.open('https://staking.kellylegacyestates.com', '_blank');
-}
-
-function launchOracle(){
-  // Internal oracle experience
-  window.location.href = '/oracle.html';
-}
-
-function openSecurityCheck(){
-  // You can point to your own revoker UI or a trusted third-party tool
-  window.open('https://revoke.cash', '_blank');
-}
-
-function openLore(){
-  // Lore/archive experience
-  window.location.href = '/lore.html';
-}
-    /***** Vault actions — plug & play *****/
-
-// If your showStatus/simulateProgress aren’t defined yet, create light fallbacks:
-const _hasShowStatus = typeof showStatus === 'function';
-function toast(msg, type='info'){ _hasShowStatus ? showStatus(msg, type) : console.log(`[${type}] ${msg}`); }
-if (typeof simulateProgress !== 'function') {
-  window.simulateProgress = () => {};
-}
-
-// Centralized routes (EDIT these to your real pages/links)
-const VAULT_ROUTES = {
-  snapshot: 'https://snapshot.org/#/kly.eth',
-  academy : '/kly-academy.html',
-  staking : 'https://staking.kellylegacyestates.com',   // or internal: '/staking.html'
-  oracle  : '/oracle.html',
-  security: 'https://revoke.cash',
-  lore    : '/lore.html'
-};
-
-// Small helper for external links (new tab + security flags)
-function openExternal(url){ window.open(url, '_blank', 'noopener,noreferrer'); }
-
-// Visual feedback when clicking a relic card
-function interactWithRelic(el, type){
-  el.classList.add('relic-active');
-  setTimeout(()=> el.classList.remove('relic-active'), 500);
-  // optional: lil haptic on mobile (ignored if unsupported)
-  try { window.navigator.vibrate?.(10); } catch(_) {}
-  // optional analytics hook
-  window.dispatchEvent(new CustomEvent('vault:relicClick', { detail: { type, ts: Date.now() }}));
-}
-
-/* ==== Actions for each CTA ==== */
-async function openSnapshot(){
-  toast('Opening Snapshot…', 'info');
-  openExternal(VAULT_ROUTES.snapshot);
-}
-
-async function openAcademy(){
-  // If your Academy is gated behind the Key, you can re-run verify here if you want:
-  // await verifyNFTAccess();
-  toast('Entering Academy…', 'success');
-  location.href = VAULT_ROUTES.academy;
-}
-
-async function openStaking(){
-  toast('Opening Staking…', 'info');
-  openExternal(VAULT_ROUTES.staking);
-}
-
-async function launchOracle(){
-  toast('Consulting the Oracle…', 'info');
-  location.href = VAULT_ROUTES.oracle;
-}
-
-async function openSecurityCheck(){
-  toast('Running security tools…', 'info');
-  openExternal(VAULT_ROUTES.security);
-}
-
-async function openLore(){
-  toast('Opening Lore Archives…', 'info');
-  location.href = VAULT_ROUTES.lore;
-}
-
-/* ==== (Optional) gate helper: require wallet + network before certain actions ==== */
-// Call this inside any action if you want to enforce wallet/BSC before continuing.
-async function requireWalletBSC(){
-  if (!window.ethereum) { toast('⚠️ Wallet not found', 'error'); throw new Error('no wallet'); }
-  // request account if not connected
-  if (!window.ethereum.selectedAddress) {
-    try { await window.ethereum.request({ method:'eth_requestAccounts' }); }
-    catch(e){ toast('Connection cancelled', 'warning'); throw e; }
   }
-  // ensure BSC
-  const chain = await window.ethereum.request({ method:'eth_chainId' });
-  if (String(chain).toLowerCase() !== '0x38') {
-    try {
-      await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x38' }] });
-    } catch(e){ toast('Please switch to BSC', 'error'); throw e; }
-  }
-}
 
-/* ==== expose to window so inline onclick="" works in module context ==== */
-window.interactWithRelic   = interactWithRelic;
-window.openSnapshot        = openSnapshot;
-window.openAcademy         = openAcademy;
-window.openStaking         = openStaking;
-window.launchOracle        = launchOracle;
-window.openSecurityCheck   = openSecurityCheck;
-window.openLore            = openLore;
-// If you added the Altar earlier, make sure these are also exposed:
-// window.openAltarModal = openAltarModal;
-// window.performBurn    = performBurn;
-// window.setAltarPercent= setAltarPercent;
-// window.closeAltarModal= closeAltarModal;
-  </script>
-</body>
+  // ================== Relic interactions (deduped) ==================
+  // toast fallback + helpers
+  const _hasShowStatus = typeof showStatus === 'function';
+  function toast(msg, type='info'){ _hasShowStatus ? showStatus(msg, type) : console.log(`[${type}] ${msg}`); }
+
+  // Use a single interact function (includes audio + haptic + visual)
+  function interactWithRelic(el, type){
+    el.classList.add('relic-active');
+    setTimeout(()=> el.classList.remove('relic-active'), 500);
+    try { window.navigator.vibrate?.(10); } catch(_) {}
+    try { new Audio('relic_interaction.mp3').play(); } catch(_) {}
+    window.dispatchEvent(new CustomEvent('vault:relicClick', { detail: { type, ts: Date.now() }}));
+  }
+
+  // Routes (edit to your real pages)
+  const VAULT_ROUTES = {
+    snapshot: 'https://snapshot.org/#/kly.eth',
+    academy : '/kly-academy.html',
+    staking : 'https://staking.kellylegacyestates.com',   // or '/staking.html'
+    oracle  : '/oracle.html',
+    security: 'https://revoke.cash',
+    lore    : '/lore.html'
+  };
+  const openExternal = (url) => window.open(url, '_blank', 'noopener,noreferrer');
+
+  async function openSnapshot(){ toast('Opening Snapshot…', 'info'); openExternal(VAULT_ROUTES.snapshot); }
+  async function openAcademy(){ toast('Entering Academy…', 'success'); location.href = VAULT_ROUTES.academy; }
+  async function openStaking(){ toast('Opening Staking…', 'info'); openExternal(VAULT_ROUTES.staking); }
+  async function launchOracle(){ toast('Consulting the Oracle…', 'info'); location.href = VAULT_ROUTES.oracle; }
+  async function openSecurityCheck(){ toast('Running security tools…', 'info'); openExternal(VAULT_ROUTES.security); }
+  async function openLore(){ toast('Opening Lore Archives…', 'info'); location.href = VAULT_ROUTES.lore; }
+
+  // (Optional) require wallet + BSC before certain actions
+  async function requireWalletBSC(){
+    if (!window.ethereum) { toast('⚠️ Wallet not found', 'error'); throw new Error('no wallet'); }
+    if (!window.ethereum.selectedAddress) {
+      try { await window.ethereum.request({ method:'eth_requestAccounts' }); }
+      catch(e){ toast('Connection cancelled', 'warning'); throw e; }
+    }
+    const chain = await window.ethereum.request({ method:'eth_chainId' });
+    if (String(chain).toLowerCase() !== '0x38') {
+      try { await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x38' }] }); }
+      catch(e){ toast('Please switch to BSC', 'error'); throw e; }
+    }
+  }
+
+  // (Optional) explorer helper from older snippet
+  function viewOnExplorer(contractAddress) {
+    const addr = String(contractAddress).replace('…','');
+    openExternal(`https://bscscan.com/address/${addr}`);
+  }
+
+  // ================== Expose for inline onclick (module scope) ==================
+  window.interactWithRelic = interactWithRelic;
+  window.openSnapshot = openSnapshot;
+  window.openAcademy = openAcademy;
+  window.openStaking = openStaking;
+  window.launchOracle = launchOracle;
+  window.openSecurityCheck = openSecurityCheck;
+  window.openLore = openLore;
+  window.viewOnExplorer = viewOnExplorer;
+  // If you added the Altar earlier, also expose its functions:
+  // window.openAltarModal = openAltarModal;
+  // window.performBurn = performBurn;
+  // window.setAltarPercent = setAltarPercent;
+  // window.closeAltarModal = closeAltarModal;
+</script></body>
 </html>
