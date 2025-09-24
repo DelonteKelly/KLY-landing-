@@ -308,7 +308,7 @@
   /********** Constants **********/
   const KLY_TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
   const NFT_CONTRACT_ADDRESS = '0xDA76d35742190283E340dbeE2038ecc978a56950';
-  const NFT_TOKEN_ID = 2;
+  const NFT_TOKEN_ID = 2;           // used for 1155 and optional 721 ownerOf check
   const KLY_MIN_REQUIRED = 100;
 
   const BNB_CHAIN_ID_HEX = '0x38';
@@ -328,8 +328,12 @@
   const particlesContainer = document.getElementById('particles');
 
   /********** Web3 state **********/
-  let Web3ModalCtor, WalletConnectProviderCtor;
+  let Web3ModalCtor = window.Web3Modal && (window.Web3Modal.default || window.Web3Modal);
+  let WalletConnectProviderCtor = window.WalletConnectProvider && (window.WalletConnectProvider.default || window.WalletConnectProvider);
+
   let web3Modal, extProvider, provider, signer, selectedAccount;
+
+  const isHexEq = (a,b)=> String(a).toLowerCase() === String(b).toLowerCase();
 
   /********** Init **********/
   document.addEventListener('DOMContentLoaded', () => {
@@ -338,10 +342,6 @@
       pageLoader.style.opacity = '0';
       setTimeout(() => { pageLoader.style.display = 'none'; }, 800);
     }, 1200);
-
-    // Resolve UMD/ES exports safely
-    Web3ModalCtor = window.Web3Modal && (window.Web3Modal.default || window.Web3Modal);
-    WalletConnectProviderCtor = window.WalletConnectProvider && (window.WalletConnectProvider.default || window.WalletConnectProvider);
 
     setupWeb3Modal();
     walletButton.addEventListener('click', connectWallet);
@@ -357,73 +357,79 @@
     createParticles();
     initRevealObserver();
 
-    // Show connected state (no auto connect)
+    // show connected if injected already has address
     if (window.ethereum && window.ethereum.selectedAddress) {
       updateWalletButton(true, shorten(window.ethereum.selectedAddress));
     }
+
+    // IMPORTANT: expose gate functions for inline onclick handlers (iOS in-app browsers)
+    window.checkNFTAccess = checkNFTAccess;
+    window.checkKLYAccess = checkKLYAccess;
   });
 
-  /********** Web3Modal (v1) **********/
-  function setupWeb3Modal(){
-    if (!Web3ModalCtor) {
-      showStatus('Web3Modal failed to load', 'error');
-      return;
+  /********** Provider preference: injected first **********/
+  function pickInjectedProvider(){
+    const eth = window.ethereum;
+    if (!eth) return null;
+    if (eth.providers && Array.isArray(eth.providers) && eth.providers.length){
+      const mm = eth.providers.find(p=>p.isMetaMask);
+      const trust = eth.providers.find(p=>p.isTrust || p.isTrustWallet);
+      return mm || trust || eth.providers[0];
     }
+    return eth;
+  }
 
+  /********** Web3Modal (fallback only) **********/
+  function setupWeb3Modal(){
+    if (!Web3ModalCtor) return;
     const providerOptions = {};
-    // Add WalletConnect if available (v1 is deprecated; best-effort only)
     if (WalletConnectProviderCtor) {
       providerOptions.walletconnect = {
         package: WalletConnectProviderCtor,
-        options: {
-          rpc: { [BNB_CHAIN_ID_DEC]: BNB_RPC },
-          chainId: BNB_CHAIN_ID_DEC,
-          // bridge intentionally omitted; the public v1 bridge was sunset.
-          qrcode: true
-        }
+        options: { rpc:{[BNB_CHAIN_ID_DEC]:BNB_RPC}, chainId:BNB_CHAIN_ID_DEC, qrcode:true }
       };
     }
-
-    web3Modal = new Web3ModalCtor({
-      cacheProvider: false, // avoid mobile/iOS auto-connect race
-      providerOptions,
-      theme: { background:'#0b0b0b', main:'#f5f5f5', secondary:'#cfcfcf', border:'rgba(255,215,0,.2)', hover:'rgba(255,215,0,.1)' }
-    });
+    web3Modal = new Web3ModalCtor({ cacheProvider:false, providerOptions });
   }
 
   async function connectWallet(){
     try{
-      if (!web3Modal) setupWeb3Modal();
-      extProvider = await web3Modal.connect();
+      // Prefer injected
+      const injected = pickInjectedProvider();
+      if (injected) {
+        extProvider = injected;
+        await injected.request({ method:'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(injected, 'any');
+      } else {
+        if (!web3Modal) setupWeb3Modal();
+        extProvider = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(extProvider, 'any');
+      }
 
-      // Ethers v5 provider
-      provider = new ethers.providers.Web3Provider(extProvider, 'any'); // 'any' to handle chain switches
       signer = provider.getSigner();
       selectedAccount = await signer.getAddress();
 
+      bindProviderEvents(extProvider);
       updateWalletButton(true, shorten(selectedAccount));
       showStatus('Wallet connected successfully!', 'success');
 
-      // events
-      if (extProvider && extProvider.on){
-        extProvider.on('accountsChanged', (accs)=>{
-          if(!accs?.length){ resetWalletUI(); showStatus('Wallet disconnected', 'warning'); }
-          else { selectedAccount = accs[0]; updateWalletButton(true, shorten(selectedAccount)); }
-        });
-        extProvider.on('chainChanged', async (_hex)=>{
-          try { await ensureBNBChain(); } catch(e){ /* surfaced in ensureBNBChain */ }
-        });
-        extProvider.on('disconnect', ()=> { resetWalletUI(); showStatus('Wallet disconnected', 'warning'); });
-      }
-
-      // Enforce BNB chain
       await ensureBNBChain();
-
     }catch(e){
       console.error(e);
-      const msg = e && (e.message || e.toString());
-      showStatus(msg?.includes('Modal closed') ? 'Connection cancelled' : 'Could not connect wallet', 'error');
+      if (e && e.code === -32002) return showStatus('Open your wallet to approve the connection.', 'warning');
+      if (/Modal closed|User closed modal/i.test(String(e?.message))) return showStatus('Connection cancelled', 'warning');
+      showStatus('Could not connect wallet', 'error');
     }
+  }
+
+  function bindProviderEvents(p){
+    if (!p || !p.on) return;
+    p.on('accountsChanged', (accs)=>{
+      if(!accs?.length){ resetWalletUI(); showStatus('Wallet disconnected', 'warning'); }
+      else { selectedAccount = accs[0]; updateWalletButton(true, shorten(selectedAccount)); }
+    });
+    p.on('chainChanged', async _ => { try { await ensureBNBChain(); } catch(_){} });
+    p.on('disconnect', ()=> { resetWalletUI(); showStatus('Wallet disconnected', 'warning'); });
   }
 
   function resetWalletUI(){ selectedAccount = null; updateWalletButton(false); }
@@ -431,8 +437,7 @@
   async function ensureBNBChain(){
     if (!provider) throw new Error('Provider not ready');
     const chainId = await provider.send('eth_chainId', []);
-    if (chainId === BNB_CHAIN_ID_HEX) return;
-
+    if (isHexEq(chainId, BNB_CHAIN_ID_HEX)) return;
     try{
       await provider.send('wallet_switchEthereumChain', [{ chainId: BNB_CHAIN_ID_HEX }]);
     }catch(err){
@@ -442,10 +447,10 @@
           nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
           rpcUrls:[BNB_RPC], blockExplorerUrls:[BNB_EXPLORER]
         }]);
+      } else if (err?.code === -32002) {
+        showStatus('Please confirm the network switch in your wallet.', 'warning'); throw err;
       } else {
-        console.warn(err);
-        showStatus('Please switch to BNB Smart Chain in your wallet', 'error');
-        throw err;
+        showStatus('Please switch to BNB Smart Chain in your wallet.', 'error'); throw err;
       }
     }
   }
@@ -456,26 +461,25 @@
     return provider;
   }
 
-  /********** Gates **********/
+  /********** KLY gate **********/
   async function checkKLYAccess(){
+    showStatus('Checking KLY balance...', 'info');
     try{
-      showStatus('Checking KLY balance...', 'info');
       const provider = await connectWalletAndVerifyNetwork();
-      const signer = provider.getSigner();
-      const user = await signer.getAddress();
+      const user = await provider.getSigner().getAddress();
 
       const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, abi, provider);
 
       let dec = 18;
-      try { dec = await kly.decimals(); } catch (_) { /* fallback to 18 */ }
+      try { dec = await kly.decimals(); } catch (_) {}
 
       const raw = await kly.balanceOf(user);
       const need = ethers.utils.parseUnits(String(KLY_MIN_REQUIRED), dec);
 
       if (raw.gte(need)) {
         showStatus("Access granted. Redirecting...", 'success');
-        setTimeout(() => { window.location.href = "/course.html"; }, 1000);
+        setTimeout(() => { window.location.href = "/course.html"; }, 900);
       } else {
         const human = ethers.utils.formatUnits(raw, dec);
         showStatus(`You need at least ${KLY_MIN_REQUIRED} KLY. You have ${Number(human).toFixed(2)} KLY.`, 'warning');
@@ -487,25 +491,51 @@
     }
   }
 
+  /********** NFT gate — adaptive (ERC-1155 -> ERC-721) **********/
   async function checkNFTAccess(){
+    showStatus('Verifying NFT ownership...', 'info');
     try{
-      showStatus('Verifying NFT ownership...', 'info');
       const provider = await connectWalletAndVerifyNetwork();
-      const signer = provider.getSigner();
-      const user = await signer.getAddress();
+      const user = await provider.getSigner().getAddress();
 
-      // ERC-1155
-      const abi = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
-      const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
-      const bal = await nft.balanceOf(user, NFT_TOKEN_ID);
+      // Try ERC-1155 first
+      let holds = false;
+      try{
+        const abi1155 = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+        const c1155 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi1155, provider);
+        const bal1155 = await c1155.balanceOf(user, NFT_TOKEN_ID);
+        holds = (ethers.BigNumber.isBigNumber(bal1155) ? bal1155.gt(0) : Number(bal1155) > 0);
+      }catch(_){ /* ignore and try 721 */ }
 
-      const holds = ethers.BigNumber.isBigNumber(bal) ? bal.gt(0) : Number(bal) > 0;
+      // If not 1155, try ERC-721
+      if (!holds){
+        try{
+          const abi721 = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function ownerOf(uint256 tokenId) view returns (address)"
+          ];
+          const c721 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi721, provider);
+
+          // If gate is “any of this collection”
+          let bal = ethers.BigNumber.from(0);
+          try { bal = await c721.balanceOf(user); } catch(_){}
+          if (bal.gt(0)) holds = true;
+
+          // Or if gate is “must own a specific tokenId”
+          if (!holds){
+            try{
+              const owner = await c721.ownerOf(NFT_TOKEN_ID);
+              if (owner && owner.toLowerCase() === user.toLowerCase()) holds = true;
+            }catch(_){}
+          }
+        }catch(_){}
+      }
 
       if (holds){
         showStatus('NFT verified. Unlocking Portal...', 'success');
         setTimeout(()=>{ window.location.href='/portal.html'; }, 900);
       } else {
-        showStatus("You must hold the 'Key of Ascension' NFT", 'warning');
+        showStatus("You must hold the 'Key of Ascension' NFT.", 'warning');
         openModal('nft-modal');
       }
     }catch(e){
@@ -548,7 +578,7 @@
   function openModal(id){ document.getElementById(id).classList.add('active'); document.body.style.overflow='hidden'; }
   function closeModal(id){ document.getElementById(id).classList.remove('active'); document.body.style.overflow='auto'; }
 
-  /********** Particles **********/
+  /********** Particles / Reveal / Header **********/
   function createParticles(){
     const count = window.innerWidth < 768 ? 14 : 28;
     for(let i=0;i<count;i++){
@@ -567,8 +597,6 @@
       particlesContainer.appendChild(p);
     }
   }
-
-  /********** Reveal on scroll **********/
   function initRevealObserver(){
     const hero = document.querySelector('.hero'); if (hero) hero.classList.add('loaded');
     const obs = new IntersectionObserver((entries)=>{
@@ -576,8 +604,6 @@
     },{threshold:0.1});
     document.querySelectorAll('.section,.pathway,.testimonial').forEach(el=>obs.observe(el));
   }
-
-  /********** Header + Menu **********/
   function handleHeaderScroll(){
     if(window.scrollY>50) mainHeader.classList.add('header-scrolled');
     else mainHeader.classList.remove('header-scrolled');
