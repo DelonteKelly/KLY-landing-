@@ -164,30 +164,22 @@ const READ_RPC = "https://bsc-dataseed.binance.org/";
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 const BSC_CHAIN_ID = 56;
 
-// known currencies (extend as needed)
+// known currencies
 const KNOWN = {
   "0x0000000000000000000000000000000000000000": { symbol:"BNB", decimals:18, isNative:true },
-  "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol:"KLY", decimals:18, isNative:false }, // your KLY token (lowercased key)
+  "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol:"KLY", decimals:18, isNative:false },
 };
 
-/* =============== Minimal ABI (MarketplaceV3 + DirectListings) =============== */
-/* Include both pagination variants + id-based fallbacks */
+/* =============== ABI: direct listings (id-based) + buy =============== */
 const MP_ABI = [
-  // paginated reads (some builds treat the 2nd arg as count, others as endId)
-  "function getAllValidListings(uint256,uint256) view returns ((uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[] listings)",
-  "function getAllListings(uint256,uint256) view returns ((uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[] listings)",
-  // id-based reads present across MarketplaceV3 builds
   "function totalListings() view returns (uint256)",
   "function getListing(uint256) view returns (uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)",
   "function listings(uint256) view returns (uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)",
-  // buy fn
-  "function buyFromListing(uint256 listingId,address receiver,uint256 quantityToBuy,address currency,uint256 totalPrice) payable",
+  "function buyFromListing(uint256 listingId,address receiver,uint256 quantityToBuy,address currency,uint256 totalPrice) payable"
 ];
 
-// ERC721 / ERC1155 reads
 const ERC721_READ = ["function tokenURI(uint256) view returns (string)"];
 const ERC1155_READ = ["function uri(uint256) view returns (string)"];
-// Minimal ERC20 for approvals & metadata
 const ERC20_MIN = [
   "function allowance(address owner,address spender) view returns (uint256)",
   "function approve(address spender,uint256 amount) returns (bool)",
@@ -198,9 +190,7 @@ const ERC20_MIN = [
 /* =============== Providers / State =============== */
 const readProvider = new ethers.JsonRpcProvider(READ_RPC);
 const mp = new ethers.Contract(MARKETPLACE_ADDR, MP_ABI, readProvider);
-
-let walletProvider = null, signer = null, me = null;
-let mpWrite = null;
+let walletProvider=null, signer=null, me=null, mpWrite=null;
 
 /* =============== DOM helpers =============== */
 const $ = (id)=>document.getElementById(id);
@@ -210,15 +200,10 @@ $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
 
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function ipfs(u){ return (u && u.startsWith("ipfs://")) ? "https://ipfs.io/ipfs/"+u.slice(7) : (u||""); }
-function safeURL(u){
-  if(!u) return "";
-  if(u.startsWith("ipfs://")) return ipfs(u);
-  try { const url = new URL(u); return (url.protocol === "http:" || url.protocol === "https:") ? u : ""; }
-  catch { return ""; }
-}
-function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+function safeURL(u){ if(!u) return ""; if(u.startsWith("ipfs://")) return ipfs(u); try{ const url=new URL(u); return /https?:/.test(url.protocol)?u:""; }catch{ return ""; } }
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
-/* =============== Unit formatting =============== */
+/* =============== Formatting =============== */
 function prettyUnits(v, d){
   const s = ethers.formatUnits(v, d);
   let [a,b=""] = s.split(".");
@@ -226,8 +211,8 @@ function prettyUnits(v, d){
   return b ? `${a}.${b}` : a;
 }
 
-/* =============== ERC20 metadata cache =============== */
-const erc20Meta = new Map(); // addrLower -> {decimals,symbol,isNative:false}
+/* =============== ERC20 meta cache =============== */
+const erc20Meta = new Map();
 async function getCurrencyMeta(addr){
   const lower = String(addr||ZERO).toLowerCase();
   if (KNOWN[lower]) return KNOWN[lower];
@@ -246,7 +231,7 @@ async function getCurrencyMeta(addr){
   }
 }
 
-/* =============== Connect wallet (for buy) =============== */
+/* =============== Wallet connect =============== */
 $("connect").addEventListener("click", connect);
 async function connect(){
   $("err").textContent = "";
@@ -256,16 +241,14 @@ async function connect(){
     await walletProvider.send("eth_requestAccounts",[]);
     const net = await walletProvider.getNetwork();
     if (Number(net.chainId)!==BSC_CHAIN_ID){
-      try{
-        await walletProvider.send("wallet_switchEthereumChain",[{chainId:"0x"+BSC_CHAIN_ID.toString(16)}]);
-      }catch(e){
+      try{ await walletProvider.send("wallet_switchEthereumChain",[{chainId:"0x"+BSC_CHAIN_ID.toString(16)}]); }
+      catch(e){
         if (e?.code===4902){
           await walletProvider.send("wallet_addEthereumChain",[{
             chainId:"0x"+BSC_CHAIN_ID.toString(16),
             chainName:"BNB Smart Chain",
             nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
-            rpcUrls:[READ_RPC],
-            blockExplorerUrls:["https://bscscan.com"]
+            rpcUrls:[READ_RPC], blockExplorerUrls:["https://bscscan.com"]
           }]);
         } else throw e;
       }
@@ -283,7 +266,7 @@ async function connect(){
   }
 }
 
-/* =============== IPFS JSON with gateway fallback =============== */
+/* =============== IPFS helper =============== */
 const IPFS_GATEWAYS = ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"];
 async function fetchIPFSJson(url, { signal } = {}){
   if (!url) return {};
@@ -293,108 +276,74 @@ async function fetchIPFSJson(url, { signal } = {}){
   }
   const hash = url.slice(7);
   for (const g of IPFS_GATEWAYS){
-    try{
-      const r = await fetch(g+hash, { signal, headers:{accept:"application/json"} });
-      if (r.ok) return r.json();
-    }catch{}
+    try{ const r = await fetch(g+hash, { signal, headers:{accept:"application/json"} }); if (r.ok) return r.json(); }catch{}
   }
   return {};
 }
 
-/* =============== Concurrency limiter (pLimit) =============== */
+/* =============== pLimit =============== */
 function pLimit(n){
-  const queue=[]; let active=0;
-  const next=()=>{ if (active>=n || queue.length===0) return; active++; const {fn,resolve,reject}=queue.shift();
-    fn().then(resolve,reject).finally(()=>{ active--; next(); });
+  const q=[]; let a=0;
+  const next=()=>{ if(a>=n||!q.length) return; a++; const {fn,res,rej}=q.shift();
+    fn().then(res,rej).finally(()=>{ a--; next(); });
   };
-  return (fn)=> new Promise((resolve,reject)=>{ queue.push({fn,resolve,reject}); next(); });
+  return (fn)=> new Promise((res,rej)=>{ q.push({fn,res,rej}); next(); });
 }
 const limit = pLimit(6);
 
-/* =============== Adaptive reads for different MarketplaceV3 builds =============== */
-async function tryValidListings(start, count){
-  // (start,count)
-  try { return await mp.getAllValidListings(start, count); } catch {}
-  // (startId,endId) — use start + count - 1
-  try { return await mp.getAllValidListings(start, start + count - 1n); } catch {}
-  throw new Error("getAllValidListings not available on this deployment");
-}
-
-async function tryAllListings(start, count){
-  try { return await mp.getAllListings(start, count); } catch {}
-  try { return await mp.getAllListings(start, start + count - 1n); } catch {}
-  throw new Error("getAllListings not available on this deployment");
-}
-
-// Last-resort fallback: scan by ids using totalListings + getListing/listings
-async function scanByIds(limit = 200n){
-  let total = 0n;
-  try { total = await mp.totalListings(); } catch {}
-  // If total unavailable, just try last 200 ids starting from 0..199
-  const startId = total > 0n ? total - 1n : 199n;
-  const out = [];
-  for (let id = startId; id >= 0n && out.length < Number(limit); id--){
-    let row = null;
-    try { row = await mp.getListing(id); } catch {}
-    if (!row) { try { row = await mp.listings(id); } catch {} }
-    if (!row) { if (id === 0n) break; continue; }
-    const status = Number(row.status ?? 1);
-    if (status === 1) out.push(row);
-    if (id === 0n) break;
-  }
-  return out;
-}
-
-/* =============== Load listings (race-safe, resilient) =============== */
-let lastListings = [];
-let timer = null;
-let inFlight = null;
-
+/* =============== Load every direct listing by ID (no server-side filters) =============== */
+let timer=null, inFlight=null;
 async function loadListings(){
   $("err").textContent = "";
   $("empty").style.display = "none";
   $("listings").innerHTML = "<div class='loading'><div class='spinner' role='status' aria-label='Loading'></div><div>Loading marketplace listings...</div></div>";
 
-  // cancel previous run
   if (inFlight) inFlight.abort();
-  const ctl = new AbortController();
-  inFlight = ctl;
+  const ctl = new AbortController(); inFlight = ctl;
 
   try{
-    let rows;
-    // Try valid → all → id-scan
-    try {
-      rows = await tryValidListings(0n, 60n);
-    } catch {
-      try {
-        const all = await tryAllListings(0n, 60n);
-        rows = (all || []).filter(r => Number(r.status ?? 1) === 1);
-      } catch {
-        rows = await scanByIds(200n);
-      }
+    // how many listings exist
+    let total = 0n;
+    try { total = await mp.totalListings(); }
+    catch { /* some builds hide totalListings; assume up to 200 and probe */ total = 200n; }
+
+    const maxId = total > 0n ? total - 1n : 0n;
+    const toFetch = total > 0n ? Number(total) : 200;
+    const ids = Array.from({length: toFetch}, (_,i)=> maxId - BigInt(i)).filter(x=> x >= 0n);
+
+    // fetch all rows (getListing OR listings)
+    const rows = (await Promise.all(ids.map(id => limit(async ()=>{
+      if (ctl.signal.aborted) return null;
+      let r=null; try { r = await mp.getListing(id); } catch {}
+      if (!r){ try { r = await mp.listings(id); } catch {} }
+      return r ? { ...r } : null;
+    })))).filter(Boolean);
+
+    if (!rows.length){
+      $("listings").innerHTML = "";
+      $("empty").style.display = "block";
+      return;
     }
 
-    // normalize + map minimal listing shape
-    lastListings = rows.map(n => ({
+    // normalize + render
+    const norm = rows.map(n => ({
       id: Number(n.id),
-      asset: String(n.assetContract || n.asset || n.tokenContract || n[2] || ""),
+      asset: String(n.assetContract || n.tokenContract),
       tokenId: typeof n.tokenId === 'bigint' ? n.tokenId.toString() : String(n.tokenId),
-      tokenType: Number(n.tokenType ?? n[10] ?? 1),       // 0:1155, 1:721 (default 721)
-      listingType: Number(n.listingType ?? n[11] ?? 0),   // 0:Direct (default)
+      tokenType: Number(n.tokenType ?? 1),
       currency: String(n.currency || ZERO),
-      buyout: n.buyoutPricePerToken ?? n.buyoutPrice ?? 0n
+      buyout: n.buyoutPricePerToken ?? n.buyoutPrice ?? 0n,
+      quantity: Number(n.quantity ?? 1),
+      startTime: BigInt(n.startTime ?? 0),
+      endTime: BigInt(n.endTime ?? 0),
+      statusRaw: (typeof n.status !== "undefined") ? Number(n.status) : null
     }));
 
-    if (!lastListings.length){ 
-      $("listings").innerHTML=""; 
-      $("empty").style.display = "block"; 
-      return; 
-    }
-    await render(lastListings, ctl.signal);
+    await render(norm, ctl.signal);
   }catch(e){
     if (e?.name === 'AbortError') return;
     console.error(e);
-    $("listings").innerHTML="";
+    $("listings").innerHTML = "";
     $("err").textContent = e?.shortMessage || e?.message || "Couldn't load listings.";
     $("empty").style.display = "block";
   } finally {
@@ -402,30 +351,37 @@ async function loadListings(){
   }
 }
 
-/* =============== Render cards (throttled metadata fetch) =============== */
-async function render(rows, signal){
-  const grid = $("listings");
-  grid.innerHTML = "";
+/* =============== Derive human status =============== */
+function deriveStatus(row){
+  const now = BigInt(Math.floor(Date.now()/1000));
+  // If contract provided a status, try to map: common: 0/created,1/completed,2/cancelled (varies by build), so we won't rely on exact numbers.
+  if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
+  if (row.endTime && row.endTime !== 0n && row.endTime < now) return {label:"Expired", cls:"warn", actionable:false};
+  if (row.startTime && row.startTime !== 0n && row.startTime > now) return {label:"Scheduled", cls:"warn", actionable:false};
+  return {label:"Active", cls:"ok", actionable:true};
+}
 
-  // Build data with limited concurrency
-  const results = await Promise.all(rows.map(L => limit(async ()=>{
+/* =============== Render =============== */
+async function render(rows, signal){
+  const grid = $("listings"); grid.innerHTML = "";
+
+  const cards = await Promise.all(rows.map(L => limit(async ()=>{
     if (signal?.aborted) return null;
 
-    // currency meta
-    const curMeta = await getCurrencyMeta(L.currency);
-    const price = prettyUnits(L.buyout, curMeta.decimals);
+    const meta = await getCurrencyMeta(L.currency);
+    const priceStr = `${prettyUnits(L.buyout, meta.decimals)} ${meta.symbol}`;
 
     // metadata preview
     let name = `Token #${L.tokenId}`, img = "", description = "";
     try{
-      if (L.tokenType===1){ // ERC721
+      if (L.tokenType===1){ // ERC-721
         const c = new ethers.Contract(L.asset, ERC721_READ, readProvider);
         const uri = await c.tokenURI(L.tokenId);
         const j = await fetchIPFSJson(ipfs(uri), { signal });
         img = safeURL(j.image || j.image_url || "");
         name = j.name || name;
         description = j.description || "";
-      }else{ // ERC1155
+      }else{ // ERC-1155
         const c = new ethers.Contract(L.asset, ERC1155_READ, readProvider);
         let uri = await c.uri(L.tokenId);
         if (uri?.includes?.("{id}")){
@@ -437,20 +393,15 @@ async function render(rows, signal){
         name = j.name || name;
         description = j.description || "";
       }
-    }catch{/* ignore preview errors */}
+    }catch{}
 
-    return { L, curMeta, price, name, img, description };
-  })));
+    const st = deriveStatus(L);
 
-  // create cards
-  for (const r of results){
-    if (!r) continue;
-    const { L, curMeta, price, name, img, description } = r;
-
+    // Build card element
     const card = document.createElement("div");
     card.className = "card";
     card.setAttribute("data-token-type", L.tokenType === 1 ? "erc721" : "erc1155");
-    card.setAttribute("data-currency", curMeta.symbol.toLowerCase());
+    card.setAttribute("data-currency", meta.symbol.toLowerCase());
     card.setAttribute("data-name", (name||"").toLowerCase());
     card.setAttribute("data-token-id", L.tokenId);
     card.setAttribute("data-contract", L.asset.toLowerCase());
@@ -460,7 +411,7 @@ async function render(rows, signal){
       <div class="thumb-container">
         <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
              src="${img || placeholder}" alt="NFT preview for ${escapeHtml(name)}">
-        <div class="token-badge">${L.tokenType === 1 ? 'ERC-721' : 'ERC-1155'}</div>
+        <div class="token-badge">${st.label} • ${L.tokenType===1?"ERC-721":"ERC-1155"}</div>
       </div>
       <div class="row" style="margin-top:.5rem">
         <strong>${escapeHtml(name)}</strong>
@@ -468,64 +419,63 @@ async function render(rows, signal){
       </div>
       <div class="row">
         <span class="sub">${short(L.asset)} · #${L.tokenId}</span>
-        <span class="price">${price} ${curMeta.symbol}</span>
+        <span class="price">${priceStr}</span>
       </div>
       ${description ? `<div class="sub" style="margin-top:8px;font-size:0.85rem;line-height:1.4">${escapeHtml(description.length > 140 ? description.substring(0, 140) + '…' : description)}</div>` : ''}
       <div class="card-actions">
         <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${L.id}" target="_blank" rel="noopener">
           <i class="fas fa-external-link-alt" aria-hidden="true"></i> Details
         </a>
-        <button class="btn btn-primary" data-buy="${L.id}">
-          <i class="fas fa-shopping-cart" aria-hidden="true"></i> Buy Now
-        </button>
+        ${st.actionable ? `
+          <button class="btn btn-primary" data-buy="${L.id}">
+            <i class="fas fa-shopping-cart" aria-hidden="true"></i> Buy Now
+          </button>
+        ` : `
+          <button class="btn" disabled title="Not purchasable right now">
+            <i class="fas fa-ban" aria-hidden="true"></i> Unavailable
+          </button>
+        `}
       </div>
-      <div id="st-${L.id}" class="status" role="status" aria-live="polite"></div>
+      <div id="st-${L.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
     `;
-    grid.appendChild(card);
-  }
+    return card;
+  })));
 
-  // wire search & filter once per render
+  for (const c of cards) if (c) grid.appendChild(c);
+
   setupSearchAndFilter();
 }
 
-/* =============== Search and Filter =============== */
+/* =============== Search & Filter =============== */
 function setupSearchAndFilter() {
   const searchInput = $('search');
   const filterButtons = document.querySelectorAll('.filter-btn');
-
-  // Debounced search
   const apply = ()=> filterListings(searchInput.value.toLowerCase(), getActiveFilter());
   const debouncedApply = debounce(apply, 200);
   searchInput.removeEventListener('input', searchInput._boundDebouncedApply || (()=>{}));
   searchInput._boundDebouncedApply = function(){ debouncedApply(); };
   searchInput.addEventListener('input', searchInput._boundDebouncedApply);
-
-  // Filter buttons
   filterButtons.forEach(btn => {
     btn.addEventListener('click', function() {
       filterButtons.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
       this.classList.add('active'); this.setAttribute('aria-pressed','true');
       apply();
-    }, { once: false });
+    });
   });
 }
-
 function getActiveFilter() {
   const activeBtn = document.querySelector('.filter-btn.active');
   return activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
 }
-
 function filterListings(searchTerm, filter) {
   const cards = document.querySelectorAll('.card');
   let visibleCount = 0;
-
   cards.forEach(card => {
     const tokenType = card.getAttribute('data-token-type');
     const currency = card.getAttribute('data-currency');
     const name = card.getAttribute('data-name');
     const tokenId = card.getAttribute('data-token-id') || "";
     const contract = card.getAttribute('data-contract');
-
     let matchesFilter = true;
     if (filter !== 'all') {
       if (filter === 'erc721') matchesFilter = tokenType === 'erc721';
@@ -533,27 +483,17 @@ function filterListings(searchTerm, filter) {
       else if (filter === 'native') matchesFilter = currency === 'bnb';
       else if (filter === 'kly') matchesFilter = currency === 'kly';
     }
-
     let matchesSearch = true;
     if (searchTerm) {
-      matchesSearch =
-        name.includes(searchTerm) ||
-        tokenId.toLowerCase().includes(searchTerm) ||
-        contract.includes(searchTerm);
+      matchesSearch = name.includes(searchTerm) || tokenId.toLowerCase().includes(searchTerm) || contract.includes(searchTerm);
     }
-
-    if (matchesFilter && matchesSearch) {
-      card.style.display = 'flex';
-      visibleCount++;
-    } else {
-      card.style.display = 'none';
-    }
+    if (matchesFilter && matchesSearch) { card.style.display = 'flex'; visibleCount++; }
+    else card.style.display = 'none';
   });
-
   $('empty').style.display = visibleCount === 0 ? 'block' : 'none';
 }
 
-/* =============== Buy handler (exact listing fetch) =============== */
+/* =============== Buy handler (direct only, Active only) =============== */
 $("listings").addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-buy]");
   if (!btn) return;
@@ -564,15 +504,24 @@ $("listings").addEventListener("click", async (e)=>{
   try{
     if (!signer || !mpWrite){ await connect(); if (!signer) return; }
 
-    // Fetch the exact listing
-    let L = null;
-    try { L = await mp.getListing(id); } catch {}
-    if (!L) { try { L = await mp.listings(id); } catch {} }
-    if (!L || Number(L.status) !== 1) throw new Error("Listing not active");
+    let L=null; try { L = await mp.getListing(id); } catch {}
+    if(!L){ try { L = await mp.listings(id); } catch {} }
+    if (!L) throw new Error("Listing not found");
 
-    const currency = String(L.currency || ZERO);
-    const { decimals } = await getCurrencyMeta(currency);
-    const total = L.buyoutPricePerToken; // buy 1 (BigInt)
+    // derive active again to block buys for inactive
+    const row = {
+      id: Number(L.id),
+      buyout: L.buyoutPricePerToken ?? L.buyoutPrice ?? 0n,
+      currency: String(L.currency || ZERO),
+      quantity: Number(L.quantity ?? 1),
+      startTime: BigInt(L.startTime ?? 0),
+      endTime: BigInt(L.endTime ?? 0)
+    };
+    const s = deriveStatus(row);
+    if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
+
+    const currency = row.currency;
+    const total = row.buyout;
 
     // ERC20 approval if needed
     if (currency.toLowerCase() !== ZERO.toLowerCase()){
@@ -581,30 +530,29 @@ $("listings").addEventListener("click", async (e)=>{
       const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
       if (allowance < total){
         st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Approving...";
-        const txa = await erc.approve(MARKETPLACE_ADDR, total);
-        await txa.wait();
+        const txa = await erc.approve(MARKETPLACE_ADDR, total); await txa.wait();
       }
     }
 
     st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Buying...";
     const overrides = (currency.toLowerCase() === ZERO.toLowerCase()) ? { value: total } : {};
-    const tx = await mpWrite.buyFromListing(Number(L.id), me || await signer.getAddress(), 1, currency, total, overrides);
+    const tx = await mpWrite.buyFromListing(id, me || await signer.getAddress(), 1, currency, total, overrides);
     const rec = await tx.wait();
     st.className="status ok"; st.innerHTML = `<i class="fas fa-check" aria-hidden="true"></i> Success! TX: ${rec.transactionHash.slice(0,10)}…`;
     await loadListings();
   }catch(err){
     console.error(err);
     st.className="status err";
-    const msg = err?.shortMessage || err?.info?.error?.message || err?.message || "Transaction failed";
-    st.innerHTML = `<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> ${escapeHtml(String(msg))}`;
+    st.innerHTML = `<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> ${escapeHtml(String(err?.shortMessage || err?.message || "Transaction failed"))}`;
   }
 });
 
-/* =============== Boot (auto-refresh, race-safe) =============== */
+/* =============== Boot =============== */
+let refreshTimer=null;
 async function start(){
   await loadListings();
-  clearInterval(timer);
-  timer = setInterval(()=>{ if(!inFlight) loadListings(); }, 30000);
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadListings, 30000);
 }
 start();
 </script>
