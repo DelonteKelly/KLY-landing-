@@ -172,19 +172,10 @@ const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 const ZERO = "0x0000000000000000000000000000000000000000";
 const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; // thirdweb's native marker
 
-/* ===================== THIRDWEB v4 BOOT ===================== */
-const TW = window.thirdweb || window.thirdwebSDK || window;
-if (!TW.ThirdwebSDK) {
-  const el = document.getElementById("err");
-  if (el) el.textContent = "Thirdweb v4 UMD not found — include @thirdweb-dev/sdk@4 in <head>.";
-  throw new Error("Thirdweb v4 UMD missing");
-}
-const provider = new ethers.providers.JsonRpcProvider(READ_RPC, { name: "bsc", chainId: BSC_CHAIN_ID });
-const sdk = new TW.ThirdwebSDK(provider, { supportedChains: [{ chainId: BSC_CHAIN_ID, rpc: [READ_RPC] }] });
-
 /* ===================== DOM HELPERS ===================== */
 const $ = (id)=>document.getElementById(id);
 const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+const setErr = (msg)=>{ const el=$("err"); if(el){ el.textContent = msg; } console.error(msg); };
 $("mpAddrShort")?.textContent = short(MARKETPLACE_ADDR);
 
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -192,7 +183,7 @@ function ipfs(u){ return (u && u.startsWith("ipfs://")) ? "https://ipfs.io/ipfs/
 function safeURL(u){ if(!u) return ""; if(u.startsWith("ipfs://")) return ipfs(u); try{ const url=new URL(u); return /^https?:$/.test(url.protocol)?u:""; }catch{ return ""; } }
 const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
 
-/* ===================== BN FORMATTING ===================== */
+/* ===================== BN / NUMBER UTILS ===================== */
 function formatUnits(bi, decimals){
   let v = typeof bi === "bigint" ? bi : BigInt(bi);
   const base = 10n ** BigInt(decimals);
@@ -200,6 +191,37 @@ function formatUnits(bi, decimals){
   return frac ? `${whole}.${frac.toString().padStart(Number(decimals),'0').replace(/0+$/,'')}` : whole.toString();
 }
 function prettyUnits(v,d){ const s = formatUnits(v,d); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
+
+/* ===================== THIRDWEB v4 BOOT (HARDENED) ===================== */
+const TW_GLOBAL = (()=>{
+  // some CDNs attach only window.ThirdwebSDK (no namespace). Handle all.
+  if (window.ThirdwebSDK) return { ThirdwebSDK: window.ThirdwebSDK };
+  if (window.thirdweb?.ThirdwebSDK) return window.thirdweb;
+  if (window.thirdwebSDK?.ThirdwebSDK) return window.thirdwebSDK;
+  return null;
+})();
+
+if (!TW_GLOBAL?.ThirdwebSDK) {
+  setErr("Thirdweb v4 UMD not found — ensure @thirdweb-dev/sdk@4 script is included before this script.");
+  throw new Error("Thirdweb v4 UMD missing");
+}
+
+if (!window.ethers?.providers?.JsonRpcProvider) {
+  setErr("Ethers v5 UMD not found — ensure ethers@5 UMD script is included before this script.");
+  throw new Error("ethers v5 UMD missing");
+}
+
+console.log("[boot] ethers v5 OK; thirdweb v4 OK");
+
+const provider = new ethers.providers.JsonRpcProvider(READ_RPC, { name: "bsc", chainId: BSC_CHAIN_ID });
+let sdk;
+try {
+  sdk = new TW_GLOBAL.ThirdwebSDK(provider, { supportedChains: [{ chainId: BSC_CHAIN_ID, rpc: [READ_RPC] }] });
+  console.log("[boot] ThirdwebSDK ready on BSC");
+} catch (e) {
+  setErr("Failed to initialize Thirdweb SDK with the given RPC.");
+  throw e;
+}
 
 /* ===================== CURRENCY META ===================== */
 const KNOWN = {
@@ -228,10 +250,13 @@ async function getCurrencyMeta(addr){
 
 /* ===================== WALLET (METAMASK) ===================== */
 let signerSdk = null, me = null, web3prov = null;
-$("connect")?.addEventListener("click", async ()=>{
+async function connect(){
   $("err").textContent = "";
   try{
-    if (!window.ethereum) throw new Error("MetaMask not detected");
+    if (!window.ethereum) {
+      setErr("MetaMask not detected. On mobile, open this site inside the MetaMask in-app browser.");
+      return;
+    }
     web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
     await web3prov.send("eth_requestAccounts", []);
     const net = await web3prov.getNetwork();
@@ -241,63 +266,26 @@ $("connect")?.addEventListener("click", async ()=>{
         params: [{ chainId: "0x" + BSC_CHAIN_ID.toString(16) }]
       });
     }
-    signerSdk = new TW.ThirdwebSDK(web3prov.getSigner());
+    signerSdk = new TW_GLOBAL.ThirdwebSDK(web3prov.getSigner());
     me = await web3prov.getSigner().getAddress();
     $("whoAddr").textContent = short(me);
     $("who").style.display = "inline-block";
     $("connect").style.display = "none";
+
+    // Auto reload on account/chain change
+    if (window.ethereum?.on) {
+      window.ethereum.on('accountsChanged', ()=> location.reload());
+      window.ethereum.on('chainChanged', ()=> location.reload());
+    }
   }catch(e){
-    $("err").textContent = e?.message || "Failed to connect wallet.";
+    setErr(e?.message || "Failed to connect wallet.");
   }
-});
-
-/* ===================== LOAD LISTINGS ===================== */
-let inFlight=false, timer=null;
-
-async function loadListings(){
-  $("err").textContent = "";
-  $("empty").style.display = "none";
-  $("listings").innerHTML = `
-    <div class="loading">
-      <div class="spinner" role="status" aria-label="Loading"></div>
-      <div>Loading marketplace listings...</div>
-    </div>`;
-
-  if (inFlight) return; inFlight = true;
-  try{
-    const mp = await sdk.getContract(MARKETPLACE_ADDR, "marketplace-v3");
-
-    // Show ALL direct listings so your 15 appear (even if not active yet).
-    const direct = await mp.directListings.getAll();
-
-    if (!direct?.length){ $("listings").innerHTML=""; $("empty").style.display="block"; inFlight=false; return; }
-
-    // Normalize both shapes (SDK vs. raw list API)
-    const rows = direct.map(n => ({
-      id: Number(n.id ?? n.listingId),
-      asset: String(n.assetContractAddress ?? n.assetContract ?? n.asset),
-      tokenId: String(n.tokenId),
-      tokenType: Number(n.tokenType ?? (n.type === "ERC721" ? 1 : 0)), // 1=721, 0=1155
-      currency: String(n.currencyContractAddress ?? n.currency ?? ZERO).toLowerCase(),
-      buyout: BigInt(String(n.buyoutPricePerToken ?? n.pricePerToken ?? "0")),
-      quantity: Number(n.quantity ?? 1),
-      startTime: BigInt(n.startTimeInSeconds ?? n.startTimestamp ?? n.startTime ?? 0),
-      endTime: BigInt(n.endTimeInSeconds ?? n.endTimestamp ?? n.endTime ?? 0),
-      status: (typeof n.status !== "undefined") ? Number(n.status) : undefined,
-      reserved: Boolean(n.reserved ?? false),
-    }));
-
-    await render(rows);
-  }catch(e){
-    console.error(e);
-    $("listings").innerHTML=""; $("err").textContent = e?.message || "Couldn't load listings."; $("empty").style.display="block";
-  } finally { inFlight=false; }
 }
+$("connect")?.addEventListener("click", connect);
 
 /* ===================== STATUS LOGIC ===================== */
 function deriveStatus(row){
   const now = BigInt(Math.floor(Date.now()/1000));
-  // If backend gives a status, 1 often means active; anything else mark inactive
   if (typeof row.status === "number" && row.status !== 1) {
     return { label: "Inactive", cls: "warn", actionable: false };
   }
@@ -321,9 +309,68 @@ async function getNFTMeta(asset, tokenId, tokenType){
       const md = nft?.metadata || {};
       return { name: md.name || `Token #${tokenId}`, image: safeURL(md.image || md.image_url || ""), description: md.description || "" };
     }
-  }catch{
+  }catch(e){
+    console.warn("[metadata]", e);
     return { name:`Token #${tokenId}`, image:"", description:"" };
   }
+}
+
+/* ===================== LOAD LISTINGS ===================== */
+let inFlight=false, refreshTimer=null;
+
+async function loadListings(){
+  $("err").textContent = "";
+  $("empty").style.display = "none";
+  $("listings").innerHTML = `
+    <div class="loading">
+      <div class="spinner" role="status" aria-label="Loading"></div>
+      <div>Loading marketplace listings...</div>
+    </div>`;
+
+  if (inFlight) return; inFlight = true;
+  try{
+    const mp = await sdk.getContract(MARKETPLACE_ADDR, "marketplace-v3");
+
+    let direct = [];
+    try {
+      // Try ALL first so scheduled/inactive also show
+      direct = await mp.directListings.getAll();
+    } catch (e) {
+      console.warn("[getAll] failed, trying getAllValid()", e?.message);
+      try {
+        direct = await mp.directListings.getAllValid();
+      } catch (e2) {
+        setErr("Couldn't load listings (getAll / getAllValid both failed).");
+        throw e2;
+      }
+    }
+
+    if (!Array.isArray(direct) || direct.length === 0){
+      $("listings").innerHTML=""; $("empty").style.display="block"; inFlight=false; return;
+    }
+
+    // Normalize both shapes (SDK vs raw)
+    const rows = direct.map(n => ({
+      id: Number(n.id ?? n.listingId),
+      asset: String(n.assetContractAddress ?? n.assetContract ?? n.asset),
+      tokenId: String(n.tokenId),
+      tokenType: Number(n.tokenType ?? (n.type === "ERC721" ? 1 : 0)), // 1=721, 0=1155
+      currency: String(n.currencyContractAddress ?? n.currency ?? ZERO).toLowerCase(),
+      buyout: BigInt(String(n.buyoutPricePerToken ?? n.pricePerToken ?? "0")),
+      quantity: Number(n.quantity ?? 1),
+      startTime: BigInt(n.startTimeInSeconds ?? n.startTimestamp ?? n.startTime ?? 0),
+      endTime: BigInt(n.endTimeInSeconds ?? n.endTimestamp ?? n.endTime ?? 0),
+      status: (typeof n.status !== "undefined") ? Number(n.status) : undefined,
+      reserved: Boolean(n.reserved ?? false),
+    }));
+
+    await render(rows);
+  }catch(e){
+    console.error(e);
+    $("listings").innerHTML="";
+    setErr(e?.message || "Couldn't load listings.");
+    $("empty").style.display="block";
+  } finally { inFlight=false; }
 }
 
 /* ===================== RENDER ===================== */
@@ -350,10 +397,12 @@ async function render(rows){
     card.setAttribute("data-contract", r.asset.toLowerCase());
 
     const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
+    const imgSrc = md.image || placeholder;
+
     card.innerHTML = `
       <div class="thumb-container">
         <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-             src="${md.image || placeholder}" alt="NFT preview for ${escapeHtml(md.name)}">
+             src="${imgSrc}" alt="NFT preview for ${escapeHtml(md.name)}">
         <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
       </div>
       <div class="row" style="margin-top:.5rem">
@@ -381,6 +430,11 @@ async function render(rows){
       </div>
       <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
     `;
+
+    // image fallback if broken
+    const imgEl = card.querySelector(".thumb");
+    imgEl.onerror = (e)=>{ e.currentTarget.onerror = null; e.currentTarget.src = placeholder; };
+
     return card;
   })));
 
@@ -440,14 +494,14 @@ $("listings")?.addEventListener("click", async (e)=>{
   const st = $("st-"+id); $("err").textContent = "";
 
   try{
-    if (!signerSdk) { await $("connect").click(); if (!signerSdk) return; }
+    if (!signerSdk) { await connect(); if (!signerSdk) return; }
     const mp = await signerSdk.getContract(MARKETPLACE_ADDR, "marketplace-v3");
 
     // Fetch the exact listing again to get fresh price/currency
     const L = await mp.directListings.getListing(id);
     const currency = String(L.currencyContractAddress || ZERO).toLowerCase();
     const pricePerToken = BigInt(String(L.buyoutPricePerToken ?? L.pricePerToken ?? "0"));
-    const total = pricePerToken; // buying quantity 1 in this UI
+    const total = pricePerToken; // quantity 1
 
     // Block buys if not actionable by our client-side rules
     const row = {
@@ -464,19 +518,19 @@ $("listings")?.addEventListener("click", async (e)=>{
 
     // If ERC20, ensure allowance for marketplace
     if (currency !== ZERO && currency !== NATIVE_SENTINEL){
-      const signer = web3prov.getSigner();
+      const signer = await web3prov.getSigner();
       const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
       const owner = me || await signer.getAddress();
       const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
-      if (allowance.lt(ethers.BigNumber.from(total.toString()))){
+      const need = ethers.BigNumber.from(total.toString());
+      if (ethers.BigNumber.from(allowance.toString()).lt(need)){
         st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Approving...";
-        const txa = await erc.approve(MARKETPLACE_ADDR, total.toString());
+        const txa = await erc.approve(MARKETPLACE_ADDR, need);
         await txa.wait();
       }
     }
 
     st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Buying...";
-    // For native or ERC20, Thirdweb v4 helper figures out value when needed:
     await mp.directListings.buyFromListing(id, 1);
 
     st.className="status ok"; st.innerHTML = `<i class="fas fa-check" aria-hidden="true"></i> Purchase sent — check wallet`;
@@ -489,13 +543,21 @@ $("listings")?.addEventListener("click", async (e)=>{
 });
 
 /* ===================== BOOT ===================== */
-let refreshTimer=null;
 async function start(){
-  await loadListings();
-  clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadListings, 30000);
+  try{
+    await loadListings();
+  } finally {
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(loadListings, 30000);
+  }
 }
-start();
+
+// If DOM wasn’t fully parsed for any reason, ensure start after ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", start);
+} else {
+  start();
+}
 </script>
 </body>
 </html>
