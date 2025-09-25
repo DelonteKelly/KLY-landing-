@@ -171,11 +171,15 @@ const KNOWN = {
 };
 
 /* =============== Minimal ABI (MarketplaceV3 + DirectListings) =============== */
+/* Include both pagination variants + id-based fallbacks */
 const MP_ABI = [
-  // listing queries
-  "function getAllValidListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[] listings)",
-  "function getAllListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[] listings)",
-  "function getListing(uint256 listingId) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status))",
+  // paginated reads (some builds treat the 2nd arg as count, others as endId)
+  "function getAllValidListings(uint256,uint256) view returns ((uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[] listings)",
+  "function getAllListings(uint256,uint256) view returns ((uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[] listings)",
+  // id-based reads present across MarketplaceV3 builds
+  "function totalListings() view returns (uint256)",
+  "function getListing(uint256) view returns (uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)",
+  "function listings(uint256) view returns (uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)",
   // buy fn
   "function buyFromListing(uint256 listingId,address receiver,uint256 quantityToBuy,address currency,uint256 totalPrice) payable",
 ];
@@ -307,7 +311,41 @@ function pLimit(n){
 }
 const limit = pLimit(6);
 
-/* =============== Load listings (race-safe) =============== */
+/* =============== Adaptive reads for different MarketplaceV3 builds =============== */
+async function tryValidListings(start, count){
+  // (start,count)
+  try { return await mp.getAllValidListings(start, count); } catch {}
+  // (startId,endId) — use start + count - 1
+  try { return await mp.getAllValidListings(start, start + count - 1n); } catch {}
+  throw new Error("getAllValidListings not available on this deployment");
+}
+
+async function tryAllListings(start, count){
+  try { return await mp.getAllListings(start, count); } catch {}
+  try { return await mp.getAllListings(start, start + count - 1n); } catch {}
+  throw new Error("getAllListings not available on this deployment");
+}
+
+// Last-resort fallback: scan by ids using totalListings + getListing/listings
+async function scanByIds(limit = 200n){
+  let total = 0n;
+  try { total = await mp.totalListings(); } catch {}
+  // If total unavailable, just try last 200 ids starting from 0..199
+  const startId = total > 0n ? total - 1n : 199n;
+  const out = [];
+  for (let id = startId; id >= 0n && out.length < Number(limit); id--){
+    let row = null;
+    try { row = await mp.getListing(id); } catch {}
+    if (!row) { try { row = await mp.listings(id); } catch {} }
+    if (!row) { if (id === 0n) break; continue; }
+    const status = Number(row.status ?? 1);
+    if (status === 1) out.push(row);
+    if (id === 0n) break;
+  }
+  return out;
+}
+
+/* =============== Load listings (race-safe, resilient) =============== */
 let lastListings = [];
 let timer = null;
 let inFlight = null;
@@ -324,22 +362,27 @@ async function loadListings(){
 
   try{
     let rows;
-    try { 
-      rows = await mp.getAllValidListings(0, 60);
+    // Try valid → all → id-scan
+    try {
+      rows = await tryValidListings(0n, 60n);
     } catch {
-      const all = await mp.getAllListings(0, 60);
-      rows = all.filter(r => Number(r.status) === 1);
+      try {
+        const all = await tryAllListings(0n, 60n);
+        rows = (all || []).filter(r => Number(r.status ?? 1) === 1);
+      } catch {
+        rows = await scanByIds(200n);
+      }
     }
 
     // normalize + map minimal listing shape
     lastListings = rows.map(n => ({
       id: Number(n.id),
-      asset: String(n.assetContract),
+      asset: String(n.assetContract || n.asset || n.tokenContract || n[2] || ""),
       tokenId: typeof n.tokenId === 'bigint' ? n.tokenId.toString() : String(n.tokenId),
-      tokenType: Number(n.tokenType),       // 0:1155, 1:721
-      listingType: Number(n.listingType),   // 0:Direct, 1:Auction
+      tokenType: Number(n.tokenType ?? n[10] ?? 1),       // 0:1155, 1:721 (default 721)
+      listingType: Number(n.listingType ?? n[11] ?? 0),   // 0:Direct (default)
       currency: String(n.currency || ZERO),
-      buyout: n.buyoutPricePerToken
+      buyout: n.buyoutPricePerToken ?? n.buyoutPrice ?? 0n
     }));
 
     if (!lastListings.length){ 
@@ -352,7 +395,7 @@ async function loadListings(){
     if (e?.name === 'AbortError') return;
     console.error(e);
     $("listings").innerHTML="";
-    $("err").textContent = "Couldn't load listings — ABI or RPC issue.";
+    $("err").textContent = e?.shortMessage || e?.message || "Couldn't load listings.";
     $("empty").style.display = "block";
   } finally {
     if (inFlight === ctl) inFlight = null;
@@ -522,8 +565,10 @@ $("listings").addEventListener("click", async (e)=>{
     if (!signer || !mpWrite){ await connect(); if (!signer) return; }
 
     // Fetch the exact listing
-    const L = await mp.getListing(id);
-    if (Number(L.status) !== 1) throw new Error("Listing not active");
+    let L = null;
+    try { L = await mp.getListing(id); } catch {}
+    if (!L) { try { L = await mp.listings(id); } catch {} }
+    if (!L || Number(L.status) !== 1) throw new Error("Listing not active");
 
     const currency = String(L.currency || ZERO);
     const { decimals } = await getCurrencyMeta(currency);
