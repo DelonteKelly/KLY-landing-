@@ -10,60 +10,88 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-  :root{--bg:#0A1A24;--bg2:#051018;--ink:#EAF7FF;--sub:#9CCBE3;--acc:#73E1FF;--gold:#e2c675;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);--line:rgba(255,255,255,.12);--ok:#4ade80;--warn:#fbbf24;--err:#f87171;--shadow:0 4px 20px rgba(0,0,0,.3);--radius:16px;--radius-sm:8px;--transition:.3s ease}
-  *{box-sizing:border-box;margin:0;padding:0;font-family:'Space Grotesk',system-ui,sans-serif}
-  html,body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh;line-height:1.6}
-  .wrap{max-width:1400px;margin:0 auto;padding:24px}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:16px}
-  .brand{font-weight:800;letter-spacing:.08em;font-size:1.5rem;color:var(--acc);text-shadow:0 0 10px rgba(115,225,255,.3);text-transform:uppercase;display:flex;align-items:center;gap:12px}
-  .brand i{font-size:1.8rem}
-  .pill{padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.2);font-size:.9rem;border:1px solid var(--line);display:flex;align-items:center;gap:6px}
-  button,.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:.7rem 1.2rem;border-radius:var(--radius-sm);cursor:pointer;font-weight:600;transition:var(--transition);display:flex;align-items:center;gap:8px}
-  .btn:hover{background:var(--card-hover);transform:translateY(-2px);box-shadow:var(--shadow)}
-  .btn-primary{background:linear-gradient(90deg,var(--acc),#a9ffcb);color:#001018;border-color:#2e6b77}
-  .btn-primary:hover{background:linear-gradient(90deg,#a9ffcb,var(--acc));transform:translateY(-2px)}
-  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
-  .btn:focus-visible{outline:3px solid #a9ffcb;outline-offset:2px}
-  .hero{text-align:center;padding:40px 0 30px;max-width:800px;margin:0 auto}
-  .hero h1{font-size:clamp(1.8rem,4vw,3rem);letter-spacing:.05em;text-transform:uppercase;margin:8px 0 16px;background:linear-gradient(90deg,var(--acc),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
-  .hero p{color:var(--sub);font-size:1.1rem;margin-bottom:24px}
-  .controls{display:flex;justify-content:space-between;align-items:center;margin:24px 0;flex-wrap:wrap;gap:16px}
-  .search-box{position:relative;max-width:400px;width:100%}
-  .search-box input{width:100%;padding:12px 16px 12px 42px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:1rem}
-  .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--sub)}
-  .filters{display:flex;gap:12px;flex-wrap:wrap}
-  .filter-btn{padding:8px 16px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:var(--transition)}
-  .filter-btn.active,.filter-btn[aria-pressed="true"]{background:var(--acc);color:var(--bg);border-color:var(--acc)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;margin-top:24px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:var(--transition);display:flex;flex-direction:column;height:100%}
-  .card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,.4);border-color:rgba(115,225,255,.3)}
-  .row{display:flex;justify-content:space-between;align-items:center;margin:.5rem 0;gap:10px;flex-wrap:wrap}
-  .thumb-container{position:relative;width:100%;border-radius:12px;overflow:hidden;margin-bottom:12px}
-  .thumb{width:100%;aspect-ratio:1/1;object-fit:cover;background:linear-gradient(45deg,#0c1d27,#0a2738);transition:var(--transition)}
-  .card:hover .thumb{transform:scale(1.05)}
-  .token-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:var(--ink);padding:4px 8px;border-radius:6px;font-size:.8rem;backdrop-filter:blur(5px)}
-  .sub{color:var(--sub);font-size:.9rem}
-  .status{min-height:18px;font-size:.9rem;margin-top:6px;display:flex;align-items:center;gap:6px}
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
-  .price{font-size:1.2rem;font-weight:700;color:var(--gold)}
-  .card-actions{display:flex;gap:10px;margin-top:auto;padding-top:12px}
-  .card-actions .btn{flex:1;justify-content:center}
-  footer{margin:40px 0 0;text-align:center;color:var(--sub);font-size:.9rem;padding-top:20px;border-top:1px solid var(--line)}
-  .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px}
-  .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite}
+  :root {
+    --bg: #0A1A24; --bg2: #051018; --ink: #EAF7FF; --sub: #9CCBE3; --acc: #73E1FF; --gold: #e2c675;
+    --card: rgba(255,255,255,.06); --card-hover: rgba(255,255,255,.1); --line: rgba(255,255,255,.12);
+    --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --shadow: 0 4px 20px rgba(0,0,0,.3);
+    --radius: 16px; --radius-sm: 8px; --transition: .3s ease; --pulse: pulse 2s infinite;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Space Grotesk',system-ui,sans-serif;}
+  html,body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh;line-height:1.6;overflow-x:hidden;}
+  .wrap{max-width:1400px;margin:0 auto;padding:24px;}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:16px;}
+  .brand{font-weight:800;letter-spacing:.08em;font-size:1.5rem;color:var(--acc);text-shadow:0 0 10px rgba(115,225,255,.3);text-transform:uppercase;display:flex;align-items:center;gap:12px;}
+  .brand i{font-size:1.8rem;}
+  .pill{padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.2);font-size:.9rem;border:1px solid var(--line);display:flex;align-items:center;gap:6px;}
+  button,.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:.7rem 1.2rem;border-radius:var(--radius-sm);cursor:pointer;font-weight:600;transition:var(--transition);display:flex;align-items:center;gap:8px;position:relative;overflow:hidden;}
+  .btn:hover{background:var(--card-hover);transform:translateY(-2px);box-shadow:var(--shadow);}
+  .btn-primary{background:linear-gradient(90deg,var(--acc),#a9ffcb);color:#001018;border-color:#2e6b77;}
+  .btn-primary:hover{background:linear-gradient(90deg,#a9ffcb,var(--acc));transform:translateY(-2px);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;}
+  .btn:focus-visible{outline:3px solid #a9ffcb;outline-offset:2px;}
+  .btn-loading::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 1.5s infinite;}
+  .hero{text-align:center;padding:40px 0 30px;max-width:800px;margin:0 auto;}
+  .hero h1{font-size:clamp(1.8rem,4vw,3rem);letter-spacing:.05em;text-transform:uppercase;margin:8px 0 16px;background:linear-gradient(90deg,var(--acc),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;}
+  .hero p{color:var(--sub);font-size:1.1rem;margin-bottom:24px;}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin:24px 0;flex-wrap:wrap;gap:16px;}
+  .search-box{position:relative;max-width:400px;width:100%;}
+  .search-box input{width:100%;padding:12px 16px 12px 42px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:1rem;transition:var(--transition);}
+  .search-box input:focus{border-color:var(--acc);box-shadow:0 0 0 2px rgba(115,225,255,.2);outline:none;}
+  .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--sub);}
+  .filters{display:flex;gap:12px;flex-wrap:wrap;}
+  .filter-btn{padding:8px 16px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:var(--transition);}
+  .filter-btn.active,.filter-btn[aria-pressed="true"]{background:var(--acc);color:var(--bg);border-color:var(--acc);}
+  .sort-controls{display:flex;align-items:center;gap:8px;}
+  .sort-select{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:8px 12px;border-radius:var(--radius-sm);font-size:.9rem;}
+  .tabs{display:flex;gap:12px;flex-wrap:wrap}
+  .tab-btn[aria-selected="true"]{background:var(--acc);color:var(--bg);border-color:var(--acc);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;margin-top:24px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:var(--transition);display:flex;flex-direction:column;height:100%;position:relative;}
+  .card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,.4);border-color:rgba(115,225,255,.3);}
+  .row{display:flex;justify-content:space-between;align-items:center;margin:.5rem 0;gap:10px;flex-wrap:wrap;}
+  .thumb-container{position:relative;width:100%;border-radius:12px;overflow:hidden;margin-bottom:12px;background:linear-gradient(45deg,#0c1d27,#0a2738);}
+  .thumb{width:100%;aspect-ratio:1/1;object-fit:cover;transition:var(--transition);opacity:0;transition:opacity .5s ease;}
+  .thumb.loaded{opacity:1;}
+  .card:hover .thumb{transform:scale(1.05);}
+  .token-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:var(--ink);padding:4px 8px;border-radius:6px;font-size:.8rem;backdrop-filter:blur(5px);}
+  .favorite-btn{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);color:var(--sub);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(5px);transition:var(--transition);z-index:2;}
+  .favorite-btn:hover,.favorite-btn.active{color:var(--err);}
+  .sub{color:var(--sub);font-size:.9rem;}
+  .status{min-height:18px;font-size:.9rem;margin-top:6px;display:flex;align-items:center;gap:6px;}
+  .ok{color:var(--ok);} .warn{color:var(--warn);} .err{color:var(--err);}
+  .price{font-size:1.2rem;font-weight:700;color:var(--gold);}
+  .card-actions{display:flex;gap:10px;margin-top:auto;padding-top:12px;}
+  .card-actions .btn{flex:1;justify-content:center;}
+  footer{margin:40px 0 0;text-align:center;color:var(--sub);font-size:.9rem;padding-top:20px;border-top:1px solid var(--line);}
+  .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px;}
+  .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite;}
+  .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.05) 25%,rgba(255,255,255,.1) 50%,rgba(255,255,255,.05) 75%);background-size:200% 100%;animation:var(--pulse);border-radius:4px;}
+  .skeleton-thumb{width:100%;aspect-ratio:1/1;margin-bottom:12px;}
+  .skeleton-text{height:16px;margin-bottom:8px;}
+  .skeleton-text.short{width:60%;}
+  .notification{position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);z-index:1000;display:flex;align-items:center;gap:10px;max-width:400px;transform:translateX(150%);transition:transform .3s ease;}
+  .notification.show{transform:translateX(0);}
+  .notification.success{border-left:4px solid var(--ok);}
+  .notification.error{border-left:4px solid var(--err);}
+  .notification.warning{border-left:4px solid var(--warn);}
+  .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:2000;opacity:0;visibility:hidden;transition:all .3s ease;backdrop-filter:blur(5px);}
+  .modal.show{opacity:1;visibility:visible;}
+  .modal-content{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;transform:scale(.9);transition:transform .3s ease;}
+  .modal.show .modal-content{transform:scale(1);}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .modal-close{background:none;border:none;color:var(--sub);font-size:1.5rem;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
-  @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
-  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.5}100%{opacity:1}}
+  @keyframes shimmer{0%{left:-100%}100%{left:100%}}
+  @media (max-width:768px){.wrap{padding:16px;} header{flex-direction:column;text-align:center;} .controls{flex-direction:column;align-items:stretch;} .search-box{max-width:100%;} .grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;} .modal-content{width:95%;padding:16px;}}
+  @media (max-width:480px){.grid{grid-template-columns:1fr;} .brand{font-size:1.2rem;} .hero h1{font-size:1.6rem;} .filters{justify-content:center;}}
+  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <i class="fas fa-seedling" aria-hidden="true"></i>
-      <span>TAMAQUAH SOVEREIGN MARKET</span>
-    </div>
+    <div class="brand"><i class="fas fa-seedling" aria-hidden="true"></i><span>TAMAQUAH SOVEREIGN MARKET</span></div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
       <span class="pill"><i class="fas fa-store"></i> Marketplace: <span id="mpAddrShort">—</span></span>
       <span class="pill"><i class="fas fa-link"></i> Chain: BNB</span>
@@ -84,6 +112,7 @@
       <label class="sr-only" for="search">Search listings</label>
       <input type="text" id="search" placeholder="Search by name, token ID, or contract address..." autocomplete="off" inputmode="search"/>
     </div>
+
     <div class="filters" role="toolbar" aria-label="Listing filters">
       <button class="filter-btn active" data-filter="all" aria-pressed="true">All</button>
       <button class="filter-btn" data-filter="erc721" aria-pressed="false">ERC-721</button>
@@ -91,19 +120,34 @@
       <button class="filter-btn" data-filter="native" aria-pressed="false">BNB</button>
       <button class="filter-btn" data-filter="kly" aria-pressed="false">KLY</button>
     </div>
+
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button class="filter-btn tab-btn" data-tab="all" aria-selected="true" role="tab">All Listings <span id="allCount" class="sub" style="margin-left:.4rem">—</span></button>
+      <button class="filter-btn tab-btn" data-tab="mine" aria-selected="false" role="tab">My Listings <span id="myCount" class="sub" style="margin-left:.4rem">—</span></button>
+    </div>
+
+    <div class="sort-controls">
+      <label for="sort" class="sub">Sort by:</label>
+      <select id="sort" class="sort-select">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="price-low">Price: Low to High</option>
+        <option value="price-high">Price: High to Low</option>
+        <option value="name">Name A–Z</option>
+      </select>
+    </div>
   </section>
 
   <section>
     <p id="err" class="status err" style="text-align:center"></p>
     <div id="listings" class="grid" aria-live="polite">
-      <div class="loading">
-        <div class="spinner" role="status" aria-label="Loading marketplace listings"></div>
-        <div>Loading marketplace listings...</div>
-      </div>
+      <!-- Skeleton cards -->
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height:40px;"></div><div class="skeleton skeleton-text" style="height:40px;"></div></div></div>
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height:40px;"></div><div class="skeleton skeleton-text" style="height:40px;"></div></div></div>
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height:40px;"></div><div class="skeleton skeleton-text" style="height:40px;"></div></div></div>
     </div>
     <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
-      <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:.5"></i><br>
-      No active listings found.
+      <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:.5"></i><br>No listings match your filters.
     </p>
   </section>
 
@@ -113,6 +157,20 @@
   </footer>
 </div>
 
+<!-- Notifications -->
+<div id="notification-container"></div>
+
+<!-- Purchase Modal -->
+<div id="purchase-modal" class="modal" aria-hidden="true" role="dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Confirm Purchase</h2>
+      <button class="modal-close" aria-label="Close modal">&times;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
 <script type="module">
 /* ===================== CONFIG ===================== */
 const RPC = "https://bsc-dataseed.binance.org/";
@@ -120,9 +178,8 @@ const CHAIN_ID = 56; // BNB Chain
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase(); // Thirdweb's native marker
+const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase();
 
-// Known currencies
 const KNOWN = {
   [ZERO]: { symbol: "BNB", decimals: 18, isNative: true },
   [NATIVE_SENTINEL]: { symbol: "BNB", decimals: 18, isNative: true },
@@ -131,7 +188,6 @@ const KNOWN = {
 
 /* ===================== ABIs (trimmed) ===================== */
 const MARKET_ABI = [
-  // view
   {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
     {"internalType":"uint256","name":"listingId","type":"uint256"},
@@ -161,7 +217,6 @@ const MARKET_ABI = [
     {"internalType":"uint8","name":"status","type":"uint8"},
     {"internalType":"bool","name":"reserved","type":"bool"}
   ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
-  // buyFromListing(listingId, buyFor, quantity, currency, expectedTotalPrice) payable
   {"inputs":[
     {"internalType":"uint256","name":"_listingId","type":"uint256"},
     {"internalType":"address","name":"_buyFor","type":"address"},
@@ -200,70 +255,86 @@ function resolve1155Uri(tpl, tokenId){
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
 
+/* ===================== NOTIFICATIONS & MODAL ===================== */
+function showNotification(message, type='info', duration=5000){
+  const container = $('#notification-container');
+  const n = document.createElement('div'); n.className = `notification ${type}`;
+  const icon = {success:'fa-check-circle', error:'fa-exclamation-triangle', warning:'fa-exclamation-circle', info:'fa-info-circle'}[type] || 'fa-info-circle';
+  n.innerHTML = `<i class="fas ${icon}"></i><span>${escapeHtml(message)}</span>`;
+  container.appendChild(n); setTimeout(()=>n.classList.add('show'),10);
+  setTimeout(()=>{ n.classList.remove('show'); setTimeout(()=>n.remove(),300); }, duration);
+}
+function showModal(content){ const modal=$('#purchase-modal'); $('#modal-body').innerHTML=content; modal.classList.add('show'); modal.setAttribute('aria-hidden','false'); }
+function hideModal(){ const modal=$('#purchase-modal'); modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+$('#purchase-modal').addEventListener('click',e=>{ if(e.target===$('#purchase-modal')) hideModal(); });
+document.querySelector('.modal-close').addEventListener('click', hideModal);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#purchase-modal').classList.contains('show')) hideModal(); });
+
 /* ===================== PROVIDERS / STATE ===================== */
 const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
-const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
+const marketRead  = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
 
-let web3prov = null, signer = null, me = null;
+let web3prov=null, signer=null, me=null;
+let refreshTimer=null, loading=false;
+
+let rowsCache=[];          // normalized listings
+let currentTab='all';      // 'all' | 'mine'
+let favorites=new Set(JSON.parse(localStorage.getItem('favorites')||'[]'));
 
 $("connect").addEventListener("click", async ()=>{
-  $("err").textContent = "";
+  $("#err").textContent = "";
   try{
-    if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
+    if(!window.ethereum) throw new Error("MetaMask not detected.");
     web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
     await web3prov.send("eth_requestAccounts", []);
     const net = await web3prov.getNetwork();
-    if (Number(net.chainId) !== CHAIN_ID){
-      await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId: "0x"+CHAIN_ID.toString(16)}] });
+    if (Number(net.chainId)!==CHAIN_ID){
+      await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:"0x"+CHAIN_ID.toString(16) }] });
     }
     signer = web3prov.getSigner();
-    me = await signer.getAddress();
-    $("whoAddr").textContent = short(me);
-    $("who").style.display = "inline-block";
-    $("connect").style.display = "none";
-  }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
+    me = (await signer.getAddress()).toLowerCase();
+    $("#whoAddr").textContent = short(me); $("#who").style.display="inline-block"; $("#connect").style.display="none";
+    showNotification("Wallet connected", "success");
+    updateCounts(); if(currentTab==='mine') paint(); // refresh My Listings view
+  }catch(e){
+    $("#err").textContent = e?.message || "Failed to connect wallet.";
+    showNotification(e?.message || "Failed to connect wallet.", "error");
+  }
 });
 
 /* ===================== LOAD LISTINGS ===================== */
-let loading=false, refreshTimer=null;
-
 async function loadListings(){
-  if (loading) return; loading = true;
-  $("err").textContent = "";
-  $("empty").style.display = "none";
-  $("listings").innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Loading marketplace listings...</div>
-    </div>`;
+  if (loading) return; loading=true;
+  $("#err").textContent=""; $("#empty").style.display="none";
+  const grid=$("#listings");
+  grid.innerHTML = skeletonHTML(6);
 
   try{
     const total = (await marketRead.totalListings()).toNumber();
-    if (total === 0){ $("listings").innerHTML=""; $("empty").style.display="block"; loading=false; return; }
-    const listings = await marketRead.getAllListings(0, total-1);
+    if (total===0){ grid.innerHTML=""; $("#empty").style.display="block"; rowsCache=[]; updateCounts(); loading=false; return; }
 
-    // Normalize
-    const rows = listings.map(L => ({
+    const listings = await marketRead.getAllListings(0, total-1);
+    rowsCache = listings.map(L => ({
       id: Number(L.listingId),
-      asset: L.assetContract,
+      asset: String(L.assetContract),
       tokenId: L.tokenId.toString(),
       quantity: Number(L.quantity),
-      pricePerToken: L.pricePerToken, // BigNumber
-      start: L.startTimestamp.toString(),
-      end: L.endTimestamp.toString(),
-      creator: L.listingCreator,
-      currency: (L.currency || ZERO).toLowerCase(),
-      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155 (thirdweb style)
+      pricePerToken: ethers.BigNumber.from(L.pricePerToken),
+      start: Number(L.startTimestamp.toString()),
+      end: Number(L.endTimestamp.toString()),
+      creator: String(L.listingCreator).toLowerCase(),
+      currency: String(L.currency || ZERO).toLowerCase(),
+      tokenType: Number(L.tokenType), // 1=721, 0=1155
       status: Number(L.status),
       reserved: Boolean(L.reserved),
     }));
 
-    await render(rows);
+    updateCounts();
+    await paint();
   }catch(e){
     console.error(e);
-    $("listings").innerHTML="";
-    $("err").textContent = e?.message || "Couldn't load listings.";
-    $("empty").style.display="block";
+    grid.innerHTML=""; $("#err").textContent = e?.message || "Couldn't load listings."; $("#empty").style.display="block";
+    showNotification("Failed to load listings", "error");
   } finally { loading=false; }
 }
 
@@ -273,125 +344,154 @@ function deriveStatus(row){
   if (typeof row.status === "number" && row.status !== 1) return {label:"Inactive", cls:"warn", actionable:false};
   if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
   if (row.reserved) return {label:"Reserved", cls:"warn", actionable:false};
-  if (row.end && Number(row.end) !== 0 && Number(row.end) < now) return {label:"Expired", cls:"warn", actionable:false};
-  if (row.start && Number(row.start) !== 0 && Number(row.start) > now) return {label:"Scheduled", cls:"warn", actionable:false};
+  if (row.end && row.end!==0 && row.end < now) return {label:"Expired", cls:"warn", actionable:false};
+  if (row.start && row.start!==0 && row.start > now) return {label:"Scheduled", cls:"warn", actionable:false};
   return {label:"Active", cls:"ok", actionable:true};
 }
 
-/* ===================== META HELPERS ===================== */
-const erc20Cache = new Map();
+/* ===================== META ===================== */
+const erc20Cache=new Map(), nftMetaCache=new Map();
+
 async function getCurrencyMeta(addr){
-  const a = (addr||ZERO).toLowerCase();
+  const a=(addr||ZERO).toLowerCase();
   if (KNOWN[a]) return KNOWN[a];
   if (erc20Cache.has(a)) return erc20Cache.get(a);
   try{
     const erc = new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
-    const [dec, sym] = await Promise.all([erc.decimals(), erc.symbol()]);
-    const meta = { decimals: Number(dec), symbol: String(sym||"ERC20"), isNative:false };
+    const [dec,sym] = await Promise.all([erc.decimals(), erc.symbol()]);
+    const meta = { decimals:Number(dec), symbol:String(sym||"ERC20"), isNative:false };
     erc20Cache.set(a, meta); return meta;
   }catch{
-    const meta = { decimals: 18, symbol: "ERC20", isNative:false };
+    const meta = { decimals:18, symbol:"ERC20", isNative:false };
     erc20Cache.set(a, meta); return meta;
   }
+}
+
+async function fetchJson(url){
+  try{ const r = await fetch(url, { mode:"cors" }); if(!r.ok) throw new Error("bad status"); return await r.json(); }
+  catch{ return null; }
 }
 
 async function getNFTMeta(asset, tokenId, tokenType){
+  const key = `${asset.toLowerCase()}:${tokenId}`;
+  if (nftMetaCache.has(key)) return nftMetaCache.get(key);
+  let name=`Token #${tokenId}`, image="", description="";
   try{
-    if (tokenType === 1){ // ERC721
-      const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
-      const uri = await c721.tokenURI(tokenId);
-      const url = ipfsToHttp(uri);
-      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
-      return {
-        name: json?.name || `Token #${tokenId}`,
-        image: ipfsToHttp(json?.image || json?.image_url || ""),
-        description: json?.description || ""
-      };
+    if (tokenType===1){ // ERC721
+      const c = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
+      const [uri, coll] = await Promise.all([
+        c.tokenURI(tokenId).catch(()=>""), c.name().catch(()=>null)
+      ]);
+      const u = ipfsToHttp(uri);
+      const j = await fetchJson(u);
+      name = (j?.name || name); image = ipfsToHttp(j?.image || j?.image_url || ""); description = j?.description || "";
+      if (!name && coll) name = `${coll} #${tokenId}`;
     } else { // ERC1155
-      const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
-      const tpl = await c1155.uri(tokenId);
-      const url = resolve1155Uri(tpl, tokenId);
-      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
-      return {
-        name: json?.name || `Token #${tokenId}`,
-        image: ipfsToHttp(json?.image || json?.image_url || ""),
-        description: json?.description || ""
-      };
+      const c = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
+      const tpl = await c.uri(tokenId).catch(()=> "");
+      const u = resolve1155Uri(tpl, tokenId);
+      const j = await fetchJson(u);
+      name = (j?.name || name); image = ipfsToHttp(j?.image || j?.image_url || ""); description = j?.description || "";
     }
-  }catch{
-    return { name: `Token #${tokenId}`, image: "", description: "" };
-  }
+  }catch{}
+  const out = { name, image, description };
+  nftMetaCache.set(key,out); return out;
 }
 
 /* ===================== RENDER ===================== */
-function setupSearchAndFilter(){
-  const searchInput = $('search');
-  const filterButtons = document.querySelectorAll('.filter-btn');
-  const apply = ()=> filterListings(searchInput.value.toLowerCase(), getActiveFilter());
-  const debouncedApply = debounce(apply, 200);
-  searchInput.oninput = debouncedApply;
-  filterButtons.forEach(btn=>{
-    btn.onclick = function(){
-      filterButtons.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
-      this.classList.add('active'); this.setAttribute('aria-pressed','true');
-      apply();
-    };
-  });
+function getActiveFilter(){ const a=document.querySelector('.filter-btn.active[data-filter]'); return a ? a.getAttribute('data-filter') : 'all'; }
+
+function sortRows(rows){
+  const how = $("#sort").value;
+  if (how==="newest") rows.sort((a,b)=> b.id - a.id);
+  if (how==="oldest") rows.sort((a,b)=> a.id - b.id);
+  if (how==="price-low") rows.sort((a,b)=> a.pricePerToken.sub(b.pricePerToken));
+  if (how==="price-high") rows.sort((a,b)=> b.pricePerToken.sub(a.pricePerToken));
+  if (how==="name") rows.sort((a,b)=> (a._name||"").localeCompare(b._name||""));
+  return rows;
 }
-function getActiveFilter(){ const a=document.querySelector('.filter-btn.active'); return a ? a.getAttribute('data-filter') : 'all'; }
-function filterListings(searchTerm, filter){
-  const cards = document.querySelectorAll('.card'); let visible=0;
-  cards.forEach(card=>{
-    const tokenType = card.getAttribute('data-token-type');
-    const currency = card.getAttribute('data-currency');
-    const name = card.getAttribute('data-name');
-    const tokenId = (card.getAttribute('data-token-id')||"").toLowerCase();
-    const contract = (card.getAttribute('data-contract')||"").toLowerCase();
-    let ok = true;
-    if (filter !== 'all') {
-      if (filter === 'erc721') ok = tokenType === 'erc721';
-      else if (filter === 'erc1155') ok = tokenType === 'erc1155';
-      else if (filter === 'native') ok = currency === 'bnb';
-      else if (filter === 'kly') ok = currency === 'kly';
-    }
-    let sOK = true;
-    if (searchTerm) sOK = name.includes(searchTerm) || tokenId.includes(searchTerm) || contract.includes(searchTerm);
-    if (ok && sOK){ card.style.display='flex'; visible++; } else card.style.display='none';
-  });
-  $('empty').style.display = visible === 0 ? 'block' : 'none';
+
+async function paint(){
+  const searchTerm = ($("#search")?.value || "").toLowerCase();
+  const typeFilter = getActiveFilter();
+  const isMine = currentTab === "mine";
+  const myAddr = me || "";
+
+  let rows = rowsCache.slice();
+
+  if (isMine) rows = rows.filter(r => myAddr && r.creator === myAddr);
+  if (typeFilter !== 'all') {
+    rows = rows.filter(r=>{
+      const sym = (KNOWN[r.currency]?.symbol || "").toLowerCase();
+      if (typeFilter === 'erc721') return r.tokenType === 1;
+      if (typeFilter === 'erc1155') return r.tokenType === 0;
+      if (typeFilter === 'native') return sym === 'bnb';
+      if (typeFilter === 'kly') return sym === 'kly';
+      return true;
+    });
+  }
+
+  // prefetch minimal names for sort-by-name later
+  await Promise.all(rows.slice(0,20).map(async r=>{
+    if (!r._name) { const md = await getNFTMeta(r.asset, r.tokenId, r.tokenType); r._name = md.name || `Token #${r.tokenId}`;}
+  }));
+
+  if (searchTerm) {
+    rows = rows.filter(r=>{
+      const nm = (r._name || "").toLowerCase();
+      return nm.includes(searchTerm) || String(r.tokenId).toLowerCase().includes(searchTerm) || r.asset.toLowerCase().includes(searchTerm);
+    });
+  }
+
+  rows = sortRows(rows);
+  await render(rows);
+  $('#empty').style.display = rows.length ? 'none' : 'block';
+}
+
+function skeletonHTML(n){
+  return Array.from({length:n}).map(()=>`
+    <div class="card">
+      <div class="skeleton skeleton-thumb"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text short"></div>
+      <div class="card-actions">
+        <div class="skeleton skeleton-text" style="height:40px;"></div>
+        <div class="skeleton skeleton-text" style="height:40px;"></div>
+      </div>
+    </div>`).join('');
 }
 
 async function render(rows){
-  const grid = $("listings"); grid.innerHTML = "";
+  const grid = $("#listings"); grid.innerHTML = "";
 
-  // concurrency limiter
-  const limit = (n)=>{ const q=[]; let a=0;
-    const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();});
-    return run;
-  };
+  // simple concurrency limiter (metadata/currency)
+  const limit = (n)=>{ const q=[]; let a=0; const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{a--; (q.shift()||(()=>{}))();});}; step();}); return run; };
   const run = limit(6);
 
-  const cards = await Promise.all(rows.map(r=>run(async ()=>{
+  const cards = await Promise.all(rows.map(r => run(async ()=>{
     const [curMeta, md] = await Promise.all([ getCurrencyMeta(r.currency), getNFTMeta(r.asset, r.tokenId, r.tokenType) ]);
-    const st = deriveStatus(r);
     const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
+    const st = deriveStatus(r);
+
+    r._name = md.name || r._name || `Token #${r.tokenId}`;
+
     const card = document.createElement("div");
     card.className = "card";
-    card.setAttribute("data-token-type", r.tokenType === 1 ? "erc721" : "erc1155");
-    card.setAttribute("data-currency", (curMeta.symbol||"").toLowerCase());
+    card.setAttribute("data-token-type", r.tokenType===1 ? "erc721" : "erc1155");
+    card.setAttribute("data-currency", curMeta.symbol.toLowerCase());
     card.setAttribute("data-name", (md.name||"").toLowerCase());
     card.setAttribute("data-token-id", r.tokenId);
     card.setAttribute("data-contract", r.asset.toLowerCase());
 
-    const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
+    const ph = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
     card.innerHTML = `
+      <button class="favorite-btn ${favorites.has(r.id)?'active':''}" data-fav="${r.id}" title="Save"><i class="fas fa-heart"></i></button>
       <div class="thumb-container">
-        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-             src="${md.image || placeholder}" alt="NFT preview for ${escapeHtml(md.name)}">
+        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${md.image||ph}" alt="NFT preview for ${escapeHtml(md.name || `Token #${r.tokenId}`)}" onload="this.classList.add('loaded')">
         <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
       </div>
       <div class="row" style="margin-top:.5rem">
-        <strong>${escapeHtml(md.name)}</strong>
+        <strong>${escapeHtml(md.name || `Token #${r.tokenId}`)}</strong>
         <span class="sub">Listing #${r.id}</span>
       </div>
       <div class="row">
@@ -406,92 +506,160 @@ async function render(rows){
         ${st.actionable ? `
           <button class="btn btn-primary" data-buy="${r.id}">
             <i class="fas fa-shopping-cart"></i> Buy Now
-          </button>` : `
+          </button>
+        ` : `
           <button class="btn" disabled title="Not purchasable right now">
             <i class="fas fa-ban"></i> Unavailable
-          </button>`}
+          </button>
+        `}
       </div>
       <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
     `;
     return card;
   })));
 
-  for(const c of cards) if(c) grid.appendChild(c);
-  setupSearchAndFilter();
+  for (const c of cards) grid.appendChild(c);
 }
 
-/* ===================== BUY ===================== */
-$("listings").addEventListener("click", async (e)=>{
-  const btn = e.target.closest("button[data-buy]"); if(!btn) return;
-  const id = Number(btn.getAttribute("data-buy"));
-  const st = $("st-"+id);
-  $("err").textContent = "";
+/* ===================== COUNTS / FILTERS / TABS / SORT ===================== */
+function updateCounts(){
+  const all = rowsCache.length;
+  const mine = me ? rowsCache.filter(r => r.creator === me).length : 0;
+  $('#allCount').textContent = all || 0;
+  $('#myCount').textContent  = me ? mine : '—';
+}
+
+const debouncedPaint = debounce(()=>paint(), 200);
+
+document.getElementById('search').addEventListener('input', debouncedPaint);
+document.getElementById('sort').addEventListener('change', paint);
+
+document.querySelectorAll('.filter-btn[data-filter]').forEach(btn=>{
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.filter-btn[data-filter]').forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+    this.classList.add('active'); this.setAttribute('aria-pressed','true');
+    paint();
+  });
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', async function(){
+    const tab = this.getAttribute('data-tab');
+    if (tab==='mine' && !me){ await $("#connect").click(); if(!me) return; }
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-selected','false');});
+    this.classList.add('active'); this.setAttribute('aria-selected','true');
+    paint();
+  });
+});
+
+/* ===================== FAVORITES ===================== */
+document.getElementById('listings').addEventListener('click', (e)=>{
+  const favBtn = e.target.closest('button[data-fav]');
+  if (favBtn){
+    const id = Number(favBtn.getAttribute('data-fav'));
+    if (favorites.has(id)) favorites.delete(id); else favorites.add(id);
+    favBtn.classList.toggle('active');
+    localStorage.setItem('favorites', JSON.stringify(Array.from(favorites)));
+  }
+});
+
+/* ===================== BUY FLOW ===================== */
+document.getElementById('listings').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button[data-buy]'); if(!btn) return;
+  const id = Number(btn.getAttribute('data-buy'));
+  const row = rowsCache.find(r=>r.id===id);
+  if (!row) return;
 
   try{
+    const curMeta = await getCurrencyMeta(row.currency);
+    const priceStr = `${prettyUnits(row.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
+
+    showModal(`
+      <p style="margin-bottom:10px"><strong>Listing #${row.id}</strong></p>
+      <p class="sub" style="margin-bottom:10px">${short(row.asset)} · Token #${row.tokenId}</p>
+      <p class="sub" style="margin-bottom:10px">Creator: ${short(row.creator)}</p>
+      <p style="margin-bottom:20px;font-size:1.1rem"><strong>Total:</strong> ${priceStr}</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="cancelBuy" class="btn"><i class="fas fa-times"></i> Cancel</button>
+        <button id="confirmBuy" class="btn btn-primary"><i class="fas fa-check"></i> Confirm</button>
+      </div>
+    `);
+
+    document.getElementById('cancelBuy').onclick = hideModal;
+    document.getElementById('confirmBuy').onclick = ()=> doBuy(row).catch(()=>{}); // errors handled in doBuy
+  }catch(err){
+    showNotification(err?.message || "Failed to open purchase modal.", "error");
+  }
+});
+
+async function doBuy(row){
+  const st = document.getElementById(`st-${row.id}`);
+  try{
     if (!window.ethereum) throw new Error("MetaMask not detected.");
-    if (!signer) await $("connect").click();
-    if (!signer) return;
+    if (!signer){ await $("#connect").click(); if(!signer) return; }
 
     const marketWrite = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
-    const L = await marketRead.getListing(id); // read fresh
-    const currency = (L.currency || ZERO).toLowerCase();
-    const qty = ethers.BigNumber.from(1);
-    const total = L.pricePerToken.mul(qty);
 
-    // client-side checks
-    const row = {
+    // fetch fresh listing to compute expectedTotalPrice
+    const L = await marketRead.getListing(row.id);
+    const currency = String(L.currency || ZERO).toLowerCase();
+    const pricePerToken = ethers.BigNumber.from(L.pricePerToken);
+    const quantity = 1; // buy 1 in this UI
+    const total = pricePerToken.mul(quantity);
+
+    const stInfo = deriveStatus({
       quantity: Number(L.quantity),
-      status: Number(L.status),
       reserved: Boolean(L.reserved),
-      start: L.startTimestamp.toString(),
-      end: L.endTimestamp.toString()
-    };
-    const s = deriveStatus(row);
-    if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
+      start: Number(L.startTimestamp.toString()),
+      end: Number(L.endTimestamp.toString()),
+      status: Number(L.status)
+    });
+    if (!stInfo.actionable) throw new Error(`Listing is ${stInfo.label.toLowerCase()}`);
 
-    // If ERC20 -> ensure allowance
+    // ERC20: check/approve allowance
     if (currency !== ZERO && currency !== NATIVE_SENTINEL){
       const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
-      const owner = await signer.getAddress();
+      const owner = me || (await signer.getAddress()).toLowerCase();
       const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
       if (allowance.lt(total)){
-        st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Approving...";
+        st.className="status"; st.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Approving...`;
         const txa = await erc.approve(MARKETPLACE_ADDR, total);
         await txa.wait();
       }
     }
 
-    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Buying...";
-
-    const overrides = {};
-    if (currency === ZERO || currency === NATIVE_SENTINEL){ overrides.value = total; }
-
-    const tx = await marketWrite.buyFromListing(
-      id,
-      await signer.getAddress(),
-      qty,
-      currency,
-      total,
-      overrides
-    );
+    st.className="status"; st.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Purchasing...`;
+    // buyFromListing(listingId, buyFor, quantity, currency, expectedTotalPrice)
+    const overrides = (currency===ZERO || currency===NATIVE_SENTINEL) ? { value: total } : {};
+    const tx = await marketWrite.buyFromListing(row.id, me, quantity, currency, total, overrides);
+    showNotification("Transaction sent. Waiting for confirmation…", "info");
     await tx.wait();
 
+    hideModal();
     st.className="status ok"; st.innerHTML = `<i class="fas fa-check"></i> Purchase confirmed`;
-    loadListings();
+    showNotification("Purchase successful!", "success");
+    await loadListings();
   }catch(err){
     console.error(err);
-    st.className="status err";
-    st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.error?.message || err?.message || "Transaction failed")}`;
+    st.className="status err"; st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.reason || err?.message || "Transaction failed")}`;
+    showNotification(err?.reason || err?.message || "Transaction failed.", "error");
   }
-});
+}
 
 /* ===================== BOOT ===================== */
-async function start(){
-  await loadListings();
+function startAutoRefresh(){
   clearInterval(refreshTimer);
   refreshTimer = setInterval(loadListings, 30000);
 }
-start();
+window.addEventListener('focus', ()=> loadListings().catch(()=>{}));
+
+document.getElementById('search').addEventListener('keydown', e=>{ if(e.key==='Enter') paint(); });
+
+loadListings().then(startAutoRefresh);
+
+// expose for inline onload (img fade-in)
+window.addEventListener('error', ()=>{}, true);
 </script>
 </body>
 </html>
