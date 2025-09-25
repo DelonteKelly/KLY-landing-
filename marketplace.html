@@ -10,13 +10,13 @@
   :root { --bg:#0b0b0d; --panel:#121216; --ink:#f1f5f9; --muted:#9aa4af; --gold:#e6c15a; --line:#24262d; --ok:#3ddc97; --err:#ff6b6b; }
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1080px;margin:0 auto;padding:20px}
-  .head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:8px 0 14px}
-  .brand{display:flex;gap:10px;align-items:center}
+  .head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:8px 0 14px;flex-wrap:wrap}
+  .brand{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1115;color:var(--muted);font-size:13px}
   .btn{appearance:none;border:1px solid var(--line);background:#15171d;color:var(--ink);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
   .btn.primary{background:linear-gradient(180deg,var(--gold),#caa43f);color:#1a1a1a;border-color:#a0802c}
   .btn:disabled{opacity:.55;cursor:not-allowed}
-  .tabs{display:flex;gap:10px;margin:16px 0}
+  .tabs{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}
   .tabs button{border-radius:999px;padding:10px 14px}
   .tabs .active{background:#1a1d24;color:var(--gold);border-color:#383b46}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -31,6 +31,7 @@
   .status{margin:10px 0 0;color:var(--muted);font-size:12px}
   .warn{color:#ffce67} .ok{color:var(--ok)} .err{color:var(--err)}
   .foot{margin:22px 0 0;color:#839; font-size:12px;text-align:center}
+  #listBox input{width:100%}
 </style>
 </head>
 <body>
@@ -38,11 +39,37 @@
   <div class="head">
     <div class="brand">
       <div class="pill">KLY Sovereign Marketplace · BNB Chain</div>
+      <div id="net" class="pill">Not connected</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <span id="net" class="pill">Not connected</span>
       <button id="switch" class="btn">Switch to BNB</button>
       <button id="connect" class="btn primary">Connect Wallet</button>
+    </div>
+  </div>
+
+  <!-- LIST NFT PANEL -->
+  <div id="listBox" style="margin:14px 0 18px; padding:14px; border:1px solid #24262d; border-radius:12px; background:#121216">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <strong>List an NFT</strong>
+      <span class="sub">ERC-721 or ERC-1155</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:10px">
+      <input id="in_asset"  placeholder="NFT contract (0x…)" />
+      <input id="in_token"  placeholder="Token ID" />
+      <input id="in_qty"    placeholder="Quantity (1 for 721)" value="1" />
+      <input id="in_price"  placeholder="Price per token (e.g., 100 for KLY or 0.05 for BNB)" />
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <input id="in_currency" placeholder="Currency (0x0 = BNB, or ERC-20 address e.g. KLY)" style="flex:1" />
+      <button id="btn_list" class="btn primary">Create Listing</button>
+      <span id="list_msg" class="sub"></span>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <label class="sub" style="align-self:center">Quick collections:</label>
+      <button type="button" class="btn" id="pick_kor721" style="padding:8px 12px">KOR ERC-721</button>
     </div>
   </div>
 
@@ -61,28 +88,46 @@
 <!-- libs -->
 <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk@latest/dist/browser/thirdweb.min.js"></script>
 <script>
 /* -------------------- CONFIG -------------------- */
-const MARKETPLACE_ADDRESS = "0xYOUR_MARKETPLACE_V3_ADDRESS";   // <-- paste your MarketplaceV3
+const MARKETPLACE_ADDRESS = "0x43159d07010ec59acc8b7df16eb9657667AD243A";   // MarketplaceV3 (yours)
 const BSC_CHAIN_ID        = 56;
 const BSC_RPC             = "https://bsc-dataseed.bnbchain.org/";
 const THIRDWEB_LISTING_URL = (id) => `https://thirdweb.com/binance/${MARKETPLACE_ADDRESS}/listings/${id}`;
 
+// KLY token address (for pricing in KLY)
+const KLY_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+
+// Known currencies: native BNB + KLY
+const KNOWN = {
+  "0x0000000000000000000000000000000000000000": { symbol: "BNB", decimals: 18 },
+  [KLY_ADDRESS.toLowerCase()]: { symbol: "KLY", decimals: 18 }
+};
+
+// Your ERC-721 collection shortcut
+const KOR_ERC721 = "0xdC5aA33c45Aa3777d3ccf51521cE329B03D39ea7";
+
+// 👉 Put your Thirdweb Client ID here (Dashboard → Settings)
+const TW_CLIENT_ID = "YOUR_THIRDWEB_CLIENT_ID";
+
 /* ---- Minimal ABIs ---- */
-// MarketplaceV3 essentials
 const MP_ABI = [
   "function getAllValidListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[])",
   "function buyFromListing(uint256 _listingId,address _buyFor,uint256 _quantity,address _currency,uint256 _pricePerToken) payable",
   "function totalListings() view returns (uint256)"
 ];
-// ERC721 + ERC1155 + ERC20 fragments for display / payments
 const ERC721_ABI = [
   "function tokenURI(uint256) view returns (string)",
-  "function ownerOf(uint256) view returns (address)"
+  "function ownerOf(uint256) view returns (address)",
+  "function isApprovedForAll(address,address) view returns (bool)",
+  "function setApprovalForAll(address,bool)"
 ];
 const ERC1155_ABI = [
   "function uri(uint256) view returns (string)",
-  "function balanceOf(address,uint256) view returns (uint256)"
+  "function balanceOf(address,uint256) view returns (uint256)",
+  "function isApprovedForAll(address,address) view returns (bool)",
+  "function setApprovalForAll(address,bool)"
 ];
 const ERC20_ABI = [
   "function decimals() view returns (uint8)",
@@ -100,6 +145,14 @@ async function init() {
   readProvider = new ethers.providers.JsonRpcProvider(BSC_RPC, {name:"bnb", chainId:BSC_CHAIN_ID});
   mp = new ethers.Contract(MARKETPLACE_ADDRESS, MP_ABI, readProvider);
 
+  // Prefill form
+  document.getElementById('in_asset').value = KOR_ERC721;
+  document.getElementById('pick_kor721').addEventListener('click', ()=>{
+    document.getElementById('in_asset').value = KOR_ERC721;
+  });
+  // Default currency to KLY (can be cleared for BNB)
+  document.getElementById('in_currency').value = KLY_ADDRESS;
+
   bindUI();
   await loadListings(); // show even before connect
 }
@@ -114,6 +167,7 @@ function bindUI(){
 
   document.getElementById('connect').addEventListener('click', connect);
   document.getElementById('switch').addEventListener('click', switchToBnb);
+  document.getElementById('btn_list').addEventListener('click', createListingFlow);
 }
 
 /* -------------------- CONNECT -------------------- */
@@ -166,7 +220,6 @@ async function loadListings(){
   }
 }
 function normalizeListing(L){
-  // L fields align with tuple; cast BigNumbers
   const bn = ethers.BigNumber.isBigNumber;
   return {
     id:          bn(L.id) ? L.id.toNumber() : Number(L.id),
@@ -191,7 +244,6 @@ function render(listings, tab='all'){
   const empty = document.getElementById('empty');
   grid.innerHTML = "";
 
-  // simple tab logic; "sold" if endTime < now
   const now = Math.floor(Date.now()/1000);
   let rows = listings.slice();
   if(tab === 'available') rows = rows.filter(r => r.end === 0 || r.end > now);
@@ -204,7 +256,6 @@ function render(listings, tab='all'){
     const card = document.createElement('div');
     card.className = "card";
 
-    // Try to load a preview (best-effort from tokenURI/uri)
     const preview = await getPreview(r).catch(()=>null);
 
     card.innerHTML = `
@@ -222,7 +273,6 @@ function render(listings, tab='all'){
     `;
     grid.appendChild(card);
 
-    // Fill price + enable buy if we can
     fillPriceAndWireBuy(r);
   });
 }
@@ -241,7 +291,6 @@ async function getPreview(list){
   }
 }
 async function resolveImageFromURI(uri){
-  // Handle ipfs:// and http(s)
   let u = uri;
   if (uri.startsWith("ipfs://")) u = "https://ipfs.io/ipfs/" + uri.replace("ipfs://","");
   const res = await fetch(u);
@@ -255,46 +304,44 @@ async function fillPriceAndWireBuy(r){
   const bEl = document.getElementById(`buy-${r.id}`);
   const sEl = document.getElementById(`s-${r.id}`);
 
-  // currency symbol
-  let symbol = "BNB";
-  let decimals = 18;
+  // currency symbol/decimals
   const ZERO = "0x0000000000000000000000000000000000000000";
-  if (r.currency && r.currency.toLowerCase() !== ZERO) {
-    try{
+  const cur = (r.currency || ZERO).toLowerCase();
+  let symbol = "BNB", decimals = 18;
+
+  if (KNOWN[cur]) {
+    symbol = KNOWN[cur].symbol;
+    decimals = KNOWN[cur].decimals;
+  } else if (cur !== ZERO) {
+    try {
       const erc20 = new ethers.Contract(r.currency, ERC20_ABI, readProvider);
       symbol = await erc20.symbol().catch(()=>symbol);
       decimals = await erc20.decimals().catch(()=>decimals);
-    }catch{}
+    } catch {}
   }
 
-  // price per token
   const fmt = (x, d=18) => ethers.utils.formatUnits(x, d);
-  const price = r.buyout; // buyoutPricePerToken
-  pEl.textContent = `${fmt(price, decimals)} ${symbol}`;
+  pEl.textContent = `${fmt(r.buyout, decimals)} ${symbol}`;
 
-  // wire buy for Direct listings
   if (r.listingType === 0) {
     bEl.disabled = false;
     bEl.onclick = async () => {
       if (!signer) { await connect(); if (!signer) return; }
       try{
         sEl.textContent = "Preparing…";
-        // if ERC20, ensure allowance
-        if (r.currency.toLowerCase() !== ZERO){
+        if (cur !== ZERO){
           const erc20 = new ethers.Contract(r.currency, ERC20_ABI, signer);
           const allowance = await erc20.allowance(await signer.getAddress(), MARKETPLACE_ADDRESS);
-          const need = ethers.BigNumber.from(r.buyout).mul(1); // quantity 1
+          const need = ethers.BigNumber.from(r.buyout);
           if (allowance.lt(need)) {
             const txA = await erc20.approve(MARKETPLACE_ADDRESS, need);
             sEl.textContent = "Approving…";
             await txA.wait();
           }
         }
-
-        // call buyFromListing
         const mpWrite = mp.connect(signer);
         const args = [ r.id, await signer.getAddress(), 1, r.currency, r.buyout ];
-        const overrides = (r.currency.toLowerCase() === ZERO) ? { value: r.buyout } : {};
+        const overrides = (cur === ZERO) ? { value: r.buyout } : {};
         sEl.textContent = "Buying…";
         const tx = await mpWrite.buyFromListing(...args, overrides);
         await tx.wait();
@@ -305,9 +352,72 @@ async function fillPriceAndWireBuy(r){
       }
     };
   } else {
-    // Auction → guide to Thirdweb page
     bEl.disabled = true;
     sEl.innerHTML = `<span class="warn">Auction listing — use “View”.</span>`;
+  }
+}
+
+/* ----------------- LIST NFT (create) ----------------- */
+async function createListingFlow(){
+  const msg = document.getElementById('list_msg');
+  msg.textContent = "";
+  if (!signer) { await connect(); if (!signer) return; }
+
+  const asset     = (document.getElementById('in_asset').value || "").trim();
+  const tokenId   = (document.getElementById('in_token').value || "").trim();
+  const qtyStr    = (document.getElementById('in_qty').value || "1").trim();
+  const priceStr  = (document.getElementById('in_price').value || "").trim();
+  let   currency  = (document.getElementById('in_currency').value || "").trim();
+
+  if (!asset || !tokenId || !priceStr) {
+    msg.textContent = "Please enter NFT contract, tokenId and price.";
+    return;
+  }
+  const quantity = Math.max(1, parseInt(qtyStr, 10));
+  if (!currency) currency = "0x0000000000000000000000000000000000000000"; // BNB
+
+  try{
+    msg.textContent = "Checking collection type & approval…";
+    // Detect 721 vs 1155 (ERC165)
+    const ERC165_ABI = ["function supportsInterface(bytes4) view returns (bool)"];
+    const c165 = new ethers.Contract(asset, ERC165_ABI, signer);
+    const is1155 = await c165.supportsInterface("0xd9b67a26").catch(()=>false);
+    const is721  = await c165.supportsInterface("0x80ac58cd").catch(()=>false);
+
+    if (!(is1155 || is721)) { msg.textContent = "Contract is not ERC721 or ERC1155."; return; }
+
+    const col = new ethers.Contract(asset, is1155 ? ERC1155_ABI : ERC721_ABI, signer);
+    const ok = await col.isApprovedForAll(me, MARKETPLACE_ADDRESS);
+    if (!ok){
+      const t = await col.setApprovalForAll(MARKETPLACE_ADDRESS, true);
+      msg.textContent = "Approving collection…";
+      await t.wait();
+    }
+
+    // Thirdweb SDK (programmatic only)
+    const sdk = new window.ThirdwebSDK.ThirdwebSDK({ signer, clientId: TW_CLIENT_ID, chainId: BSC_CHAIN_ID });
+    const mp3 = await sdk.getContract(MARKETPLACE_ADDRESS, "marketplace-v3");
+
+    const start  = new Date(Date.now() - 60_000);
+    const end    = new Date(Date.now() + 30*86400000);
+
+    msg.textContent = "Creating Direct listing…";
+    const receipt = await mp3.directListings.createListing({
+      assetContractAddress: asset,
+      tokenId,
+      quantity,
+      currencyAddress: currency,      // 0x0=BNB or ERC-20 (e.g., KLY)
+      pricePerToken: priceStr,        // human string ("100" for KLY, "0.05" for BNB)
+      startTimestamp: start,
+      endTimestamp: end,
+      isReservedListing: false
+    });
+
+    msg.innerHTML = `<span class="ok">Listing created! #${receipt.id}</span>`;
+    await loadListings();
+  }catch(e){
+    console.error(e);
+    msg.innerHTML = `<span class="err">${e?.message || "Failed to list"}</span>`;
   }
 }
 
