@@ -164,25 +164,25 @@
   </footer>
 </div>
 <script type="module">
-/* ======== Config ======== */
+/* ===================== CONFIG ===================== */
 const READ_RPC = "https://bsc-dataseed.binance.org/";
 const BSC_CHAIN_ID = 56;
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
+
 const ZERO = "0x0000000000000000000000000000000000000000";
+const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; // thirdweb's native marker
 
-/* ======== Thirdweb v4 UMD bootstrap ======== */
-const TW = window.thirdweb || window.thirdwebSDK || window; // tolerate different globals
+/* ===================== THIRDWEB v4 BOOT ===================== */
+const TW = window.thirdweb || window.thirdwebSDK || window;
 if (!TW.ThirdwebSDK) {
-  document.getElementById("err").textContent =
-    "Thirdweb v4 UMD SDK not found. Make sure you included @thirdweb-dev/sdk@4.";
-  throw new Error("thirdweb v4 UMD missing");
+  const el = document.getElementById("err");
+  if (el) el.textContent = "Thirdweb v4 UMD not found — include @thirdweb-dev/sdk@4 in <head>.";
+  throw new Error("Thirdweb v4 UMD missing");
 }
-
-/* SDK: you can pass a provider for read-only; wallet connection uses window.ethereum */
 const provider = new ethers.providers.JsonRpcProvider(READ_RPC, { name: "bsc", chainId: BSC_CHAIN_ID });
 const sdk = new TW.ThirdwebSDK(provider, { supportedChains: [{ chainId: BSC_CHAIN_ID, rpc: [READ_RPC] }] });
 
-/* ======== DOM helpers ======== */
+/* ===================== DOM HELPERS ===================== */
 const $ = (id)=>document.getElementById(id);
 const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 $("mpAddrShort")?.textContent = short(MARKETPLACE_ADDR);
@@ -191,6 +191,8 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({ '&':'&amp;','<'
 function ipfs(u){ return (u && u.startsWith("ipfs://")) ? "https://ipfs.io/ipfs/"+u.slice(7) : (u||""); }
 function safeURL(u){ if(!u) return ""; if(u.startsWith("ipfs://")) return ipfs(u); try{ const url=new URL(u); return /^https?:$/.test(url.protocol)?u:""; }catch{ return ""; } }
 const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+
+/* ===================== BN FORMATTING ===================== */
 function formatUnits(bi, decimals){
   let v = typeof bi === "bigint" ? bi : BigInt(bi);
   const base = 10n ** BigInt(decimals);
@@ -199,9 +201,10 @@ function formatUnits(bi, decimals){
 }
 function prettyUnits(v,d){ const s = formatUnits(v,d); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
 
-/* ======== Currency meta (BNB + KLY example) ======== */
+/* ===================== CURRENCY META ===================== */
 const KNOWN = {
   [ZERO]: { symbol:"BNB", decimals:18, isNative:true },
+  [NATIVE_SENTINEL]: { symbol:"BNB", decimals:18, isNative:true },
   "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol:"KLY", decimals:18, isNative:false },
 };
 const erc20Meta = new Map();
@@ -223,13 +226,13 @@ async function getCurrencyMeta(addr){
   }
 }
 
-/* ======== Wallet connect (MetaMask) ======== */
-let signerSdk = null, me = null;
+/* ===================== WALLET (METAMASK) ===================== */
+let signerSdk = null, me = null, web3prov = null;
 $("connect")?.addEventListener("click", async ()=>{
   $("err").textContent = "";
   try{
     if (!window.ethereum) throw new Error("MetaMask not detected");
-    const web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
+    web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
     await web3prov.send("eth_requestAccounts", []);
     const net = await web3prov.getNetwork();
     if (Number(net.chainId) !== BSC_CHAIN_ID) {
@@ -238,7 +241,6 @@ $("connect")?.addEventListener("click", async ()=>{
         params: [{ chainId: "0x" + BSC_CHAIN_ID.toString(16) }]
       });
     }
-    // sdk with signer for write ops
     signerSdk = new TW.ThirdwebSDK(web3prov.getSigner());
     me = await web3prov.getSigner().getAddress();
     $("whoAddr").textContent = short(me);
@@ -249,7 +251,7 @@ $("connect")?.addEventListener("click", async ()=>{
   }
 });
 
-/* ======== Load Marketplace (v4) ======== */
+/* ===================== LOAD LISTINGS ===================== */
 let inFlight=false, timer=null;
 
 async function loadListings(){
@@ -263,26 +265,26 @@ async function loadListings(){
 
   if (inFlight) return; inFlight = true;
   try{
-    // MarketplaceV3 contract (v4 API)
     const mp = await sdk.getContract(MARKETPLACE_ADDR, "marketplace-v3");
 
-    // Direct listings — show ALL so you’ll see your 15 even if not active
-    // (Use mp.directListings.getAllValid() to only show active)
+    // Show ALL direct listings so your 15 appear (even if not active yet).
     const direct = await mp.directListings.getAll();
 
     if (!direct?.length){ $("listings").innerHTML=""; $("empty").style.display="block"; inFlight=false; return; }
 
-    // Normalize → render
+    // Normalize both shapes (SDK vs. raw list API)
     const rows = direct.map(n => ({
-      id: Number(n.id),
-      asset: String(n.assetContractAddress || n.assetContract || n.asset),
+      id: Number(n.id ?? n.listingId),
+      asset: String(n.assetContractAddress ?? n.assetContract ?? n.asset),
       tokenId: String(n.tokenId),
       tokenType: Number(n.tokenType ?? (n.type === "ERC721" ? 1 : 0)), // 1=721, 0=1155
-      currency: String(n.currencyContractAddress || n.currency || ZERO),
+      currency: String(n.currencyContractAddress ?? n.currency ?? ZERO).toLowerCase(),
       buyout: BigInt(String(n.buyoutPricePerToken ?? n.pricePerToken ?? "0")),
       quantity: Number(n.quantity ?? 1),
-      startTime: BigInt(n.startTimeInSeconds ?? n.startTime ?? 0),
-      endTime: BigInt(n.endTimeInSeconds ?? n.endTime ?? 0),
+      startTime: BigInt(n.startTimeInSeconds ?? n.startTimestamp ?? n.startTime ?? 0),
+      endTime: BigInt(n.endTimeInSeconds ?? n.endTimestamp ?? n.endTime ?? 0),
+      status: (typeof n.status !== "undefined") ? Number(n.status) : undefined,
+      reserved: Boolean(n.reserved ?? false),
     }));
 
     await render(rows);
@@ -292,15 +294,21 @@ async function loadListings(){
   } finally { inFlight=false; }
 }
 
+/* ===================== STATUS LOGIC ===================== */
 function deriveStatus(row){
   const now = BigInt(Math.floor(Date.now()/1000));
+  // If backend gives a status, 1 often means active; anything else mark inactive
+  if (typeof row.status === "number" && row.status !== 1) {
+    return { label: "Inactive", cls: "warn", actionable: false };
+  }
   if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
+  if (row.reserved) return {label:"Reserved", cls:"warn", actionable:false};
   if (row.endTime && row.endTime !== 0n && row.endTime < now) return {label:"Expired", cls:"warn", actionable:false};
   if (row.startTime && row.startTime !== 0n && row.startTime > now) return {label:"Scheduled", cls:"warn", actionable:false};
   return {label:"Active", cls:"ok", actionable:true};
 }
 
-/* ======== NFT metadata via v4 helpers ======== */
+/* ===================== NFT METADATA ===================== */
 async function getNFTMeta(asset, tokenId, tokenType){
   try{
     const nftContract = await sdk.getContract(asset);
@@ -318,7 +326,7 @@ async function getNFTMeta(asset, tokenId, tokenType){
   }
 }
 
-/* ======== Render ======== */
+/* ===================== RENDER ===================== */
 async function render(rows){
   const grid = $("listings"); grid.innerHTML = "";
 
@@ -380,7 +388,7 @@ async function render(rows){
   setupSearchAndFilter();
 }
 
-/* ======== Search & Filter ======== */
+/* ===================== SEARCH & FILTER ===================== */
 function setupSearchAndFilter(){
   const searchInput = $('search');
   const filterButtons = document.querySelectorAll('.filter-btn');
@@ -420,7 +428,12 @@ function filterListings(searchTerm, filter){
   $('empty').style.display = visible === 0 ? 'block' : 'none';
 }
 
-/* ======== Buy (Direct Listing, native currency only) ======== */
+/* ===================== BUY HANDLER ===================== */
+const ERC20_MIN_ABI = [
+  "function allowance(address owner,address spender) view returns (uint256)",
+  "function approve(address spender,uint256 amount) returns (bool)"
+];
+
 $("listings")?.addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-buy]"); if(!btn) return;
   const id = Number(btn.getAttribute("data-buy"));
@@ -430,22 +443,40 @@ $("listings")?.addEventListener("click", async (e)=>{
     if (!signerSdk) { await $("connect").click(); if (!signerSdk) return; }
     const mp = await signerSdk.getContract(MARKETPLACE_ADDR, "marketplace-v3");
 
-    // get listing fresh and ensure it's active
+    // Fetch the exact listing again to get fresh price/currency
     const L = await mp.directListings.getListing(id);
+    const currency = String(L.currencyContractAddress || ZERO).toLowerCase();
+    const pricePerToken = BigInt(String(L.buyoutPricePerToken ?? L.pricePerToken ?? "0"));
+    const total = pricePerToken; // buying quantity 1 in this UI
+
+    // Block buys if not actionable by our client-side rules
     const row = {
-      buyout: BigInt(String(L.buyoutPricePerToken ?? "0")),
-      currency: String(L.currencyContractAddress || ZERO),
+      buyout: total,
+      currency,
       quantity: Number(L.quantity ?? 1),
       startTime: BigInt(L.startTimeInSeconds ?? 0),
       endTime: BigInt(L.endTimeInSeconds ?? 0),
+      status: (typeof L.status !== "undefined") ? Number(L.status) : undefined,
+      reserved: Boolean(L.reserved ?? false),
     };
     const s = deriveStatus(row);
     if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
 
-    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Buying...";
+    // If ERC20, ensure allowance for marketplace
+    if (currency !== ZERO && currency !== NATIVE_SENTINEL){
+      const signer = web3prov.getSigner();
+      const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
+      const owner = me || await signer.getAddress();
+      const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
+      if (allowance.lt(ethers.BigNumber.from(total.toString()))){
+        st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Approving...";
+        const txa = await erc.approve(MARKETPLACE_ADDR, total.toString());
+        await txa.wait();
+      }
+    }
 
-    // For native currency listings, v4 helper:
-    // If currency is ERC20, you’ll also need to set allowance (can add if needed).
+    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Buying...";
+    // For native or ERC20, Thirdweb v4 helper figures out value when needed:
     await mp.directListings.buyFromListing(id, 1);
 
     st.className="status ok"; st.innerHTML = `<i class="fas fa-check" aria-hidden="true"></i> Purchase sent — check wallet`;
@@ -457,11 +488,12 @@ $("listings")?.addEventListener("click", async (e)=>{
   }
 });
 
-/* ======== Boot ======== */
+/* ===================== BOOT ===================== */
+let refreshTimer=null;
 async function start(){
   await loadListings();
-  clearInterval(timer);
-  timer = setInterval(loadListings, 30000);
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadListings, 30000);
 }
 start();
 </script>
