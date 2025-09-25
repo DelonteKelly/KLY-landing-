@@ -1,494 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KLY Sovereign Marketplace</title>
-  <meta name="description" content="The official KLY Sovereign Marketplace on BNB Chain — buy and sell Sovereign Art & Tamaquah Nation NFTs." />
-  <style>
-    :root {
-      --bg: #0a0a0a;
-      --card: #101010;
-      --ink: #ededed;
-      --line: #2a2a2a;
-      --gold: #d6b25e;
-      --success: #10b981;
-      --error: #ef4444;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      margin: 0; background: var(--bg); color: var(--ink);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
-      min-height: 100vh;
-    }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    header {
-      display: flex; gap: 12px; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid var(--line); padding-bottom: 14px; flex-wrap: wrap;
-    }
-    .brand { display:flex; gap:12px; align-items:center; }
-    .logo {
-      width: 42px; height: 42px; border-radius: 50%;
-      background: radial-gradient(60% 60% at 50% 50%, #2e2e2e 0%, #111 100%);
-      border: 1px solid #3a3a3a; display:grid; place-items:center; font-weight:800; color: var(--gold);
-      letter-spacing: 0.5px;
-    }
-    .title { line-height: 1.1; margin: 0; font-size: clamp(18px, 3.6vw, 28px); }
-    .actions { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
-    .btn {
-      display:inline-flex; align-items:center; justify-content:center;
-      padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
-      background: #171717; color: var(--ink); cursor: pointer; font-weight: 600;
-      transition: all 0.2s ease; white-space: nowrap;
-    }
-    .btn:hover { background:#1f1f1f; transform: translateY(-1px); }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn.gold { background: linear-gradient(180deg, #f2d88a, #b9943a); color: #121212; border: none; }
-    .btn.gold:hover { background: linear-gradient(180deg, #f4dc94, #c19d42); }
-    .btn.success { background: var(--success); color: white; border: none; }
-    .grid {
-      display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      padding-top: 24px;
-    }
-    .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-      display: flex; flex-direction: column; transition: all 0.3s ease;
-    }
-    .card:hover { transform: translateY(-4px); border-color: var(--gold); box-shadow: 0 8px 24px rgba(214, 178, 94, 0.1); }
-    .img-container { width: 100%; aspect-ratio: 1 / 1; background: #0f0f0f; position: relative; overflow: hidden; }
-    .img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-    .card:hover .img { transform: scale(1.05); }
-    .img-placeholder { 
-      width: 100%; height: 100%; display: grid; place-items: center; 
-      background: linear-gradient(45deg, #1a1a1a, #2a2a2a); color: var(--gold);
-    }
-    .pad { padding: 16px; display:flex; flex-direction:column; gap:12px; flex-grow: 1; }
-    .name { font-weight: 700; font-size: 16px; margin: 0; line-height: 1.3; }
-    .description { opacity: 0.7; font-size: 14px; line-height: 1.4; margin: 4px 0; }
-    .price { font-size: 18px; font-weight: 700; color: var(--gold); margin: 4px 0; }
-    .foot { display:flex; align-items:center; gap:8px; margin-top: auto; }
-    .badge { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; background: #1a1a1a; }
-    .buy { margin-left: auto; }
-    footer { margin: 40px 0 20px; opacity: .8; font-size: 12px; text-align:center; }
-    .notice { 
-      border: 1px dashed var(--line); padding: 16px; border-radius: 10px; margin: 20px 0;
-      background: #151515; opacity: .95; 
-    }
-    .notice.success { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
-    .notice.error { border-color: var(--error); background: rgba(239, 68, 68, 0.1); }
-    a { color: var(--gold); text-decoration: none; transition: opacity 0.2s; }
-    a:hover { opacity: 0.8; }
-    .loading { 
-      display: inline-block; width: 20px; height: 20px; border: 2px solid transparent;
-      border-top: 2px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .wallet-info { 
-      background: #151515; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
-      font-size: 14px; display: flex; align-items: center; gap: 8px;
-    }
-    .connected-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
-    .filters { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
-    .filter-btn { 
-      padding: 8px 16px; border-radius: 20px; border: 1px solid var(--line); 
-      background: #151515; color: var(--ink); cursor: pointer; transition: all 0.2s;
-    }
-    .filter-btn.active { background: var(--gold); color: #121212; border-color: var(--gold); }
-    @media (max-width: 768px) {
-      header { flex-direction: column; align-items: flex-start; gap: 16px; }
-      .actions { width: 100%; justify-content: flex-end; }
-      .grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
-    }
-    @media (max-width: 480px) {
-      .grid { grid-template-columns: 1fr; }
-      .actions { flex-direction: column; width: 100%; }
-      .btn { width: 100%; justify-content: center; }
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KLY Sovereign Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#0b0b0d; --panel:#121216; --ink:#f1f5f9; --muted:#9aa4af; --gold:#e6c15a; --line:#24262d; --ok:#3ddc97; --err:#ff6b6b; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px}
+  .head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:8px 0 14px}
+  .brand{display:flex;gap:10px;align-items:center}
+  .pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1115;color:var(--muted);font-size:13px}
+  .btn{appearance:none;border:1px solid var(--line);background:#15171d;color:var(--ink);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,var(--gold),#caa43f);color:#1a1a1a;border-color:#a0802c}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .tabs{display:flex;gap:10px;margin:16px 0}
+  .tabs button{border-radius:999px;padding:10px 14px}
+  .tabs .active{background:#1a1d24;color:var(--gold);border-color:#383b46}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:920px){ .grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:620px){ .grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .pad{padding:14px}
+  .row{display:flex;justify-content:space-between;align-items:center;margin:6px 0;font-size:14px}
+  .sub{color:var(--muted);font-size:13px}
+  .price{font-weight:800}
+  .img{width:100%;aspect-ratio:1/1;background:#0f1115;display:grid;place-items:center;color:#333}
+  .status{margin:10px 0 0;color:var(--muted);font-size:12px}
+  .warn{color:#ffce67} .ok{color:var(--ok)} .err{color:var(--err)}
+  .foot{margin:22px 0 0;color:#839; font-size:12px;text-align:center}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo">KLY</div>
-        <div>
-          <h1 class="title">KLY Sovereign Marketplace</h1>
-          <div style="font-size:12px; opacity:.8">BNB Smart Chain · Powered by Thirdweb</div>
-        </div>
-      </div>
-      <div class="actions">
-        <div id="walletInfo" class="wallet-info" style="display: none;">
-          <span class="connected-dot"></span>
-          <span id="walletAddress"></span>
-        </div>
-        <button id="connect" class="btn">
-          <span id="connectText">Connect Wallet</span>
-          <span id="connectSpinner" class="loading" style="display: none; margin-left: 8px;"></span>
-        </button>
-        <button id="switch" class="btn">Switch to BNB</button>
-      </div>
-    </header>
-
-    <div id="alert" class="notice" style="display:none"></div>
-    
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">All Listings</button>
-      <button class="filter-btn" data-filter="available">Available</button>
-      <button class="filter-btn" data-filter="sold">Sold</button>
+<div class="wrap">
+  <div class="head">
+    <div class="brand">
+      <div class="pill">KLY Sovereign Marketplace · BNB Chain</div>
     </div>
-    
-    <div id="grid" class="grid">
-      <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-        <div class="loading" style="width: 40px; height: 40px; margin: 0 auto 16px;"></div>
-        <div>Loading marketplace...</div>
-      </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="net" class="pill">Not connected</span>
+      <button id="switch" class="btn">Switch to BNB</button>
+      <button id="connect" class="btn primary">Connect Wallet</button>
     </div>
-
-    <footer>
-      1% fee funds KLY staking & Tamaquah Nation development. Thirdweb platform fee 2.5% also applies.
-    </footer>
   </div>
 
-  <!-- Pin Thirdweb v5 UMD build -->
-  <script src="https://unpkg.com/thirdweb@5/dist/thirdweb.umd.js"></script>
-  <script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    // ===== Configuration =====
-    const CLIENT_ID = "8f565f3207b79f423c869244e75d34ae"; // Thirdweb Client ID
-    const MARKETPLACE = "0x43159d07010ec59acc8b7df16eb9657667AD243A"; // Marketplace V3 address
-    const CHAIN = thirdweb.chains.binance;
-    const WC_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // <-- replace this
+  <div class="tabs">
+    <button data-tab="all" class="btn active">All Listings</button>
+    <button data-tab="available" class="btn">Available</button>
+    <button data-tab="sold" class="btn">Sold</button>
+  </div>
 
-    // ===== DOM =====
-    const $alert = document.getElementById("alert");
-    const $connect = document.getElementById("connect");
-    const $connectText = document.getElementById("connectText");
-    const $connectSpinner = document.getElementById("connectSpinner");
-    const $switch = document.getElementById("switch");
-    const $grid = document.getElementById("grid");
-    const $walletInfo = document.getElementById("walletInfo");
-    const $walletAddress = document.getElementById("walletAddress");
-    const $filters = document.querySelectorAll(".filter-btn");
+  <div id="grid" class="grid"></div>
+  <p id="empty" class="sub" style="display:none;margin-top:16px">No listings found.</p>
 
-    let wallet = null;
-    let allListings = [];
-    let currentFilter = "all";
+  <p class="foot">1% fee funds KLY staking & Tamaquah Nation. (Thirdweb protocol fee may apply.)</p>
+</div>
 
-    // ===== Thirdweb Setup =====
-    const client = thirdweb.createThirdwebClient({ clientId: CLIENT_ID });
-    const contract = thirdweb.getContract({ client, chain: CHAIN, address: MARKETPLACE });
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+/* -------------------- CONFIG -------------------- */
+const MARKETPLACE_ADDRESS = "0xYOUR_MARKETPLACE_V3_ADDRESS";   // <-- paste your MarketplaceV3
+const BSC_CHAIN_ID        = 56;
+const BSC_RPC             = "https://bsc-dataseed.bnbchain.org/";
+const THIRDWEB_LISTING_URL = (id) => `https://thirdweb.com/binance/${MARKETPLACE_ADDRESS}/listings/${id}`;
 
-    // Pre-configured wallet list w/ options
-    const wallets = [
-      thirdweb.wallets.metamask(),
-      thirdweb.wallets.walletConnect({ projectId: WC_PROJECT_ID }),
-      thirdweb.wallets.coinbaseWallet({ appName: "KLY Sovereign Marketplace" }),
-    ];
+/* ---- Minimal ABIs ---- */
+// MarketplaceV3 essentials
+const MP_ABI = [
+  "function getAllValidListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[])",
+  "function buyFromListing(uint256 _listingId,address _buyFor,uint256 _quantity,address _currency,uint256 _pricePerToken) payable",
+  "function totalListings() view returns (uint256)"
+];
+// ERC721 + ERC1155 + ERC20 fragments for display / payments
+const ERC721_ABI = [
+  "function tokenURI(uint256) view returns (string)",
+  "function ownerOf(uint256) view returns (address)"
+];
+const ERC1155_ABI = [
+  "function uri(uint256) view returns (string)",
+  "function balanceOf(address,uint256) view returns (uint256)"
+];
+const ERC20_ABI = [
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+  "function allowance(address owner,address spender) view returns (uint256)",
+  "function approve(address spender,uint256 amount) returns (bool)"
+];
 
-    // ===== Utils =====
-    function showAlert(message, type = "info") {
-      if (!$alert) return;
-      $alert.style.display = "block";
-      $alert.textContent = message;
-      $alert.className = `notice ${type}`;
-      setTimeout(() => {
-        $alert.style.display = "none";
-        $alert.className = "notice";
-      }, type === "error" ? 10000 : 5000);
-    }
+let web3Modal, extProv, provider, signer, me;
+let readProvider, mp;
 
-    function setLoading(loading) {
-      $connect.disabled = loading;
-      $connectText.textContent = loading ? "Connecting" : "Connect Wallet";
-      $connectSpinner.style.display = loading ? "inline-block" : "none";
-    }
+/* -------------------- INIT -------------------- */
+async function init() {
+  web3Modal = new window.Web3Modal.default({ cacheProvider:true });
+  readProvider = new ethers.providers.JsonRpcProvider(BSC_RPC, {name:"bnb", chainId:BSC_CHAIN_ID});
+  mp = new ethers.Contract(MARKETPLACE_ADDRESS, MP_ABI, readProvider);
 
-    function formatAddress(address) {
-      return `${address.slice(0, 6)}...${address.slice(-4)}`;
-    }
-
-    function updateWalletInfo(address) {
-      if (address) {
-        $walletAddress.textContent = formatAddress(address);
-        $walletInfo.style.display = "flex";
-        $connect.style.display = "none";
-      } else {
-        $walletInfo.style.display = "none";
-        $connect.style.display = "inline-flex";
-      }
-    }
-
-    // Convert IPFS URIs to HTTP
-    const ipfsToHttp = (uri) =>
-      uri && uri.startsWith("ipfs://")
-        ? `https://ipfs.io/ipfs/${uri.replace("ipfs://", "")}`
-        : uri;
-
-    // ===== Wallet Connection =====
-    async function connectWallet() {
-      try {
-        setLoading(true);
-
-        // 1) Prompt user for wallet
-        wallet = await thirdweb.connect({
-          client,
-          wallets,
-          chain: CHAIN, // preferred chain
-        });
-
-        // 2) Ensure BNB Chain
-        try {
-          await wallet.switchChain(CHAIN);
-        } catch (switchErr) {
-          const provider = await wallet.getEthereumProvider();
-          if (provider?.request) {
-            try {
-              await provider.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: "0x38",
-                  chainName: "BNB Smart Chain",
-                  nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-                  rpcUrls: ["https://bsc-dataseed.binance.org/"],
-                  blockExplorerUrls: ["https://bscscan.com"]
-                }]
-              });
-              await wallet.switchChain(CHAIN);
-            } catch (addErr) {
-              console.debug("Add/switch chain failed:", addErr);
-            }
-          }
-        }
-
-        const address = await wallet.getAddress();
-        updateWalletInfo(address);
-        showAlert("Wallet connected successfully!", "success");
-        return wallet;
-      } catch (e) {
-        console.error("Connection error:", e);
-        // Mobile fallback (deep link with full encoded URL)
-        const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-        if (isMobile && !window.ethereum) {
-          const dappUrl = encodeURIComponent(window.location.href);
-          window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
-        } else {
-          showAlert("Could not connect wallet. Make sure a wallet is installed.", "error");
-        }
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    // ===== Events =====
-    $connect.onclick = async () => {
-      try { await connectWallet(); } catch {}
-    };
-
-    $switch.onclick = async () => {
-      try {
-        if (!wallet) await connectWallet();
-        await wallet.switchChain(CHAIN);
-        showAlert("Switched to BNB Chain successfully!", "success");
-      } catch (e) {
-        console.error("Switch error:", e);
-        showAlert("Failed to switch network. Please approve in your wallet.", "error");
-      }
-    };
-
-    // Filters
-    $filters.forEach(btn => {
-      btn.addEventListener("click", () => {
-        $filters.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentFilter = btn.dataset.filter;
-        renderListings();
-      });
+  bindUI();
+  await loadListings(); // show even before connect
+}
+function bindUI(){
+  document.querySelectorAll('.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      render(lastListings, btn.dataset.tab);
     });
+  });
 
-    // ===== Marketplace (V3) =====
-    async function loadListings() {
-      try {
-        // Get valid Direct Listings from Marketplace V3 extension
-        const direct = await thirdweb.extensions.marketplace.getAllValidListings({ contract });
+  document.getElementById('connect').addEventListener('click', connect);
+  document.getElementById('switch').addEventListener('click', switchToBnb);
+}
 
-        // Normalize for rendering
-        allListings = (direct || []).map(d => ({
-          type: "direct",
-          id: d.id,
-          currency: (d.currency || "").toLowerCase(),
-          pricePerToken: d.pricePerToken,
-          quantity: d.quantity,
-          tokenId: d.tokenId,
-          assetContract: d.assetContract,
-          asset: d.asset || null
-        }));
+/* -------------------- CONNECT -------------------- */
+async function connect(){
+  try{
+    extProv = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(extProv);
+    signer   = provider.getSigner();
+    me       = await signer.getAddress();
+    const net = await provider.getNetwork();
+    if(net.chainId !== BSC_CHAIN_ID) {
+      await switchToBnb();
+    }
+    document.getElementById('net').textContent = `Connected · ${short(me)}`;
+    // re-render so Buy buttons are enabled
+    render(lastListings, currentTab());
+    // handle account/chain changes
+    extProv.on?.('accountsChanged',()=>location.reload());
+    extProv.on?.('chainChanged',  ()=>location.reload());
+  }catch(e){ console.warn(e); }
+}
+async function switchToBnb(){
+  if(!provider){ provider = new ethers.providers.Web3Provider(window.ethereum || extProv); }
+  const hex = "0x" + BSC_CHAIN_ID.toString(16);
+  try { await provider.send("wallet_switchEthereumChain", [{ chainId: hex }]); }
+  catch(e){
+    if(e?.code === 4902){
+      await provider.send("wallet_addEthereumChain", [{
+        chainId: hex,
+        chainName: "BNB Smart Chain",
+        nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+        rpcUrls: [BSC_RPC],
+        blockExplorerUrls: ["https://bscscan.com"]
+      }]);
+    } else { throw e; }
+  }
+}
 
-        // Try to load metadata for each listing
-        for (let listing of allListings) {
-          try {
-            // Use the asset metadata if available
-            if (listing.asset) {
-              listing.metadata = listing.asset;
-            } else {
-              // Fallback: Try to fetch metadata from the asset contract
-              const assetContract = thirdweb.getContract({ 
-                client, 
-                chain: CHAIN, 
-                address: listing.assetContract 
-              });
-              
-              try {
-                const metadata = await thirdweb.extensions.erc721.getTokenMetadata({
-                  contract: assetContract,
-                  tokenId: listing.tokenId
-                });
-                listing.metadata = metadata;
-              } catch (e) {
-                console.warn("Could not fetch metadata for token", listing.tokenId, e);
-                listing.metadata = {
-                  name: `Listing #${listing.id.toString()}`,
-                  description: "Direct listing on BNB Chain"
-                };
-              }
-            }
-          } catch (e) {
-            console.warn("Error processing listing metadata", e);
-            listing.metadata = {
-              name: `Listing #${listing.id.toString()}`,
-              description: "Direct listing on BNB Chain"
-            };
+/* -------------------- LISTINGS -------------------- */
+let lastListings = [];
+async function loadListings(){
+  try{
+    const listings = await mp.getAllValidListings(0, 50);
+    lastListings = listings.map(normalizeListing);
+    render(lastListings, currentTab());
+  }catch(e){
+    console.error(e);
+    document.getElementById('empty').style.display = 'block';
+    document.getElementById('empty').textContent = "Couldn't load listings. Check Marketplace address.";
+  }
+}
+function normalizeListing(L){
+  // L fields align with tuple; cast BigNumbers
+  const bn = ethers.BigNumber.isBigNumber;
+  return {
+    id:          bn(L.id) ? L.id.toNumber() : Number(L.id),
+    asset:       L.assetContract,
+    tokenId:     bn(L.tokenId) ? L.tokenId.toString() : String(L.tokenId),
+    start:       bn(L.startTime) ? L.startTime.toNumber() : Number(L.startTime),
+    end:         bn(L.endTime) ? L.endTime.toNumber() : Number(L.endTime),
+    seller:      L.seller,
+    currency:    L.currency,
+    reserve:     L.reservePricePerToken?.toString?.() ?? "0",
+    buyout:      L.buyoutPricePerToken?.toString?.() ?? "0",
+    quantity:    bn(L.quantity) ? L.quantity.toString() : String(L.quantity),
+    tokenType:   Number(L.tokenType),     // 0=ERC1155, 1=ERC721
+    listingType: Number(L.listingType),   // 0=Direct, 1=Auction
+  };
+}
+function currentTab(){
+  return document.querySelector('.tabs .active')?.dataset.tab || 'all';
+}
+function render(listings, tab='all'){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  grid.innerHTML = "";
+
+  // simple tab logic; "sold" if endTime < now
+  const now = Math.floor(Date.now()/1000);
+  let rows = listings.slice();
+  if(tab === 'available') rows = rows.filter(r => r.end === 0 || r.end > now);
+  if(tab === 'sold')      rows = rows.filter(r => r.end > 0 && r.end <= now);
+
+  empty.style.display = rows.length ? 'none' : 'block';
+  if(!rows.length) { empty.textContent = "No listings in this tab."; return; }
+
+  rows.forEach(async (r) => {
+    const card = document.createElement('div');
+    card.className = "card";
+
+    // Try to load a preview (best-effort from tokenURI/uri)
+    const preview = await getPreview(r).catch(()=>null);
+
+    card.innerHTML = `
+      <div class="img">${ preview ? `<img src="${preview}" alt="" style="width:100%;height:100%;object-fit:cover">` : "No preview" }</div>
+      <div class="pad">
+        <div class="row"><span class="sub">Listing #${r.id}</span><span class="sub">${r.listingType===0?'Direct':'Auction'}</span></div>
+        <div class="row"><span class="sub">Asset</span><span class="sub">${short(r.asset)} · #${r.tokenId}</span></div>
+        <div class="row"><span class="sub">Price</span><span class="price" id="p-${r.id}">—</span></div>
+        <div class="row">
+          <button class="btn" onclick="window.open('${THIRDWEB_LISTING_URL(r.id)}','_blank')">View</button>
+          <button class="btn primary" id="buy-${r.id}" ${r.listingType!==0?'disabled':''}>Buy 1</button>
+        </div>
+        <div class="status" id="s-${r.id}"></div>
+      </div>
+    `;
+    grid.appendChild(card);
+
+    // Fill price + enable buy if we can
+    fillPriceAndWireBuy(r);
+  });
+}
+
+/* -------- helpers: preview/price/buy ---------- */
+async function getPreview(list){
+  const p = readProvider;
+  if(list.tokenType === 1){ // ERC721
+    const nft = new ethers.Contract(list.asset, ERC721_ABI, p);
+    const uri = await nft.tokenURI(list.tokenId);
+    return resolveImageFromURI(uri);
+  } else { // ERC1155
+    const col = new ethers.Contract(list.asset, ERC1155_ABI, p);
+    let uri = await col.uri(list.tokenId);
+    return resolveImageFromURI(uri);
+  }
+}
+async function resolveImageFromURI(uri){
+  // Handle ipfs:// and http(s)
+  let u = uri;
+  if (uri.startsWith("ipfs://")) u = "https://ipfs.io/ipfs/" + uri.replace("ipfs://","");
+  const res = await fetch(u);
+  const j = await res.json();
+  let img = j.image || j.image_url;
+  if(img && img.startsWith("ipfs://")) img = "https://ipfs.io/ipfs/" + img.replace("ipfs://","");
+  return img || null;
+}
+async function fillPriceAndWireBuy(r){
+  const pEl = document.getElementById(`p-${r.id}`);
+  const bEl = document.getElementById(`buy-${r.id}`);
+  const sEl = document.getElementById(`s-${r.id}`);
+
+  // currency symbol
+  let symbol = "BNB";
+  let decimals = 18;
+  const ZERO = "0x0000000000000000000000000000000000000000";
+  if (r.currency && r.currency.toLowerCase() !== ZERO) {
+    try{
+      const erc20 = new ethers.Contract(r.currency, ERC20_ABI, readProvider);
+      symbol = await erc20.symbol().catch(()=>symbol);
+      decimals = await erc20.decimals().catch(()=>decimals);
+    }catch{}
+  }
+
+  // price per token
+  const fmt = (x, d=18) => ethers.utils.formatUnits(x, d);
+  const price = r.buyout; // buyoutPricePerToken
+  pEl.textContent = `${fmt(price, decimals)} ${symbol}`;
+
+  // wire buy for Direct listings
+  if (r.listingType === 0) {
+    bEl.disabled = false;
+    bEl.onclick = async () => {
+      if (!signer) { await connect(); if (!signer) return; }
+      try{
+        sEl.textContent = "Preparing…";
+        // if ERC20, ensure allowance
+        if (r.currency.toLowerCase() !== ZERO){
+          const erc20 = new ethers.Contract(r.currency, ERC20_ABI, signer);
+          const allowance = await erc20.allowance(await signer.getAddress(), MARKETPLACE_ADDRESS);
+          const need = ethers.BigNumber.from(r.buyout).mul(1); // quantity 1
+          if (allowance.lt(need)) {
+            const txA = await erc20.approve(MARKETPLACE_ADDRESS, need);
+            sEl.textContent = "Approving…";
+            await txA.wait();
           }
         }
 
-        renderListings();
-      } catch (e) {
-        console.error("Load listings error:", e);
-        $grid.innerHTML = `
-          <div class="notice error" style="display: block; grid-column: 1 / -1;">
-            Couldn't load listings. Error: ${e.message || "Unknown error"}
-          </div>`;
+        // call buyFromListing
+        const mpWrite = mp.connect(signer);
+        const args = [ r.id, await signer.getAddress(), 1, r.currency, r.buyout ];
+        const overrides = (r.currency.toLowerCase() === ZERO) ? { value: r.buyout } : {};
+        sEl.textContent = "Buying…";
+        const tx = await mpWrite.buyFromListing(...args, overrides);
+        await tx.wait();
+        sEl.innerHTML = `<span class="ok">Success ✅</span>`;
+      }catch(e){
+        console.error(e);
+        sEl.innerHTML = `<span class="err">${e?.error?.message || e?.message || 'Failed'}</span>`;
       }
-    }
+    };
+  } else {
+    // Auction → guide to Thirdweb page
+    bEl.disabled = true;
+    sEl.innerHTML = `<span class="warn">Auction listing — use “View”.</span>`;
+  }
+}
 
-    function toBNB(weiBigInt) {
-      const n = typeof weiBigInt === "bigint" ? Number(weiBigInt) : Number(weiBigInt || 0);
-      return (n / 1e18).toFixed(4);
-    }
+/* ----------------- utils ----------------- */
+const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 
-    function createListingCard(listing) {
-      const idStr = listing.id.toString();
-      const qty = BigInt(listing.quantity || 0n);
-      const isSold = qty === 0n;
-
-      const md = listing.metadata || {};
-      const title = md.name || `Listing #${idStr}`;
-      const description = md.description || "Direct listing on BNB Chain";
-      const imageUri = md.image ? ipfsToHttp(md.image) : null;
-
-      const priceStr = toBNB(listing.pricePerToken);
-
-      return `
-        <div class="card" data-listing-id="${idStr}">
-          <div class="img-container">
-            ${
-              imageUri
-                ? `<img src="${imageUri}" class="img" alt="${title}" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'img-placeholder\\'>NFT</div>';" />`
-                : `<div class="img-placeholder">${isSold ? '<span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">SOLD</span>' : 'NFT'}</div>`
-            }
-          </div>
-          <div class="pad">
-            <h3 class="name">${title}</h3>
-            <div class="price">${priceStr} BNB</div>
-            <div class="description">${description}</div>
-            <div class="foot">
-              <span class="badge">${isSold ? 'Sold Out' : 'Available'}</span>
-              <span class="badge">Qty: ${qty.toString()}</span>
-              ${!isSold ? '<button class="btn gold buy">Buy Now</button>' : '<button class="btn" disabled>Sold Out</button>'}
-            </div>
-          </div>
-        </div>`;
-    }
-
-    function renderListings() {
-      if (!Array.isArray(allListings) || allListings.length === 0) {
-        $grid.innerHTML = `
-          <div class="notice" style="display: block; grid-column: 1 / -1;">
-            No active listings found. Create a Direct Listing for your NFTs in the Thirdweb dashboard.
-          </div>`;
-        return;
-      }
-
-      const filtered = allListings.filter(l => {
-        if (currentFilter === "available") return BigInt(l.quantity) > 0n;
-        if (currentFilter === "sold") return BigInt(l.quantity) === 0n;
-        return true;
-      });
-
-      if (filtered.length === 0) {
-        $grid.innerHTML = `
-          <div class="notice" style="display: block; grid-column: 1 / -1;">
-            No listings match the current filter.
-          </div>`;
-        return;
-      }
-
-      $grid.innerHTML = filtered.map(createListingCard).join("");
-      attachBuyHandlers();
-    }
-
-    function attachBuyHandlers() {
-      document.querySelectorAll(".btn.buy").forEach(btn => {
-        btn.onclick = async () => {
-          const card = btn.closest(".card");
-          const listingId = BigInt(card.dataset.listingId);
-          const listing = allListings.find(l => l.id === listingId);
-
-          if (!listing) {
-            showAlert("Listing not found.", "error");
-            return;
-          }
-
-          try {
-            if (!wallet) await connectWallet();
-            await wallet.switchChain(CHAIN);
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading" style="width: 16px; height: 16px;"></span> Buying...';
-
-            const quantity = 1n;
-            const recipient = await wallet.getAddress();
-            const isNative = listing.currency === "0x0000000000000000000000000000000000000000";
-            const total = BigInt(listing.pricePerToken) * quantity;
-
-            const tx = thirdweb.extensions.marketplace.buyFromListing({
-              contract,
-              listingId,
-              quantity,
-              recipient,
-            });
-            
-            await thirdweb.sendTransaction({
-              transaction: tx,
-              account: wallet,
-              value: isNative ? total : undefined,
-            });
-
-            showAlert("Purchase completed successfully!", "success");
-            await loadListings();
-          } catch (e) {
-            console.error("Buy error:", e);
-            showAlert("Purchase failed. Ensure you have enough BNB and the listing is still active.", "error");
-            btn.disabled = false;
-            btn.textContent = "Buy Now";
-          }
-        };
-      });
-    }
-
-    // ===== Init =====
-    await loadListings();
-  });
-  </script>
+/* ----------------- start ----------------- */
+init();
+</script>
 </body>
 </html>
