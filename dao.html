@@ -876,6 +876,29 @@
     .flip-card-back {
       transform: rotateY(180deg);
     }
+    /* Spinner + extra buttons */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+.btn-outline:hover {
+  background: rgba(0,240,255,0.08);
+  box-shadow: 0 0 20px rgba(0,240,255,0.3);
+}
+
+.btn-danger {
+  background: rgba(255,51,102,0.12);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+.btn-danger:hover {
+  background: rgba(255,51,102,0.2);
+  box-shadow: 0 0 20px rgba(255,51,102,0.3);
+}
   </style>
 </head>
 <body>
@@ -1077,44 +1100,38 @@
 <script type="module">
   import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-  // BNB Chain Contract Addresses
+  // ====== CONFIG ======
   const DAO_ADDRESS = "0x796Bce7F95662774243177D1F546eBA0B3465579";
   const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-  
-  // BNB Chain Network Info
+
   const BNB_MAINNET = {
-    chainId: "0x38", // 56 in decimal
+    chainId: "0x38",
     chainName: "BNB Smart Chain",
-    nativeCurrency: {
-      name: "BNB",
-      symbol: "BNB",
-      decimals: 18
-    },
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
     rpcUrls: ["https://bsc-dataseed.binance.org/"],
     blockExplorerUrls: ["https://bscscan.com/"]
   };
 
-  // Contract ABIs
+  // ====== ABIs ======
   const DAO_ABI = [
     "function getAllProposals() view returns (tuple(uint256 proposalId, address proposer, address[] targets, uint256[] values, string[] signatures, bytes[] calldatas, uint256 startBlock, uint256 endBlock, string description)[])",
     "function getProposalVotes(uint256 proposalId) view returns (uint256 forVotes, uint256 againstVotes)",
     "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
     "function propose(address[] targets, uint256[] values, string[] signatures, bytes[] calldatas, string description) returns (uint256)"
   ];
-
   const KLY_ABI = [
     "function delegate(address delegatee) external",
     "function delegates(address account) view returns (address)",
     "function balanceOf(address account) view returns (uint256)"
   ];
 
-  // App State
+  // ====== State ======
   let provider, signer, wallet;
   let currentBlock = 0;
   let currentNetwork = null;
   const transactionHistory = [];
 
-  // DOM Elements
+  // ====== DOM ======
   const connectBtn = document.getElementById('connectWallet');
   const walletInfo = document.getElementById('walletInfo');
   const walletDisplay = document.getElementById('walletDisplay');
@@ -1130,311 +1147,204 @@
   const proposalDescription = document.getElementById('proposalDescription');
   const submitProposal = document.getElementById('submitProposal');
   const proposalStatus = document.getElementById('proposalStatus');
-  const gasEstimate = document.getElementById('gasEstimate');
+  const gasEstimateEl = document.getElementById('gasEstimate');
   const transactionHistoryDisplay = document.getElementById('transactionHistory');
   const txList = document.getElementById('txList');
   const networkDisplay = document.getElementById('networkDisplay');
   const networkName = document.getElementById('networkName');
   const particlesContainer = document.getElementById('particles');
 
-  // Initialize the app
+  // ====== INIT ======
+  window.addEventListener('DOMContentLoaded', init);
+
   function init() {
     initParticles();
     setupEventListeners();
     checkInitialConnection();
     createCornerDecorations();
+    addQuickActions(); // NEW
   }
 
-  // Create corner decorations
   function createCornerDecorations() {
     const container = document.querySelector('.container');
-    
-    const corners = ['tl', 'tr', 'bl', 'br'];
-    corners.forEach(pos => {
-      const corner = document.createElement('div');
-      corner.className = `corner-decoration corner-${pos}`;
-      container.appendChild(corner);
+    ['tl','tr','bl','br'].forEach(pos => {
+      const d = document.createElement('div');
+      d.className = `corner-decoration corner-${pos}`;
+      container.appendChild(d);
     });
   }
 
-  // Initialize particle animation
-  function initParticles() {
-    for (let i = 0; i < 50; i++) {
-      createParticle();
-    }
-  }
-
+  // ====== Particles ======
+  function initParticles() { for (let i=0;i<50;i++) createParticle(); }
   function createParticle() {
-    const particle = document.createElement("div");
-    particle.className = "particle";
-    
-    // Random size between 1px and 5px
-    const size = Math.random() * 4 + 1;
-    particle.style.width = `${size}px`;
-    particle.style.height = `${size}px`;
-    
-    // Random position
-    particle.style.left = `${Math.random() * 100}%`;
-    particle.style.bottom = `-${size}px`;
-    
-    // Random animation duration between 10s and 20s
-    const duration = Math.random() * 10 + 10;
-    particle.style.animationDuration = `${duration}s`;
-    
-    // Random delay
-    particle.style.animationDelay = `${Math.random() * 5}s`;
-    
-    // Random color variation
-    const hue = Math.random() * 60 + 180; // Blue to cyan range
-    particle.style.background = `hsl(${hue}, 100%, 70%)`;
-    
-    particlesContainer.appendChild(particle);
-    
-    // Remove particle after animation completes and create a new one
-    setTimeout(() => {
-      particle.remove();
-      createParticle();
-    }, duration * 1000);
+    const p = document.createElement("div");
+    p.className = "particle";
+    const size = Math.random()*4+1;
+    p.style.width = `${size}px`; p.style.height = `${size}px`;
+    p.style.left = `${Math.random()*100}%`; p.style.bottom = `-${size}px`;
+    const duration = Math.random()*10+10;
+    p.style.animationDuration = `${duration}s`;
+    p.style.animationDelay = `${Math.random()*5}s`;
+    const hue = Math.random()*60+180;
+    p.style.background = `hsl(${hue}, 100%, 70%)`;
+    particlesContainer.appendChild(p);
+    setTimeout(() => { p.remove(); createParticle(); }, duration*1000);
   }
 
-  // Set up event listeners
+  // ====== Events ======
   function setupEventListeners() {
-    // Connect wallet button
     connectBtn.addEventListener('click', connectWallet);
-    
-    // Delegate votes button
     delegateVotesBtn.addEventListener('click', delegateVotes);
-    
-    // Submit proposal button
     submitProposal.addEventListener('click', submitProposalHandler);
-    
-    // Add action button
     document.getElementById('addActionBtn').addEventListener('click', addAction);
-    
-    // Tab switching
+
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
         tab.classList.add('active');
-        const tabId = tab.getAttribute('data-tab') + '-tab';
-        document.getElementById(tabId).classList.add('active');
+        document.getElementById(tab.getAttribute('data-tab')+'-tab').classList.add('active');
       });
     });
-    
-    // Handle wallet changes
+
     if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length > 0) {
-          connectWallet();
-        } else {
-          handleDisconnect();
-        }
-      });
-      
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+      window.ethereum.on('accountsChanged', (a) => a.length ? connectWallet() : handleDisconnect());
+      window.ethereum.on('chainChanged', () => window.location.reload());
     }
   }
 
-  // Connect wallet with BNB Chain support
+  // ====== Wallet ======
   async function connectWallet() {
     try {
       if (!window.ethereum) {
         showStatus("Please install Binance Wallet or MetaMask", "error");
-        window.open("https://chrome.google.com/webstore/detail/binance-chain-wallet/fhbohimaelbohpjbbldcngcnapndodjp", "_blank");
+        window.open("https://chrome.google.com/webstore/detail/binance-chain-wallet/fhbohimaelbohpjbbldcngcnapndodjp","_blank");
         return;
       }
-
-      updateConnectButton(true, "Connecting...");
-      
+      updateConnectButton(true, "Connecting…");
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      const network = await provider.getNetwork();
-      currentNetwork = network;
-      
-      // If not on BNB Chain, prompt to switch
-      if (network.chainId !== 56) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [BNB_MAINNET]
-          });
-          window.location.reload();
-          return;
-        } catch (switchError) {
-          console.error("Failed to switch to BNB Chain:", switchError);
-          showStatus("Please switch to BNB Smart Chain", "error");
-          updateConnectButton(false, "Connect Wallet");
-          return;
-        }
+      const net = await provider.getNetwork();
+      currentNetwork = net;
+
+      if (net.chainId !== 56) {
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [BNB_MAINNET] });
+        window.location.reload();
+        return;
       }
-      
-      // Update network display
       networkDisplay.style.display = 'flex';
       networkName.textContent = "BNB Smart Chain";
-      
+
       const accounts = await provider.send("eth_requestAccounts", []);
-      
-      if (accounts.length === 0) {
-        throw new Error("No accounts found");
-      }
-      
+      if (!accounts.length) throw new Error("No accounts found");
       signer = provider.getSigner();
       wallet = await signer.getAddress();
 
-      // Update UI
       updateConnectButton(false, "Connected");
       walletInfo.style.display = "block";
-      walletAddress.textContent = `${wallet.substring(0, 6)}...${wallet.slice(-4)}`;
+      walletAddress.textContent = `${wallet.substring(0,6)}...${wallet.slice(-4)}`;
       transactionHistoryDisplay.style.display = "block";
-      
-      // Add pulse animation to voting power display
       votingPowerDisplay.style.animation = "pulse 2s 3";
-      
-      // Load initial data
+
       await loadInitialData();
-      
-      // Show welcome message
-      showStatus(`Welcome to KLY DAO Governance, ${wallet.substring(0, 6)}...`, "success");
-      
+      showStatus(`Welcome to KLY DAO Governance, ${wallet.substring(0,6)}…`, "success");
     } catch (err) {
-      console.error("Wallet connection error:", err);
+      console.error(err);
       updateConnectButton(false, "Connect Wallet");
       showEnhancedError(err);
     }
   }
 
-  // Load initial data after connection
   async function loadInitialData() {
-    try {
-      currentBlock = await provider.getBlockNumber();
-      await loadProposals();
-      await checkDelegationStatus();
-      await loadVotingPower();
-      await loadTransactionHistory();
-    } catch (err) {
-      console.error("Initial data load error:", err);
-      showEnhancedError(err);
-    }
+    currentBlock = await provider.getBlockNumber();
+    await Promise.all([loadProposals(), checkDelegationStatus(), loadVotingPower(), loadTransactionHistory()]);
   }
 
-  // Load user's voting power
   async function loadVotingPower() {
     if (!wallet) return;
-    
     try {
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
-      const balance = await kly.balanceOf(wallet);
+      const bal = await kly.balanceOf(wallet);
       votingPowerDisplay.style.display = "flex";
-      votingPowerAmount.textContent = ethers.utils.formatUnits(balance, 18);
-    } catch (err) {
-      console.error("Error loading voting power:", err);
-    }
+      votingPowerAmount.textContent = ethers.utils.formatUnits(bal, 18);
+    } catch (e) { console.error(e); }
   }
 
-  // Load proposals from the blockchain
+  // ====== Proposals ======
   async function loadProposals() {
     try {
       loadingProposals.style.display = "flex";
       noProposals.style.display = "none";
       proposalList.innerHTML = "";
-      
+
       const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
       const proposals = await dao.getAllProposals();
-      
       loadingProposals.style.display = "none";
-      
-      if (proposals.length === 0) {
-        noProposals.style.display = "flex";
-        return;
+      if (!proposals.length) { noProposals.style.display = "flex"; return; }
+
+      proposals.sort((a,b) => Number(b.proposalId) - Number(a.proposalId));
+      const frag = document.createDocumentFragment();
+
+      for (const p of proposals) {
+        const v = await dao.getProposalVotes(p.proposalId);
+        frag.appendChild(createProposalCard(p, v));
       }
-      
-      // Sort proposals by most recent first
-      proposals.sort((a, b) => b.proposalId - a.proposalId);
-      
-      // Create a document fragment for better performance
-      const fragment = document.createDocumentFragment();
-      
-      for (const proposal of proposals) {
-        try {
-          const votes = await dao.getProposalVotes(proposal.proposalId);
-          const proposalCard = createProposalCard(proposal, votes);
-          fragment.appendChild(proposalCard);
-        } catch (err) {
-          console.error(`Error loading proposal ${proposal.proposalId}:`, err);
-        }
-      }
-      
-      proposalList.appendChild(fragment);
-      
+      proposalList.appendChild(frag);
     } catch (err) {
-      console.error("Error loading proposals:", err);
+      console.error(err);
       loadingProposals.style.display = "none";
       showStatus("Error loading proposals. Please try again.", "error");
     }
   }
 
-  // Create proposal card HTML
+  function bnToBigInt(bn) { return BigInt(bn.toString()); }
+
   function createProposalCard(proposal, votes) {
     const card = document.createElement("div");
     card.className = "card proposal-card holographic";
-    
-    // Determine status
+
+    // status
+    const nowActive = currentBlock >= proposal.startBlock && currentBlock <= proposal.endBlock;
     let statusClass, statusText, statusIcon;
-    if (currentBlock < proposal.startBlock) {
-      statusClass = "status-pending";
-      statusText = "Pending";
-      statusIcon = "clock";
-    } else if (currentBlock <= proposal.endBlock) {
-      statusClass = "status-active";
-      statusText = "Active";
-      statusIcon = "bolt";
-    } else if (votes.forVotes > votes.againstVotes) {
-      statusClass = "status-passed";
-      statusText = "Passed";
-      statusIcon = "check";
-    } else {
-      statusClass = "status-failed";
-      statusText = "Failed";
-      statusIcon = "times";
+    if (currentBlock < proposal.startBlock) { statusClass="status-pending"; statusText="Pending"; statusIcon="clock"; }
+    else if (nowActive) { statusClass="status-active"; statusText="Active"; statusIcon="bolt"; }
+    else {
+      const forBi = bnToBigInt(votes.forVotes), againstBi = bnToBigInt(votes.againstVotes);
+      statusClass = forBi > againstBi ? "status-passed" : "status-failed";
+      statusText  = forBi > againstBi ? "Passed" : "Failed";
+      statusIcon  = forBi > againstBi ? "check" : "times";
     }
-    
-    // Calculate vote percentages
-    const totalVotes = votes.forVotes + votes.againstVotes;
-    const yesPercent = totalVotes > 0 ? (votes.forVotes / totalVotes) * 100 : 50;
-    const noPercent = totalVotes > 0 ? (votes.againstVotes / totalVotes) * 100 : 50;
-    
-    // Get first line of description as title
-    const descriptionLines = proposal.description.split('\n');
-    const title = descriptionLines[0].replace(/^#\s*/, '');
+
+    // vote math
+    const forBi = bnToBigInt(votes.forVotes);
+    const againstBi = bnToBigInt(votes.againstVotes);
+    const total = forBi + againstBi;
+    const yesPct = total > 0n ? Number((forBi * 10000n) / total) / 100 : 50;
+    const noPct  = total > 0n ? Number((againstBi * 10000n) / total) / 100 : 50;
+
+    // title = first line of description without leading "# "
+    const lines = proposal.description.split('\n');
+    const title = lines[0].replace(/^#\s*/, '');
 
     card.innerHTML = `
       <div class="status-badge ${statusClass}">
-        <i class="fas fa-${statusIcon}"></i>
-        ${statusText}
+        <i class="fas fa-${statusIcon}"></i>${statusText}
       </div>
       <span class="proposal-id">#${proposal.proposalId}</span>
       <h3>${title}</h3>
-      
-      <div class="proposer">
-        <i class="fas fa-user"></i>
-        <span>${shortenAddress(proposal.proposer)}</span>
-      </div>
-      
+      <div class="proposer"><i class="fas fa-user"></i> <span>${shortenAddress(proposal.proposer)}</span></div>
+
       <div class="vote-progress-container">
         <div class="vote-stats">
-          <span class="vote-yes-stat">${votes.forVotes} FOR (${yesPercent.toFixed(1)}%)</span>
-          <span class="vote-no-stat">${votes.againstVotes} AGAINST (${noPercent.toFixed(1)}%)</span>
+          <span class="vote-yes-stat">${forBi.toString()} FOR (${yesPct.toFixed(1)}%)</span>
+          <span class="vote-no-stat">${againstBi.toString()} AGAINST (${noPct.toFixed(1)}%)</span>
         </div>
         <div class="vote-progress">
-          <div class="vote-progress-bar progress-yes" style="width: ${yesPercent}%"></div>
-          <div class="vote-progress-bar progress-no" style="width: ${noPercent}%"></div>
+          <div class="vote-progress-bar progress-yes" style="width:${yesPct}%"></div>
+          <div class="vote-progress-bar progress-no"  style="width:${noPct}%"></div>
         </div>
       </div>
-      
-      ${currentBlock >= proposal.startBlock && currentBlock <= proposal.endBlock ? `
+
+      ${nowActive ? `
       <div class="vote-buttons">
         <button class="vote-btn vote-btn-yes" data-proposal="${proposal.proposalId}" data-vote="1">
           <i class="fas fa-thumbs-up"></i> Vote For
@@ -1442,421 +1352,248 @@
         <button class="vote-btn vote-btn-no" data-proposal="${proposal.proposalId}" data-vote="0">
           <i class="fas fa-thumbs-down"></i> Vote Against
         </button>
-      </div>
-      ` : ''}
+      </div>` : ``}
     `;
-    
-    // Add event listeners to vote buttons
-    if (currentBlock >= proposal.startBlock && currentBlock <= proposal.endBlock) {
-      card.querySelectorAll('.vote-btn').forEach(btn => {
-        btn.addEventListener('click', castVote);
-      });
-    }
-    
+    if (nowActive) card.querySelectorAll('.vote-btn').forEach(b => b.addEventListener('click', castVote));
     return card;
   }
 
-  // Add new action to proposal
+  // ====== Create Proposal: Actions ======
   function addAction() {
     const template = document.getElementById('actionTemplate');
-    const clone = template.content.cloneNode(true);
-    const actionContainer = document.getElementById('proposalActions');
-    
-    actionContainer.appendChild(clone);
-    
-    // Add event listener to remove button
-    const removeBtn = actionContainer.lastElementChild.querySelector('.remove-action-btn');
-    removeBtn.addEventListener('click', (e) => {
-      e.target.closest('.action-card').remove();
+    const clone = template.firstElementChild.cloneNode(true);
+    document.getElementById('proposalActions').appendChild(clone);
+    clone.querySelector('.remove-action-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.currentTarget.closest('.action-card').remove();
     });
   }
 
-  // Submit proposal handler with BNB Chain support
+  // Quick Action: Set ERC-1155 Base URI (setURI(string))
+  function addQuickActions() {
+    const block = document.createElement('div');
+    block.className = 'status-message status-info';
+    block.style.marginTop = '1rem';
+    block.innerHTML = `
+      <i class="fas fa-bolt"></i>
+      <span><strong>Quick Action:</strong> Set ERC-1155 Base URI (fixes NFT images). 
+      <button id="quickSetURI" class="btn btn-outline" style="margin-left:10px;">Add setURI Action</button></span>
+    `;
+    document.getElementById('create-tab').querySelector('.card').prepend(block);
+
+    document.getElementById('quickSetURI').addEventListener('click', () => {
+      addAction();
+      const last = document.getElementById('proposalActions').lastElementChild;
+      // Pre-fill
+      last.querySelector('.action-target').value = prompt("Target ERC-1155 contract address:", "0x...");
+      last.querySelector('.action-value').value = "0";
+      last.querySelector('.action-signature').value = "setURI(string)";
+      const cid = prompt("New IPFS CID (folder with 64-hex filenames):", "bafy...");
+      if (cid) last.querySelector('.action-params').value = `ipfs://${cid}/{id}.json`;
+    });
+  }
+
+  // ====== Submit Proposal ======
   async function submitProposalHandler() {
     const title = proposalTitle.value.trim();
-    const desc = proposalDescription.value.trim();
-    
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error", proposalStatus);
-      return;
-    }
-    
-    // Validate inputs
-    if (!title || !desc || desc.length < 50) {
-      showStatus("Please fill all fields with valid information", "error", proposalStatus);
-      return;
-    }
+    const desc  = proposalDescription.value.trim();
+
+    if (!wallet) return showStatus("Please connect your wallet first", "error", proposalStatus);
+    if (!title || !desc || desc.length < 50) return showStatus("Please fill all fields (description ≥ 50 chars).", "error", proposalStatus);
 
     const actionCards = document.querySelectorAll('.action-card');
-    if (actionCards.length === 0) {
-      showStatus("Please add at least one action", "error", proposalStatus);
-      return;
-    }
+    if (!actionCards.length) return showStatus("Please add at least one action", "error", proposalStatus);
 
     try {
-      updateSubmitButton(true, "Submitting...");
-      showStatus("Preparing proposal...", "info", proposalStatus);
+      updateSubmitButton(true, "Submitting…");
+      showStatus("Preparing proposal…", "info", proposalStatus);
 
       const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-      
-      // Prepare proposal data
-      const targets = [];
-      const values = [];
-      const signatures = [];
-      const calldatas = [];
+      const targets = [], values = [], signatures = [], calldatas = [];
 
       for (const card of actionCards) {
         const target = card.querySelector('.action-target').value.trim();
-        const value = card.querySelector('.action-value').value.trim();
-        const signature = card.querySelector('.action-signature').value.trim();
+        const value  = card.querySelector('.action-value').value.trim() || "0";
+        const sig    = card.querySelector('.action-signature').value.trim();
         const params = card.querySelector('.action-params').value.trim();
 
-        if (!ethers.utils.isAddress(target)) {
-          throw new Error(`Invalid address: ${target}`);
-        }
-
+        if (!ethers.utils.isAddress(target)) throw new Error(`Invalid address: ${target}`);
         targets.push(target);
-        values.push(ethers.utils.parseEther(value || "0"));
-        
-        if (signature) {
-          signatures.push(signature.split('(')[0]);
-          const iface = new ethers.utils.Interface([`function ${signature}`]);
-          const paramList = params.split(',').map(p => p.trim());
-          calldatas.push(iface.encodeFunctionData(signature.split('(')[0], paramList));
+        values.push(ethers.utils.parseEther(value));
+
+        if (sig) {
+          const fn = sig.split('(')[0];
+          signatures.push(fn);
+          const iface = new ethers.utils.Interface([`function ${sig}`]);
+          const paramList = params ? params.split(',').map(p => p.trim()) : [];
+          calldatas.push(iface.encodeFunctionData(fn, paramList));
         } else {
           signatures.push("");
           calldatas.push("0x");
         }
       }
 
-      // Estimate gas first
+      // Try to estimate gas
       try {
-        const gasEstimate = await dao.estimateGas.propose(
-          targets,
-          values,
-          signatures,
-          calldatas,
-          `# ${title}\n\n${desc}`
-        );
-        gasEstimate.style.display = "flex";
-        gasEstimate.innerHTML = `
-          <i class="fas fa-gas-pump"></i>
-          <span>Estimated gas: ${ethers.utils.formatUnits(gasEstimate, 'gwei')} Gwei</span>
-        `;
-      } catch (e) {
-        console.log("Gas estimation failed", e);
-      }
+        const est = await dao.estimateGas.propose(targets, values, signatures, calldatas, `# ${title}\n\n${desc}`);
+        gasEstimateEl.style.display = "flex";
+        gasEstimateEl.innerHTML = `<i class="fas fa-gas-pump"></i><span>Estimated gas (units): ${est.toString()}</span>`;
+      } catch {}
 
-      const tx = await dao.propose(
-        targets,
-        values,
-        signatures,
-        calldatas,
-        `# ${title}\n\n${desc}`
-      );
-
+      const tx = await dao.propose(targets, values, signatures, calldatas, `# ${title}\n\n${desc}`);
       trackTransaction(tx.hash, 'propose', { title });
-      showStatus("Transaction sent. Waiting for confirmation...", "info", proposalStatus);
-      const receipt = await tx.wait();
-      
-      if (receipt.status === 1) {
+      showStatus("Transaction sent. Waiting for confirmation…", "info", proposalStatus);
+      const rc = await tx.wait();
+
+      if (rc.status === 1) {
         showStatus("Proposal submitted successfully!", "success", proposalStatus);
-        // Clear form
-        proposalTitle.value = "";
-        proposalDescription.value = "";
-        document.getElementById('proposalActions').innerHTML = "";
-        gasEstimate.style.display = "none";
-        
-        // Flip the card to show success
-        document.querySelector('.flip-card-inner').style.transform = 'rotateY(180deg)';
-        
-        // Reload proposals
-        await loadProposals();
-        await loadTransactionHistory();
+        proposalTitle.value = ""; proposalDescription.value = ""; document.getElementById('proposalActions').innerHTML = "";
+        gasEstimateEl.style.display = "none";
+        document.querySelector('.flip-card-inner').style.transform = 'rotateY(180deg)'; // nice success animation
+        await loadProposals(); await loadTransactionHistory();
       } else {
         showStatus("Transaction failed", "error", proposalStatus);
       }
-      
-      updateSubmitButton(false, "Submit Proposal");
-      
     } catch (err) {
-      console.error("Proposal submission error:", err);
+      console.error(err);
       showEnhancedError(err, proposalStatus);
+    } finally {
       updateSubmitButton(false, "Submit Proposal");
     }
   }
 
-  // Track transaction in history
+  // ====== Voting / History ======
+  async function castVote(e) {
+    const btn = e.currentTarget;
+    const proposalId = btn.getAttribute('data-proposal');
+    const support = parseInt(btn.getAttribute('data-vote'), 10);
+    if (!wallet) return showStatus("Please connect your wallet first", "error");
+
+    try {
+      btn.innerHTML = `<i class="fas fa-spinner spin"></i> Processing…`;
+      btn.disabled = true;
+      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
+      const tx = await dao.castVote(proposalId, support);
+      trackTransaction(tx.hash, 'vote', { proposalId, support });
+      showStatus("Vote submitted. Waiting for confirmation…", "info");
+      const rc = await tx.wait();
+      if (rc.status === 1) { showStatus("Vote cast successfully!", "success"); await loadProposals(); await loadTransactionHistory(); }
+      else { showStatus("Vote failed", "error"); }
+    } catch (err) {
+      console.error(err);
+      showEnhancedError(err);
+    } finally {
+      btn.innerHTML = support === 1 ? `<i class="fas fa-thumbs-up"></i> Vote For` : `<i class="fas fa-thumbs-down"></i> Vote Against`;
+      btn.disabled = false;
+    }
+  }
+
   function trackTransaction(txHash, type, details) {
-    const tx = {
-      txHash,
-      type,
-      details,
-      timestamp: new Date().toISOString(),
-      status: 'pending'
-    };
-    
-    transactionHistory.unshift(tx);
+    transactionHistory.unshift({ txHash, type, details, timestamp: new Date().toISOString(), status: 'pending' });
     updateTransactionHistory();
-    
-    // Check transaction status after a delay
     setTimeout(async () => {
       try {
-        const receipt = await provider.getTransactionReceipt(txHash);
-        if (receipt) {
-          tx.status = receipt.status === 1 ? 'success' : 'failed';
-          updateTransactionHistory();
-        }
-      } catch (err) {
-        console.error("Error checking transaction status:", err);
-      }
+        const rc = await provider.getTransactionReceipt(txHash);
+        if (rc) { transactionHistory[0].status = rc.status === 1 ? 'success' : 'failed'; updateTransactionHistory(); }
+      } catch {}
     }, 15000);
   }
 
-  // Load transaction history
-  async function loadTransactionHistory() {
-    if (!wallet) return;
-    updateTransactionHistory();
-  }
-
-  // Update transaction history display
+  async function loadTransactionHistory() { if (wallet) updateTransactionHistory(); }
   function updateTransactionHistory() {
     txList.innerHTML = '';
-    
-    if (transactionHistory.length === 0) {
-      txList.innerHTML = '<p style="color: var(--text-secondary);">No recent transactions</p>';
-      return;
+    if (!transactionHistory.length) {
+      txList.innerHTML = '<p style="color: var(--text-secondary);">No recent transactions</p>'; return;
     }
-    
-    transactionHistory.slice(0, 5).forEach(tx => {
-      const txElement = document.createElement('div');
-      txElement.className = 'tx-item';
-      txElement.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <i class="fas fa-${getTxIcon(tx.type)}"></i>
-            <span>${formatTxType(tx.type)}</span>
-          </div>
+    transactionHistory.slice(0,5).forEach(tx => {
+      const el = document.createElement('div');
+      el.className = 'tx-item';
+      el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><i class="fas fa-${getTxIcon(tx.type)}"></i> <span>${formatTxType(tx.type)}</span></div>
           <span class="tx-status ${tx.status}">${tx.status}</span>
         </div>
-        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
-          <a href="https://bscscan.com/tx/${tx.txHash}" target="_blank" style="color: var(--primary);">
-            ${shortenHash(tx.txHash)}
-          </a>
+        <div style="margin-top:.5rem;font-size:.9rem;color:var(--text-secondary);">
+          <a href="https://bscscan.com/tx/${tx.txHash}" target="_blank" style="color:var(--primary);">${shortenHash(tx.txHash)}</a>
         </div>
-        ${tx.details.title ? `<div style="margin-top: 0.5rem; font-size: 0.9rem;">${tx.details.title}</div>` : ''}
+        ${tx.details?.title ? `<div style="margin-top:.5rem;font-size:.9rem;">${tx.details.title}</div>` : ''}
       `;
-      txList.appendChild(txElement);
+      txList.appendChild(el);
     });
   }
 
-  // Helper function to get transaction icon
-  function getTxIcon(type) {
-    const icons = {
-      'propose': 'file-import',
-      'vote': 'vote-yea',
-      'delegate': 'user-shield'
-    };
-    return icons[type] || 'exchange-alt';
-  }
+  function getTxIcon(type) { return ({ propose:'file-import', vote:'vote-yea', delegate:'user-shield' }[type] || 'exchange-alt'); }
+  function formatTxType(t){ return t.charAt(0).toUpperCase()+t.slice(1); }
+  function shortenHash(h){ return `${h.slice(0,6)}...${h.slice(-4)}`; }
+  function shortenAddress(a){ return `${a.slice(0,6)}...${a.slice(-4)}`; }
 
-  // Helper function to format transaction type
-  function formatTxType(type) {
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  }
-
-  // Helper function to shorten transaction hash
-  function shortenHash(hash) {
-    return `${hash.substring(0, 6)}...${hash.slice(-4)}`;
-  }
-
-  // Cast vote function
-  async function castVote(e) {
-    const proposalId = e.target.getAttribute('data-proposal');
-    const support = parseInt(e.target.getAttribute('data-vote'));
-    
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error");
-      return;
-    }
-    
-    try {
-      e.target.innerHTML = `<i class="fas fa-spinner spin"></i> Processing...`;
-      e.target.disabled = true;
-      
-      const dao = new ethers.Contract(DAO_ADDRESS, DAO_ABI, signer);
-      const tx = await dao.castVote(proposalId, support);
-      
-      trackTransaction(tx.hash, 'vote', { proposalId, support });
-      showStatus("Vote submitted. Waiting for confirmation...", "info");
-      const receipt = await tx.wait();
-      
-      if (receipt.status === 1) {
-        showStatus("Vote cast successfully!", "success");
-        await loadProposals();
-        await loadTransactionHistory();
-      } else {
-        showStatus("Vote failed", "error");
-      }
-      
-    } catch (err) {
-      console.error("Voting error:", err);
-      showEnhancedError(err);
-      e.target.innerHTML = support === 1 ? 
-        `<i class="fas fa-thumbs-up"></i> Vote For` : 
-        `<i class="fas fa-thumbs-down"></i> Vote Against`;
-      e.target.disabled = false;
-    }
-  }
-
-  // Delegate votes function
+  // ====== Delegation ======
   async function delegateVotes() {
-    if (!wallet) {
-      showStatus("Please connect your wallet first", "error", delegationStatus);
-      return;
-    }
-    
+    if (!wallet) return showStatus("Please connect your wallet first", "error", delegationStatus);
     try {
-      delegateVotesBtn.innerHTML = `<i class="fas fa-spinner spin"></i> Delegating...`;
+      delegateVotesBtn.innerHTML = `<i class="fas fa-spinner spin"></i> Delegating…`;
       delegateVotesBtn.disabled = true;
-      
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, signer);
       const tx = await kly.delegate(wallet);
-      
       trackTransaction(tx.hash, 'delegate', {});
-      showStatus("Transaction sent. Waiting for confirmation...", "info", delegationStatus);
+      showStatus("Transaction sent. Waiting for confirmation…", "info", delegationStatus);
       await tx.wait();
-      
-      // Flip the card to show success
       document.querySelector('.flip-card-inner').style.transform = 'rotateY(180deg)';
-      
       showStatus("Delegation successful!", "success", delegationStatus);
       delegateVotesBtn.innerHTML = `<i class="fas fa-check"></i> Already Delegated`;
       delegateVotesBtn.disabled = true;
-      await checkDelegationStatus();
-      await loadTransactionHistory();
-      
+      await checkDelegationStatus(); await loadTransactionHistory();
     } catch (err) {
-      console.error("Delegation error:", err);
+      console.error(err);
       showEnhancedError(err, delegationStatus);
       delegateVotesBtn.innerHTML = `<i class="fas fa-user-shield"></i> Delegate My KLY Votes`;
       delegateVotesBtn.disabled = false;
     }
   }
 
-  // Check delegation status
   async function checkDelegationStatus() {
     if (!wallet) return;
-    
     try {
       const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_ABI, provider);
-      const delegate = await kly.delegates(wallet);
-      
-      if (delegate.toLowerCase() === wallet.toLowerCase()) {
+      const d = await kly.delegates(wallet);
+      if (d && d.toLowerCase() === wallet.toLowerCase()) {
         delegationStatus.className = "status-message status-success";
-        delegationStatus.innerHTML = `<i class="fas fa-check-circle"></i> <span>Your voting power is delegated to your wallet</span>`;
+        delegationStatus.innerHTML = `<i class="fas fa-check-circle"></i><span>Your voting power is delegated to your wallet</span>`;
         delegateVotesBtn.disabled = true;
         delegateVotesBtn.innerHTML = `<i class="fas fa-check"></i> Already Delegated`;
       } else {
         delegationStatus.className = "status-message status-warning";
-        delegationStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>Your voting power is not yet delegated</span>`;
+        delegationStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>Your voting power is not yet delegated</span>`;
         delegateVotesBtn.disabled = false;
         delegateVotesBtn.innerHTML = `<i class="fas fa-user-shield"></i> Delegate My KLY Votes`;
       }
     } catch (err) {
-      console.error("Delegation check error:", err);
+      console.error(err);
       delegationStatus.className = "status-message status-error";
-      delegationStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>Error checking delegation status</span>`;
+      delegationStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>Error checking delegation status</span>`;
     }
   }
 
-  // Check initial connection state
-  async function checkInitialConnection() {
-    if (window.ethereum && window.ethereum.selectedAddress) {
-      await connectWallet();
-    }
+  // ====== Utility ======
+  async function checkInitialConnection(){ if (window.ethereum?.selectedAddress) await connectWallet(); }
+  function handleDisconnect(){ walletInfo.style.display="none"; transactionHistoryDisplay.style.display="none"; networkDisplay.style.display="none"; updateConnectButton(false,"Connect Wallet"); proposalList.innerHTML=""; loadingProposals.style.display="flex"; noProposals.style.display="none"; }
+  function updateConnectButton(loading,text){ if(loading){connectBtn.innerHTML=`<i class="fas fa-spinner spin"></i> ${text}`;connectBtn.disabled=true;}else{const icon=text==="Connected"?"fa-check":"fa-plug";connectBtn.innerHTML=`<i class="fas ${icon}"></i> ${text}`;connectBtn.disabled=text==="Connected";} }
+  function updateSubmitButton(loading,text){ if(loading){submitProposal.innerHTML=`<i class="fas fa-spinner spin"></i> ${text}`;submitProposal.disabled=true;}else{submitProposal.innerHTML=`<i class="fas fa-paper-plane"></i> ${text}`;submitProposal.disabled=false;} }
+  function showEnhancedError(err, el=null){
+    let msg = err?.message || "Unknown error";
+    if (err?.code === 4001) msg = "Transaction was rejected by user";
+    else if (err?.code === -32603) msg = "Transaction failed (possibly insufficient gas)";
+    else if (err?.code === 'INSUFFICIENT_FUNDS') msg = "Insufficient BNB for transaction";
+    else if (err?.code === 'UNPREDICTABLE_GAS_LIMIT') msg = "Transaction would likely fail (check parameters)";
+    showStatus(msg,"error",el);
   }
-
-  // Handle wallet disconnection
-  function handleDisconnect() {
-    walletInfo.style.display = "none";
-    transactionHistoryDisplay.style.display = "none";
-    networkDisplay.style.display = "none";
-    updateConnectButton(false, "Connect Wallet");
-    proposalList.innerHTML = "";
-    loadingProposals.style.display = "flex";
-    noProposals.style.display = "none";
-  }
-
-  // Show enhanced error messages
-  function showEnhancedError(err, element = null) {
-    let message = err.message;
-    
-    // Handle common MetaMask errors
-    if (err.code === 4001) {
-      message = "Transaction was rejected by user";
-    } else if (err.code === -32603) {
-      message = "Transaction failed (possibly insufficient gas)";
-    } else if (err.code === 'INSUFFICIENT_FUNDS') {
-      message = "Insufficient BNB for transaction";
-    } else if (err.code === 'UNPREDICTABLE_GAS_LIMIT') {
-      message = "Transaction would likely fail (check parameters)";
-    }
-    
-    showStatus(message, "error", element);
-  }
-
-  // Helper function to shorten addresses
-  function shortenAddress(address) {
-    return `${address.substring(0, 6)}...${address.slice(-4)}`;
-  }
-
-  // Update connect button state
-  function updateConnectButton(loading, text) {
-    if (loading) {
-      connectBtn.innerHTML = `<i class="fas fa-spinner spin"></i> ${text}`;
-      connectBtn.disabled = true;
-    } else {
-      const icon = text === "Connected" ? "fa-check" : "fa-plug";
-      connectBtn.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
-      connectBtn.disabled = text === "Connected";
-    }
-  }
-
-  // Update submit button state
-  function updateSubmitButton(loading, text) {
-    if (loading) {
-      submitProposal.innerHTML = `<i class="fas fa-spinner spin"></i> ${text}`;
-      submitProposal.disabled = true;
-    } else {
-      submitProposal.innerHTML = `<i class="fas fa-paper-plane"></i> ${text}`;
-      submitProposal.disabled = false;
-    }
-  }
-
-  // Show status message
-  function showStatus(message, type, element = null) {
+  function showStatus(message, type, element=null){
     const status = element || proposalStatus;
     status.style.display = "flex";
     status.className = `status-message status-${type}`;
-    status.innerHTML = `
-      <i class="fas fa-${
-        type === 'error' ? 'exclamation-circle' : 
-        type === 'success' ? 'check-circle' : 
-        type === 'warning' ? 'exclamation-triangle' : 'info-circle'
-      }"></i>
-      <span>${message}</span>
-    `;
-    
-    if (!element) {
-      setTimeout(() => {
-        status.style.display = "none";
-      }, 5000);
-    }
+    status.innerHTML = `<i class="fas fa-${ type==='error'?'exclamation-circle': type==='success'?'check-circle': type==='warning'?'exclamation-triangle':'info-circle' }"></i><span>${message}</span>`;
+    if (!element) setTimeout(()=>{ status.style.display="none"; }, 5000);
   }
-
-  // Initialize the app when DOM is loaded
-  window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
