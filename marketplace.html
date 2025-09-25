@@ -70,22 +70,21 @@
 
 <script type="module">
 /* =============== CONFIG =============== */
-const READ_RPC = "https://bsc-dataseed.binance.org/";
-const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A"; // your MarketplaceV3
+const READ_RPC = "https://bsc-dataseed.binance.org/";  // if flaky, try: "https://bsc-dataseed1.ninicoin.io/"
+const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 const BSC_CHAIN_ID = 56;
 const KNOWN = {
   "0x0000000000000000000000000000000000000000": { symbol:"BNB", decimals:18 },
-  "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52": { symbol:"KLY", decimals:18 } // your KLY
+  "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52": { symbol:"KLY", decimals:18 }
 };
 
 /* =============== ABIs =============== */
 const MP_ABI = [
-  "function getAllListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[])"
+  // v3 read
+  "function getAllListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[])",
+  // optional buy
+  "function buyFromListing(uint256,address,uint256,address,uint256) payable"
 ];
-
-// fetch + filter
-const rows = await mp.getAllListings(0, 50);
-const actives = rows.filter(l => Number(l.status) === 1); // 1 = Active
 const ERC721_READ = ["function tokenURI(uint256) view returns (string)"];
 const ERC1155_READ = ["function uri(uint256) view returns (string)"];
 const ERC20_MIN = [
@@ -109,7 +108,6 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 
 /* =============== Connect (optional, for Buy) =============== */
 $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
-
 $("connect").addEventListener("click", connect);
 $("buyToggle").addEventListener("change", ()=> render(lastListings));
 
@@ -155,13 +153,15 @@ async function loadListings(){
   $("empty").style.display = "none";
   $("listings").innerHTML = "";
   try{
-    const rows = await mp.getAllValidListings(0, 60);
-    lastListings = rows.map(n => ({
+    // pull all listings then filter to status==1 (Active)
+    const rows = await mp.getAllListings(0, 60);
+    const actives = rows.filter(r => Number(r.status) === 1);
+    lastListings = actives.map(n => ({
       id: Number(n.id),
       asset: n.assetContract,
       tokenId: Number(n.tokenId),
-      tokenType: Number(n.tokenType), // 0:1155, 1:721
-      listingType: Number(n.listingType), // 0:Direct, 1:Auction
+      tokenType: Number(n.tokenType),    // 0:1155, 1:721
+      listingType: Number(n.listingType),// 0:Direct, 1:Auction
       currency: n.currency,
       buyout: n.buyoutPricePerToken
     }));
@@ -237,9 +237,9 @@ $("listings").addEventListener("click", async (e)=>{
   const st = $("st-"+id);
   try{
     if (!signer || !mpWrite) { $("err").textContent = "Connect wallet to buy."; return; }
-
-    // re-fetch this listing to be sure we have latest values
-    const [L] = await mp.getAllValidListings(id,1);
+    // refresh listing
+    const [L] = await mp.getAllListings(id,1);
+    if (Number(L.status)!==1) throw new Error("Listing is not active.");
     const cur = (L.currency || ZERO).toLowerCase();
 
     if (cur !== ZERO){
@@ -272,7 +272,7 @@ let timer = null;
 async function start(){
   await loadListings();
   clearInterval(timer);
-  timer = setInterval(loadListings, 30000); // auto refresh every 30s
+  timer = setInterval(loadListings, 30000);
 }
 start();
 </script>
