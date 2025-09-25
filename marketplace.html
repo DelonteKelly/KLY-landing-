@@ -1,108 +1,463 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamaquah Sovereign Marketplace — Live Listings</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tamaquah Sovereign Market — Live Listings</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-
 <style>
-  :root{
-    --bg:#0A1A24; --bg2:#051018; --ink:#EAF7FF; --sub:#9CCBE3; --accent:#73E1FF; --gold:#e2c675;
-    --card:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
-    --ok:#4ade80; --warn:#fbbf24; --err:#f87171;
+  :root {
+    --bg: #0A1A24;
+    --bg2: #051018;
+    --ink: #EAF7FF;
+    --sub: #9CCBE3;
+    --acc: #73E1FF;
+    --gold: #e2c675;
+    --card: rgba(255, 255, 255, 0.06);
+    --card-hover: rgba(255, 255, 255, 0.1);
+    --line: rgba(255, 255, 255, 0.12);
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --radius: 16px;
+    --radius-sm: 8px;
+    --transition: all 0.3s ease;
   }
-  *{box-sizing:border-box;margin:0;padding:0;font-family:'Space Grotesk',system-ui,sans-serif}
-  html,body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh}
-  .wrap{max-width:1200px;margin:0 auto;padding:24px}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-  .brand{font-weight:800;letter-spacing:.08em;font-size:1.35rem;color:var(--accent);text-shadow:0 0 10px rgba(115,225,255,.3);text-transform:uppercase}
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .pill{padding:.5rem .9rem;border-radius:999px;background:rgba(0,0,0,.2);font-size:.9rem}
-  button, .btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:.6rem .9rem;border-radius:10px;cursor:pointer;font-weight:700}
-  .btn-primary{background:linear-gradient(90deg,var(--accent),#a9ffcb);color:#001018;border-color:#2e6b77}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .hero{margin:14px 0 8px}
-  .hero h1{font-size:clamp(1.6rem,3.5vw,2.4rem);letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(90deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--sub);margin-top:6px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
-  .row{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0}
-  .thumb{width:100%;aspect-ratio:1/1;border-radius:12px;border:1px solid var(--line);object-fit:cover;background:linear-gradient(45deg,#0c1d27,#0a2738)}
-  .sub{color:var(--sub);font-size:.9rem}
-  .status{min-height:18px;font-size:.9rem;margin-top:6px}
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
-  footer{margin:22px 0 0;text-align:center;color:var(--sub);font-size:.9rem}
-  @media (max-width:640px){ .wrap{padding:18px} }
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+  
+  html, body {
+    background: linear-gradient(180deg, var(--bg), var(--bg2));
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .brand {
+    font-weight: 800;
+    letter-spacing: .08em;
+    font-size: 1.5rem;
+    color: var(--acc);
+    text-shadow: 0 0 10px rgba(115, 225, 255, 0.3);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .brand i {
+    font-size: 1.8rem;
+  }
+  
+  .pill {
+    padding: .5rem 1rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: .9rem;
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  button, .btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: .7rem 1.2rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn:hover {
+    background: var(--card-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(90deg, var(--acc), #a9ffcb);
+    color: #001018;
+    border-color: #2e6b77;
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(90deg, #a9ffcb, var(--acc));
+    transform: translateY(-2px);
+  }
+  
+  .btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  
+  .hero {
+    text-align: center;
+    padding: 40px 0 30px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .hero h1 {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin: 8px 0 16px;
+    background: linear-gradient(90deg, var(--acc), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+  }
+  
+  .hero p {
+    color: var(--sub);
+    font-size: 1.1rem;
+    margin-bottom: 24px;
+  }
+  
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .search-box {
+    position: relative;
+    max-width: 400px;
+    width: 100%;
+  }
+  
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 1rem;
+  }
+  
+  .search-box i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--sub);
+  }
+  
+  .filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .filter-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--sub);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  
+  .filter-btn.active {
+    background: var(--acc);
+    color: var(--bg);
+    border-color: var(--acc);
+  }
+  
+  .filter-btn:hover {
+    background: var(--card-hover);
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+  }
+  
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: rgba(115, 225, 255, 0.3);
+  }
+  
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: .5rem 0;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .thumb-container {
+    position: relative;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  
+  .thumb {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    background: linear-gradient(45deg, #0c1d27, #0a2738);
+    transition: var(--transition);
+  }
+  
+  .card:hover .thumb {
+    transform: scale(1.05);
+  }
+  
+  .token-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--ink);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    backdrop-filter: blur(5px);
+  }
+  
+  .sub {
+    color: var(--sub);
+    font-size: .9rem;
+  }
+  
+  .status {
+    min-height: 18px;
+    font-size: .9rem;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .ok { color: var(--ok); }
+  .warn { color: var(--warn); }
+  .err { color: var(--err); }
+  
+  .price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  
+  .card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+  
+  .card-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  footer {
+    margin: 40px 0 0;
+    text-align: center;
+    color: var(--sub);
+    font-size: .9rem;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-left: 4px solid var(--acc);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  @media (max-width: 768px) {
+    .wrap {
+      padding: 16px;
+    }
+    
+    header {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-box {
+      max-width: 100%;
+    }
+    
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .brand {
+      font-size: 1.2rem;
+    }
+    
+    .hero h1 {
+      font-size: 1.6rem;
+    }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">TAMAQUAH SOVEREIGN MARKET</div>
-    <div class="controls">
-      <span class="pill">Marketplace: <span id="mpAddrShort">—</span></span>
-      <span class="pill">Chain: BNB</span>
-      <label class="pill" style="display:flex;gap:8px;align-items:center">
-        <input id="buyToggle" type="checkbox" />
-        Enable Buy Button
-      </label>
-      <button id="connect" class="btn">Connect Wallet</button>
-      <span id="who" class="pill" style="display:none"></span>
+    <div class="brand">
+      <i class="fas fa-seedling"></i>
+      <span>TAMAQUAH SOVEREIGN MARKET</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
+      <span class="pill"><i class="fas fa-store"></i> Marketplace: <span id="mpAddrShort">—</span></span>
+      <span class="pill"><i class="fas fa-link"></i> Chain: BNB</span>
+      <button id="connect" class="btn"><i class="fas fa-wallet"></i> Connect Wallet</button>
+      <span id="who" class="pill" style="display:none"><i class="fas fa-user"></i> <span id="whoAddr">—</span></span>
     </div>
   </header>
 
   <section class="hero">
     <h1>Live Listings</h1>
-    <p>All active listings fetched directly from your MarketplaceV3 smart contract. Auto-refreshes every 30s.</p>
+    <p>Pulled directly from your MarketplaceV3 contract. Auto-refreshes every 30s.</p>
+    <div class="pill"><i class="fas fa-sync-alt"></i> Auto-refresh enabled</div>
+  </section>
+
+  <section class="controls">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input type="text" id="search" placeholder="Search by name, token ID, or contract address...">
+    </div>
+    <div class="filters">
+      <div class="filter-btn active" data-filter="all">All</div>
+      <div class="filter-btn" data-filter="erc721">ERC-721</div>
+      <div class="filter-btn" data-filter="erc1155">ERC-1155</div>
+      <div class="filter-btn" data-filter="native">BNB</div>
+      <div class="filter-btn" data-filter="kly">KLY</div>
+    </div>
   </section>
 
   <section>
-    <div id="listings" class="grid"></div>
-    <p id="empty" class="sub" style="display:none">No active listings.</p>
-    <p id="err" class="status err"></p>
+    <div id="listings" class="grid">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading marketplace listings...</div>
+      </div>
+    </div>
+    <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
+      <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:0.5"></i><br>
+      No active listings found.
+    </p>
+    <p id="err" class="status err" style="text-align:center"></p>
   </section>
 
-  <footer>They took the land. We took the future.</footer>
+  <footer>
+    <p>They took the land. We took the future.</p>
+    <p style="margin-top:8px;font-size:0.8rem;opacity:0.7">Tamaquah Sovereign Market • Powered by ThirdWeb</p>
+  </footer>
 </div>
 
 <script type="module">
-/* ================= CONFIG ================= */
+/* =============== CONFIG =============== */
+const READ_RPC = "https://bsc-dataseed.binance.org/";   // reliable public RPC
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 const BSC_CHAIN_ID = 56;
 
-// RPC rotation (auto-fallback)
-const RPC_POOL = [
-  "https://bsc-dataseed1.ninicoin.io/",
-  "https://bsc-dataseed1.defibit.io/",
-  "https://bsc-dataseed1.bnbchain.org/",
-  "https://bsc-dataseed.binance.org/"
-];
-
-// Known currencies for instant price formatting
+// known currencies (extend as needed)
 const KNOWN = {
-  "0x0000000000000000000000000000000000000000": { symbol:"BNB", decimals:18 },
-  "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52": { symbol:"KLY", decimals:18 }
+  "0x0000000000000000000000000000000000000000": { symbol:"BNB", decimals:18, isNative:true },
+  "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52".toLowerCase(): { symbol:"KLY", decimals:18, isNative:false }, // your KLY token
 };
 
-/* ================= ABIs ================= */
-// Minimal ABI that works with MarketplaceV3 + DirectListings extension
+/* =============== Minimal ABI (MarketplaceV3 + DirectListings) =============== */
 const MP_ABI = [
-  // ---- READ (Direct Listings) ----
   "function getAllValidListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[] listings)",
   "function getAllListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address tokenOwner,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType,uint8 status)[] listings)",
-  "function getAllActiveListings(uint256 start,uint256 count) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType)[] listings)",
-
-  // (optional) single listing fetch
-  "function getListing(uint256 listingId) view returns (tuple(uint256 id,address assetContract,uint256 tokenId,uint256 startTime,uint256 endTime,address seller,address currency,uint256 reservePricePerToken,uint256 buyoutPricePerToken,uint256 quantity,uint8 tokenType,uint8 listingType))",
-
-  // ---- WRITE (buy) ----
   "function buyFromListing(uint256 listingId,address receiver,uint256 quantityToBuy,address currency,uint256 totalPrice) payable",
 ];
+
+// ERC721 / ERC1155 reads
 const ERC721_READ = ["function tokenURI(uint256) view returns (string)"];
 const ERC1155_READ = ["function uri(uint256) view returns (string)"];
+// Minimal ERC20 for approvals & metadata
 const ERC20_MIN = [
   "function allowance(address owner,address spender) view returns (uint256)",
   "function approve(address spender,uint256 amount) returns (bool)",
@@ -110,45 +465,26 @@ const ERC20_MIN = [
   "function symbol() view returns (string)"
 ];
 
-/* ================= Providers (with fallback) ================= */
-let rpcIdx = 0;
-let readProvider = new ethers.JsonRpcProvider(RPC_POOL[rpcIdx]);
-function rotateProvider(){
-  rpcIdx = (rpcIdx + 1) % RPC_POOL.length;
-  readProvider = new ethers.JsonRpcProvider(RPC_POOL[rpcIdx]);
-}
-const mpRead = ()=> new ethers.Contract(MARKETPLACE_ADDR, MP_ABI, readProvider);
+/* =============== Providers / State =============== */
+const readProvider = new ethers.JsonRpcProvider(READ_RPC);
+const mp = new ethers.Contract(MARKETPLACE_ADDR, MP_ABI, readProvider);
 
-let walletProvider=null, signer=null, me=null, mpWrite=null;
+let walletProvider = null, signer = null, me = null;
+let mpWrite = null;
 
-/* ================= DOM helpers ================= */
+/* =============== Helpers =============== */
 const $ = (id)=>document.getElementById(id);
 const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
-
-/* ================= UX helpers ================= */
 const ZERO = "0x0000000000000000000000000000000000000000";
-const gateways = ["https://ipfs.io/ipfs/","https://cloudflare-ipfs.com/ipfs/","https://gateway.pinata.cloud/ipfs/"];
-const ipfs = (u,i=0)=>u?.startsWith("ipfs://")? gateways[Math.min(i,gateways.length-1)] + u.slice(7): u;
-async function fetchJsonFallback(u){
-  let err;
-  for (let i=0;i<gateways.length;i++){
-    try{
-      const r=await fetch(ipfs(u,i),{referrerPolicy:"no-referrer"});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      return await r.json();
-    }catch(e){ err=e; }
-  }
-  throw err||new Error("IPFS fetch failed");
-}
+function ipfs(u){ return (u && u.startsWith("ipfs://")) ? "https://ipfs.io/ipfs/"+u.slice(7) : (u||""); }
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-/* ============== Connect (optional for Buy) ============== */
-$("connect").addEventListener("click", connect);
-$("buyToggle").addEventListener("change", ()=> render(lastListings));
+$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
 
+/* =============== Connect wallet (for buy) =============== */
+$("connect").addEventListener("click", connect);
 async function connect(){
-  $("err").textContent="";
+  $("err").textContent = "";
   try{
     if(!window.ethereum) throw new Error("MetaMask not detected");
     walletProvider = new ethers.BrowserProvider(window.ethereum,'any');
@@ -163,189 +499,275 @@ async function connect(){
             chainId:"0x"+BSC_CHAIN_ID.toString(16),
             chainName:"BNB Smart Chain",
             nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
-            rpcUrls:[RPC_POOL[rpcIdx]],
+            rpcUrls:[READ_RPC],
             blockExplorerUrls:["https://bscscan.com"]
           }]);
-        }else{ throw e; }
+        } else throw e;
       }
     }
     signer = await walletProvider.getSigner();
     me = await signer.getAddress();
     mpWrite = new ethers.Contract(MARKETPLACE_ADDR, MP_ABI, signer);
-    $("who").textContent = short(me);
+    $("whoAddr").textContent = short(me);
     $("who").style.display = "inline-block";
     $("connect").style.display = "none";
     window.ethereum.on?.('accountsChanged', ()=>location.reload());
-    window.ethereum.on?.('chainChanged',  ()=>location.reload());
-    render(lastListings);
-  }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
-}
-
-/* ============== Listings loader with method/RPC fallback ============== */
-let lastListings = [];
-let loading = false;
-const spinner = document.createElement("p");
-spinner.className = "sub"; spinner.textContent = "Loading listings…";
-async function loadListings(){
-  if (loading) return; loading=true;
-  $("err").textContent=""; $("empty").style.display="none";
-  $("listings").innerHTML=""; $("listings").appendChild(spinner);
-
-  for (let tries=0; tries<RPC_POOL.length; tries++){
-    try{
-      const mp = mpRead();
-      let rows;
-      // try the 3 shapes in order
-      try {
-        rows = await mp.getAllListings(0, 60);
-        rows = rows.filter(r => Number(r.status) === 1);
-      } catch {
-        try {
-          rows = await mp.getAllValidListings(0, 60);
-        } catch {
-          rows = await mp.getAllActiveListings(0, 60);
-        }
-      }
-
-      lastListings = rows.map(n => ({
-        id: Number(n.id),
-        asset: n.assetContract,
-        tokenId: Number(n.tokenId),
-        tokenType: Number(n.tokenType),      // 0:1155, 1:721
-        listingType: Number(n.listingType),  // 0:Direct, 1:Auction
-        currency: n.currency,
-        buyout: n.buyoutPricePerToken
-      }));
-
-      $("listings").removeChild(spinner);
-      if (!lastListings.length){ $("empty").style.display="block"; }
-      await render(lastListings);
-      loading=false;
-      return;
-    }catch(e){
-      // rotate RPC and retry
-      rotateProvider();
-      if (tries === RPC_POOL.length-1){
-        $("listings").removeChild(spinner);
-        $("err").textContent = "Couldn't load listings — check Marketplace address/RPC.";
-        $("empty").style.display="block";
-        loading=false;
-      }
-    }
+    window.ethereum.on?.('chainChanged', ()=>location.reload());
+  }catch(e){
+    $("err").textContent = e?.message || "Failed to connect wallet.";
   }
 }
 
-/* ============== Metadata cache ============== */
-const metaCache = new Map(); // key: `${asset}-${tokenId}`
-async function getPreview(asset, tokenId, tokenType){
-  const key = `${asset}-${tokenId}`;
-  if (metaCache.has(key)) return metaCache.get(key);
+/* =============== Load listings =============== */
+let lastListings = [];
+async function loadListings(){
+  $("err").textContent = "";
+  $("empty").style.display = "none";
+  $("listings").innerHTML = "<div class='loading'><div class='spinner'></div><div>Loading marketplace listings...</div></div>";
 
-  let name = `#${tokenId}`, image = "";
   try{
-    if (tokenType===1){ // ERC-721
-      const c = new ethers.Contract(asset, ERC721_READ, readProvider);
-      const uri = await c.tokenURI(tokenId);
-      const j = await fetchJsonFallback(uri);
-      image = ipfs(j.image || j.image_url || ""); name = j.name || name;
-    }else{ // ERC-1155
-      const c = new ethers.Contract(asset, ERC1155_READ, readProvider);
-      let uri = await c.uri(tokenId);
-      if (uri.includes("{id}")){
-        const hex = tokenId.toString(16).padStart(64,"0").toLowerCase();
-        uri = uri.replace("{id}", hex);
-      }
-      const j = await fetchJsonFallback(uri);
-      image = ipfs(j.image || j.image_url || ""); name = j.name || name;
+    let rows;
+    try { 
+      rows = await mp.getAllValidListings(0, 60); 
+    } catch {
+      const all = await mp.getAllListings(0, 60);
+      rows = all.filter(r => Number(r.status) === 1);
     }
-  }catch{/* ignore */}
-  const out = { name, image };
-  metaCache.set(key, out);
-  return out;
+
+    lastListings = rows.map(n => ({
+      id: Number(n.id),
+      asset: n.assetContract,
+      tokenId: Number(n.tokenId),
+      tokenType: Number(n.tokenType), // 0:1155, 1:721 (thirdweb enum)
+      listingType: Number(n.listingType), // 0:Direct, 1:Auction
+      currency: (n.currency || ZERO),
+      buyout: n.buyoutPricePerToken
+    }));
+
+    if (!lastListings.length){ 
+      $("listings").innerHTML=""; 
+      $("empty").style.display = "block"; 
+      return; 
+    }
+    
+    await render(lastListings);
+  }catch(e){
+    console.error(e);
+    $("listings").innerHTML="";
+    $("err").textContent = "Couldn't load listings — ABI or RPC issue.";
+    $("empty").style.display = "block";
+  }
 }
 
-/* ============== Render ============== */
+/* =============== Render cards =============== */
 async function render(rows){
   const grid = $("listings");
   grid.innerHTML = "";
-  const doBuy = $("buyToggle").checked && signer && mpWrite;
 
-  // parallelize previews (fast) with safe fallbacks
-  const previews = await Promise.all(rows.map(r => getPreview(r.asset, r.tokenId, r.tokenType)));
-
-  rows.forEach((L, i) => {
-    // currency format
-    const cur = (L.currency || ZERO).toLowerCase();
-    let sym="BNB", dec=18;
-    if (KNOWN[cur]) { sym=KNOWN[cur].symbol; dec=KNOWN[cur].decimals; }
-
+  for (const L of rows){
+    // currency meta
+    const cur = String(L.currency||ZERO).toLowerCase();
+    let sym="BNB", dec=18, isNative=true;
+    if (KNOWN[cur]) ({symbol:sym,decimals:dec,isNative} = KNOWN[cur]);
+    else if (cur !== ZERO){
+      try{
+        const erc = new ethers.Contract(L.currency, ERC20_MIN, readProvider);
+        dec = Number(await erc.decimals());
+        sym = await erc.symbol().catch(()=> "ERC20");
+        isNative = false;
+      }catch{}
+    }
     const price = ethers.formatUnits(L.buyout, dec);
-    const { name, image } = previews[i];
+
+    // metadata preview
+    let name = `Token #${L.tokenId}`, img = "", description = "";
+    try{
+      if (L.tokenType===1){ // ERC721
+        const c = new ethers.Contract(L.asset, ERC721_READ, readProvider);
+        const uri = await c.tokenURI(L.tokenId);
+        const j = await (await fetch(ipfs(uri))).json();
+        img = ipfs(j.image || j.image_url || ""); 
+        name = j.name || name;
+        description = j.description || "";
+      }else{ // ERC1155
+        const c = new ethers.Contract(L.asset, ERC1155_READ, readProvider);
+        let uri = await c.uri(L.tokenId);
+        if (uri?.includes?.("{id}")){
+          const hex = L.tokenId.toString(16).padStart(64,"0");
+          uri = uri.replace("{id}", hex);
+        }
+        const j = await (await fetch(ipfs(uri))).json();
+        img = ipfs(j.image || j.image_url || ""); 
+        name = j.name || name;
+        description = j.description || "";
+      }
+    }catch{/* ignore preview errors */}
 
     const card = document.createElement("div");
     card.className = "card";
-    const safeName = escapeHtml(name);
+    card.setAttribute("data-token-type", L.tokenType === 1 ? "erc721" : "erc1155");
+    card.setAttribute("data-currency", sym.toLowerCase());
+    card.setAttribute("data-name", name.toLowerCase());
+    card.setAttribute("data-token-id", L.tokenId);
+    card.setAttribute("data-contract", L.asset.toLowerCase());
+    
     card.innerHTML = `
-      <img class="thumb" src="${image || `https://via.placeholder.com/600/0c1d27/73E1FF?text=${L.tokenId}`}" 
-           alt="NFT preview for ${safeName}">
-      <div class="row" style="margin-top:.5rem"><strong>${safeName}</strong><span class="sub">#${L.id}</span></div>
-      <div class="row"><span class="sub">${short(L.asset)} · #${L.tokenId}</span><strong>${price} ${sym}</strong></div>
-      <div class="row" style="gap:8px">
-        <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${L.id}" target="_blank" rel="noopener">View</a>
-        ${doBuy && L.listingType===0 ? `<button class="btn btn-primary" data-buy="${L.id}">Buy 1</button>` : ``}
+      <div class="thumb-container">
+        <img class="thumb" src="${img || `https://via.placeholder.com/600/0c1d27/73E1FF?text=${L.tokenId}`}" alt="NFT preview for ${escapeHtml(name)}">
+        <div class="token-badge">${L.tokenType === 1 ? 'ERC-721' : 'ERC-1155'}</div>
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <strong>${escapeHtml(name)}</strong>
+        <span class="sub">Listing #${L.id}</span>
+      </div>
+      <div class="row">
+        <span class="sub">${short(L.asset)} · #${L.tokenId}</span>
+        <span class="price">${price} ${sym}</span>
+      </div>
+      ${description ? `<div class="sub" style="margin-top:8px;font-size:0.85rem;line-height:1.4">${escapeHtml(description.length > 100 ? description.substring(0, 100) + '...' : description)}</div>` : ''}
+      <div class="card-actions">
+        <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${L.id}" target="_blank" rel="noopener">
+          <i class="fas fa-external-link-alt"></i> Details
+        </a>
+        <button class="btn btn-primary" data-buy="${L.id}">
+          <i class="fas fa-shopping-cart"></i> Buy Now
+        </button>
       </div>
       <div id="st-${L.id}" class="status"></div>
     `;
+    // attach runtime info for handler
+    card.dataset.payload = JSON.stringify({ ...L, dec, isNative });
     grid.appendChild(card);
+  }
+  
+  // Add search and filter functionality
+  setupSearchAndFilter();
+}
+
+/* =============== Search and Filter =============== */
+function setupSearchAndFilter() {
+  const searchInput = $('search');
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  
+  // Search functionality
+  searchInput.addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    filterListings(searchTerm, getActiveFilter());
+  });
+  
+  // Filter functionality
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      filterButtons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      filterListings(searchInput.value.toLowerCase(), this.getAttribute('data-filter'));
+    });
   });
 }
 
-/* ============== Buy handler (debounced) ============== */
+function getActiveFilter() {
+  const activeBtn = document.querySelector('.filter-btn.active');
+  return activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
+}
+
+function filterListings(searchTerm, filter) {
+  const cards = document.querySelectorAll('.card');
+  let visibleCount = 0;
+  
+  cards.forEach(card => {
+    const tokenType = card.getAttribute('data-token-type');
+    const currency = card.getAttribute('data-currency');
+    const name = card.getAttribute('data-name');
+    const tokenId = card.getAttribute('data-token-id');
+    const contract = card.getAttribute('data-contract');
+    
+    let matchesFilter = true;
+    
+    // Apply filter
+    if (filter !== 'all') {
+      if (filter === 'erc721') matchesFilter = tokenType === 'erc721';
+      else if (filter === 'erc1155') matchesFilter = tokenType === 'erc1155';
+      else if (filter === 'native') matchesFilter = currency === 'bnb';
+      else if (filter === 'kly') matchesFilter = currency === 'kly';
+    }
+    
+    // Apply search
+    let matchesSearch = true;
+    if (searchTerm) {
+      matchesSearch = name.includes(searchTerm) || 
+                     tokenId.toString().includes(searchTerm) || 
+                     contract.includes(searchTerm);
+    }
+    
+    // Show/hide based on matches
+    if (matchesFilter && matchesSearch) {
+      card.style.display = 'flex';
+      visibleCount++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+  
+  // Show empty state if no listings match
+  if (visibleCount === 0) {
+    $('empty').style.display = 'block';
+  } else {
+    $('empty').style.display = 'none';
+  }
+}
+
+/* =============== Buy handler =============== */
 $("listings").addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-buy]");
   if (!btn) return;
   const id = Number(btn.getAttribute("data-buy"));
   const st = $("st-"+id);
+  $("err").textContent = "";
 
-  if (!signer || !mpWrite){ $("err").textContent="Connect wallet to buy."; return; }
-
-  btn.disabled = true; st.textContent="Preparing…"; $("err").textContent="";
   try{
-    const mp = mpRead();
-    // fresh pull of this one listing
-    let L;
-    try { [L] = await mp.getAllListings(id,1); if (Number(L.status)!==1) throw new Error(); }
-    catch {
-      [L] = await mp.getAllValidListings(id,1);
-    }
-    const cur = (L.currency || ZERO).toLowerCase();
+    if (!signer || !mpWrite){ await connect(); if (!signer) return; }
 
-    if (cur !== ZERO){
-      const erc = new ethers.Contract(L.currency, ERC20_MIN, signer);
-      const allowance = await erc.allowance(me || await signer.getAddress(), MARKETPLACE_ADDR);
-      if (allowance < L.buyoutPricePerToken){
-        st.textContent="Approving…";
-        const txa = await erc.approve(MARKETPLACE_ADDR, L.buyoutPricePerToken);
+    // refetch freshest values for this listing
+    let L;
+    try{
+      const [row] = await mp.getAllValidListings(id, 1);
+      L = row;
+    }catch{
+      const all = await mp.getAllListings(id, 1);
+      const a = all[0]; if (!a || Number(a.status)!==1) throw new Error("Listing not active");
+      L = a;
+    }
+
+    const currency = (L.currency || ZERO);
+    const total = L.buyoutPricePerToken; // buy 1
+
+    // if paying with ERC20 (e.g., KLY), ensure allowance
+    if (String(currency).toLowerCase() !== ZERO.toLowerCase()){
+      const erc = new ethers.Contract(currency, ERC20_MIN, signer);
+      const owner = me || await signer.getAddress();
+      const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
+      if (allowance < total){
+        st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Approving...";
+        const txa = await erc.approve(MARKETPLACE_ADDR, total);
         await txa.wait();
       }
     }
 
-    st.textContent="Buying…";
-    const ov = (cur===ZERO) ? { value: L.buyoutPricePerToken } : {};
-    const tx = await mpWrite.buyFromListing(Number(L.id), me || await signer.getAddress(), 1, L.currency, L.buyoutPricePerToken, ov);
-    await tx.wait();
-    st.className="status ok"; st.textContent="Success ✅";
+    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Buying...";
+    const overrides = (String(currency).toLowerCase() === ZERO.toLowerCase()) ? { value: total } : {};
+    const tx = await mpWrite.buyFromListing(Number(L.id), me || await signer.getAddress(), 1, currency, total, overrides);
+    const rec = await tx.wait();
+    st.className="status ok"; st.innerHTML = `<i class="fas fa-check"></i> Success! TX: ${rec.transactionHash.slice(0,10)}…`;
     await loadListings();
   }catch(err){
+    console.error(err);
     st.className="status err";
-    st.textContent = err?.shortMessage || err?.message || "Failed";
-  }finally{
-    btn.disabled = false;
+    st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${err?.shortMessage || err?.message || "Transaction failed"}`;
   }
 });
 
-/* ============== Boot (auto refresh) ============== */
-let timer=null;
+/* =============== Boot (auto-refresh) =============== */
+let timer = null;
 async function start(){
   await loadListings();
   clearInterval(timer);
