@@ -55,6 +55,14 @@
   @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
   @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
   .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+
+  /* === Skeleton styles === */
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  .skeleton{border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.12) 37%,rgba(255,255,255,.06) 63%);background-size:400% 100%;animation:shimmer 1.4s ease-in-out infinite}
+  .skeleton-thumb{width:100%;aspect-ratio:1/1;margin-bottom:12px}
+  .skeleton-text{height:16px;margin-bottom:10px}
+  .skeleton-text.short{width:60%}
+  .skeleton-btn{height:42px;flex:1}
 </style>
 </head>
 <body>
@@ -96,9 +104,33 @@
   <section>
     <p id="err" class="status err" style="text-align:center"></p>
     <div id="listings" class="grid" aria-live="polite">
-      <div class="loading">
-        <div class="spinner" role="status" aria-label="Loading marketplace listings"></div>
-        <div>Loading marketplace listings...</div>
+      <!-- initial skeletons (also used while fetching) -->
+      <div class="card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text short"></div>
+        <div class="card-actions">
+          <div class="skeleton skeleton-btn"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text short"></div>
+        <div class="card-actions">
+          <div class="skeleton skeleton-btn"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text short"></div>
+        <div class="card-actions">
+          <div class="skeleton skeleton-btn"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
       </div>
     </div>
     <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
@@ -131,7 +163,6 @@ const KNOWN = {
 
 /* ===================== ABIs (trimmed) ===================== */
 const MARKET_ABI = [
-  // view
   {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
     {"internalType":"uint256","name":"listingId","type":"uint256"},
@@ -161,7 +192,6 @@ const MARKET_ABI = [
     {"internalType":"uint8","name":"status","type":"uint8"},
     {"internalType":"bool","name":"reserved","type":"bool"}
   ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
-  // buyFromListing(listingId, buyFor, quantity, currency, expectedTotalPrice) payable
   {"inputs":[
     {"internalType":"uint256","name":"_listingId","type":"uint256"},
     {"internalType":"address","name":"_buyFor","type":"address"},
@@ -224,6 +254,21 @@ $("connect").addEventListener("click", async ()=>{
   }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
 });
 
+/* ===================== SKELETON BUILDER ===================== */
+function skeletonCards(n=6){
+  const one = `
+    <div class="card">
+      <div class="skeleton skeleton-thumb"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text short"></div>
+      <div class="card-actions">
+        <div class="skeleton skeleton-btn"></div>
+        <div class="skeleton skeleton-btn"></div>
+      </div>
+    </div>`;
+  return new Array(n).fill(one).join('');
+}
+
 /* ===================== LOAD LISTINGS ===================== */
 let loading=false, refreshTimer=null;
 
@@ -231,11 +276,8 @@ async function loadListings(){
   if (loading) return; loading = true;
   $("err").textContent = "";
   $("empty").style.display = "none";
-  $("listings").innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Loading marketplace listings...</div>
-    </div>`;
+  // show skeletons while fetching
+  $("listings").innerHTML = skeletonCards(6);
 
   try{
     const total = (await marketRead.totalListings()).toNumber();
@@ -344,7 +386,7 @@ function filterListings(searchTerm, filter){
   cards.forEach(card=>{
     const tokenType = card.getAttribute('data-token-type');
     const currency = card.getAttribute('data-currency');
-    const name = card.getAttribute('data-name');
+    const name = card.getAttribute('data-name') || "";
     const tokenId = (card.getAttribute('data-token-id')||"").toLowerCase();
     const contract = (card.getAttribute('data-contract')||"").toLowerCase();
     let ok = true;
