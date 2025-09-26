@@ -6,7 +6,6 @@
 <title>Tamaquah Sovereign Market — Live Listings</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- Ethers v5 -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
@@ -49,20 +48,18 @@
   .card-actions{display:flex;gap:10px;margin-top:auto;padding-top:12px}
   .card-actions .btn{flex:1;justify-content:center}
   footer{margin:40px 0 0;text-align:center;color:var(--sub);font-size:.9rem;padding-top:20px;border-top:1px solid var(--line)}
-  .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px}
-  .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
-  @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
-  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 
-  /* === Skeleton styles === */
+  /* Skeletons */
   @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
   .skeleton{border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.12) 37%,rgba(255,255,255,.06) 63%);background-size:400% 100%;animation:shimmer 1.4s ease-in-out infinite}
   .skeleton-thumb{width:100%;aspect-ratio:1/1;margin-bottom:12px}
   .skeleton-text{height:16px;margin-bottom:10px}
   .skeleton-text.short{width:60%}
   .skeleton-btn{height:42px;flex:1}
+
+  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
+  @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
+  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
@@ -104,34 +101,10 @@
   <section>
     <p id="err" class="status err" style="text-align:center"></p>
     <div id="listings" class="grid" aria-live="polite">
-      <!-- initial skeletons (also used while fetching) -->
-      <div class="card">
-        <div class="skeleton skeleton-thumb"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text short"></div>
-        <div class="card-actions">
-          <div class="skeleton skeleton-btn"></div>
-          <div class="skeleton skeleton-btn"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="skeleton skeleton-thumb"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text short"></div>
-        <div class="card-actions">
-          <div class="skeleton skeleton-btn"></div>
-          <div class="skeleton skeleton-btn"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="skeleton skeleton-thumb"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text short"></div>
-        <div class="card-actions">
-          <div class="skeleton skeleton-btn"></div>
-          <div class="skeleton skeleton-btn"></div>
-        </div>
-      </div>
+      <!-- initial skeletons -->
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-btn"></div><div class="skeleton skeleton-btn"></div></div></div>
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-btn"></div><div class="skeleton skeleton-btn"></div></div></div>
+      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-btn"></div><div class="skeleton skeleton-btn"></div></div></div>
     </div>
     <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
       <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:.5"></i><br>
@@ -152,16 +125,15 @@ const CHAIN_ID = 56; // BNB Chain
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase(); // Thirdweb's native marker
+const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase();
 
-// Known currencies
 const KNOWN = {
   [ZERO]: { symbol: "BNB", decimals: 18, isNative: true },
   [NATIVE_SENTINEL]: { symbol: "BNB", decimals: 18, isNative: true },
   "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol: "KLY", decimals: 18, isNative: false },
 };
 
-/* ===================== ABIs (trimmed) ===================== */
+/* ===================== ABIs ===================== */
 const MARKET_ABI = [
   {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
@@ -215,42 +187,47 @@ const ERC1155_MIN_ABI = [
   "function uri(uint256 id) view returns (string)"
 ];
 
-// ---------- IPFS helpers with gateway rotation ----------
+/* ===================== HELPERS ===================== */
+const $ = (id)=>document.getElementById(id);
+const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+const prettyUnits=(bn,dec)=>{const v=ethers.BigNumber.from(bn);const s=ethers.utils.formatUnits(v,dec);const[a,b=""]=s.split(".");const bb=b.slice(0,6).replace(/0+$/,"");return bb?`${a}.${bb}`:a;};
+const escapeHtml=(s)=> (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* IPFS gateways (rotate on failure) */
 const IPFS_GWS = [
-  "https://blush-worthy-ape-39.mypinata.cloud/ipfs/", // your Pinata gateway
+  "https://blush-worthy-ape-39.mypinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://cloudflare-ipfs.com/ipfs/",
 ];
-
 function ipfsToHttp(u){
   if(!u) return "";
   if (u.startsWith("ipfs://")) {
-    const path = u.replace("ipfs://", ""); // CID[/path]
-    return IPFS_GWS[0] + path;             // default gateway (we'll rotate below if needed)
+    const path = u.slice(7);
+    return IPFS_GWS[0] + path;
   }
   return u;
 }
-
 async function fetchJsonWithGateways(urlOrIpfs){
-  // allow ipfs://CID/path OR https://.../ipfs/CID/path OR plain http(s)
   let path = null;
-  if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice("ipfs://".length);
+  if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice(7);
   else if (urlOrIpfs.includes("/ipfs/")) path = urlOrIpfs.split("/ipfs/")[1];
-
   const tryUrls = path ? IPFS_GWS.map(gw => gw + path) : [urlOrIpfs];
-
-  let lastErr = null;
+  let lastErr=null;
   for (const url of tryUrls){
     try{
       console.log("[fetchJson] trying", url);
-      const r = await fetch(url, { cache: "no-cache" });
+      const r = await fetch(url, { cache:"no-cache" });
       if (!r.ok) { lastErr = new Error("HTTP "+r.status); continue; }
       return await r.json();
-    }catch(e){ lastErr = e; }
+    }catch(e){ lastErr=e; }
   }
   console.warn("[fetchJson] all gateways failed for", urlOrIpfs, lastErr);
   return null;
 }
+
+$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
+
 /* ===================== PROVIDERS / STATE ===================== */
 const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
 const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
@@ -297,7 +274,6 @@ async function loadListings(){
   if (loading) return; loading = true;
   $("err").textContent = "";
   $("empty").style.display = "none";
-  // show skeletons while fetching
   $("listings").innerHTML = skeletonCards(6);
 
   try{
@@ -305,18 +281,17 @@ async function loadListings(){
     if (total === 0){ $("listings").innerHTML=""; $("empty").style.display="block"; loading=false; return; }
     const listings = await marketRead.getAllListings(0, total-1);
 
-    // Normalize
     const rows = listings.map(L => ({
       id: Number(L.listingId),
       asset: L.assetContract,
       tokenId: L.tokenId.toString(),
       quantity: Number(L.quantity),
-      pricePerToken: L.pricePerToken, // BigNumber
+      pricePerToken: L.pricePerToken,
       start: L.startTimestamp.toString(),
       end: L.endTimestamp.toString(),
       creator: L.listingCreator,
       currency: (L.currency || ZERO).toLowerCase(),
-      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155 (thirdweb style)
+      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155
       status: Number(L.status),
       reserved: Boolean(L.reserved),
     }));
@@ -364,10 +339,8 @@ async function getNFTMeta(asset, tokenId, tokenType){
       const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
       const uri = await c721.tokenURI(tokenId);
       console.log("[ERC721] tokenURI:", uri);
-
       const json = await fetchJsonWithGateways(uri);
       console.log("[ERC721] metadata JSON", { asset, tokenId: String(tokenId), json });
-
       return {
         name: json?.name || `Token #${tokenId}`,
         image: ipfsToHttp(json?.image || json?.image_url || ""),
@@ -378,11 +351,9 @@ async function getNFTMeta(asset, tokenId, tokenType){
       const tpl = await c1155.uri(tokenId);
       console.log("[ERC1155] uri template:", tpl);
 
-      // Build the ipfs://.../{id} → ipfs://.../<hex32> for the rotator
       const hex32 = ethers.utils.hexZeroPad(
         ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
       ).slice(2);
-
       const ipfsMeta = tpl.replace("{id}", hex32);
       const json = await fetchJsonWithGateways(ipfsMeta);
       console.log("[ERC1155] metadata JSON", { asset, tokenId: String(tokenId), json });
@@ -398,6 +369,7 @@ async function getNFTMeta(asset, tokenId, tokenType){
     return { name: `Token #${tokenId}`, image: "", description: "" };
   }
 }
+
 /* ===================== RENDER ===================== */
 function setupSearchAndFilter(){
   const searchInput = $('search');
@@ -419,7 +391,7 @@ function filterListings(searchTerm, filter){
   cards.forEach(card=>{
     const tokenType = card.getAttribute('data-token-type');
     const currency = card.getAttribute('data-currency');
-    const name = card.getAttribute('data-name') || "";
+    const name = (card.getAttribute('data-name')||"");
     const tokenId = (card.getAttribute('data-token-id')||"").toLowerCase();
     const contract = (card.getAttribute('data-contract')||"").toLowerCase();
     let ok = true;
@@ -447,7 +419,10 @@ async function render(rows){
   const run = limit(6);
 
   const cards = await Promise.all(rows.map(r=>run(async ()=>{
-    const [curMeta, md] = await Promise.all([ getCurrencyMeta(r.currency), getNFTMeta(r.asset, r.tokenId, r.tokenType) ]);
+    const [curMeta, md] = await Promise.all([
+      getCurrencyMeta(r.currency),
+      getNFTMeta(r.asset, r.tokenId, r.tokenType)
+    ]);
     const st = deriveStatus(r);
     const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
     const card = document.createElement("div");
@@ -459,16 +434,15 @@ async function render(rows){
     card.setAttribute("data-contract", r.asset.toLowerCase());
 
     const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
-card.innerHTML = `
-  <div class="thumb-container">
-    <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-         src="${md.image || placeholder}"
-         onerror="this.onerror=null; this.src='${placeholder}';"
-         alt="NFT preview for ${escapeHtml(md.name)}">
-    <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
-  </div>
-  ...
-`;
+
+    card.innerHTML = `
+      <div class="thumb-container">
+        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+             src="${md.image || placeholder}"
+             onerror="this.onerror=null; this.src='${placeholder}';"
+             alt="NFT preview for ${escapeHtml(md.name)}">
+        <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
+      </div>
       <div class="row" style="margin-top:.5rem">
         <strong>${escapeHtml(md.name)}</strong>
         <span class="sub">Listing #${r.id}</span>
@@ -517,7 +491,6 @@ $("listings").addEventListener("click", async (e)=>{
     const qty = ethers.BigNumber.from(1);
     const total = L.pricePerToken.mul(qty);
 
-    // client-side checks
     const row = {
       quantity: Number(L.quantity),
       status: Number(L.status),
@@ -528,7 +501,6 @@ $("listings").addEventListener("click", async (e)=>{
     const s = deriveStatus(row);
     if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
 
-    // If ERC20 -> ensure allowance
     if (currency !== ZERO && currency !== NATIVE_SENTINEL){
       const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
       const owner = await signer.getAddress();
