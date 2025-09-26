@@ -171,505 +171,255 @@
   </div>
 </div>
 
-<script type="module">
-/* ===================== CONFIG ===================== */
-const RPC = "https://bsc-dataseed.binance.org/";
-const CHAIN_ID = 56; // BNB Chain mainnet
-const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
+<script>
+(async () => {
+  /* ---------- tiny utils ---------- */
+  const $ = (id)=>document.getElementById(id);
+  const short=(a)=>a?`${a.slice(0,6)}…${a.slice(-4)}`:"—";
+  const escapeHtml=s=>(s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const prettyUnits=(bn,dec)=>{ const v=ethers.BigNumber.from(bn);
+    const s=ethers.utils.formatUnits(v,dec); const [a,b=""]=s.split(".");
+    const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; };
 
-const ZERO = "0x0000000000000000000000000000000000000000";
-const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase(); // used by some SDKs
+  /* ---------- config ---------- */
+  const CHAIN_ID = 56;
+  const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
+  $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
 
-$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
+  const RPCS = [
+    "https://bsc-dataseed.binance.org/",
+    "https://bscrpc.com",
+    "https://rpc.ankr.com/bsc",
+    "https://binance.nodereal.io"
+  ];
 
-/* Known currencies */
-const KNOWN = {
-  [ZERO]: { symbol: "BNB", decimals: 18, isNative: true },
-  [NATIVE_SENTINEL]: { symbol: "BNB", decimals: 18, isNative: true },
-  "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol: "KLY", decimals: 18, isNative: false }, // add more as needed
-};
+  const ZERO="0x0000000000000000000000000000000000000000";
+  const NATIVE_SENTINEL="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+  const KNOWN={
+    [ZERO]:{symbol:"BNB",decimals:18,isNative:true},
+    [NATIVE_SENTINEL]:{symbol:"BNB",decimals:18,isNative:true},
+    "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52":{symbol:"KLY",decimals:18,isNative:false},
+  };
 
-/* ===================== ABIs (trimmed to what we use) ===================== */
-const MARKET_ABI = [
-  {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
-    {"internalType":"uint256","name":"listingId","type":"uint256"},
-    {"internalType":"uint256","name":"tokenId","type":"uint256"},
-    {"internalType":"uint256","name":"quantity","type":"uint256"},
-    {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
-    {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
-    {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
-    {"internalType":"address","name":"listingCreator","type":"address"},
-    {"internalType":"address","name":"assetContract","type":"address"},
-    {"internalType":"address","name":"currency","type":"address"},
-    {"internalType":"uint8","name":"tokenType","type":"uint8"},
-    {"internalType":"uint8","name":"status","type":"uint8"},
-    {"internalType":"bool","name":"reserved","type":"bool"}
-  ],"internalType":"struct IDirectListings.Listing[]","name":"_allListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"_listingId","type":"uint256"}],"name":"getListing","outputs":[{"components":[
-    {"internalType":"uint256","name":"listingId","type":"uint256"},
-    {"internalType":"uint256","name":"tokenId","type":"uint256"},
-    {"internalType":"uint256","name":"quantity","type":"uint256"},
-    {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
-    {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
-    {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
-    {"internalType":"address","name":"listingCreator","type":"address"},
-    {"internalType":"address","name":"assetContract","type":"address"},
-    {"internalType":"address","name":"currency","type":"address"},
-    {"internalType":"uint8","name":"tokenType","type":"uint8"},
-    {"internalType":"uint8","name":"status","type":"uint8"},
-    {"internalType":"bool","name":"reserved","type":"bool"}
-  ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
-  {"inputs":[
-    {"internalType":"uint256","name":"_listingId","type":"uint256"},
-    {"internalType":"address","name":"_buyFor","type":"address"},
-    {"internalType":"uint256","name":"_quantity","type":"uint256"},
-    {"internalType":"address","name":"_currency","type":"address"},
-    {"internalType":"uint256","name":"_expectedTotalPrice","type":"uint256"}
-  ],"name":"buyFromListing","outputs":[],"stateMutability":"payable","type":"function"}
-];
+  const MARKET_ABI=[ /* view + buy (trimmed) */ 
+    {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
+      {"internalType":"uint256","name":"listingId","type":"uint256"},
+      {"internalType":"uint256","name":"tokenId","type":"uint256"},
+      {"internalType":"uint256","name":"quantity","type":"uint256"},
+      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
+      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
+      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
+      {"internalType":"address","name":"listingCreator","type":"address"},
+      {"internalType":"address","name":"assetContract","type":"address"},
+      {"internalType":"address","name":"currency","type":"address"},
+      {"internalType":"uint8","name":"tokenType","type":"uint8"},
+      {"internalType":"uint8","name":"status","type":"uint8"},
+      {"internalType":"bool","name":"reserved","type":"bool"}
+    ],"internalType":"struct IDirectListings.Listing[]","name":"_allListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllValidListings","outputs":[{"components":[
+      {"internalType":"uint256","name":"listingId","type":"uint256"},
+      {"internalType":"uint256","name":"tokenId","type":"uint256"},
+      {"internalType":"uint256","name":"quantity","type":"uint256"},
+      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
+      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
+      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
+      {"internalType":"address","name":"listingCreator","type":"address"},
+      {"internalType":"address","name":"assetContract","type":"address"},
+      {"internalType":"address","name":"currency","type":"address"},
+      {"internalType":"uint8","name":"tokenType","type":"uint8"},
+      {"internalType":"uint8","name":"status","type":"uint8"},
+      {"internalType":"bool","name":"reserved","type":"bool"}
+    ],"internalType":"struct IDirectListings.Listing[]","name":"_validListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"_listingId","type":"uint256"}],"name":"getListing","outputs":[{"components":[
+      {"internalType":"uint256","name":"listingId","type":"uint256"},
+      {"internalType":"uint256","name":"tokenId","type":"uint256"},
+      {"internalType":"uint256","name":"quantity","type":"uint256"},
+      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
+      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
+      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
+      {"internalType":"address","name":"listingCreator","type":"address"},
+      {"internalType":"address","name":"assetContract","type":"address"},
+      {"internalType":"address","name":"currency","type":"address"},
+      {"internalType":"uint8","name":"tokenType","type":"uint8"},
+      {"internalType":"uint8","name":"status","type":"uint8"},
+      {"internalType":"bool","name":"reserved","type":"bool"}
+    ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
+    {"inputs":[
+      {"internalType":"uint256","name":"_listingId","type":"uint256"},
+      {"internalType":"address","name":"_buyFor","type":"address"},
+      {"internalType":"uint256","name":"_quantity","type":"uint256"},
+      {"internalType":"address","name":"_currency","type":"address"},
+      {"internalType":"uint256","name":"_expectedTotalPrice","type":"uint256"}
+    ],"name":"buyFromListing","outputs":[],"stateMutability":"payable","type":"function"}
+  ];
+  const ERC20_MIN_ABI=[
+    "function allowance(address owner,address spender) view returns (uint256)",
+    "function approve(address spender,uint256 amount) returns (bool)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+  ];
 
-const ERC20_MIN_ABI = [
-  "function allowance(address owner,address spender) view returns (uint256)",
-  "function approve(address spender,uint256 amount) returns (bool)",
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)"
-];
-const ERC721_MIN_ABI = [ "function tokenURI(uint256) view returns (string)" ];
-const ERC1155_MIN_ABI = [ "function uri(uint256) view returns (string)" ];
-
-/* ===================== HELPERS ===================== */
-const $ = (id)=>document.getElementById(id);
-function short(a){ return a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—"; }
-function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
-
-/* Notifications */
-function showNotification(message, type='info', ms=5000){
-  const c = $('#notification-container'); const el = document.createElement('div');
-  el.className = `notification ${type}`;
-  const icon = type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-triangle':type==='warning'?'fa-exclamation-circle':'fa-info-circle';
-  el.innerHTML = `<i class="fas ${icon}"></i><span>${escapeHtml(message)}</span>`;
-  c.appendChild(el); setTimeout(()=>el.classList.add('show'), 10);
-  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); }, ms);
-}
-
-/* Modal */
-function showModal(content){ const m=$('#purchase-modal'); $('#modal-body').innerHTML=content; m.classList.add('show'); m.setAttribute('aria-hidden','false'); }
-function hideModal(){ const m=$('#purchase-modal'); m.classList.remove('show'); m.setAttribute('aria-hidden','true'); }
-document.querySelector('.modal-close').addEventListener('click', hideModal);
-document.getElementById('purchase-modal').addEventListener('click', (e)=>{ if(e.target.id==='purchase-modal') hideModal(); });
-document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && $('#purchase-modal').classList.contains('show')) hideModal(); });
-
-/* ===================== IPFS HELPERS ===================== */
-const IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
-  "https://gateway.pinata.cloud/ipfs/",
-];
-function ipfsToHttp(u, gw=IPFS_GATEWAYS[0]){ if(!u) return ""; return u.startsWith("ipfs://") ? gw+u.slice(7) : u; }
-function resolve1155Uri(tpl, tokenId, gw){
-  if(!tpl) return "";
-  const hexId = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32).slice(2);
-  return ipfsToHttp(tpl.replace("{id}", hexId), gw);
-}
-async function fetchJSONWithGateways(ipfsUrlOrHttp, is1155=false, tokenId="0"){
-  const urls=[];
-  if (ipfsUrlOrHttp?.startsWith("ipfs://")){
-    for (const gw of IPFS_GATEWAYS){
-      urls.push(is1155 ? resolve1155Uri(ipfsUrlOrHttp, tokenId, gw) : ipfsToHttp(ipfsUrlOrHttp, gw));
-    }
-  } else if (ipfsUrlOrHttp) {
-    urls.push(ipfsUrlOrHttp);
-  }
-  for (const url of urls){
-    try{
-      const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),5000);
-      const r=await fetch(url,{signal:ctl.signal, cache:"no-cache"}); clearTimeout(t);
-      if(!r.ok) throw new Error(`HTTP ${r.status}`); const j=await r.json(); return { json:j, from:url };
-    }catch(e){}
-  }
-  throw new Error("Failed to fetch metadata from all gateways");
-}
-function normalizeMediaLink(link){
-  if(!link) return "";
-  if (link.startsWith("ipfs://")) return ipfsToHttp(link);
-  try{ const u=new URL(link); if(/^https?:$/.test(u.protocol)) return link; }catch{}
-  return "";
-}
-async function getNFTMetaByAddress(assetAddress, tokenId, tokenType, provider){
-  try{
-    if (Number(tokenType) === 1){
-      const erc721=new ethers.Contract(assetAddress, ERC721_MIN_ABI, provider);
-      const uri=await erc721.tokenURI(tokenId).catch(()=> "");
-      const { json } = await fetchJSONWithGateways(uri, false, tokenId);
-      return { name: json?.name || `Token #${tokenId}`, description: json?.description || "", image: normalizeMediaLink(json?.image || json?.image_url), raw: json };
-    } else {
-      const erc1155=new ethers.Contract(assetAddress, ERC1155_MIN_ABI, provider);
-      const tpl=await erc1155.uri(tokenId).catch(()=> "");
-      const { json } = await fetchJSONWithGateways(tpl, true, tokenId);
-      return { name: json?.name || `Token #${tokenId}`, description: json?.description || "", image: normalizeMediaLink(json?.image || json?.image_url), raw: json };
-    }
-  }catch(e){ return { name:`Token #${tokenId}`, description:"", image:"" }; }
-}
-
-/* ===================== PROVIDERS / STATE ===================== */
-const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
-const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
-
-let web3prov=null, signer=null, me=null;
-let allListings=[], filtered=[], activeTab='all'; // 'all' | 'mine'
-let erc20Cache=new Map(), nftMetaCache=new Map();
-let refreshTimer=null, loading=false;
-
-/* Connect wallet */
-$("connect").addEventListener("click", async ()=>{
-  $("#err").textContent = "";
-  try{
-    if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
-    web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
-    await web3prov.send("eth_requestAccounts", []);
-    const net = await web3prov.getNetwork();
-    if (Number(net.chainId) !== CHAIN_ID){
-      await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId: "0x"+CHAIN_ID.toString(16)}] });
-    }
-    signer = web3prov.getSigner();
-    me = await signer.getAddress();
-    $("whoAddr").textContent = short(me);
-    $("who").style.display = "inline-block";
-    $("connect").style.display = "none";
-    showNotification("Wallet connected", "success");
-    // when connecting, if "My Listings" tab is active, reapply filters
-    applyAllFilters();
-  }catch(e){
-    $("#err").textContent = e?.message || "Failed to connect wallet.";
-    showNotification(e?.message || "Failed to connect wallet.", "error");
-  }
-});
-
-/* ===================== LOAD LISTINGS ===================== */
-async function loadListings(){
-  if (loading) return; loading=true;
-  try{
-    const total = (await marketRead.totalListings()).toNumber();
-    if (total === 0){ allListings=[]; render([]); $("#empty").style.display="block"; loading=false; return; }
-    const rows = await marketRead.getAllListings(0, Math.max(total-1,0));
-    allListings = rows.map(L => ({
-      id: Number(L.listingId),
-      asset: String(L.assetContract),
-      tokenId: L.tokenId.toString(),
-      quantity: Number(L.quantity),
-      pricePerToken: ethers.BigNumber.from(L.pricePerToken),
-      start: Number(L.startTimestamp),
-      end: Number(L.endTimestamp),
-      creator: String(L.listingCreator),
-      currency: String(L.currency || ZERO).toLowerCase(),
-      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155
-      status: Number(L.status),
-      reserved: Boolean(L.reserved),
-    }));
-    applyAllFilters(); // will call render
-  }catch(e){
-    console.error(e);
-    $("#listings").innerHTML=""; $("#err").textContent = e?.message || "Couldn't load listings."; $("#empty").style.display="block";
-    showNotification("Failed to load listings", "error");
-  }finally{ loading=false; }
-}
-
-/* ===================== STATUS & META ===================== */
-function deriveStatus(row){
-  const now = Math.floor(Date.now()/1000);
-  if (typeof row.status === "number" && row.status !== 1) return {label:"Inactive", cls:"warn", actionable:false};
-  if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
-  if (row.reserved) return {label:"Reserved", cls:"warn", actionable:false};
-  if (row.end && row.end !== 0 && row.end < now) return {label:"Expired", cls:"warn", actionable:false};
-  if (row.start && row.start !== 0 && row.start > now) return {label:"Scheduled", cls:"warn", actionable:false};
-  return {label:"Active", cls:"ok", actionable:true};
-}
-async function getCurrencyMeta(addr){
-  const a=(addr||ZERO).toLowerCase();
-  if (KNOWN[a]) return KNOWN[a];
-  if (erc20Cache.has(a)) return erc20Cache.get(a);
-  try{
-    const erc = new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
-    const [dec, sym] = await Promise.all([erc.decimals(), erc.symbol()]);
-    const meta = { decimals: Number(dec), symbol: String(sym||"ERC20"), isNative:false };
-    erc20Cache.set(a, meta); return meta;
-  }catch{
-    const meta = { decimals:18, symbol:"ERC20", isNative:false };
-    erc20Cache.set(a, meta); return meta;
-  }
-}
-async function getNftMetaCached(asset, tokenId, tokenType){
-  const key = `${asset.toLowerCase()}:${tokenType}:${tokenId}`;
-  if (nftMetaCache.has(key)) return nftMetaCache.get(key);
-  const md = await getNFTMetaByAddress(asset, tokenId, tokenType, rpcProvider);
-  nftMetaCache.set(key, md); return md;
-}
-
-/* ===================== RENDER ===================== */
-async function render(rows){
-  const grid = $("#listings");
-  grid.innerHTML = "";
-  if (!rows?.length){ $("#empty").style.display="block"; return; } else { $("#empty").style.display="none"; }
-
-  // concurrency limiter
-  const limit = (n)=>{ const q=[]; let a=0; const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();}); return run; };
-  const run = limit(6);
-
-  const cards = await Promise.all(rows.map(r => run(async ()=>{
-    const [curMeta, md] = await Promise.all([ getCurrencyMeta(r.currency), getNftMetaCached(r.asset, r.tokenId, r.tokenType) ]);
-    const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
-    const st = deriveStatus(r);
-
-    const card = document.createElement("div");
-    card.className = "card";
-    card.setAttribute("data-token-type", r.tokenType === 1 ? "erc721" : "erc1155");
-    card.setAttribute("data-currency", curMeta.symbol.toLowerCase());
-    card.setAttribute("data-name", (md.name||"").toLowerCase());
-    card.setAttribute("data-token-id", r.tokenId);
-    card.setAttribute("data-contract", r.asset.toLowerCase());
-    card.setAttribute("data-creator", r.creator.toLowerCase());
-
-    const placeholder = `https://via.placeholder.com/800/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
-
-    const img = new Image();
-    img.src = md.image || placeholder;
-    img.alt = `NFT preview for ${escapeHtml(md.name||'Token')}`;
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.referrerPolicy = "no-referrer";
-    img.className = "thumb";
-    img.addEventListener('load', ()=> img.classList.add('loaded'));
-
-    const thumbWrap = document.createElement('div');
-    thumbWrap.className = "thumb-container";
-    thumbWrap.appendChild(img);
-
-    const badge = document.createElement('div');
-    badge.className = "token-badge";
-    badge.textContent = `${st.label} • ${r.tokenType===1?'ERC-721':'ERC-1155'}`;
-    thumbWrap.appendChild(badge);
-
-    const nameRow = document.createElement('div');
-    nameRow.className="row";
-    nameRow.style.marginTop = ".5rem";
-    nameRow.innerHTML = `<strong>${escapeHtml(md.name||`Token #${r.tokenId}`)}</strong><span class="sub">Listing #${r.id}</span>`;
-
-    const infoRow = document.createElement('div');
-    infoRow.className="row";
-    infoRow.innerHTML = `<span class="sub">${short(r.asset)} · #${r.tokenId}</span><span class="price">${priceStr}</span>`;
-
-    const desc = (md.description||"").trim();
-    const descEl = document.createElement('div');
-    if (desc){
-      descEl.className = "sub";
-      descEl.style.cssText = "margin-top:8px;font-size:0.9rem;line-height:1.4";
-      descEl.textContent = desc.length>160? (desc.slice(0,160)+"…") : desc;
-    }
-
-    const actions = document.createElement('div');
-    actions.className = "card-actions";
-    const link = document.createElement('a');
-    link.className = "btn";
-    link.href = `https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${r.id}`;
-    link.target = "_blank"; link.rel = "noopener";
-    link.innerHTML = `<i class="fas fa-external-link-alt" aria-hidden="true"></i> Details`;
-
-    const buy = document.createElement('button');
-    buy.className = st.actionable ? "btn btn-primary" : "btn";
-    buy.disabled = !st.actionable;
-    buy.setAttribute("data-buy", String(r.id));
-    buy.innerHTML = st.actionable ? `<i class="fas fa-shopping-cart" aria-hidden="true"></i> Buy Now` : `<i class="fas fa-ban" aria-hidden="true"></i> Unavailable`;
-
-    actions.appendChild(link); actions.appendChild(buy);
-
-    const status = document.createElement('div');
-    status.id = `st-${r.id}`;
-    status.className = `status ${st.cls}`;
-    status.setAttribute("role","status");
-    status.setAttribute("aria-live","polite");
-    status.textContent = st.label;
-
-    card.appendChild(thumbWrap);
-    card.appendChild(nameRow);
-    card.appendChild(infoRow);
-    if(desc) card.appendChild(descEl);
-    card.appendChild(actions);
-    card.appendChild(status);
-
-    return card;
-  })));
-
-  for (const c of cards) grid.appendChild(c);
-}
-
-/* ===================== FILTERS / SEARCH / SORT / TABS ===================== */
-function getActiveFilter(){ const a=document.querySelector('.filter-btn.active'); return a ? a.getAttribute('data-filter') : 'all'; }
-function sortRows(rows){
-  const v = $("#sort").value;
-  if (v==="oldest") rows.sort((a,b)=> a.id-b.id);
-  else if (v==="newest") rows.sort((a,b)=> b.id-a.id);
-  else if (v==="price-low") rows.sort((a,b)=> a.pricePerToken.sub(b.pricePerToken));
-  else if (v==="price-high") rows.sort((a,b)=> b.pricePerToken.sub(a.pricePerToken));
-  else if (v==="name") rows.sort((a,b)=> {
-    const na=(nftMetaCache.get(`${a.asset.toLowerCase()}:${a.tokenType}:${a.tokenId}`)?.name||"").toLowerCase();
-    const nb=(nftMetaCache.get(`${b.asset.toLowerCase()}:${b.tokenType}:${b.tokenId}`)?.name||"").toLowerCase();
-    return na.localeCompare(nb);
-  });
-  return rows;
-}
-function applyAllFilters(){
-  const filter = getActiveFilter();
-  const searchTerm = $("#search").value.trim().toLowerCase();
-  const mineOnly = (activeTab==='mine' && me);
-
-  filtered = allListings.filter(r=>{
-    if (mineOnly && r.creator.toLowerCase() !== me?.toLowerCase()) return false;
-    if (filter !== 'all'){
-      if (filter==='erc721' && r.tokenType!==1) return false;
-      if (filter==='erc1155' && r.tokenType!==0) return false;
-      if (filter==='native' && ![ZERO,NATIVE_SENTINEL].includes(r.currency)) return false;
-      if (filter==='kly' && r.currency!=="0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52") return false;
-    }
-    if (searchTerm){
-      const key = `${r.asset}:${r.tokenId}:${r.creator}`.toLowerCase();
-      const md = nftMetaCache.get(`${r.asset.toLowerCase()}:${r.tokenType}:${r.tokenId}`);
-      const name = (md?.name||"").toLowerCase();
-      if (!(name.includes(searchTerm) || key.includes(searchTerm))) return false;
-    }
-    return true;
-  });
-
-  sortRows(filtered);
-  render(filtered);
-}
-
-/* Wire UI controls */
-(function setupControls(){
-  const searchInput = $('#search');
-  const deb = debounce(applyAllFilters, 200);
-  searchInput.addEventListener('input', deb);
-
-  document.querySelectorAll('.filter-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('.filter-btn').forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
-      this.classList.add('active'); this.setAttribute('aria-pressed','true');
-      applyAllFilters();
-    });
-  });
-
-  $('#sort').addEventListener('change', applyAllFilters);
-
-  // tabs
-  $('#tab-all').addEventListener('click', ()=>{
-    activeTab='all';
-    $('#tab-all').classList.add('active'); $('#tab-all').setAttribute('aria-selected','true');
-    $('#tab-mine').classList.remove('active'); $('#tab-mine').setAttribute('aria-selected','false');
-    applyAllFilters();
-  });
-  $('#tab-mine').addEventListener('click', ()=>{
-    activeTab='mine';
-    if (!me) showNotification("Connect your wallet to view your listings", "warning");
-    $('#tab-mine').classList.add('active'); $('#tab-mine').setAttribute('aria-selected','true');
-    $('#tab-all').classList.remove('active'); $('#tab-all').setAttribute('aria-selected','false');
-    applyAllFilters();
-  });
-})();
-
-/* ===================== BUY FLOW ===================== */
-$("#listings").addEventListener("click", async (e)=>{
-  const btn = e.target.closest("button[data-buy]"); if(!btn) return;
-  const id = Number(btn.getAttribute("data-buy"));
-  const st = $("#st-"+id); $("#err").textContent = "";
-
-  try{
-    if (!signer) { await $("#connect").click(); if(!signer) return; }
-    const marketWrite = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
-
-    // refetch listing for fresh price & currency
-    const L = await marketWrite.getListing(id);
-    const currency = String(L.currency || ZERO).toLowerCase();
-    const pricePerToken = ethers.BigNumber.from(L.pricePerToken);
-    const quantity = 1; // this UI buys 1
-    const expectedTotal = pricePerToken.mul(quantity);
-    const buyFor = await signer.getAddress();
-
-    const row = {
-      quantity: Number(L.quantity),
-      start: Number(L.startTimestamp),
-      end: Number(L.endTimestamp),
-      status: Number(L.status),
-      reserved: Boolean(L.reserved),
-    };
-    const s = deriveStatus(row);
-    if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
-
-    // build modal confirm UI
-    const curMeta = await getCurrencyMeta(currency);
-    const totalStr = `${prettyUnits(expectedTotal, curMeta.decimals)} ${curMeta.symbol}`;
-    showModal(`
-      <p class="sub" style="margin-bottom:10px">Listing #${id}</p>
-      <p>You're about to purchase <strong>1</strong> token for <strong>${totalStr}</strong>.</p>
-      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
-        <button id="modal-cancel" class="btn">Cancel</button>
-        <button id="modal-confirm" class="btn btn-primary"><i class="fas fa-check"></i> Confirm</button>
-      </div>
-    `);
-    document.getElementById('modal-cancel').onclick = hideModal;
-
-    document.getElementById('modal-confirm').onclick = async ()=>{
-      document.getElementById('modal-confirm').disabled = true;
-      st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin' aria-hidden='true'></i> Preparing transaction...";
+  /* ---------- provider with fallbacks ---------- */
+  async function makeProvider(){
+    for (const url of RPCS){
       try{
-        // ERC20 approval if needed
-        let overrides = {};
-        if (![ZERO, NATIVE_SENTINEL].includes(currency)){
-          const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
-          const allowance = await erc.allowance(buyFor, MARKETPLACE_ADDR);
-          if (allowance.lt(expectedTotal)){
-            st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Approving token...";
-            const txa = await erc.approve(MARKETPLACE_ADDR, expectedTotal);
-            await txa.wait();
-          }
-        } else {
-          // send native value
-          overrides = { value: expectedTotal };
-        }
-
-        st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Sending purchase...";
-        const tx = await marketWrite.buyFromListing(id, buyFor, quantity, currency, expectedTotal, overrides);
-        showNotification("Transaction sent. Waiting for confirmation…", "info");
-        await tx.wait();
-        hideModal();
-        st.className="status ok"; st.innerHTML = `<i class="fas fa-check"></i> Purchase confirmed`;
-        showNotification("Purchase confirmed 🎉", "success");
-        loadListings();
-      }catch(err){
-        console.error(err);
-        st.className="status err";
-        st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.message || "Transaction failed")}`;
-        showNotification(err?.message || "Transaction failed", "error");
-      }finally{
-        document.getElementById('modal-confirm').disabled = false;
-      }
-    };
-  }catch(err){
-    console.error(err);
-    st.className="status err";
-    st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.message || "Transaction failed")}`;
-    showNotification(err?.message || "Transaction failed", "error");
+        const p=new ethers.providers.JsonRpcProvider(url,{name:"bsc",chainId:CHAIN_ID});
+        // quick health check with a short timeout
+        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
+        await p.getBlockNumber().finally(()=>clearTimeout(t));
+        return p;
+      }catch(e){ /* try next */ }
+    }
+    throw new Error("All BSC RPC endpoints failed in this browser.");
   }
-});
 
-/* ===================== BOOT ===================== */
-async function start(){
+  /* ---------- state ---------- */
+  let rpcProvider, marketRead;
+  let allListings=[];
+
+  /* ---------- currency meta cache ---------- */
+  const erc20Cache=new Map();
+  async function getCurrencyMeta(addr){
+    const a=(addr||ZERO).toLowerCase();
+    if (KNOWN[a]) return KNOWN[a];
+    if (erc20Cache.has(a)) return erc20Cache.get(a);
+    try{
+      const erc=new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
+      const [dec,sym]=await Promise.all([erc.decimals(), erc.symbol()]);
+      const meta={decimals:Number(dec),symbol:String(sym||"ERC20"),isNative:false};
+      erc20Cache.set(a,meta); return meta;
+    }catch{
+      const meta={decimals:18,symbol:"ERC20",isNative:false};
+      erc20Cache.set(a,meta); return meta;
+    }
+  }
+
+  /* ---------- UI helpers from your original file ---------- */
+  function deriveStatus(row){
+    const now=Math.floor(Date.now()/1000);
+    if (typeof row.status==="number" && row.status!==1) return {label:"Inactive",cls:"warn",actionable:false};
+    if (row.quantity===0) return {label:"Completed",cls:"warn",actionable:false};
+    if (row.reserved) return {label:"Reserved",cls:"warn",actionable:false};
+    if (row.end && row.end!==0 && row.end<now) return {label:"Expired",cls:"warn",actionable:false};
+    if (row.start && row.start!==0 && row.start>now) return {label:"Scheduled",cls:"warn",actionable:false};
+    return {label:"Active",cls:"ok",actionable:true};
+  }
+  function showNotification(message,type='info',ms=5000){
+    const c=document.getElementById('notification-container'); const el=document.createElement('div');
+    el.className=`notification ${type}`; const icon=type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-triangle':type==='warning'?'fa-exclamation-circle':'fa-info-circle';
+    el.innerHTML=`<i class="fas ${icon}"></i><span>${escapeHtml(message)}</span>`;
+    c.appendChild(el); setTimeout(()=>el.classList.add('show'),10);
+    setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); },ms);
+  }
+
+  async function render(rows){
+    const grid = $("#listings"); grid.innerHTML="";
+    if(!rows.length){ $("#empty").style.display="block"; return; } else { $("#empty").style.display="none"; }
+
+    for (const r of rows){
+      const curMeta = await getCurrencyMeta((r.currency||ZERO).toLowerCase());
+      const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
+      const st = deriveStatus(r);
+
+      const card=document.createElement('div'); card.className="card";
+      card.innerHTML = `
+        <div class="thumb-container">
+          <img class="thumb loaded" alt="NFT preview" src="https://via.placeholder.com/800/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}"/>
+          <div class="token-badge">${st.label} • ${r.tokenType===1?'ERC-721':'ERC-1155'}</div>
+        </div>
+        <div class="row"><strong>Token #${r.tokenId}</strong><span class="sub">Listing #${r.id}</span></div>
+        <div class="row"><span class="sub">${short(r.asset)} · #${r.tokenId}</span><span class="price">${priceStr}</span></div>
+        <div class="card-actions">
+          <a class="btn" target="_blank" rel="noopener" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${r.id}">
+            <i class="fas fa-external-link-alt"></i> Details
+          </a>
+          <button class="btn ${st.actionable?'btn-primary':''}" ${st.actionable?'':'disabled'}>
+            ${st.actionable?'<i class="fas fa-shopping-cart"></i> Buy Now':'<i class="fas fa-ban"></i> Unavailable'}
+          </button>
+        </div>
+        <div id="st-${r.id}" class="status ${st.cls}">${st.label}</div>
+      `;
+      grid.appendChild(card);
+    }
+  }
+
+  /* ---------- loader with robust fallbacks ---------- */
+  async function loadListings(){
+    $("#err").textContent=""; $("#empty").style.display="none";
+    try{
+      // (re)build provider if needed
+      if (!rpcProvider){ rpcProvider = await makeProvider(); }
+      marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
+
+      const totalBN = await marketRead.totalListings();
+      const total = ethers.BigNumber.from(totalBN).toNumber();
+      if (total === 0){ allListings=[]; render([]); $("#empty").style.display="block"; return; }
+
+      let rows=[];
+      try{
+        // prefer valid listings
+        rows = await marketRead.getAllValidListings(0, Math.max(total-1,0));
+      }catch{
+        // fallback if the extension is missing
+        rows = await marketRead.getAllListings(0, Math.max(total-1,0));
+      }
+
+      allListings = rows.map(L=>({
+        id: Number(L.listingId),
+        asset: String(L.assetContract),
+        tokenId: String(L.tokenId),
+        quantity: Number(L.quantity),
+        pricePerToken: ethers.BigNumber.from(L.pricePerToken),
+        start: Number(L.startTimestamp),
+        end: Number(L.endTimestamp),
+        creator: String(L.listingCreator),
+        currency: String(L.currency||ZERO).toLowerCase(),
+        tokenType: Number(L.tokenType),
+        status: Number(L.status),
+        reserved: Boolean(L.reserved),
+      }));
+
+      // sort newest first by default
+      allListings.sort((a,b)=>b.id-a.id);
+      await render(allListings);
+    }catch(e){
+      console.error(e);
+      $("#listings").innerHTML="";
+      const msg = e?.message || "Couldn't load listings.";
+      $("#err").textContent = msg;
+      $("#empty").style.display="block";
+      showNotification(msg,"error");
+    }
+  }
+
+  /* ---------- wallet connect (unchanged) ---------- */
+  let web3prov=null, signer=null, me=null;
+  document.getElementById("connect").addEventListener("click", async ()=>{
+    $("#err").textContent="";
+    try{
+      if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
+      web3prov = new ethers.providers.Web3Provider(window.ethereum,"any");
+      await web3prov.send("eth_requestAccounts",[]);
+      const net = await web3prov.getNetwork();
+      if (Number(net.chainId)!==CHAIN_ID){
+        await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+CHAIN_ID.toString(16)}]});
+      }
+      signer = web3prov.getSigner(); me = await signer.getAddress();
+      document.getElementById("whoAddr").textContent = short(me);
+      document.getElementById("who").style.display="inline-block";
+      document.getElementById("connect").style.display="none";
+      showNotification("Wallet connected","success");
+    }catch(e){
+      $("#err").textContent = e?.message || "Failed to connect wallet.";
+      showNotification(e?.message || "Failed to connect wallet.","error");
+    }
+  });
+
+  /* ---------- kick off ---------- */
   await loadListings();
-  clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadListings, 30000);
-}
-start();
+  setInterval(loadListings, 30000);
+})();
 </script>
 </body>
 </html>
