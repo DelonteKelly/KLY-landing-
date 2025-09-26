@@ -10,90 +10,60 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-  :root {
-    --bg: #0A1A24; --bg2: #051018; --ink: #EAF7FF; --sub: #9CCBE3; --acc: #73E1FF;
-    --gold: #e2c675; --card: rgba(255,255,255,.06); --card-hover: rgba(255,255,255,.1);
-    --line: rgba(255,255,255,.12); --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
-    --shadow: 0 4px 20px rgba(0,0,0,.3); --radius: 16px; --radius-sm: 8px; --transition: .3s ease; --pulse: pulse 2s infinite;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', system-ui, sans-serif; }
-  html, body { background: linear-gradient(180deg, var(--bg), var(--bg2)); color: var(--ink); min-height: 100vh; line-height: 1.6; overflow-x: hidden; }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 24px; }
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 16px; }
-  .brand { font-weight: 800; letter-spacing: .08em; font-size: 1.5rem; color: var(--acc); text-shadow: 0 0 10px rgba(115,225,255,.3); text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
-  .brand i { font-size: 1.8rem; }
-  .pill { padding: .5rem 1rem; border-radius: 999px; background: rgba(0,0,0,.2); font-size: .9rem; border: 1px solid var(--line); display: flex; align-items: center; gap: 6px; }
-  button, .btn { appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: .7rem 1.2rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: var(--transition); display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; }
-  .btn:hover { background: var(--card-hover); transform: translateY(-2px); box-shadow: var(--shadow); }
-  .btn-primary { background: linear-gradient(90deg, var(--acc), #a9ffcb); color: #001018; border-color: #2e6b77; }
-  .btn-primary:hover { background: linear-gradient(90deg, #a9ffcb, var(--acc)); transform: translateY(-2px); }
-  .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
-  .btn:focus-visible { outline: 3px solid #a9ffcb; outline-offset: 2px; }
-  .btn-loading::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent); animation: shimmer 1.5s infinite; }
-  .hero { text-align: center; padding: 40px 0 30px; max-width: 800px; margin: 0 auto; }
-  .hero h1 { font-size: clamp(1.8rem, 4vw, 3rem); letter-spacing: .05em; text-transform: uppercase; margin: 8px 0 16px;
-    background: linear-gradient(90deg, var(--acc), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2; }
-  .hero p { color: var(--sub); font-size: 1.1rem; margin-bottom: 24px; }
-  .controls { display: flex; justify-content: space-between; align-items: center; margin: 24px 0; flex-wrap: wrap; gap: 16px; }
-  .tabs { display: flex; gap: 10px; flex-wrap: wrap; }
-  .tab-btn { padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--sub); cursor: pointer; }
-  .tab-btn.active { background: var(--acc); color: var(--bg); border-color: var(--acc); }
-  .search-box { position: relative; max-width: 400px; width: 100%; }
-  .search-box input { width: 100%; padding: 12px 16px 12px 42px; border-radius: var(--radius-sm); background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 1rem; transition: var(--transition); }
-  .search-box input:focus { border-color: var(--acc); box-shadow: 0 0 0 2px rgba(115,225,255,.2); outline: none; }
-  .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--sub); }
-  .filters { display: flex; gap: 12px; flex-wrap: wrap; }
-  .filter-btn { padding: 8px 16px; border-radius: var(--radius-sm); background: var(--card); border: 1px solid var(--line); color: var(--sub); cursor: pointer; transition: var(--transition); }
-  .filter-btn.active, .filter-btn[aria-pressed="true"] { background: var(--acc); color: var(--bg); border-color: var(--acc); }
-  .sort-controls { display: flex; align-items: center; gap: 8px; }
-  .sort-select { background: var(--card); border: 1px solid var(--line); color: var(--ink); padding: 8px 12px; border-radius: var(--radius-sm); font-size: .9rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; margin-top: 24px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); transition: var(--transition); display: flex; flex-direction: column; height: 100%; position: relative; }
-  .card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,.4); border-color: rgba(115,225,255,.3); }
-  .row { display: flex; justify-content: space-between; align-items: center; margin: .5rem 0; gap: 10px; flex-wrap: wrap; }
-  .thumb-container { position: relative; width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 12px; background: linear-gradient(45deg, #0c1d27, #0a2738); }
-  .thumb { width: 100%; aspect-ratio: 1/1; object-fit: cover; opacity: 0; transition: opacity .5s ease, transform var(--transition); }
-  .thumb.loaded { opacity: 1; }
-  .card:hover .thumb { transform: scale(1.05); }
-  .token-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.7); color: var(--ink); padding: 4px 8px; border-radius: 6px; font-size: .8rem; backdrop-filter: blur(5px); }
-  .sub { color: var(--sub); font-size: .9rem; }
-  .status { min-height: 18px; font-size: .9rem; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
-  .price { font-size: 1.2rem; font-weight: 700; color: var(--gold); }
-  .card-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 12px; }
-  .card-actions .btn { flex: 1; justify-content: center; }
-  footer { margin: 40px 0 0; text-align: center; color: var(--sub); font-size: .9rem; padding-top: 20px; border-top: 1px solid var(--line); }
-  .loading { display: flex; justify-content: center; align-items: center; padding: 40px; flex-direction: column; gap: 16px; }
-  .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,.1); border-left: 4px solid var(--acc); border-radius: 50%; animation: spin 1s linear infinite; }
-  .skeleton { background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.05) 75%); background-size: 200% 100%; animation: var(--pulse); border-radius: 4px; }
-  .skeleton-thumb { width: 100%; aspect-ratio: 1/1; margin-bottom: 12px; }
-  .skeleton-text { height: 16px; margin-bottom: 8px; }
-  .skeleton-text.short { width: 60%; }
-  .notification { position: fixed; top: 20px; right: 20px; padding: 16px 20px; border-radius: var(--radius-sm); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); z-index: 1000; display: flex; align-items: center; gap: 10px; max-width: 400px; transform: translateX(150%); transition: transform .3s ease; }
-  .notification.show { transform: translateX(0); }
-  .notification.success { border-left: 4px solid var(--ok); }
-  .notification.error { border-left: 4px solid var(--err); }
-  .notification.warning { border-left: 4px solid var(--warn); }
-  .favorite-btn { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,.7); color: var(--sub); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(5px); transition: var(--transition); z-index: 2; }
-  .favorite-btn:hover, .favorite-btn.active { color: var(--err); }
-  .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all .3s ease; backdrop-filter: blur(5px); }
-  .modal.show { opacity: 1; visibility: visible; }
-  .modal-content { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; transform: scale(.9); transition: transform .3s ease; }
-  .modal.show .modal-content { transform: scale(1); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .modal-close { background: none; border: none; color: var(--sub); font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-  @keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: .5; } 100% { opacity: 1; } }
-  @keyframes shimmer { 0% { left: -100%; } 100% { left: 100%; } }
-  @media (max-width: 768px) { .wrap { padding: 16px; } header { flex-direction: column; text-align: center; } .controls { flex-direction: column; align-items: stretch; } .search-box { max-width: 100%; } .grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; } .modal-content { width: 95%; padding: 16px; } }
-  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } .brand { font-size: 1.2rem; } .hero h1 { font-size: 1.6rem; } .filters { justify-content: center; } }
-  .sr-only { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+  :root{--bg:#0A1A24;--bg2:#051018;--ink:#EAF7FF;--sub:#9CCBE3;--acc:#73E1FF;--gold:#e2c675;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);--line:rgba(255,255,255,.12);--ok:#4ade80;--warn:#fbbf24;--err:#f87171;--shadow:0 4px 20px rgba(0,0,0,.3);--radius:16px;--radius-sm:8px;--transition:.3s ease}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Space Grotesk',system-ui,sans-serif}
+  html,body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);min-height:100vh;line-height:1.6}
+  .wrap{max-width:1400px;margin:0 auto;padding:24px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:16px}
+  .brand{font-weight:800;letter-spacing:.08em;font-size:1.5rem;color:var(--acc);text-shadow:0 0 10px rgba(115,225,255,.3);text-transform:uppercase;display:flex;align-items:center;gap:12px}
+  .brand i{font-size:1.8rem}
+  .pill{padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.2);font-size:.9rem;border:1px solid var(--line);display:flex;align-items:center;gap:6px}
+  button,.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:.7rem 1.2rem;border-radius:var(--radius-sm);cursor:pointer;font-weight:600;transition:var(--transition);display:flex;align-items:center;gap:8px}
+  .btn:hover{background:var(--card-hover);transform:translateY(-2px);box-shadow:var(--shadow)}
+  .btn-primary{background:linear-gradient(90deg,var(--acc),#a9ffcb);color:#001018;border-color:#2e6b77}
+  .btn-primary:hover{background:linear-gradient(90deg,#a9ffcb,var(--acc));transform:translateY(-2px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+  .btn:focus-visible{outline:3px solid #a9ffcb;outline-offset:2px}
+  .hero{text-align:center;padding:40px 0 30px;max-width:800px;margin:0 auto}
+  .hero h1{font-size:clamp(1.8rem,4vw,3rem);letter-spacing:.05em;text-transform:uppercase;margin:8px 0 16px;background:linear-gradient(90deg,var(--acc),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
+  .hero p{color:var(--sub);font-size:1.1rem;margin-bottom:24px}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin:24px 0;flex-wrap:wrap;gap:16px}
+  .search-box{position:relative;max-width:400px;width:100%}
+  .search-box input{width:100%;padding:12px 16px 12px 42px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:1rem}
+  .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--sub)}
+  .filters{display:flex;gap:12px;flex-wrap:wrap}
+  .filter-btn{padding:8px 16px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:var(--transition)}
+  .filter-btn.active,.filter-btn[aria-pressed="true"]{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;margin-top:24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:var(--transition);display:flex;flex-direction:column;height:100%}
+  .card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,.4);border-color:rgba(115,225,255,.3)}
+  .row{display:flex;justify-content:space-between;align-items:center;margin:.5rem 0;gap:10px;flex-wrap:wrap}
+  .thumb-container{position:relative;width:100%;border-radius:12px;overflow:hidden;margin-bottom:12px}
+  .thumb{width:100%;aspect-ratio:1/1;object-fit:cover;background:linear-gradient(45deg,#0c1d27,#0a2738);transition:var(--transition)}
+  .card:hover .thumb{transform:scale(1.05)}
+  .token-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:var(--ink);padding:4px 8px;border-radius:6px;font-size:.8rem;backdrop-filter:blur(5px)}
+  .sub{color:var(--sub);font-size:.9rem}
+  .status{min-height:18px;font-size:.9rem;margin-top:6px;display:flex;align-items:center;gap:6px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  .price{font-size:1.2rem;font-weight:700;color:var(--gold)}
+  .card-actions{display:flex;gap:10px;margin-top:auto;padding-top:12px}
+  .card-actions .btn{flex:1;justify-content:center}
+  footer{margin:40px 0 0;text-align:center;color:var(--sub);font-size:.9rem;padding-top:20px;border-top:1px solid var(--line)}
+  .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px}
+  .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
+  @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
+  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><i class="fas fa-seedling" aria-hidden="true"></i><span>TAMAQUAH SOVEREIGN MARKET</span></div>
+    <div class="brand">
+      <i class="fas fa-seedling" aria-hidden="true"></i>
+      <span>TAMAQUAH SOVEREIGN MARKET</span>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
       <span class="pill"><i class="fas fa-store"></i> Marketplace: <span id="mpAddrShort">—</span></span>
       <span class="pill"><i class="fas fa-link"></i> Chain: BNB</span>
@@ -109,10 +79,6 @@
   </section>
 
   <section class="controls" role="region" aria-label="Search and filters">
-    <div class="tabs" role="tablist">
-      <button id="tab-all" class="tab-btn active" role="tab" aria-selected="true">All Listings</button>
-      <button id="tab-mine" class="tab-btn" role="tab" aria-selected="false">My Listings</button>
-    </div>
     <div class="search-box">
       <i class="fas fa-search"></i>
       <label class="sr-only" for="search">Search listings</label>
@@ -125,29 +91,19 @@
       <button class="filter-btn" data-filter="native" aria-pressed="false">BNB</button>
       <button class="filter-btn" data-filter="kly" aria-pressed="false">KLY</button>
     </div>
-    <div class="sort-controls">
-      <label for="sort" class="sub">Sort by:</label>
-      <select id="sort" class="sort-select">
-        <option value="newest">Newest First</option>
-        <option value="oldest">Oldest First</option>
-        <option value="price-low">Price: Low to High</option>
-        <option value="price-high">Price: High to Low</option>
-        <option value="name">Name A-Z</option>
-      </select>
-    </div>
   </section>
 
   <section>
     <p id="err" class="status err" style="text-align:center"></p>
     <div id="listings" class="grid" aria-live="polite">
-      <!-- initial skeletons -->
-      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height: 40px;"></div><div class="skeleton skeleton-text" style="height: 40px;"></div></div></div>
-      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height: 40px;"></div><div class="skeleton skeleton-text" style="height: 40px;"></div></div></div>
-      <div class="card"><div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="card-actions"><div class="skeleton skeleton-text" style="height: 40px;"></div><div class="skeleton skeleton-text" style="height: 40px;"></div></div></div>
+      <div class="loading">
+        <div class="spinner" role="status" aria-label="Loading marketplace listings"></div>
+        <div>Loading marketplace listings...</div>
+      </div>
     </div>
     <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
       <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:.5"></i><br>
-      No listings match your filters.
+      No active listings found.
     </p>
   </section>
 
@@ -157,269 +113,385 @@
   </footer>
 </div>
 
-<!-- Notification Container -->
-<div id="notification-container"></div>
+<script type="module">
+/* ===================== CONFIG ===================== */
+const RPC = "https://bsc-dataseed.binance.org/";
+const CHAIN_ID = 56; // BNB Chain
+const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 
-<!-- Purchase Modal -->
-<div id="purchase-modal" class="modal" aria-hidden="true" role="dialog">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Confirm Purchase</h2>
-      <button class="modal-close" aria-label="Close modal">&times;</button>
-    </div>
-    <div id="modal-body"></div>
-  </div>
-</div>
+const ZERO = "0x0000000000000000000000000000000000000000";
+const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase(); // Thirdweb's native marker
 
-<script>
-(async () => {
-  /* ---------- tiny utils ---------- */
-  const $ = (id)=>document.getElementById(id);
-  const short=(a)=>a?`${a.slice(0,6)}…${a.slice(-4)}`:"—";
-  const escapeHtml=s=>(s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const prettyUnits=(bn,dec)=>{ const v=ethers.BigNumber.from(bn);
-    const s=ethers.utils.formatUnits(v,dec); const [a,b=""]=s.split(".");
-    const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; };
+// Known currencies
+const KNOWN = {
+  [ZERO]: { symbol: "BNB", decimals: 18, isNative: true },
+  [NATIVE_SENTINEL]: { symbol: "BNB", decimals: 18, isNative: true },
+  "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol: "KLY", decimals: 18, isNative: false },
+};
 
-  /* ---------- config ---------- */
-  const CHAIN_ID = 56;
-  const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
-  $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
+/* ===================== ABIs (trimmed) ===================== */
+const MARKET_ABI = [
+  // view
+  {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
+    {"internalType":"uint256","name":"listingId","type":"uint256"},
+    {"internalType":"uint256","name":"tokenId","type":"uint256"},
+    {"internalType":"uint256","name":"quantity","type":"uint256"},
+    {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
+    {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
+    {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
+    {"internalType":"address","name":"listingCreator","type":"address"},
+    {"internalType":"address","name":"assetContract","type":"address"},
+    {"internalType":"address","name":"currency","type":"address"},
+    {"internalType":"uint8","name":"tokenType","type":"uint8"},
+    {"internalType":"uint8","name":"status","type":"uint8"},
+    {"internalType":"bool","name":"reserved","type":"bool"}
+  ],"internalType":"struct IDirectListings.Listing[]","name":"_allListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_listingId","type":"uint256"}],"name":"getListing","outputs":[{"components":[
+    {"internalType":"uint256","name":"listingId","type":"uint256"},
+    {"internalType":"uint256","name":"tokenId","type":"uint256"},
+    {"internalType":"uint256","name":"quantity","type":"uint256"},
+    {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
+    {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
+    {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
+    {"internalType":"address","name":"listingCreator","type":"address"},
+    {"internalType":"address","name":"assetContract","type":"address"},
+    {"internalType":"address","name":"currency","type":"address"},
+    {"internalType":"uint8","name":"tokenType","type":"uint8"},
+    {"internalType":"uint8","name":"status","type":"uint8"},
+    {"internalType":"bool","name":"reserved","type":"bool"}
+  ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
+  // buyFromListing(listingId, buyFor, quantity, currency, expectedTotalPrice) payable
+  {"inputs":[
+    {"internalType":"uint256","name":"_listingId","type":"uint256"},
+    {"internalType":"address","name":"_buyFor","type":"address"},
+    {"internalType":"uint256","name":"_quantity","type":"uint256"},
+    {"internalType":"address","name":"_currency","type":"address"},
+    {"internalType":"uint256","name":"_expectedTotalPrice","type":"uint256"}
+  ],"name":"buyFromListing","outputs":[],"stateMutability":"payable","type":"function"}
+];
 
-  const RPCS = [
-    "https://bsc-dataseed.binance.org/",
-    "https://bscrpc.com",
-    "https://rpc.ankr.com/bsc",
-    "https://binance.nodereal.io"
-  ];
+const ERC20_MIN_ABI = [
+  "function allowance(address owner,address spender) view returns (uint256)",
+  "function approve(address spender,uint256 amount) returns (bool)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
+const ERC721_MIN_ABI = [
+  "function tokenURI(uint256 tokenId) view returns (string)",
+  "function name() view returns (string)"
+];
+const ERC1155_MIN_ABI = [
+  "function uri(uint256 id) view returns (string)"
+];
 
-  const ZERO="0x0000000000000000000000000000000000000000";
-  const NATIVE_SENTINEL="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-  const KNOWN={
-    [ZERO]:{symbol:"BNB",decimals:18,isNative:true},
-    [NATIVE_SENTINEL]:{symbol:"BNB",decimals:18,isNative:true},
-    "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52":{symbol:"KLY",decimals:18,isNative:false},
-  };
+/* ===================== HELPERS ===================== */
+const $ = (id)=>document.getElementById(id);
+const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
 
-  const MARKET_ABI=[ /* view + buy (trimmed) */ 
-    {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-    {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
-      {"internalType":"uint256","name":"listingId","type":"uint256"},
-      {"internalType":"uint256","name":"tokenId","type":"uint256"},
-      {"internalType":"uint256","name":"quantity","type":"uint256"},
-      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
-      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
-      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
-      {"internalType":"address","name":"listingCreator","type":"address"},
-      {"internalType":"address","name":"assetContract","type":"address"},
-      {"internalType":"address","name":"currency","type":"address"},
-      {"internalType":"uint8","name":"tokenType","type":"uint8"},
-      {"internalType":"uint8","name":"status","type":"uint8"},
-      {"internalType":"bool","name":"reserved","type":"bool"}
-    ],"internalType":"struct IDirectListings.Listing[]","name":"_allListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
-    {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllValidListings","outputs":[{"components":[
-      {"internalType":"uint256","name":"listingId","type":"uint256"},
-      {"internalType":"uint256","name":"tokenId","type":"uint256"},
-      {"internalType":"uint256","name":"quantity","type":"uint256"},
-      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
-      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
-      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
-      {"internalType":"address","name":"listingCreator","type":"address"},
-      {"internalType":"address","name":"assetContract","type":"address"},
-      {"internalType":"address","name":"currency","type":"address"},
-      {"internalType":"uint8","name":"tokenType","type":"uint8"},
-      {"internalType":"uint8","name":"status","type":"uint8"},
-      {"internalType":"bool","name":"reserved","type":"bool"}
-    ],"internalType":"struct IDirectListings.Listing[]","name":"_validListings","type":"tuple[]"}],"stateMutability":"view","type":"function"},
-    {"inputs":[{"internalType":"uint256","name":"_listingId","type":"uint256"}],"name":"getListing","outputs":[{"components":[
-      {"internalType":"uint256","name":"listingId","type":"uint256"},
-      {"internalType":"uint256","name":"tokenId","type":"uint256"},
-      {"internalType":"uint256","name":"quantity","type":"uint256"},
-      {"internalType":"uint256","name":"pricePerToken","type":"uint256"},
-      {"internalType":"uint128","name":"startTimestamp","type":"uint128"},
-      {"internalType":"uint128","name":"endTimestamp","type":"uint128"},
-      {"internalType":"address","name":"listingCreator","type":"address"},
-      {"internalType":"address","name":"assetContract","type":"address"},
-      {"internalType":"address","name":"currency","type":"address"},
-      {"internalType":"uint8","name":"tokenType","type":"uint8"},
-      {"internalType":"uint8","name":"status","type":"uint8"},
-      {"internalType":"bool","name":"reserved","type":"bool"}
-    ],"internalType":"struct IDirectListings.Listing","name":"listing","type":"tuple"}],"stateMutability":"view","type":"function"},
-    {"inputs":[
-      {"internalType":"uint256","name":"_listingId","type":"uint256"},
-      {"internalType":"address","name":"_buyFor","type":"address"},
-      {"internalType":"uint256","name":"_quantity","type":"uint256"},
-      {"internalType":"address","name":"_currency","type":"address"},
-      {"internalType":"uint256","name":"_expectedTotalPrice","type":"uint256"}
-    ],"name":"buyFromListing","outputs":[],"stateMutability":"payable","type":"function"}
-  ];
-  const ERC20_MIN_ABI=[
-    "function allowance(address owner,address spender) view returns (uint256)",
-    "function approve(address spender,uint256 amount) returns (bool)",
-    "function decimals() view returns (uint8)",
-    "function symbol() view returns (string)"
-  ];
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function ipfsToHttp(u){ if(!u) return ""; if(u.startsWith("ipfs://")) return "https://ipfs.io/ipfs/"+u.slice(7); return u; }
+function resolve1155Uri(tpl, tokenId){
+  if(!tpl) return "";
+  const hex = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32).slice(2);
+  return ipfsToHttp(tpl.replace("{id}", hex));
+}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
 
-  /* ---------- provider with fallbacks ---------- */
-  async function makeProvider(){
-    for (const url of RPCS){
-      try{
-        const p=new ethers.providers.JsonRpcProvider(url,{name:"bsc",chainId:CHAIN_ID});
-        // quick health check with a short timeout
-        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
-        await p.getBlockNumber().finally(()=>clearTimeout(t));
-        return p;
-      }catch(e){ /* try next */ }
+/* ===================== PROVIDERS / STATE ===================== */
+const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
+const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
+
+let web3prov = null, signer = null, me = null;
+
+$("connect").addEventListener("click", async ()=>{
+  $("err").textContent = "";
+  try{
+    if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
+    web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
+    await web3prov.send("eth_requestAccounts", []);
+    const net = await web3prov.getNetwork();
+    if (Number(net.chainId) !== CHAIN_ID){
+      await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId: "0x"+CHAIN_ID.toString(16)}] });
     }
-    throw new Error("All BSC RPC endpoints failed in this browser.");
+    signer = web3prov.getSigner();
+    me = await signer.getAddress();
+    $("whoAddr").textContent = short(me);
+    $("who").style.display = "inline-block";
+    $("connect").style.display = "none";
+  }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
+});
+
+/* ===================== LOAD LISTINGS ===================== */
+let loading=false, refreshTimer=null;
+
+async function loadListings(){
+  if (loading) return; loading = true;
+  $("err").textContent = "";
+  $("empty").style.display = "none";
+  $("listings").innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Loading marketplace listings...</div>
+    </div>`;
+
+  try{
+    const total = (await marketRead.totalListings()).toNumber();
+    if (total === 0){ $("listings").innerHTML=""; $("empty").style.display="block"; loading=false; return; }
+    const listings = await marketRead.getAllListings(0, total-1);
+
+    // Normalize
+    const rows = listings.map(L => ({
+      id: Number(L.listingId),
+      asset: L.assetContract,
+      tokenId: L.tokenId.toString(),
+      quantity: Number(L.quantity),
+      pricePerToken: L.pricePerToken, // BigNumber
+      start: L.startTimestamp.toString(),
+      end: L.endTimestamp.toString(),
+      creator: L.listingCreator,
+      currency: (L.currency || ZERO).toLowerCase(),
+      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155 (thirdweb style)
+      status: Number(L.status),
+      reserved: Boolean(L.reserved),
+    }));
+
+    await render(rows);
+  }catch(e){
+    console.error(e);
+    $("listings").innerHTML="";
+    $("err").textContent = e?.message || "Couldn't load listings.";
+    $("empty").style.display="block";
+  } finally { loading=false; }
+}
+
+/* ===================== STATUS ===================== */
+function deriveStatus(row){
+  const now = Math.floor(Date.now()/1000);
+  if (typeof row.status === "number" && row.status !== 1) return {label:"Inactive", cls:"warn", actionable:false};
+  if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
+  if (row.reserved) return {label:"Reserved", cls:"warn", actionable:false};
+  if (row.end && Number(row.end) !== 0 && Number(row.end) < now) return {label:"Expired", cls:"warn", actionable:false};
+  if (row.start && Number(row.start) !== 0 && Number(row.start) > now) return {label:"Scheduled", cls:"warn", actionable:false};
+  return {label:"Active", cls:"ok", actionable:true};
+}
+
+/* ===================== META HELPERS ===================== */
+const erc20Cache = new Map();
+async function getCurrencyMeta(addr){
+  const a = (addr||ZERO).toLowerCase();
+  if (KNOWN[a]) return KNOWN[a];
+  if (erc20Cache.has(a)) return erc20Cache.get(a);
+  try{
+    const erc = new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
+    const [dec, sym] = await Promise.all([erc.decimals(), erc.symbol()]);
+    const meta = { decimals: Number(dec), symbol: String(sym||"ERC20"), isNative:false };
+    erc20Cache.set(a, meta); return meta;
+  }catch{
+    const meta = { decimals: 18, symbol: "ERC20", isNative:false };
+    erc20Cache.set(a, meta); return meta;
   }
+}
 
-  /* ---------- state ---------- */
-  let rpcProvider, marketRead;
-  let allListings=[];
-
-  /* ---------- currency meta cache ---------- */
-  const erc20Cache=new Map();
-  async function getCurrencyMeta(addr){
-    const a=(addr||ZERO).toLowerCase();
-    if (KNOWN[a]) return KNOWN[a];
-    if (erc20Cache.has(a)) return erc20Cache.get(a);
-    try{
-      const erc=new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
-      const [dec,sym]=await Promise.all([erc.decimals(), erc.symbol()]);
-      const meta={decimals:Number(dec),symbol:String(sym||"ERC20"),isNative:false};
-      erc20Cache.set(a,meta); return meta;
-    }catch{
-      const meta={decimals:18,symbol:"ERC20",isNative:false};
-      erc20Cache.set(a,meta); return meta;
+async function getNFTMeta(asset, tokenId, tokenType){
+  try{
+    if (tokenType === 1){ // ERC721
+      const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
+      const uri = await c721.tokenURI(tokenId);
+      const url = ipfsToHttp(uri);
+      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
+      return {
+        name: json?.name || `Token #${tokenId}`,
+        image: ipfsToHttp(json?.image || json?.image_url || ""),
+        description: json?.description || ""
+      };
+    } else { // ERC1155
+      const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
+      const tpl = await c1155.uri(tokenId);
+      const url = resolve1155Uri(tpl, tokenId);
+      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
+      return {
+        name: json?.name || `Token #${tokenId}`,
+        image: ipfsToHttp(json?.image || json?.image_url || ""),
+        description: json?.description || ""
+      };
     }
+  }catch{
+    return { name: `Token #${tokenId}`, image: "", description: "" };
   }
+}
 
-  /* ---------- UI helpers from your original file ---------- */
-  function deriveStatus(row){
-    const now=Math.floor(Date.now()/1000);
-    if (typeof row.status==="number" && row.status!==1) return {label:"Inactive",cls:"warn",actionable:false};
-    if (row.quantity===0) return {label:"Completed",cls:"warn",actionable:false};
-    if (row.reserved) return {label:"Reserved",cls:"warn",actionable:false};
-    if (row.end && row.end!==0 && row.end<now) return {label:"Expired",cls:"warn",actionable:false};
-    if (row.start && row.start!==0 && row.start>now) return {label:"Scheduled",cls:"warn",actionable:false};
-    return {label:"Active",cls:"ok",actionable:true};
-  }
-  function showNotification(message,type='info',ms=5000){
-    const c=document.getElementById('notification-container'); const el=document.createElement('div');
-    el.className=`notification ${type}`; const icon=type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-triangle':type==='warning'?'fa-exclamation-circle':'fa-info-circle';
-    el.innerHTML=`<i class="fas ${icon}"></i><span>${escapeHtml(message)}</span>`;
-    c.appendChild(el); setTimeout(()=>el.classList.add('show'),10);
-    setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); },ms);
-  }
-
-  async function render(rows){
-    const grid = $("#listings"); grid.innerHTML="";
-    if(!rows.length){ $("#empty").style.display="block"; return; } else { $("#empty").style.display="none"; }
-
-    for (const r of rows){
-      const curMeta = await getCurrencyMeta((r.currency||ZERO).toLowerCase());
-      const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
-      const st = deriveStatus(r);
-
-      const card=document.createElement('div'); card.className="card";
-      card.innerHTML = `
-        <div class="thumb-container">
-          <img class="thumb loaded" alt="NFT preview" src="https://via.placeholder.com/800/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}"/>
-          <div class="token-badge">${st.label} • ${r.tokenType===1?'ERC-721':'ERC-1155'}</div>
-        </div>
-        <div class="row"><strong>Token #${r.tokenId}</strong><span class="sub">Listing #${r.id}</span></div>
-        <div class="row"><span class="sub">${short(r.asset)} · #${r.tokenId}</span><span class="price">${priceStr}</span></div>
-        <div class="card-actions">
-          <a class="btn" target="_blank" rel="noopener" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${r.id}">
-            <i class="fas fa-external-link-alt"></i> Details
-          </a>
-          <button class="btn ${st.actionable?'btn-primary':''}" ${st.actionable?'':'disabled'}>
-            ${st.actionable?'<i class="fas fa-shopping-cart"></i> Buy Now':'<i class="fas fa-ban"></i> Unavailable'}
-          </button>
-        </div>
-        <div id="st-${r.id}" class="status ${st.cls}">${st.label}</div>
-      `;
-      grid.appendChild(card);
-    }
-  }
-
-  /* ---------- loader with robust fallbacks ---------- */
-  async function loadListings(){
-    $("#err").textContent=""; $("#empty").style.display="none";
-    try{
-      // (re)build provider if needed
-      if (!rpcProvider){ rpcProvider = await makeProvider(); }
-      marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
-
-      const totalBN = await marketRead.totalListings();
-      const total = ethers.BigNumber.from(totalBN).toNumber();
-      if (total === 0){ allListings=[]; render([]); $("#empty").style.display="block"; return; }
-
-      let rows=[];
-      try{
-        // prefer valid listings
-        rows = await marketRead.getAllValidListings(0, Math.max(total-1,0));
-      }catch{
-        // fallback if the extension is missing
-        rows = await marketRead.getAllListings(0, Math.max(total-1,0));
-      }
-
-      allListings = rows.map(L=>({
-        id: Number(L.listingId),
-        asset: String(L.assetContract),
-        tokenId: String(L.tokenId),
-        quantity: Number(L.quantity),
-        pricePerToken: ethers.BigNumber.from(L.pricePerToken),
-        start: Number(L.startTimestamp),
-        end: Number(L.endTimestamp),
-        creator: String(L.listingCreator),
-        currency: String(L.currency||ZERO).toLowerCase(),
-        tokenType: Number(L.tokenType),
-        status: Number(L.status),
-        reserved: Boolean(L.reserved),
-      }));
-
-      // sort newest first by default
-      allListings.sort((a,b)=>b.id-a.id);
-      await render(allListings);
-    }catch(e){
-      console.error(e);
-      $("#listings").innerHTML="";
-      const msg = e?.message || "Couldn't load listings.";
-      $("#err").textContent = msg;
-      $("#empty").style.display="block";
-      showNotification(msg,"error");
-    }
-  }
-
-  /* ---------- wallet connect (unchanged) ---------- */
-  let web3prov=null, signer=null, me=null;
-  document.getElementById("connect").addEventListener("click", async ()=>{
-    $("#err").textContent="";
-    try{
-      if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
-      web3prov = new ethers.providers.Web3Provider(window.ethereum,"any");
-      await web3prov.send("eth_requestAccounts",[]);
-      const net = await web3prov.getNetwork();
-      if (Number(net.chainId)!==CHAIN_ID){
-        await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+CHAIN_ID.toString(16)}]});
-      }
-      signer = web3prov.getSigner(); me = await signer.getAddress();
-      document.getElementById("whoAddr").textContent = short(me);
-      document.getElementById("who").style.display="inline-block";
-      document.getElementById("connect").style.display="none";
-      showNotification("Wallet connected","success");
-    }catch(e){
-      $("#err").textContent = e?.message || "Failed to connect wallet.";
-      showNotification(e?.message || "Failed to connect wallet.","error");
-    }
+/* ===================== RENDER ===================== */
+function setupSearchAndFilter(){
+  const searchInput = $('search');
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const apply = ()=> filterListings(searchInput.value.toLowerCase(), getActiveFilter());
+  const debouncedApply = debounce(apply, 200);
+  searchInput.oninput = debouncedApply;
+  filterButtons.forEach(btn=>{
+    btn.onclick = function(){
+      filterButtons.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+      this.classList.add('active'); this.setAttribute('aria-pressed','true');
+      apply();
+    };
   });
+}
+function getActiveFilter(){ const a=document.querySelector('.filter-btn.active'); return a ? a.getAttribute('data-filter') : 'all'; }
+function filterListings(searchTerm, filter){
+  const cards = document.querySelectorAll('.card'); let visible=0;
+  cards.forEach(card=>{
+    const tokenType = card.getAttribute('data-token-type');
+    const currency = card.getAttribute('data-currency');
+    const name = card.getAttribute('data-name');
+    const tokenId = (card.getAttribute('data-token-id')||"").toLowerCase();
+    const contract = (card.getAttribute('data-contract')||"").toLowerCase();
+    let ok = true;
+    if (filter !== 'all') {
+      if (filter === 'erc721') ok = tokenType === 'erc721';
+      else if (filter === 'erc1155') ok = tokenType === 'erc1155';
+      else if (filter === 'native') ok = currency === 'bnb';
+      else if (filter === 'kly') ok = currency === 'kly';
+    }
+    let sOK = true;
+    if (searchTerm) sOK = name.includes(searchTerm) || tokenId.includes(searchTerm) || contract.includes(searchTerm);
+    if (ok && sOK){ card.style.display='flex'; visible++; } else card.style.display='none';
+  });
+  $('empty').style.display = visible === 0 ? 'block' : 'none';
+}
 
-  /* ---------- kick off ---------- */
+async function render(rows){
+  const grid = $("listings"); grid.innerHTML = "";
+
+  // concurrency limiter
+  const limit = (n)=>{ const q=[]; let a=0;
+    const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();});
+    return run;
+  };
+  const run = limit(6);
+
+  const cards = await Promise.all(rows.map(r=>run(async ()=>{
+    const [curMeta, md] = await Promise.all([ getCurrencyMeta(r.currency), getNFTMeta(r.asset, r.tokenId, r.tokenType) ]);
+    const st = deriveStatus(r);
+    const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.setAttribute("data-token-type", r.tokenType === 1 ? "erc721" : "erc1155");
+    card.setAttribute("data-currency", (curMeta.symbol||"").toLowerCase());
+    card.setAttribute("data-name", (md.name||"").toLowerCase());
+    card.setAttribute("data-token-id", r.tokenId);
+    card.setAttribute("data-contract", r.asset.toLowerCase());
+
+    const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
+    card.innerHTML = `
+      <div class="thumb-container">
+        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+             src="${md.image || placeholder}" alt="NFT preview for ${escapeHtml(md.name)}">
+        <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <strong>${escapeHtml(md.name)}</strong>
+        <span class="sub">Listing #${r.id}</span>
+      </div>
+      <div class="row">
+        <span class="sub">${short(r.asset)} · #${r.tokenId}</span>
+        <span class="price">${priceStr}</span>
+      </div>
+      ${md.description ? `<div class="sub" style="margin-top:8px;font-size:.85rem;line-height:1.4">${escapeHtml(md.description.length>140?md.description.slice(0,140)+'…':md.description)}</div>` : ''}
+      <div class="card-actions">
+        <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${r.id}" target="_blank" rel="noopener">
+          <i class="fas fa-external-link-alt"></i> Details
+        </a>
+        ${st.actionable ? `
+          <button class="btn btn-primary" data-buy="${r.id}">
+            <i class="fas fa-shopping-cart"></i> Buy Now
+          </button>` : `
+          <button class="btn" disabled title="Not purchasable right now">
+            <i class="fas fa-ban"></i> Unavailable
+          </button>`}
+      </div>
+      <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
+    `;
+    return card;
+  })));
+
+  for(const c of cards) if(c) grid.appendChild(c);
+  setupSearchAndFilter();
+}
+
+/* ===================== BUY ===================== */
+$("listings").addEventListener("click", async (e)=>{
+  const btn = e.target.closest("button[data-buy]"); if(!btn) return;
+  const id = Number(btn.getAttribute("data-buy"));
+  const st = $("st-"+id);
+  $("err").textContent = "";
+
+  try{
+    if (!window.ethereum) throw new Error("MetaMask not detected.");
+    if (!signer) await $("connect").click();
+    if (!signer) return;
+
+    const marketWrite = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
+    const L = await marketRead.getListing(id); // read fresh
+    const currency = (L.currency || ZERO).toLowerCase();
+    const qty = ethers.BigNumber.from(1);
+    const total = L.pricePerToken.mul(qty);
+
+    // client-side checks
+    const row = {
+      quantity: Number(L.quantity),
+      status: Number(L.status),
+      reserved: Boolean(L.reserved),
+      start: L.startTimestamp.toString(),
+      end: L.endTimestamp.toString()
+    };
+    const s = deriveStatus(row);
+    if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
+
+    // If ERC20 -> ensure allowance
+    if (currency !== ZERO && currency !== NATIVE_SENTINEL){
+      const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
+      const owner = await signer.getAddress();
+      const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
+      if (allowance.lt(total)){
+        st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Approving...";
+        const txa = await erc.approve(MARKETPLACE_ADDR, total);
+        await txa.wait();
+      }
+    }
+
+    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Buying...";
+
+    const overrides = {};
+    if (currency === ZERO || currency === NATIVE_SENTINEL){ overrides.value = total; }
+
+    const tx = await marketWrite.buyFromListing(
+      id,
+      await signer.getAddress(),
+      qty,
+      currency,
+      total,
+      overrides
+    );
+    await tx.wait();
+
+    st.className="status ok"; st.innerHTML = `<i class="fas fa-check"></i> Purchase confirmed`;
+    loadListings();
+  }catch(err){
+    console.error(err);
+    st.className="status err";
+    st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.error?.message || err?.message || "Transaction failed")}`;
+  }
+});
+
+/* ===================== BOOT ===================== */
+async function start(){
   await loadListings();
-  setInterval(loadListings, 30000);
-})();
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadListings, 30000);
+}
+start();
 </script>
 </body>
 </html>
