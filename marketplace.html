@@ -215,21 +215,42 @@ const ERC1155_MIN_ABI = [
   "function uri(uint256 id) view returns (string)"
 ];
 
-/* ===================== HELPERS ===================== */
-const $ = (id)=>document.getElementById(id);
-const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
+// ---------- IPFS helpers with gateway rotation ----------
+const IPFS_GWS = [
+  "https://blush-worthy-ape-39.mypinata.cloud/ipfs/", // your Pinata gateway
+  "https://ipfs.io/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
+];
 
-function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function ipfsToHttp(u){ if(!u) return ""; if(u.startsWith("ipfs://")) return "https://ipfs.io/ipfs/"+u.slice(7); return u; }
-function resolve1155Uri(tpl, tokenId){
-  if(!tpl) return "";
-  const hex = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32).slice(2);
-  return ipfsToHttp(tpl.replace("{id}", hex));
+function ipfsToHttp(u){
+  if(!u) return "";
+  if (u.startsWith("ipfs://")) {
+    const path = u.replace("ipfs://", ""); // CID[/path]
+    return IPFS_GWS[0] + path;             // default gateway (we'll rotate below if needed)
+  }
+  return u;
 }
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
 
+async function fetchJsonWithGateways(urlOrIpfs){
+  // allow ipfs://CID/path OR https://.../ipfs/CID/path OR plain http(s)
+  let path = null;
+  if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice("ipfs://".length);
+  else if (urlOrIpfs.includes("/ipfs/")) path = urlOrIpfs.split("/ipfs/")[1];
+
+  const tryUrls = path ? IPFS_GWS.map(gw => gw + path) : [urlOrIpfs];
+
+  let lastErr = null;
+  for (const url of tryUrls){
+    try{
+      console.log("[fetchJson] trying", url);
+      const r = await fetch(url, { cache: "no-cache" });
+      if (!r.ok) { lastErr = new Error("HTTP "+r.status); continue; }
+      return await r.json();
+    }catch(e){ lastErr = e; }
+  }
+  console.warn("[fetchJson] all gateways failed for", urlOrIpfs, lastErr);
+  return null;
+}
 /* ===================== PROVIDERS / STATE ===================== */
 const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
 const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
@@ -342,8 +363,11 @@ async function getNFTMeta(asset, tokenId, tokenType){
     if (tokenType === 1){ // ERC721
       const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
       const uri = await c721.tokenURI(tokenId);
-      const url = ipfsToHttp(uri);
-      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
+      console.log("[ERC721] tokenURI:", uri);
+
+      const json = await fetchJsonWithGateways(uri);
+      console.log("[ERC721] metadata JSON", { asset, tokenId: String(tokenId), json });
+
       return {
         name: json?.name || `Token #${tokenId}`,
         image: ipfsToHttp(json?.image || json?.image_url || ""),
@@ -352,19 +376,28 @@ async function getNFTMeta(asset, tokenId, tokenType){
     } else { // ERC1155
       const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
       const tpl = await c1155.uri(tokenId);
-      const url = resolve1155Uri(tpl, tokenId);
-      const json = await fetch(url, {cache:"force-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
+      console.log("[ERC1155] uri template:", tpl);
+
+      // Build the ipfs://.../{id} → ipfs://.../<hex32> for the rotator
+      const hex32 = ethers.utils.hexZeroPad(
+        ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
+      ).slice(2);
+
+      const ipfsMeta = tpl.replace("{id}", hex32);
+      const json = await fetchJsonWithGateways(ipfsMeta);
+      console.log("[ERC1155] metadata JSON", { asset, tokenId: String(tokenId), json });
+
       return {
         name: json?.name || `Token #${tokenId}`,
         image: ipfsToHttp(json?.image || json?.image_url || ""),
         description: json?.description || ""
       };
     }
-  }catch{
+  }catch(e){
+    console.error("getNFTMeta error:", { asset, tokenId: String(tokenId), tokenType, error: e });
     return { name: `Token #${tokenId}`, image: "", description: "" };
   }
 }
-
 /* ===================== RENDER ===================== */
 function setupSearchAndFilter(){
   const searchInput = $('search');
@@ -426,12 +459,16 @@ async function render(rows){
     card.setAttribute("data-contract", r.asset.toLowerCase());
 
     const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
-    card.innerHTML = `
-      <div class="thumb-container">
-        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-             src="${md.image || placeholder}" alt="NFT preview for ${escapeHtml(md.name)}">
-        <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
-      </div>
+card.innerHTML = `
+  <div class="thumb-container">
+    <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+         src="${md.image || placeholder}"
+         onerror="this.onerror=null; this.src='${placeholder}';"
+         alt="NFT preview for ${escapeHtml(md.name)}">
+    <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
+  </div>
+  ...
+`;
       <div class="row" style="margin-top:.5rem">
         <strong>${escapeHtml(md.name)}</strong>
         <span class="sub">Listing #${r.id}</span>
