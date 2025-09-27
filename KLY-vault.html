@@ -194,6 +194,78 @@
     .color-dot{width:14px;height:14px;border-radius:50%}
     .modal-footer{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid rgba(197,160,66,.2)}
     .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;background:#111;border:1px solid #333;border-bottom-width:2px;color:#eee;padding:2px 6px;border-radius:6px}
+
+    /* ===== Security Center polish ===== */
+.sec-card{
+  position:relative;
+  border-radius:14px;
+  padding:14px;
+  background:linear-gradient(180deg, rgba(10,10,16,.9), rgba(10,10,16,.82));
+  border:1px solid rgba(197,160,66,.22);
+  box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.sec-card::before{
+  content:""; position:absolute; inset:-1px;
+  border-radius:14px;
+  background:radial-gradient(1200px 300px at 50% -10%, rgba(123,31,162,.22), transparent 60%);
+  pointer-events:none; z-index:0;
+}
+
+.sec-header{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+.sec-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:#2ecc71; box-shadow:0 0 8px #2ecc71a0;
+}
+.sec-title{
+  font-family:"Cinzel Decorative",serif; letter-spacing:.5px;
+  color:var(--gold-primary); font-size:1.05rem;
+}
+.sec-chip{
+  margin-left:auto; font-size:.85rem; color:#ddd;
+  border:1px solid rgba(255,255,255,.12);
+  padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.03)
+}
+
+.sec-block{position:relative; z-index:1; margin:10px 0 6px}
+.sec-status{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08);
+  padding:10px 12px; border-radius:10px; color:#eaeaea;
+  margin-bottom:12px;
+}
+
+.sec-actions{display:flex; gap:10px; flex-wrap:wrap}
+.sec-actions.stack{flex-direction:column}
+.sec-actions .btn{flex:1}
+
+.sec-note,.sec-tip{color:#bfbfbf; font-size:.85rem; margin-top:8px}
+.sec-divider{
+  border:none; height:1px; margin:14px 0;
+  background:linear-gradient(90deg, transparent, rgba(197,160,66,.35), transparent)
+}
+.sec-subtitle{
+  font-family:"Cinzel Decorative",serif; color:#f0f0f0;
+  margin-bottom:10px; font-size:1rem; letter-spacing:.4px
+}
+
+.sec-list{margin:0 0 10px 1.1rem; color:#e8e8e8; line-height:1.45}
+.sec-list li{margin:.25rem 0}
+
+/* Buttons refinements (reusing your .btn) */
+.btn.primary{
+  border-color:var(--gold-primary); color:var(--gold-primary);
+  background:linear-gradient(180deg, rgba(255,215,0,.08), rgba(255,215,0,.02));
+}
+.btn.ghost{
+  border-color:rgba(255,255,255,.18);
+  color:#eaeaea; background:transparent;
+}
+.btn.link{
+  text-align:left; justify-content:flex-start;
+  border-color:rgba(197,160,66,.28);
+  color:#eaeaea;
+}
+.btn.link:hover{color:var(--gold-primary); border-color:var(--gold-primary)}
   </style>
 </head>
 <body>
@@ -287,61 +359,50 @@
         </button>
 
           <!-- ===== Security Center Modal ===== -->
-<div class="modal-backdrop" id="securityModal" aria-hidden="true">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="secTitle">
-    <div class="modal-header">
-      <div class="pill"><span class="color-dot" style="background:#4caf50"></span> Security Center</div>
-      <div class="modal-title" id="secTitle">Wallet Health & Approvals</div>
-      <button class="btn" id="closeSecurityBtn" aria-label="Close Security Center">✖</button>
+<div class="sec-card">
+  <div class="sec-header">
+    <span class="sec-dot"></span>
+    <span class="sec-title">Status</span>
+    <span class="sec-chip" id="secMeta">—</span>
+  </div>
+
+  <div class="sec-block">
+    <div class="sec-status" id="secStatus">🔍 Ready — connect wallet & run scan</div>
+    <div class="sec-actions">
+      <button class="btn primary" id="runQuickScanBtn">Run Quick Scan</button>
+      <button class="btn ghost" id="toggleSessionGuardBtn">🔒 Enable Session Guard</button>
     </div>
+    <p class="sec-note">Quick Scan checks: wallet connection, BSC network, and block latency.</p>
+  </div>
 
-    <div class="modal-body" style="gap:14px">
-      <div class="control-panel" style="min-width:320px">
-        <label>Status</label>
-        <div id="secStatus" class="pill" style="margin-bottom:8px">—</div>
+  <hr class="sec-divider">
 
-        <div style="display:grid;gap:8px">
-          <button class="btn primary" id="runQuickScanBtn">Run Quick Scan</button>
-          <button class="btn" id="toggleSessionGuardBtn">🔒 Enable Session Guard</button>
-        </div>
-
-        <div style="margin-top:10px;font-size:.85rem;color:#cfcfcf">
-          Quick Scan checks: wallet connection, BSC network, block latency.
-        </div>
-      </div>
-
-      <div class="control-panel" style="min-width:320px">
-        <label>Approvals & Revokes</label>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <a class="btn" id="revokeCashBtn" target="_blank" rel="noopener">Open revoke.cash (BSC)</a>
-          <a class="btn" id="bscScanTokenApprovals" target="_blank" rel="noopener">View Token Approvals (BscScan)</a>
-          <a class="btn" id="bscScanNftApprovals" target="_blank" rel="noopener">View NFT Approvals (BscScan)</a>
-        </div>
-        <div style="margin-top:10px;font-size:.85rem;color:#cfcfcf">
-          Tip: Revoke “infinite” allowances you no longer use.
-        </div>
-      </div>
-
-      <div class="control-panel" style="min-width:300px">
-        <label>Checklist</label>
-        <ul style="margin:6px 0 0 16px;line-height:1.5">
-          <li>Use a burner wallet for new mints.</li>
-          <li>Revoke stale allowances often.</li>
-          <li>Beware blind signatures & setApprovalForAll.</li>
-          <li>Confirm URLs (no look-alikes).</li>
-          <li>Keep seed phrase offline only.</li>
-        </ul>
-        <button class="btn" id="copyChecklistBtn" style="margin-top:8px">Copy Checklist</button>
-      </div>
+  <div class="sec-block">
+    <div class="sec-subtitle">Approvals & Revokes</div>
+    <div class="sec-actions stack">
+      <a class="btn link" id="revokeCashBtn" target="_blank" rel="noopener">Open revoke.cash (BSC)</a>
+      <a class="btn link" id="bscScanTokenApprovals" target="_blank" rel="noopener">View Token Approvals (BscScan)</a>
+      <a class="btn link" id="bscScanNftApprovals" target="_blank" rel="noopener">View NFT Approvals (BscScan)</a>
     </div>
+    <p class="sec-tip">Tip: revoke “infinite” allowances you no longer use.</p>
+  </div>
 
-    <div class="modal-footer">
-      <span style="color:#c9c9c9">BSC • Chain ID 56 • Non-custodial tools</span>
-      <div class="pill" id="secMeta">—</div>
-    </div>
+  <hr class="sec-divider">
+
+  <div class="sec-block">
+    <div class="sec-subtitle">Checklist</div>
+    <ul class="sec-list">
+      <li>Use a burner wallet for new mints.</li>
+      <li>Revoke stale allowances often.</li>
+      <li>Beware blind signatures & <code>setApprovalForAll</code>.</li>
+      <li>Confirm URLs (no look-alikes).</li>
+      <li>Keep seed phrase offline only.</li>
+    </ul>
+    <button class="btn" id="copyChecklistBtn">Copy Checklist</button>
   </div>
 </div>
 
+          
         <!-- 🔮 NEW: Sigil Smithy (replaces Lore) -->
         <article class="vault-item memory-item" onclick="interactWithRelic(this, 'sigil')">
           <div class="item-icon" aria-hidden="true">🧿<div class="icon-aura" aria-hidden="true"></div></div>
