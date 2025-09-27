@@ -750,20 +750,14 @@ function starPath(ctx, points, rOuter, rInner){
   }
   ctx.closePath();
 }
-function rosePoint(k, a, r){ // rhodonea curve: r = cos(kθ)
-  const rad = r*Math.cos(k*a);
-  return [rad*Math.cos(a), rad*Math.sin(a)];
-}
+function rosePoint(k, a, r){ const rad = r*Math.cos(k*a); return [rad*Math.cos(a), rad*Math.sin(a)]; }
 function ringGradient(ctx, r0, r1, colA, colB, alphaA=.95, alphaB=.1){
   const g = ctx.createRadialGradient(0,0, r0, 0,0, r1);
   g.addColorStop(0, hexA(colA,alphaA));
   g.addColorStop(1, hexA(colB,alphaB));
   return g;
 }
-function hexA(hex, a){
-  // hex like "#ffd700"
-  const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`;
-}
+function hexA(hex, a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
 function hexToRgb(hex){
   const n = hex.replace('#','');
   const bigint = parseInt(n.length===3 ? n.split('').map(c=>c+c).join('') : n,16);
@@ -775,18 +769,18 @@ function drawRune(ctx, size, id, color){
   const rnd = id%12;
   ctx.save(); ctx.strokeStyle=color; ctx.lineWidth = Math.max(1, size*0.08); ctx.lineCap='round';
   switch(rnd){
-    case 0: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(size,0); ctx.stroke(); break;                  // — 
-    case 1: ctx.beginPath(); ctx.moveTo(0,-size); ctx.lineTo(0,size); ctx.stroke(); break;                  // |
-    case 2: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(size,size); ctx.stroke(); break;           // \
-    case 3: ctx.beginPath(); ctx.moveTo(-size,size); ctx.lineTo(size,-size); ctx.stroke(); break;           // /
-    case 4: ctx.beginPath(); polygonPath(ctx, 3, size); ctx.closePath(); ctx.stroke(); break;               // △
-    case 5: ctx.beginPath(); polygonPath(ctx, 4, size); ctx.closePath(); ctx.stroke(); break;               // ◻
-    case 6: ctx.beginPath(); polygonPath(ctx, 5, size); ctx.closePath(); ctx.stroke(); break;               // ⯃
-    case 7: ctx.beginPath(); starPath(ctx, 5, size, size*0.45); ctx.stroke(); break;                        // ✷
-    case 8: ctx.beginPath(); ctx.arc(0,0,size,0,TAU); ctx.stroke(); break;                                  // ○
-    case 9: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(0,-size); ctx.lineTo(size,0); ctx.stroke();    // ∧
-    case 10: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(0,0); ctx.lineTo(size,-size); ctx.stroke(); break; // V cap
-    case 11: ctx.beginPath(); ctx.arc(0,0,size,0,Math.PI); ctx.stroke(); break;                             // ⌒
+    case 0: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(size,0); ctx.stroke(); break;
+    case 1: ctx.beginPath(); ctx.moveTo(0,-size); ctx.lineTo(0,size); ctx.stroke(); break;
+    case 2: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(size,size); ctx.stroke(); break;
+    case 3: ctx.beginPath(); ctx.moveTo(-size,size); ctx.lineTo(size,-size); ctx.stroke(); break;
+    case 4: ctx.beginPath(); polygonPath(ctx, 3, size); ctx.closePath(); ctx.stroke(); break;
+    case 5: ctx.beginPath(); polygonPath(ctx, 4, size); ctx.closePath(); ctx.stroke(); break;
+    case 6: ctx.beginPath(); polygonPath(ctx, 5, size); ctx.closePath(); ctx.stroke(); break;
+    case 7: ctx.beginPath(); starPath(ctx, 5, size, size*0.45); ctx.stroke(); break;
+    case 8: ctx.beginPath(); ctx.arc(0,0,size,0,TAU); ctx.stroke(); break;
+    case 9: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(0,-size); ctx.lineTo(size,0); ctx.stroke(); break;
+    case 10: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(0,0); ctx.lineTo(size,-size); ctx.stroke(); break;
+    case 11: ctx.beginPath(); ctx.arc(0,0,size,0,Math.PI); ctx.stroke(); break;
   }
   ctx.restore();
 }
@@ -797,19 +791,16 @@ function makeBackground(colors, rnd){
   const S = 1024;
   c.clearRect(0,0,S,S);
 
-  // vignetted parchment/stone
   const base = c.createLinearGradient(0,0,S,S);
   base.addColorStop(0, hexA(colors[4], .98));
   base.addColorStop(1, hexA(colors[4], .92));
   c.fillStyle = base; c.fillRect(0,0,S,S);
 
-  // soft radial glow
   const glow = c.createRadialGradient(S/2,S/2,80, S/2,S/2, 520);
   glow.addColorStop(0, hexA(colors[3], .15));
   glow.addColorStop(1, 'rgba(0,0,0,.65)');
   c.fillStyle = glow; c.fillRect(0,0,S,S);
 
-  // stone pores (fbm)
   c.globalAlpha=.12;
   for(let y=0;y<S;y+=2){
     for(let x=0;x<S;x+=2){
@@ -821,7 +812,6 @@ function makeBackground(colors, rnd){
   }
   c.globalAlpha=1;
 
-  // lattice lines
   c.strokeStyle = hexA(colors[2], .06); c.lineWidth=1;
   c.beginPath();
   for(let a=0;a<TAU;a+=TAU/36){
@@ -836,8 +826,8 @@ function makeBackground(colors, rnd){
 function buildSigilConfig(seed){
   const n = hash32(seed);
   const rnd = (i=0)=> (h32(n + i*1013904223) % 10000) / 10000;
-  const sym = 8 + Math.floor(rnd(1)*10);     // 8..17
-  const layers = 3 + Math.floor(rnd(2)*3);   // 3..5
+  const sym = 8 + Math.floor(rnd(1)*10);
+  const layers = 3 + Math.floor(rnd(2)*3);
   const ringCount = 3 + Math.floor(rnd(3)*3);
   const rings = Array.from({length:ringCount}, (_,i)=> 140 + i*60 + Math.floor(rnd(4+i)*30));
   return {
@@ -849,8 +839,8 @@ function buildSigilConfig(seed){
     wiggle: 0.08 + rnd(9)*0.12,
     speed: 0.25 + rnd(10)*0.55,
     runeCount: 28 + Math.floor(rnd(11)*16),
-    roseK: (rnd(12)*3 + 2)|0,                        // 2..4
-    starPts: 5 + (rnd(13)*3|0),                      // 5..7
+    roseK: (rnd(12)*3 + 2)|0,
+    starPts: 5 + (rnd(13)*3|0),
     seedInt: n
   };
 }
@@ -864,16 +854,12 @@ function hash32(str){
 function drawFrame(t){
   if (!activeCfg) return;
 
-  // logical canvas size (accounting for DPR scaling already applied)
-  const CW = sigilCanvas.width;
-  const CH = sigilCanvas.height;
+  // Use logical canvas size (W/H), not device pixels
+  const CW = W, CH = H;
   const cx = CW/2, cy = CH/2;
 
   const colors = palettes[currentPaletteIndex];
-  const {
-    sym, layers, rings, arcCount, coreRadius,
-    wiggle, speed, runeCount, roseK, starPts, seedInt
-  } = activeCfg;
+  const { sym, layers, rings, arcCount, coreRadius, wiggle, speed, runeCount, roseK, starPts, seedInt } = activeCfg;
 
   const time = animOn ? t*0.001*speed : 0;
 
@@ -895,11 +881,9 @@ function drawFrame(t){
     const breathe = 1 + 0.015*Math.sin(time*1.7 + i);
     const rr = r*breathe;
 
-    // base ring
     ctx.strokeStyle = hexA(colors[0], .9); ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.arc(0,0, rr, 0, TAU); ctx.stroke();
 
-    // specular highlight
     ctx.strokeStyle = hexA('#ffffff', .12);
     ctx.lineWidth = 3.5;
     ctx.beginPath();
@@ -907,7 +891,7 @@ function drawFrame(t){
     ctx.stroke();
   });
 
-  /* symmetry spokes + end glyphs (squares/triangles/circles), woven with a small noise offset */
+  /* symmetry spokes + end glyphs */
   for(let L=0; L<layers; L++){
     for(let i=0;i<sym;i++){
       const a0 = (i/sym)*TAU + L*0.07 + time*0.2;
@@ -916,7 +900,6 @@ function drawFrame(t){
       const r1 = Math.max(coreRadius+18, rings[0]-30);
       const r2 = rings[Math.min(L, rings.length-1)] - 6 + 16*Math.sin(time + i*0.35);
 
-      // spoke
       ctx.strokeStyle = hexA(colors[1], .85);
       ctx.lineWidth = 1.4 + L*0.6;
       ctx.beginPath();
@@ -924,7 +907,6 @@ function drawFrame(t){
       ctx.lineTo(r2*Math.cos(a), r2*Math.sin(a));
       ctx.stroke();
 
-      // terminal glyph
       ctx.save();
       ctx.translate(r2*Math.cos(a), r2*Math.sin(a));
       ctx.rotate(a + time*0.4);
@@ -932,11 +914,9 @@ function drawFrame(t){
       const glyph = (i+L)%4;
       switch(glyph){
         case 0: ctx.fillRect(-7,-7,14,14); break;
-        case 1:
-          ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(8,7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill(); break;
+        case 1: ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(8,7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill(); break;
         case 2: ctx.beginPath(); ctx.arc(0,0,8,0,TAU); ctx.fill(); break;
-        case 3:
-          ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(0,-9); ctx.lineTo(9,0); ctx.lineTo(0,9); ctx.closePath(); ctx.fill(); break;
+        case 3: ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(0,-9); ctx.lineTo(9,0); ctx.lineTo(0,9); ctx.closePath(); ctx.fill(); break;
       }
       ctx.restore();
     }
@@ -955,7 +935,7 @@ function drawFrame(t){
   }
   ctx.stroke();
 
-  /* moving arcs (like engraved crescents) */
+  /* moving arcs */
   ctx.strokeStyle = hexA(colors[0], .55);
   ctx.lineWidth = 2.2;
   for(let i=0;i<arcCount;i++){
@@ -967,7 +947,7 @@ function drawFrame(t){
 
   /* runic ring */
   const RR = rOuter - 14;
-  const runeSize = 10 + (CW/1024)*4;
+  const runeSize = 10 + (W/1024)*4; // use logical width
   for(let i=0;i<runeCount;i++){
     const a = (i/runeCount)*TAU + time*0.15;
     const x = RR*Math.cos(a), y = RR*Math.sin(a);
@@ -986,7 +966,6 @@ function drawFrame(t){
   ctx.beginPath(); ctx.arc(0,0, coreRadius*(1+0.08*Math.sin(time*2.2)), 0, TAU); ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
-  // crosshair etch
   ctx.strokeStyle = hexA(colors[2], .8); ctx.lineWidth=1.6;
   ctx.beginPath();
   ctx.moveTo(-coreRadius-14,0); ctx.lineTo(coreRadius+14,0);
@@ -1005,24 +984,24 @@ function drawFrame(t){
 
   if (animOn) animReq = requestAnimationFrame(drawFrame);
 }
-  async function openSigilSmithy(){
-    const acct = await getActiveAccount();
-    walletRawAddress = acct || null;
-    if (!seedInput.value) seedInput.value = acct || randomSeed();
-    modalBackdrop.classList.add('show');
-    animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    renderSigil(getEffectiveSeed(), currentPaletteIndex);
-  }
-  
-  function closeSigilSmithy(){
-    modalBackdrop.classList.remove('show');
-    saveSigilState();
-    animOn = false;
-    cancelAnimationFrame(animReq); 
-    animReq = null;
-  }
-  
-  window.openSigilSmithy = openSigilSmithy;
+
+async function openSigilSmithy(){
+  const acct = await getActiveAccount();
+  walletRawAddress = acct || null;
+  if (!seedInput.value) seedInput.value = acct || randomSeed();
+  modalBackdrop.classList.add('show');
+  animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  renderSigil(getEffectiveSeed(), currentPaletteIndex);
+}
+
+function closeSigilSmithy(){
+  modalBackdrop.classList.remove('show');
+  saveSigilState();
+  animOn = false;
+  cancelAnimationFrame(animReq);
+  animReq = null;
+}
+window.openSigilSmithy = openSigilSmithy;
 
   // ================== Expose ==================
   window.interactWithRelic = interactWithRelic;
