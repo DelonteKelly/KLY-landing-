@@ -10,25 +10,6 @@
   <meta property="og:image" content="/og-vault.jpg">
   <meta name="theme-color" content="#0a0a0a">
 
-  <!-- CSP (tune as needed) -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
-    style-src  'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
-    font-src   'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-    img-src    'self' data:;
-    connect-src 'self' https://bsc-dataseed.binance.org;
-    frame-ancestors 'none';
-    base-uri 'self';
-  ">
-
-  <!-- Preconnect/Preload -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="image" href="vault-door.png">
-  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js" crossorigin>
-  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js" crossorigin>
-
   <!-- Fonts / Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -351,16 +332,11 @@
             <label for="seedInput">Seed (wallet address or any text)</label>
             <input type="text" id="seedInput" placeholder="auto: your wallet, or type anything…" spellcheck="false">
           </div>
-          <!-- Sigil Smithy Controls -->
-<div class="sigil-controls">
-  <button id="generateBtn" class="btn">Generate</button>
-  <button id="shufflePaletteBtn" class="btn">Shuffle</button>
-  <button id="randomizeBtn" class="btn">Randomize</button>
-  <button id="toggleAnimBtn" class="btn">⏸ Pause</button> <!-- 👈 NEW BUTTON -->
-  <button id="copySeedBtn" class="btn">Copy Seed</button>
-  <button id="downloadBtn" class="btn">Download</button>
-</div>
           <div class="btn-row">
+            <button class="btn" id="generateBtn">Generate</button>
+            <button class="btn" id="shufflePaletteBtn">Shuffle Palette</button>
+            <button class="btn" id="randomizeBtn">Randomize</button>
+            <button class="btn" id="toggleAnimBtn">⏸ Pause</button>
             <button class="btn" id="copySeedBtn">Copy Seed</button>
             <button class="btn" id="downloadBtn">Download PNG</button>
           </div>
@@ -378,8 +354,7 @@
         <span style="color:#c9c9c9">Hash-bound geometry • Symmetry • Noise fields</span>
         <div style="display:flex;gap:12px;align-items:center">
           <div class="pill" id="sigilMeta">—</div>
-          <!-- NEW toggle button -->
-          <button class="btn" id="toggleAnimBtn">⏸ Pause</button>
+          <button class="btn" id="toggleAnimBtnFooter">⏸ Pause</button>
         </div>
       </div>
     </div>
@@ -429,6 +404,7 @@
   const sigilCanvas = document.getElementById('sigilCanvas');
   const ctx = sigilCanvas.getContext('2d');
   const toggleAnimBtn = document.getElementById('toggleAnimBtn');
+  const toggleAnimBtnFooter = document.getElementById('toggleAnimBtnFooter');
 
   // ================== Init ==================
   document.addEventListener("DOMContentLoaded", async () => {
@@ -467,6 +443,10 @@
       link.click();
     });
     seedInput.addEventListener('change', () => { saveSigilState(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
+
+    // Animation toggle buttons
+    toggleAnimBtn.addEventListener('click', toggleAnimation);
+    toggleAnimBtnFooter.addEventListener('click', toggleAnimation);
 
     const saved = JSON.parse(localStorage.getItem('kly_sigil_state') || '{}');
     if (saved.seed) seedInput.value = saved.seed;
@@ -794,7 +774,90 @@
 
   // Animation
   let animReq = null, animOn = true, activeSeed = '', activeCfg = null;
-  function drawFrame(t){ /* your full draw loop from before stays here */ }
+  
+  function drawFrame(t){
+    if (!activeCfg) return;
+    
+    const colors = palettes[currentPaletteIndex];
+    const rnd = xorshift(hash32(activeSeed));
+    const { sym, layers, rings, arcCount, coreRadius, wiggle, speed, runeCount } = activeCfg;
+    
+    // Clear and draw background
+    ctx.clearRect(0, 0, sigilCanvas.width, sigilCanvas.height);
+    ctx.drawImage(bgCache, 0, 0, sigilCanvas.width, sigilCanvas.height);
+    
+    // Draw central core
+    ctx.save();
+    ctx.translate(sigilCanvas.width/2, sigilCanvas.height/2);
+    
+    // Animated rotation
+    const rotation = animOn ? (t * 0.001 * speed) % TAU : 0;
+    ctx.rotate(rotation);
+    
+    // Draw concentric rings
+    rings.forEach((radius, i) => {
+      ctx.strokeStyle = colors[i % colors.length];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, TAU);
+      ctx.stroke();
+    });
+    
+    // Draw symmetrical patterns
+    for (let i = 0; i < sym; i++) {
+      const angle = (i / sym) * TAU;
+      ctx.save();
+      ctx.rotate(angle);
+      
+      // Draw radial lines with animation
+      rings.forEach(radius => {
+        ctx.strokeStyle = colors[(i + 1) % colors.length];
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(coreRadius, 0);
+        ctx.lineTo(radius, 0);
+        ctx.stroke();
+      });
+      
+      // Draw decorative elements
+      if (animOn) {
+        const pulse = Math.sin(t * 0.002 + i) * 0.5 + 0.5;
+        ctx.fillStyle = colors[0] + Math.round(pulse * 255).toString(16).padStart(2, '0');
+        ctx.beginPath();
+        ctx.arc(rings[0] || 150, 0, 5 + pulse * 3, 0, TAU);
+        ctx.fill();
+      }
+      
+      ctx.restore();
+    }
+    
+    // Draw central symbol
+    ctx.fillStyle = colors[0];
+    ctx.beginPath();
+    ctx.arc(0, 0, coreRadius, 0, TAU);
+    ctx.fill();
+    
+    ctx.restore();
+    
+    if (animOn) {
+      animReq = requestAnimationFrame(drawFrame);
+    }
+  }
+
+  function toggleAnimation(){
+    animOn = !animOn;
+    const buttonText = animOn ? "⏸ Pause" : "▶ Animate";
+    toggleAnimBtn.textContent = buttonText;
+    toggleAnimBtnFooter.textContent = buttonText;
+    
+    if (animOn) {
+      renderSigil(getEffectiveSeed(), currentPaletteIndex);
+    } else {
+      cancelAnimationFrame(animReq);
+      // Draw static frame
+      drawFrame(0);
+    }
+  }
 
   function renderSigil(seed, paletteIndex=0){
     const colors = palettes[paletteIndex];
@@ -804,21 +867,19 @@
     activeSeed = seed;
     activeCfg = buildSigilConfig(seed);
     sigilMeta.textContent = `seed: ${seed.slice(0,10)}… • sym:${activeCfg.sym} • palette:#${paletteIndex+1}`;
+    
     if (animOn){
       cancelAnimationFrame(animReq);
       animReq = requestAnimationFrame(drawFrame);
       toggleAnimBtn.textContent = "⏸ Pause";
+      toggleAnimBtnFooter.textContent = "⏸ Pause";
     } else {
       cancelAnimationFrame(animReq);
       drawFrame(0);
       toggleAnimBtn.textContent = "▶ Animate";
+      toggleAnimBtnFooter.textContent = "▶ Animate";
     }
   }
-
-  toggleAnimBtn.addEventListener('click', () => {
-    animOn = !animOn;
-    renderSigil(getEffectiveSeed(), currentPaletteIndex);
-  });
 
   async function openSigilSmithy(){
     const acct = await getActiveAccount();
@@ -828,12 +889,15 @@
     animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     renderSigil(getEffectiveSeed(), currentPaletteIndex);
   }
+  
   function closeSigilSmithy(){
     modalBackdrop.classList.remove('show');
     saveSigilState();
     animOn = false;
-    cancelAnimationFrame(animReq); animReq = null;
+    cancelAnimationFrame(animReq); 
+    animReq = null;
   }
+  
   window.openSigilSmithy = openSigilSmithy;
 
   // ================== Expose ==================
