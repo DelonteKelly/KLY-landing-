@@ -627,18 +627,18 @@ const honeyPotBtn             = document.getElementById('honeyPotBtn');   // opt
     window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
   });
 
- // ─── Security Drawer control (final) ───
+/* ─── Security Drawer control (final, single source of truth) ─── */
 let scrollPosition = 0;
 
-const securityDrawer          = document.getElementById('securityDrawer');
-const secBackdrop             = document.getElementById('secBackdrop');
+const securityDrawer        = document.getElementById('securityDrawer');
+const secBackdrop           = document.getElementById('secBackdrop');
 
-// optional links/badges (only if present in your HTML)
-const revokeCashBtn           = document.getElementById('revokeCashBtn');
-const bscScanTokenApprovals   = document.getElementById('bscScanTokenApprovals');
-const bscScanNftApprovals     = document.getElementById('bscScanNftApprovals');
-const debankBtn               = document.getElementById('debankBtn');
-const honeyPotBtn             = document.getElementById('honeyPotBtn');
+// Optional helpers/links if present in your HTML
+const revokeCashBtn         = document.getElementById('revokeCashBtn');
+const bscScanTokenApprovals = document.getElementById('bscScanTokenApprovals');
+const bscScanNftApprovals   = document.getElementById('bscScanNftApprovals');
+const debankBtn             = document.getElementById('debankBtn');
+const honeyPotBtn           = document.getElementById('honeyPotBtn');
 
 function lockBody(lock){
   if (lock){
@@ -668,7 +668,7 @@ async function hydrateSecurityLinks(){
     { el: bscScanNftApprovals,   href: `https://bscscan.com/tokenapprovalchecker-nft?search=${addr}` },
     { el: debankBtn,             href: `https://debank.com/profile/${addr}` },
     { el: honeyPotBtn,           href: `https://honeypot.is/?address=${addr}` }
-  ].forEach(({el, href})=>{
+  ].forEach(({ el, href }) => {
     if (!el) return;
     el.href = href;
     el.target = '_blank';
@@ -686,14 +686,15 @@ function openSecurityDrawer(){
   if (!securityDrawer || !secBackdrop) return;
   if (securityDrawer.classList.contains('open')) return;
 
-  hydrateSecurityLinks().finally(()=>{
+  hydrateSecurityLinks().finally(() => {
     lockBody(true);
     secBackdrop.classList.add('show');
     securityDrawer.classList.add('open');
-
-    setTimeout(()=>{
-      const first = securityDrawer.querySelector('[autofocus], button, a, input, [tabindex]:not([tabindex="-1"])');
-      if (first) first.focus();
+    setTimeout(() => {
+      const first = securityDrawer.querySelector(
+        '[autofocus], button, a, input, [tabindex]:not([tabindex="-1"])'
+      );
+      first?.focus();
     }, 100);
   });
 }
@@ -703,23 +704,37 @@ function closeSecurityDrawer(){
   securityDrawer.classList.add('closing');
   secBackdrop.classList.remove('show');
 
-  setTimeout(()=>{
+  setTimeout(() => {
     securityDrawer.classList.remove('open','closing');
     lockBody(false);
     const opener = document.querySelector('[data-action="open-security"]');
-    if (opener) opener.focus();
+    opener?.focus();
   }, 300); // match CSS transition
 }
 
-// backdrop click + Escape
+// Backdrop + Escape
 secBackdrop?.addEventListener('click', closeSecurityDrawer);
 window.addEventListener('keydown', (e)=>{
-  if (e.key === 'Escape' && securityDrawer?.classList.contains('open')) closeSecurityDrawer();
+  if (e.key === 'Escape' && securityDrawer?.classList.contains('open')) {
+    closeSecurityDrawer();
+  }
 });
 
-// expose
+// Public API + fallback launcher used by your button
+function openSecurityCheck(){
+  if (securityDrawer && secBackdrop) {
+    openSecurityDrawer();
+  } else {
+    getActiveAccount().then(acct => {
+      const addr = acct || '';
+      window.open(`https://revoke.cash/account/56/${addr}`, '_blank', 'noopener,noreferrer');
+    });
+  }
+}
+
 window.openSecurityDrawer  = openSecurityDrawer;
 window.closeSecurityDrawer = closeSecurityDrawer;
+window.openSecurityCheck   = openSecurityCheck;
   // ================== Particles ==================
   function createParticles(){
     if (!particlesContainer) return;
