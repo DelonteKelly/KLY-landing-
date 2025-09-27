@@ -565,9 +565,17 @@
   const toggleAnimBtn     = document.getElementById('toggleAnimBtn');
   const toggleAnimBtnFooter = document.getElementById('toggleAnimBtnFooter');
 
-  // Security Drawer
-  const securityDrawer = document.getElementById('securityDrawer');
-  const secBackdrop    = document.getElementById('secBackdrop');
+// ─── Security Drawer control (enhanced) ───
+const securityDrawer          = document.getElementById('securityDrawer');
+const secBackdrop             = document.getElementById('secBackdrop');
+
+// optional helpers/badges/links if present in your HTML
+const securityBadge           = document.getElementById('securityBadge');
+const revokeCashBtn           = document.getElementById('revokeCashBtn');
+const bscScanTokenApprovals   = document.getElementById('bscScanTokenApprovals');
+const bscScanNftApprovals     = document.getElementById('bscScanNftApprovals');
+const debankBtn               = document.getElementById('debankBtn');     // optional
+const honeyPotBtn             = document.getElementById('honeyPotBtn');   // optional
 
   // ================== Init ==================
   document.addEventListener("DOMContentLoaded", async () => {
@@ -619,31 +627,99 @@
     window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
   });
 
-  // ─── Security Drawer control ───
-  function lockBody(lock){
-    document.documentElement.style.overflow = lock ? 'hidden' : '';
-    document.body.style.overscrollBehavior = lock ? 'contain' : '';
+ // ─── Security Drawer control (final) ───
+let scrollPosition = 0;
+
+const securityDrawer          = document.getElementById('securityDrawer');
+const secBackdrop             = document.getElementById('secBackdrop');
+
+// optional links/badges (only if present in your HTML)
+const revokeCashBtn           = document.getElementById('revokeCashBtn');
+const bscScanTokenApprovals   = document.getElementById('bscScanTokenApprovals');
+const bscScanNftApprovals     = document.getElementById('bscScanNftApprovals');
+const debankBtn               = document.getElementById('debankBtn');
+const honeyPotBtn             = document.getElementById('honeyPotBtn');
+
+function lockBody(lock){
+  if (lock){
+    scrollPosition = window.pageYOffset;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'contain';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollPosition}px`;
+    document.body.style.width = '100%';
+  } else {
+    document.documentElement.style.overflow = '';
+    document.body.style.overscrollBehavior = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollPosition);
   }
-  function openSecurityDrawer(){
-    if (!securityDrawer || !secBackdrop) return;
-    securityDrawer.classList.add('open');
-    secBackdrop.classList.add('show');
-    lockBody(true);
-  }
-  function closeSecurityDrawer(){
-    if (!securityDrawer || !secBackdrop) return;
-    securityDrawer.classList.remove('open');
-    secBackdrop.classList.remove('show');
-    lockBody(false);
-  }
-  // Keep public API; fallback to external if drawer missing
+}
+
 async function hydrateSecurityLinks(){
   const acct = await getActiveAccount();
-  const addr = acct || '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52';
-  revokeCashBtn.href = `https://revoke.cash/account/56/${addr}`;
-  bscScanTokenApprovals.href = `https://bscscan.com/tokenapprovalchecker?search=${addr}`;
-  bscScanNftApprovals.href   = `https://bscscan.com/tokenapprovalchecker-nft?search=${addr}`;
+  const addr = acct || '0x0000000000000000000000000000000000000000';
+
+  [
+    { el: revokeCashBtn,         href: `https://revoke.cash/account/56/${addr}` },
+    { el: bscScanTokenApprovals, href: `https://bscscan.com/tokenapprovalchecker?search=${addr}` },
+    { el: bscScanNftApprovals,   href: `https://bscscan.com/tokenapprovalchecker-nft?search=${addr}` },
+    { el: debankBtn,             href: `https://debank.com/profile/${addr}` },
+    { el: honeyPotBtn,           href: `https://honeypot.is/?address=${addr}` }
+  ].forEach(({el, href})=>{
+    if (!el) return;
+    el.href = href;
+    el.target = '_blank';
+    el.rel = 'noopener noreferrer';
+  });
+
+  const addrDisplay = document.getElementById('securityAddress');
+  if (addrDisplay){
+    addrDisplay.textContent = `${addr.slice(0,6)}…${addr.slice(-4)}`;
+    addrDisplay.title = addr;
+  }
 }
+
+function openSecurityDrawer(){
+  if (!securityDrawer || !secBackdrop) return;
+  if (securityDrawer.classList.contains('open')) return;
+
+  hydrateSecurityLinks().finally(()=>{
+    lockBody(true);
+    secBackdrop.classList.add('show');
+    securityDrawer.classList.add('open');
+
+    setTimeout(()=>{
+      const first = securityDrawer.querySelector('[autofocus], button, a, input, [tabindex]:not([tabindex="-1"])');
+      if (first) first.focus();
+    }, 100);
+  });
+}
+
+function closeSecurityDrawer(){
+  if (!securityDrawer || !secBackdrop) return;
+  securityDrawer.classList.add('closing');
+  secBackdrop.classList.remove('show');
+
+  setTimeout(()=>{
+    securityDrawer.classList.remove('open','closing');
+    lockBody(false);
+    const opener = document.querySelector('[data-action="open-security"]');
+    if (opener) opener.focus();
+  }, 300); // match CSS transition
+}
+
+// backdrop click + Escape
+secBackdrop?.addEventListener('click', closeSecurityDrawer);
+window.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && securityDrawer?.classList.contains('open')) closeSecurityDrawer();
+});
+
+// expose
+window.openSecurityDrawer  = openSecurityDrawer;
+window.closeSecurityDrawer = closeSecurityDrawer;
   // ================== Particles ==================
   function createParticles(){
     if (!particlesContainer) return;
