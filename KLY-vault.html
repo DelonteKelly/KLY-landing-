@@ -536,42 +536,46 @@
   ];
   const BNB_CHAIN_ID = "0x38";
 
-  // ================== DOM ==================
-  const walletButton = document.getElementById("connectWalletBtn");
-  const walletAddressEl = document.getElementById("walletAddress");
-  const unlockBtn = document.getElementById("unlockBtn");
-  const vaultItems = document.getElementById("vaultItems");
-  const statusOverlay = document.getElementById("statusOverlay");
-  const statusIcon = document.getElementById("statusIcon");
-  const statusText = document.getElementById("statusText");
-  const progressFill = document.getElementById("progressFill");
-  const pageLoader = document.getElementById("pageLoader");
-  const mainHeader = document.getElementById("mainHeader");
-  const particlesContainer = document.getElementById("particles");
+  // ================== DOM (safe refs) ==================
+  const walletButton      = document.getElementById("connectWalletBtn");
+  const walletAddressEl   = document.getElementById("walletAddress");
+  const unlockBtn         = document.getElementById("unlockBtn");
+  const vaultItems        = document.getElementById("vaultItems");
+  const statusOverlay     = document.getElementById("statusOverlay");
+  const statusIcon        = document.getElementById("statusIcon");
+  const statusText        = document.getElementById("statusText");
+  const progressFill      = document.getElementById("progressFill");
+  const pageLoader        = document.getElementById("pageLoader");
+  const mainHeader        = document.getElementById("mainHeader");
+  const particlesContainer= document.getElementById("particles");
 
   // Sigil Modal DOM
-  const modalBackdrop = document.getElementById('sigilModalBackdrop');
-  const closeSigilBtn = document.getElementById('closeSigilBtn');
-  const seedInput = document.getElementById('seedInput');
-  const generateBtn = document.getElementById('generateBtn');
+  const modalBackdrop     = document.getElementById('sigilModalBackdrop');
+  const closeSigilBtn     = document.getElementById('closeSigilBtn');
+  const seedInput         = document.getElementById('seedInput');
+  const generateBtn       = document.getElementById('generateBtn');
   const shufflePaletteBtn = document.getElementById('shufflePaletteBtn');
-  const randomizeBtn = document.getElementById('randomizeBtn');
-  const copySeedBtn = document.getElementById('copySeedBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const paletteDot = document.getElementById('paletteDot');
-  const sigilMeta = document.getElementById('sigilMeta');
-  const sigilCanvas = document.getElementById('sigilCanvas');
-  const ctx = sigilCanvas.getContext('2d');
-  const toggleAnimBtn = document.getElementById('toggleAnimBtn');
+  const randomizeBtn      = document.getElementById('randomizeBtn');
+  const copySeedBtn       = document.getElementById('copySeedBtn');
+  const downloadBtn       = document.getElementById('downloadBtn');
+  const paletteDot        = document.getElementById('paletteDot');
+  const sigilMeta         = document.getElementById('sigilMeta');
+  const sigilCanvas       = document.getElementById('sigilCanvas');
+  const ctx               = sigilCanvas ? sigilCanvas.getContext('2d') : null;
+  const toggleAnimBtn     = document.getElementById('toggleAnimBtn');
   const toggleAnimBtnFooter = document.getElementById('toggleAnimBtnFooter');
+
+  // Security Drawer
+  const securityDrawer = document.getElementById('securityDrawer');
+  const secBackdrop    = document.getElementById('secBackdrop');
 
   // ================== Init ==================
   document.addEventListener("DOMContentLoaded", async () => {
-    // Loader
+    // Loader + failsafe
     setTimeout(() => {
-      pageLoader.style.opacity = "0";
+      if (pageLoader) pageLoader.style.opacity = "0";
       setTimeout(async () => {
-        pageLoader.style.display = "none";
+        if (pageLoader) pageLoader.style.display = "none";
         initScrollHandler();
         createParticles();
         initThreeJS();
@@ -579,87 +583,74 @@
         const acct = await getActiveAccount();
         if (acct) updateWalletUI(true, acct);
 
-        walletButton.addEventListener("click", connectWallet);
-        unlockBtn.addEventListener("click", verifyNFTAccess);
+        walletButton?.addEventListener("click", connectWallet);
+        unlockBtn?.addEventListener("click", verifyNFTAccess);
       }, 800);
     }, 1000);
+    setTimeout(() => { if (pageLoader) { pageLoader.style.opacity="0"; pageLoader.style.display="none"; }}, 4000);
 
-    // Smithy events
-    closeSigilBtn.addEventListener('click', closeSigilSmithy);
-    modalBackdrop.addEventListener('click', (e)=>{ if(e.target === modalBackdrop) closeSigilSmithy(); });
-    generateBtn.addEventListener('click', () => renderSigil(getEffectiveSeed(), currentPaletteIndex));
-    shufflePaletteBtn.addEventListener('click', () => { cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
-    randomizeBtn.addEventListener('click', () => { seedInput.value = randomSeed(); cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
-    copySeedBtn.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(getEffectiveSeed());
-      toast('Seed copied', 'success');
-    });
-    downloadBtn.addEventListener('click', () => {
+    // Smithy events (guarded)
+    closeSigilBtn?.addEventListener('click', closeSigilSmithy);
+    modalBackdrop?.addEventListener('click', (e)=>{ if(e.target === modalBackdrop) closeSigilSmithy(); });
+    generateBtn?.addEventListener('click', () => renderSigil(getEffectiveSeed(), currentPaletteIndex));
+    shufflePaletteBtn?.addEventListener('click', () => { cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
+    randomizeBtn?.addEventListener('click', () => { if (seedInput) seedInput.value = randomSeed(); cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
+    copySeedBtn?.addEventListener('click', async () => { await navigator.clipboard.writeText(getEffectiveSeed()); toast('Seed copied', 'success'); });
+    downloadBtn?.addEventListener('click', () => {
+      if (!sigilCanvas) return;
       const link = document.createElement('a');
       const fileSeed = getEffectiveSeed().replace(/[^a-zA-Z0-9_-]/g,'').slice(0,32) || 'sigil';
       link.download = `kly-sigil_${fileSeed}.png`;
       link.href = sigilCanvas.toDataURL('image/png');
       link.click();
     });
-    seedInput.addEventListener('change', () => { saveSigilState(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
+    seedInput?.addEventListener('change', () => { saveSigilState(); renderSigil(getEffectiveSeed(), currentPaletteIndex); });
 
     // Animation toggle buttons
-    toggleAnimBtn.addEventListener('click', toggleAnimation);
-    toggleAnimBtnFooter.addEventListener('click', toggleAnimation);
+    toggleAnimBtn?.addEventListener('click', toggleAnimation);
+    toggleAnimBtnFooter?.addEventListener('click', toggleAnimation);
 
     const saved = JSON.parse(localStorage.getItem('kly_sigil_state') || '{}');
-    if (saved.seed) seedInput.value = saved.seed;
+    if (saved.seed && seedInput) seedInput.value = saved.seed;
     if (Number.isInteger(saved.paletteIndex)) currentPaletteIndex = saved.paletteIndex;
+
+    // Security drawer interactions
+    secBackdrop?.addEventListener('click', closeSecurityDrawer);
+    window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
   });
 
-
-  // ─── Security Drawer control (safe) ───
-const securityDrawer = document.getElementById('securityDrawer');
-const secBackdrop    = document.getElementById('secBackdrop');
-
-function lockBody(lock){
-  document.documentElement.style.overflow = lock ? 'hidden' : '';
-  document.body.style.overscrollBehavior = lock ? 'contain' : '';
-}
-
-function openSecurityDrawer(){
-  if (!securityDrawer || !secBackdrop) return;
-  securityDrawer.classList.add('open');
-  secBackdrop.classList.add('show');
-  lockBody(true);
-}
-function closeSecurityDrawer(){
-  if (!securityDrawer || !secBackdrop) return;
-  securityDrawer.classList.remove('open');
-  secBackdrop.classList.remove('show');
-  lockBody(false);
-}
-
-// only wire events if elements exist
-if (secBackdrop) {
-  secBackdrop.addEventListener('click', closeSecurityDrawer);
-  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
-}
-
-// keep your public API; fallback to external if drawer missing
-async function openSecurityCheck(){
-  if (securityDrawer && secBackdrop) {
-    openSecurityDrawer();
-  } else {
-    const acct = await getActiveAccount();
-    const addr = acct || '';
-    openExternal(`https://revoke.cash/account/56/${addr}`);
+  // ─── Security Drawer control ───
+  function lockBody(lock){
+    document.documentElement.style.overflow = lock ? 'hidden' : '';
+    document.body.style.overscrollBehavior = lock ? 'contain' : '';
   }
-}
+  function openSecurityDrawer(){
+    if (!securityDrawer || !secBackdrop) return;
+    securityDrawer.classList.add('open');
+    secBackdrop.classList.add('show');
+    lockBody(true);
+  }
+  function closeSecurityDrawer(){
+    if (!securityDrawer || !secBackdrop) return;
+    securityDrawer.classList.remove('open');
+    secBackdrop.classList.remove('show');
+    lockBody(false);
+  }
+  // Keep public API; fallback to external if drawer missing
+  async function openSecurityCheck(){
+    if (securityDrawer && secBackdrop) {
+      openSecurityDrawer();
+    } else {
+      const acct = await getActiveAccount();
+      const addr = acct || '';
+      openExternal(`https://revoke.cash/account/56/${addr}`);
+    }
+  }
 
-window.openSecurityDrawer  = openSecurityDrawer;
-window.closeSecurityDrawer = closeSecurityDrawer;
-window.openSecurityCheck   = openSecurityCheck;
   // ================== Particles ==================
   function createParticles(){
-    const particleCount = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 0
-      : (window.innerWidth < 768 ? 24 : 48);
+    if (!particlesContainer) return;
+    const particleCount = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : (window.innerWidth < 768 ? 24 : 48);
     for(let i=0;i<particleCount;i++){
       const p = document.createElement("div");
       p.className = "particle";
@@ -680,12 +671,8 @@ window.openSecurityCheck   = openSecurityCheck;
         const newX = initialX + Math.sin(progress*Math.PI*2)*5;
         const newY = initialY - progress*100;
         const opacity = 0.1 + 0.4*(1-progress);
-        particle.style.left = `${newX}%`;
-        particle.style.top = `${newY}%`;
-        particle.style.opacity = opacity;
-        if(newY < -5){
-          particle.style.top = "105%"; particle.style.left = `${initialX}%`; particle.style.opacity = "0.1"; start = ts - delay*1000;
-        }
+        particle.style.left = `${newX}%`; particle.style.top = `${newY}%`; particle.style.opacity = opacity;
+        if(newY < -5){ particle.style.top = "105%"; particle.style.left = `${initialX}%`; particle.style.opacity = "0.1"; start = ts - delay*1000; }
         requestAnimationFrame(step);
       } else {
         particle.style.top = "105%"; particle.style.left = `${initialX}%`; particle.style.opacity = "0.1"; start = null;
@@ -699,6 +686,7 @@ window.openSecurityCheck   = openSecurityCheck;
   function initThreeJS(){
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const canvas = document.getElementById("threejs-canvas");
+    if (!canvas) return; // guard
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, .1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
@@ -735,6 +723,7 @@ window.openSecurityCheck   = openSecurityCheck;
 
   // ================== Header Scroll ==================
   function initScrollHandler(){
+    if (!mainHeader) return;
     window.addEventListener("scroll", () => {
       if (window.scrollY > 50) mainHeader.classList.add("scrolled");
       else mainHeader.classList.remove("scrolled");
@@ -767,6 +756,7 @@ window.openSecurityCheck   = openSecurityCheck;
   }
 
   async function verifyNetwork(){
+    if (!window.ethereum) return;
     const currentChainId = await window.ethereum.request({ method:"eth_chainId" });
     if (currentChainId !== BNB_CHAIN_ID){
       showStatus("🌐 Switching to BSC...", "info");
@@ -802,6 +792,7 @@ window.openSecurityCheck   = openSecurityCheck;
   function handleChainChanged(){ location.reload(); }
 
   function updateWalletUI(connected, account=""){
+    if (!walletButton || !walletAddressEl) return;
     if (connected){
       const short = shortenAddress(account);
       walletButton.innerHTML = `<i class="fas fa-check-circle" aria-hidden="true"></i><span>${short}</span>`;
@@ -840,6 +831,7 @@ window.openSecurityCheck   = openSecurityCheck;
   }
 
   function simulateProgress(){
+    if (!progressFill) return;
     let progress = 0;
     const id = setInterval(()=>{
       progress += Math.random()*10;
@@ -850,6 +842,7 @@ window.openSecurityCheck   = openSecurityCheck;
 
   function unlockVault(){
     const doorOverlay = document.querySelector(".door-overlay");
+    if (!doorOverlay || !vaultItems) return;
     doorOverlay.style.animation = "doorOpen 1s forwards";
     setTimeout(() => {
       doorOverlay.style.display = "none";
@@ -861,13 +854,12 @@ window.openSecurityCheck   = openSecurityCheck;
 
   // ================== Status Overlay ==================
   function showStatus(message, type="info"){
-    const iconMap = { success:"✅", error:"❌", warning:"⚠️", info:"🔍" };
-    statusIcon.textContent = iconMap[type] || "🔍";
-    statusText.textContent = message;
-    progressFill.style.width = "0";
-    statusOverlay.classList.add("visible");
+    statusIcon && (statusIcon.textContent = ({ success:"✅", error:"❌", warning:"⚠️", info:"🔍" }[type] || "🔍"));
+    statusText && (statusText.textContent = message);
+    progressFill && (progressFill.style.width = "0");
+    statusOverlay?.classList.add("visible");
     if (type !== "error"){
-      setTimeout(()=>statusOverlay.classList.remove("visible"), type === "success" ? 1800 : 2600);
+      setTimeout(()=>statusOverlay?.classList.remove("visible"), type === "success" ? 1800 : 2600);
     }
   }
   function toast(msg, type="info"){ showStatus(msg, type); }
@@ -875,16 +867,14 @@ window.openSecurityCheck   = openSecurityCheck;
   // ================== Easter Egg ==================
   let vaultClicks = 0;
   const vaultContainer = document.querySelector(".vault-container");
-  if (vaultContainer){
-    vaultContainer.addEventListener("click", () => {
-      vaultClicks++;
-      if (vaultClicks >= 7){
-        const egg = document.getElementById("thirdEyeRelic");
-        if (egg) egg.style.display = "block";
-        try { new Audio("mystical_chime.mp3").play(); } catch {}
-      }
-    });
-  }
+  vaultContainer?.addEventListener("click", () => {
+    vaultClicks++;
+    if (vaultClicks >= 7){
+      const egg = document.getElementById("thirdEyeRelic");
+      if (egg) egg.style.display = "block";
+      try { new Audio("mystical_chime.mp3").play(); } catch {}
+    }
+  });
   window.initiateAscension = () => toast("✨ Initiation pathway coming soon…", "info");
 
   // ================== Relic interactions ==================
@@ -900,327 +890,164 @@ window.openSecurityCheck   = openSecurityCheck;
   async function openAcademy(){ toast("Entering Academy…", "success"); location.href = VAULT_ROUTES.academy; }
   async function openStaking(){ toast("Opening Staking…", "info"); openExternal(VAULT_ROUTES.staking); }
   async function launchOracle(){ toast("Consulting the Oracle…", "info"); location.href = VAULT_ROUTES.oracle; }
-  async function openSecurityCheck(){ toast("Running security tools…", "info"); openExternal(VAULT_ROUTES.security); }
 
-  // Altar placeholders
-  let _altarOpen = false;
-  function openAltarModal(){ toast("Altar coming soon — burn-to-perk flow in progress.", "warning"); _altarOpen = true; }
-  function performBurn(){ toast("Burn simulation — connect final contract when ready.", "info"); }
-  function setAltarPercent(pct){ console.log("Altar percent set to", pct); }
-  function closeAltarModal(){ _altarOpen = false; }
+  // ================== 🔮 Sigil Smithy — Ancient Talisman ==================
+  const palettes = [
+    ["#ffd700","#c5a042","#8a6d0b","#ffffff","#111111"],
+    ["#7b1fa2","#e040fb","#ce93d8","#f3e5f5","#0b0b13"],
+    ["#00ffa3","#00d1ff","#0077ff","#e6fff9","#0b0b13"],
+    ["#ff5252","#ff1744","#ff8a80","#ffe5e5","#0b0b13"],
+    ["#64b5f6","#1e88e5","#0d47a1","#e3f2fd","#0b0b13"]
+  ];
+  let currentPaletteIndex = 0, walletRawAddress = null, animReq = null, animOn = true, activeSeed = '', activeCfg = null;
+  const TAU = Math.PI * 2;
+  let DPR = 1, CSS_SIZE = 512, W = 512, H = 512;
 
-// ================== 🔮 Sigil Smithy — Ancient Talisman (complete) ==================
-
-// Palettes
-const palettes = [
-  ["#ffd700","#c5a042","#8a6d0b","#ffffff","#111111"],
-  ["#7b1fa2","#e040fb","#ce93d8","#f3e5f5","#0b0b13"],
-  ["#00ffa3","#00d1ff","#0077ff","#e6fff9","#0b0b13"],
-  ["#ff5252","#ff1744","#ff8a80","#ffe5e5","#0b0b13"],
-  ["#64b5f6","#1e88e5","#0d47a1","#e3f2fd","#0b0b13"]
-];
-
-let currentPaletteIndex = 0;
-let walletRawAddress = null;
-let animReq = null, animOn = true, activeSeed = '', activeCfg = null;
-
-const TAU = Math.PI * 2;
-
-// ----- Canvas sizing (logical vs device pixels)
-let DPR = 1, CSS_SIZE = 512, W = 512, H = 512;
-
-function resizeSigilCanvas(){
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  CSS_SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.8;
-
-  W = CSS_SIZE; H = CSS_SIZE;
-  sigilCanvas.width  = Math.round(W * DPR);   // device pixels
-  sigilCanvas.height = Math.round(H * DPR);
-  sigilCanvas.style.width  = `${W}px`;
-  sigilCanvas.style.height = `${H}px`;
-
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.scale(DPR, DPR);                        // draw in logical px
-}
-resizeSigilCanvas();
-window.addEventListener("resize", resizeSigilCanvas);
-
-// ----- Seed helpers
-function getEffectiveSeed(){ return (seedInput.value && seedInput.value.trim()) || walletRawAddress || randomSeed(); }
-function randomSeed(){ return 'seed-' + Math.random().toString(36).slice(2,10); }
-function saveSigilState(){ localStorage.setItem('kly_sigil_state', JSON.stringify({ seed: seedInput.value, paletteIndex: currentPaletteIndex })); }
-function cyclePalette(){ currentPaletteIndex = (currentPaletteIndex+1)%palettes.length; saveSigilState(); }
-
-// ----- Background cache (stone + vignette)
-let bgCache = document.createElement('canvas'), bgCtx = bgCache.getContext('2d');
-bgCache.width = 1024; bgCache.height = 1024;
-
-// ===== Helpers: hash/noise, shapes, gradients, runes
-function h32(n){ n|=0; n = (n ^ (n>>>16)) * 0x45d9f3b; n = (n ^ (n>>>16)) * 0x45d9f3b; return (n ^ (n>>>16))>>>0; }
-function noise2D(x, y, seed=0){
-  const xi = Math.floor(x), yi = Math.floor(y);
-  const xf = x - xi, yf = y - yi;
-  const s = (t)=>t*t*(3-2*t);
-  function rnd(ix,iy){ return (h32(ix*374761393 ^ iy*668265263 ^ seed) % 10000)/10000; }
-  const v00 = rnd(xi,yi), v10 = rnd(xi+1,yi), v01 = rnd(xi,yi+1), v11 = rnd(xi+1,yi+1);
-  const x1 = v00 + s(xf)*(v10 - v00);
-  const x2 = v01 + s(xf)*(v11 - v01);
-  return x1 + s(yf)*(x2 - x1);
-}
-function fbm(x,y,seed,oct=4,fall=0.5,amp=1,freq=1){
-  let v=0, a=amp, f=freq;
-  for(let i=0;i<oct;i++){ v+= a*noise2D(x*f, y*f, seed+i*11); a*=fall; f*=2; }
-  return v;
-}
-function polygonPath(ctx, sides, r){
-  ctx.moveTo(r,0); const step = TAU/sides;
-  for(let i=1;i<=sides;i++){ const a= i*step; ctx.lineTo(r*Math.cos(a), r*Math.sin(a)); }
-}
-function starPath(ctx, points, rOuter, rInner){
-  const step = TAU/(points*2); ctx.moveTo(rOuter,0);
-  for(let i=1;i<points*2;i++){ const r=(i%2===0)?rOuter:rInner, a=i*step; ctx.lineTo(r*Math.cos(a), r*Math.sin(a)); }
-  ctx.closePath();
-}
-function rosePoint(k, a, r){ const rad = r*Math.cos(k*a); return [rad*Math.cos(a), rad*Math.sin(a)]; }
-function ringGradient(ctx, r0, r1, colA, colB, alphaA=.95, alphaB=.1){
-  const g = ctx.createRadialGradient(0,0, r0, 0,0, r1);
-  g.addColorStop(0, hexA(colA,alphaA)); g.addColorStop(1, hexA(colB,alphaB)); return g;
-}
-function hexA(hex,a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
-function hexToRgb(hex){ const n=hex.replace('#',''); const v=parseInt(n.length===3?n.split('').map(c=>c+c).join(''):n,16); return [(v>>16)&255,(v>>8)&255,v&255]; }
-
-function drawRune(ctx, size, id, color){
-  const rnd = id%12; ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=Math.max(1,size*0.08); ctx.lineCap='round';
-  switch(rnd){
-    case 0: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(size,0); ctx.stroke(); break;
-    case 1: ctx.beginPath(); ctx.moveTo(0,-size); ctx.lineTo(0,size); ctx.stroke(); break;
-    case 2: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(size,size); ctx.stroke(); break;
-    case 3: ctx.beginPath(); ctx.moveTo(-size,size); ctx.lineTo(size,-size); ctx.stroke(); break;
-    case 4: ctx.beginPath(); polygonPath(ctx,3,size); ctx.closePath(); ctx.stroke(); break;
-    case 5: ctx.beginPath(); polygonPath(ctx,4,size); ctx.closePath(); ctx.stroke(); break;
-    case 6: ctx.beginPath(); polygonPath(ctx,5,size); ctx.closePath(); ctx.stroke(); break;
-    case 7: ctx.beginPath(); starPath(ctx,5,size,size*0.45); ctx.stroke(); break;
-    case 8: ctx.beginPath(); ctx.arc(0,0,size,0,TAU); ctx.stroke(); break;
-    case 9: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(0,-size); ctx.lineTo(size,0); ctx.stroke(); break;
-    case 10: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(0,0); ctx.lineTo(size,-size); ctx.stroke(); break;
-    case 11: ctx.beginPath(); ctx.arc(0,0,size,0,Math.PI); ctx.stroke(); break;
-  } ctx.restore();
-}
-
-// ----- Background painter (aged stone + lattice)
-function makeBackground(colors){
-  const c = bgCtx; c.save(); const S = 1024; c.clearRect(0,0,S,S);
-
-  const base = c.createLinearGradient(0,0,S,S);
-  base.addColorStop(0, hexA(colors[4], .98)); base.addColorStop(1, hexA(colors[4], .92));
-  c.fillStyle = base; c.fillRect(0,0,S,S);
-
-  const glow = c.createRadialGradient(S/2,S/2,80, S/2,S/2, 520);
-  glow.addColorStop(0, hexA(colors[3], .15)); glow.addColorStop(1, 'rgba(0,0,0,.65)');
-  c.fillStyle = glow; c.fillRect(0,0,S,S);
-
-  c.globalAlpha=.12;
-  for(let y=0;y<S;y+=2){
-    for(let x=0;x<S;x+=2){
-      const v = fbm(x/240, y/240, h32(1337), 3, 0.6);
-      const g = Math.floor(20+v*28);
-      c.fillStyle = `rgb(${g},${g},${g})`; c.fillRect(x,y,2,2);
-    }
+  function resizeSigilCanvas(){
+    if (!sigilCanvas || !ctx) return;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    CSS_SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+    W = CSS_SIZE; H = CSS_SIZE;
+    sigilCanvas.width  = Math.round(W * DPR);
+    sigilCanvas.height = Math.round(H * DPR);
+    sigilCanvas.style.width  = `${W}px`;
+    sigilCanvas.style.height = `${H}px`;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(DPR, DPR);
   }
-  c.globalAlpha=1;
-
-  c.strokeStyle = hexA(colors[2], .06); c.lineWidth=1; c.beginPath();
-  for(let a=0;a<TAU;a+=TAU/36){ c.moveTo(S/2,S/2); c.lineTo(S/2 + 520*Math.cos(a), S/2 + 520*Math.sin(a)); }
-  c.stroke(); c.restore();
-}
-
-// ----- Config from seed
-function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
-function buildSigilConfig(seed){
-  const n = hash32(seed);
-  const rnd = (i=0)=> (h32(n + i*1013904223) % 10000) / 10000;
-  const sym = 8 + Math.floor(rnd(1)*10);
-  const layers = 3 + Math.floor(rnd(2)*3);
-  const ringCount = 3 + Math.floor(rnd(3)*3);
-  const rings = Array.from({length:ringCount}, (_,i)=> 140 + i*60 + Math.floor(rnd(4+i)*30));
-  return {
-    sym, layers, rings,
-    arcCount: 6 + Math.floor(rnd(7)*8),
-    coreRadius: 20 + rnd(8)*26,
-    wiggle: 0.08 + rnd(9)*0.12,
-    speed: 0.25 + rnd(10)*0.55,
-    runeCount: 28 + Math.floor(rnd(11)*16),
-    roseK: (rnd(12)*3 + 2)|0,
-    starPts: 5 + (rnd(13)*3|0),
-    seedInt: n
-  };
-}
-
-// ----- Renderer
-function drawFrame(t){
-  if (!activeCfg) return;
-
-  const CW = W, CH = H;
-  const cx = CW/2, cy = CH/2;
-  const colors = palettes[currentPaletteIndex];
-  const { sym, layers, rings, arcCount, coreRadius, wiggle, speed, runeCount, roseK, starPts, seedInt } = activeCfg;
-  const time = animOn ? t*0.001*speed : 0;
-
-  ctx.clearRect(0,0,CW,CH);
-  ctx.drawImage(bgCache, 0,0, CW,CH);
-
-  ctx.save(); ctx.translate(cx,cy);
-
-  const rOuter = rings[rings.length-1] + 28;
-  const rInner = rings[0] - 26;
-  ctx.fillStyle = ringGradient(ctx, rInner*0.35, rOuter, colors[1], colors[2], .35, .02);
-  ctx.beginPath(); ctx.arc(0,0,rOuter,0,TAU); ctx.fill();
-
-  rings.forEach((r,i)=>{
-    const breathe = 1 + 0.015*Math.sin(time*1.7 + i);
-    const rr = r*breathe;
-    ctx.strokeStyle = hexA(colors[0], .9); ctx.lineWidth=2.2;
-    ctx.beginPath(); ctx.arc(0,0, rr, 0, TAU); ctx.stroke();
-    ctx.strokeStyle = hexA('#ffffff', .12); ctx.lineWidth=3.5;
-    ctx.beginPath(); ctx.arc(0,0, rr, time*0.8, time*0.8 + Math.PI*0.35); ctx.stroke();
-  });
-
-  for(let L=0; L<layers; L++){
-    for(let i=0;i<sym;i++){
-      const a0 = (i/sym)*TAU + L*0.07 + time*0.2;
-      const noffset = (fbm(Math.cos(a0)*1.2, Math.sin(a0)*1.2, seedInt+L*13, 3, .55) - .5)*wiggle*TAU;
-      const a = a0 + noffset;
-      const r1 = Math.max(coreRadius+18, rings[0]-30);
-      const r2 = rings[Math.min(L, rings.length-1)] - 6 + 16*Math.sin(time + i*0.35);
-
-      ctx.strokeStyle = hexA(colors[1], .85);
-      ctx.lineWidth = 1.4 + L*0.6;
-      ctx.beginPath(); ctx.moveTo(r1*Math.cos(a), r1*Math.sin(a)); ctx.lineTo(r2*Math.cos(a), r2*Math.sin(a)); ctx.stroke();
-
-      ctx.save(); ctx.translate(r2*Math.cos(a), r2*Math.sin(a)); ctx.rotate(a + time*0.4);
-      ctx.fillStyle = hexA(colors[2], .85);
-      switch((i+L)%4){
-        case 0: ctx.fillRect(-7,-7,14,14); break;
-        case 1: ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(8,7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill(); break;
-        case 2: ctx.beginPath(); ctx.arc(0,0,8,0,TAU); ctx.fill(); break;
-        case 3: ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(0,-9); ctx.lineTo(9,0); ctx.lineTo(0,9); ctx.closePath(); ctx.fill(); break;
-      }
-      ctx.restore();
-    }
-  }
-
-  ctx.strokeStyle = hexA(colors[0], .65); ctx.lineWidth=1.6; ctx.beginPath();
-  const Rk = rings[Math.floor(rings.length/2)] - 18;
-  for(let i=0;i<=720;i++){
-    const a = (i/720)*TAU*2 + time*0.6;
-    const [x,y] = rosePoint(roseK, a, Rk);
-    const n = (noise2D(Math.cos(a)*1.8, Math.sin(a)*1.8, seedInt) - .5)*10;
-    if(i===0) ctx.moveTo(x+n, y+n); else ctx.lineTo(x+n, y+n);
-  }
-  ctx.stroke();
-
-  ctx.strokeStyle = hexA(colors[0], .55); ctx.lineWidth=2.2;
-  for(let i=0;i<arcCount;i++){
-    const r = rInner + (i/(arcCount-1))*(rOuter-rInner);
-    const start = time*0.4 + (i/arcCount)*TAU;
-    const len = Math.PI*0.35 + Math.sin(time + i)*Math.PI*0.25;
-    ctx.beginPath(); ctx.arc(0,0, r, start, start+len); ctx.stroke();
-  }
-
-  const RR = rOuter - 14;
-  const runeSize = 10 + (CW/1024)*4;
-  for(let i=0;i<runeCount;i++){
-    const a = (i/runeCount)*TAU + time*0.15;
-    const x = RR*Math.cos(a), y = RR*Math.sin(a);
-    ctx.save(); ctx.translate(x,y); ctx.rotate(a + Math.PI/2);
-    drawRune(ctx, runeSize, seedInt+i*97, hexA(colors[0], .92));
-    ctx.restore();
-  }
-
-  ctx.save();
-  ctx.fillStyle = ringGradient(ctx, 0, coreRadius*2.2, colors[2], colors[1], .9,.15);
-  ctx.beginPath(); starPath(ctx, starPts, coreRadius*1.25, coreRadius*0.55); ctx.fill();
-  ctx.globalCompositeOperation='lighter';
-  ctx.fillStyle = hexA(colors[1], .85);
-  ctx.beginPath(); ctx.arc(0,0, coreRadius*(1+0.08*Math.sin(time*2.2)), 0, TAU); ctx.fill();
-  ctx.globalCompositeOperation='source-over';
-  ctx.strokeStyle = hexA(colors[2], .8); ctx.lineWidth=1.6;
-  ctx.beginPath(); ctx.moveTo(-coreRadius-14,0); ctx.lineTo(coreRadius+14,0); ctx.moveTo(0,-coreRadius-14); ctx.lineTo(0,coreRadius+14); ctx.stroke();
-  ctx.restore();
-
-  ctx.globalCompositeOperation='screen';
-  ctx.strokeStyle = hexA(colors[0], .08); ctx.lineWidth=22;
-  ctx.beginPath(); ctx.arc(0,0, rOuter+12, 0, TAU); ctx.stroke();
-  ctx.globalCompositeOperation='source-over';
-
-  ctx.restore();
-  if (animOn) animReq = requestAnimationFrame(drawFrame);
-}
-
-// ----- Toggle + render API (used by your existing buttons/listeners)
-function toggleAnimation(){
-  animOn = !animOn;
-  const label = animOn ? "⏸ Pause" : "▶ Animate";
-  if (toggleAnimBtn) toggleAnimBtn.textContent = label;
-  if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = label;
-  if (animOn){
-    cancelAnimationFrame(animReq);
-    animReq = requestAnimationFrame(drawFrame);
-  }else{
-    cancelAnimationFrame(animReq);
-    drawFrame(0);
-  }
-}
-window.toggleAnimation = toggleAnimation;
-
-function renderSigil(seed, paletteIndex=0){
-  const colors = palettes[paletteIndex];
-  if (paletteDot) paletteDot.style.background = colors[0];
-  makeBackground(colors);                 // refresh bg cache
-  activeSeed = seed;
-  activeCfg = buildSigilConfig(seed);
-  if (sigilMeta) sigilMeta.textContent = `seed: ${seed.slice(0,10)}… • sym:${activeCfg.sym} • palette:#${paletteIndex+1}`;
-
-  cancelAnimationFrame(animReq);
-  if (animOn){
-    animReq = requestAnimationFrame(drawFrame);
-    if (toggleAnimBtn) toggleAnimBtn.textContent = "⏸ Pause";
-    if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = "⏸ Pause";
-  } else {
-    drawFrame(0);
-    if (toggleAnimBtn) toggleAnimBtn.textContent = "▶ Animate";
-    if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = "▶ Animate";
-  }
-}
-
-// ----- Modal open/close hooks
-async function openSigilSmithy(){
-  const acct = await getActiveAccount?.();
-  walletRawAddress = acct || null;
-  if (!seedInput.value) seedInput.value = acct || randomSeed();
-  modalBackdrop.classList.add('show');
-  animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   resizeSigilCanvas();
-  renderSigil(getEffectiveSeed(), currentPaletteIndex);
-}
-function closeSigilSmithy(){
-  modalBackdrop.classList.remove('show');
-  saveSigilState();
-  animOn = false;
-  cancelAnimationFrame(animReq); animReq = null;
-}
-window.openSigilSmithy = openSigilSmithy;
+  window.addEventListener("resize", resizeSigilCanvas);
+
+  function getEffectiveSeed(){ return (seedInput?.value && seedInput.value.trim()) || walletRawAddress || randomSeed(); }
+  function randomSeed(){ return 'seed-' + Math.random().toString(36).slice(2,10); }
+  function saveSigilState(){ localStorage.setItem('kly_sigil_state', JSON.stringify({ seed: seedInput?.value || '', paletteIndex: currentPaletteIndex })); }
+  function cyclePalette(){ currentPaletteIndex = (currentPaletteIndex+1)%palettes.length; saveSigilState(); }
+
+  // bg cache
+  const bgCache = document.createElement('canvas'); const bgCtx = bgCache.getContext('2d'); bgCache.width=1024; bgCache.height=1024;
+
+  // helpers
+  function h32(n){ n|=0; n=(n^(n>>>16))*0x45d9f3b; n=(n^(n>>>16))*0x45d9f3b; return (n^(n>>>16))>>>0; }
+  function noise2D(x,y,seed=0){ const xi=Math.floor(x), yi=Math.floor(y); const xf=x-xi, yf=y-yi; const s=t=>t*t*(3-2*t);
+    function rnd(ix,iy){ return (h32(ix*374761393 ^ iy*668265263 ^ seed) % 10000)/10000; }
+    const v00=rnd(xi,yi), v10=rnd(xi+1,yi), v01=rnd(xi,yi+1), v11=rnd(xi+1,yi+1);
+    const x1=v00+s(xf)*(v10-v00), x2=v01+s(xf)*(v11-v01); return x1+s(yf)*(x2-x1); }
+  function fbm(x,y,seed,oct=4,fall=0.5,amp=1,freq=1){ let v=0,a=amp,f=freq; for(let i=0;i<oct;i++){ v+=a*noise2D(x*f,y*f,seed+i*11); a*=fall; f*=2;} return v; }
+  function polygonPath(c,sides,r){ c.moveTo(r,0); const step=TAU/sides; for(let i=1;i<=sides;i++){ const a=i*step; c.lineTo(r*Math.cos(a), r*Math.sin(a)); } }
+  function starPath(c,points,rO,rI){ const step=TAU/(points*2); c.moveTo(rO,0); for(let i=1;i<points*2;i++){ const r=(i%2===0)?rO:rI, a=i*step; c.lineTo(r*Math.cos(a), r*Math.sin(a)); } c.closePath(); }
+  function rosePoint(k,a,r){ const rad=r*Math.cos(k*a); return [rad*Math.cos(a), rad*Math.sin(a)]; }
+  function hexToRgb(hex){ const n=hex.replace('#',''); const v=parseInt(n.length===3?n.split('').map(c=>c+c).join(''):n,16); return [(v>>16)&255,(v>>8)&255,v&255]; }
+  function hexA(hex,a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+  function ringGradient(c,r0,r1,ca,cb,aA=.95,aB=.1){ const g=c.createRadialGradient(0,0,r0,0,0,r1); g.addColorStop(0,hexA(ca,aA)); g.addColorStop(1,hexA(cb,aB)); return g; }
+  function drawRune(c,size,id,color){ const rnd=id%12; c.save(); c.strokeStyle=color; c.lineWidth=Math.max(1,size*0.08); c.lineCap='round';
+    switch(rnd){case 0:c.beginPath();c.moveTo(-size,0);c.lineTo(size,0);c.stroke();break;case 1:c.beginPath();c.moveTo(0,-size);c.lineTo(0,size);c.stroke();break;
+    case 2:c.beginPath();c.moveTo(-size,-size);c.lineTo(size,size);c.stroke();break;case 3:c.beginPath();c.moveTo(-size,size);c.lineTo(size,-size);c.stroke();break;
+    case 4:c.beginPath();polygonPath(c,3,size);c.closePath();c.stroke();break;case 5:c.beginPath();polygonPath(c,4,size);c.closePath();c.stroke();break;
+    case 6:c.beginPath();polygonPath(c,5,size);c.closePath();c.stroke();break;case 7:c.beginPath();starPath(c,5,size,size*0.45);c.stroke();break;
+    case 8:c.beginPath();c.arc(0,0,size,0,TAU);c.stroke();break;case 9:c.beginPath();c.moveTo(-size,0);c.lineTo(0,-size);c.lineTo(size,0);c.stroke();break;
+    case 10:c.beginPath();c.moveTo(-size,-size);c.lineTo(0,0);c.lineTo(size,-size);c.stroke();break;case 11:c.beginPath();c.arc(0,0,size,0,Math.PI);c.stroke();break;}
+    c.restore(); }
+  function makeBackground(colors){ const c=bgCtx; c.save(); const S=1024; c.clearRect(0,0,S,S);
+    const base=c.createLinearGradient(0,0,S,S); base.addColorStop(0,hexA(colors[4],.98)); base.addColorStop(1,hexA(colors[4],.92)); c.fillStyle=base; c.fillRect(0,0,S,S);
+    const glow=c.createRadialGradient(S/2,S/2,80,S/2,S/2,520); glow.addColorStop(0,hexA(colors[3],.15)); glow.addColorStop(1,'rgba(0,0,0,.65)'); c.fillStyle=glow; c.fillRect(0,0,S,S);
+    c.globalAlpha=.12; for(let y=0;y<S;y+=2){for(let x=0;x<S;x+=2){ const v=fbm(x/240,y/240,h32(1337),3,.6); const g=Math.floor(20+v*28); c.fillStyle=`rgb(${g},${g},${g})`; c.fillRect(x,y,2,2);}}
+    c.globalAlpha=1; c.strokeStyle=hexA(colors[2],.06); c.lineWidth=1; c.beginPath(); for(let a=0;a<TAU;a+=TAU/36){ c.moveTo(S/2,S/2); c.lineTo(S/2+520*Math.cos(a), S/2+520*Math.sin(a)); } c.stroke(); c.restore(); }
+  function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+  function buildSigilConfig(seed){
+    const n = hash32(seed); const rnd=(i=0)=>(h32(n+i*1013904223)%10000)/10000;
+    const sym=8+Math.floor(rnd(1)*10), layers=3+Math.floor(rnd(2)*3), ringCount=3+Math.floor(rnd(3)*3);
+    const rings=Array.from({length:ringCount},(_,i)=>140+i*60+Math.floor(rnd(4+i)*30));
+    return { sym,layers,rings, arcCount:6+Math.floor(rnd(7)*8), coreRadius:20+rnd(8)*26, wiggle:0.08+rnd(9)*0.12,
+             speed:0.25+rnd(10)*0.55, runeCount:28+Math.floor(rnd(11)*16), roseK:(rnd(12)*3+2)|0, starPts:5+(rnd(13)*3|0), seedInt:n };
+  }
+
+  function drawFrame(t){
+    if (!activeCfg || !ctx) return;
+    const CW=W, CH=H, cx=CW/2, cy=CH/2, colors=palettes[currentPaletteIndex];
+    const { sym,layers,rings,arcCount,coreRadius,wiggle,speed,runeCount,roseK,starPts,seedInt }=activeCfg;
+    const time=animOn? t*0.001*speed : 0;
+    ctx.clearRect(0,0,CW,CH); ctx.drawImage(bgCache,0,0,CW,CH); ctx.save(); ctx.translate(cx,cy);
+    const rOuter=rings[rings.length-1]+28, rInner=rings[0]-26;
+    ctx.fillStyle=ringGradient(ctx,rInner*0.35,rOuter,colors[1],colors[2],.35,.02); ctx.beginPath(); ctx.arc(0,0,rOuter,0,TAU); ctx.fill();
+    rings.forEach((r,i)=>{ const rr=r*(1+0.015*Math.sin(time*1.7+i)); ctx.strokeStyle=hexA(colors[0],.9); ctx.lineWidth=2.2;
+      ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.stroke(); ctx.strokeStyle=hexA('#ffffff',.12); ctx.lineWidth=3.5;
+      ctx.beginPath(); ctx.arc(0,0,rr,time*0.8,time*0.8+Math.PI*0.35); ctx.stroke(); });
+    for(let L=0;L<layers;L++){ for(let i=0;i<sym;i++){ const a0=(i/sym)*TAU+L*0.07+time*0.2;
+      const a=a0+(fbm(Math.cos(a0)*1.2,Math.sin(a0)*1.2,seedInt+L*13,3,.55)-.5)*wiggle*TAU;
+      const r1=Math.max(coreRadius+18,rings[0]-30), r2=rings[Math.min(L,rings.length-1)]-6+16*Math.sin(time+i*0.35);
+      ctx.strokeStyle=hexA(colors[1],.85); ctx.lineWidth=1.4+L*0.6; ctx.beginPath(); ctx.moveTo(r1*Math.cos(a),r1*Math.sin(a)); ctx.lineTo(r2*Math.cos(a),r2*Math.sin(a)); ctx.stroke();
+      ctx.save(); ctx.translate(r2*Math.cos(a), r2*Math.sin(a)); ctx.rotate(a+time*0.4); ctx.fillStyle=hexA(colors[2],.85);
+      switch((i+L)%4){ case 0: ctx.fillRect(-7,-7,14,14); break; case 1: ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(8,7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill(); break;
+        case 2: ctx.beginPath(); ctx.arc(0,0,8,0,TAU); ctx.fill(); break; case 3: ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(0,-9); ctx.lineTo(9,0); ctx.lineTo(0,9); ctx.closePath(); ctx.fill(); break; }
+      ctx.restore(); } }
+    ctx.strokeStyle=hexA(colors[0],.65); ctx.lineWidth=1.6; ctx.beginPath(); const Rk=rings[Math.floor(rings.length/2)]-18;
+    for(let i=0;i<=720;i++){ const a=(i/720)*TAU*2+time*0.6; const [x,y]=rosePoint(roseK,a,Rk); const n=(noise2D(Math.cos(a)*1.8,Math.sin(a)*1.8,seedInt)-.5)*10; if(i===0) ctx.moveTo(x+n,y+n); else ctx.lineTo(x+n,y+n); }
+    ctx.stroke();
+    ctx.strokeStyle=hexA(colors[0],.55); ctx.lineWidth=2.2;
+    for(let i=0;i<arcCount;i++){ const r=rInner+(i/(arcCount-1))*(rOuter-rInner); const start=time*0.4+(i/arcCount)*TAU; const len=Math.PI*0.35+Math.sin(time+i)*Math.PI*0.25;
+      ctx.beginPath(); ctx.arc(0,0,r,start,start+len); ctx.stroke(); }
+    const RR=rOuter-14, runeSize=10+(CW/1024)*4;
+    for(let i=0;i<runeCount;i++){ const a=(i/runeCount)*TAU+time*0.15; const x=RR*Math.cos(a), y=RR*Math.sin(a); ctx.save(); ctx.translate(x,y); ctx.rotate(a+Math.PI/2); drawRune(ctx,runeSize,seedInt+i*97,hexA(colors[0],.92)); ctx.restore(); }
+    ctx.save(); ctx.fillStyle=ringGradient(ctx,0,coreRadius*2.2,colors[2],colors[1],.9,.15); ctx.beginPath(); starPath(ctx,starPts,coreRadius*1.25,coreRadius*0.55); ctx.fill();
+    ctx.globalCompositeOperation='lighter'; ctx.fillStyle=hexA(colors[1],.85); ctx.beginPath(); ctx.arc(0,0,coreRadius*(1+0.08*Math.sin(time*2.2)),0,TAU); ctx.fill(); ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle=hexA(colors[2],.8); ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(-coreRadius-14,0); ctx.lineTo(coreRadius+14,0); ctx.moveTo(0,-coreRadius-14); ctx.lineTo(0,coreRadius+14); ctx.stroke(); ctx.restore();
+    ctx.globalCompositeOperation='screen'; ctx.strokeStyle=hexA(colors[0],.08); ctx.lineWidth=22; ctx.beginPath(); ctx.arc(0,0,rOuter+12,0,TAU); ctx.stroke(); ctx.globalCompositeOperation='source-over';
+    ctx.restore(); if (animOn) animReq = requestAnimationFrame(drawFrame);
+  }
+  function toggleAnimation(){
+    animOn = !animOn;
+    const label = animOn ? "⏸ Pause" : "▶ Animate";
+    if (toggleAnimBtn) toggleAnimBtn.textContent = label;
+    if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = label;
+    cancelAnimationFrame(animReq);
+    animOn ? (animReq = requestAnimationFrame(drawFrame)) : drawFrame(0);
+  }
+  window.toggleAnimation = toggleAnimation;
+
+  function renderSigil(seed, paletteIndex=0){
+    if (!sigilCanvas || !ctx) return;
+    const colors = palettes[paletteIndex];
+    if (paletteDot) paletteDot.style.background = colors[0];
+    makeBackground(colors);
+    activeSeed = seed;
+    activeCfg = buildSigilConfig(seed);
+    if (sigilMeta) sigilMeta.textContent = `seed: ${seed.slice(0,10)}… • sym:${activeCfg.sym} • palette:#${paletteIndex+1}`;
+    cancelAnimationFrame(animReq);
+    animOn ? (animReq = requestAnimationFrame(drawFrame)) : drawFrame(0);
+  }
+
+  async function openSigilSmithy(){
+    if (!modalBackdrop) return;
+    const acct = await getActiveAccount?.();
+    walletRawAddress = acct || null;
+    if (seedInput && !seedInput.value) seedInput.value = acct || randomSeed();
+    modalBackdrop.classList.add('show');
+    animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resizeSigilCanvas();
+    renderSigil(getEffectiveSeed(), currentPaletteIndex);
+  }
+  function closeSigilSmithy(){
+    if (!modalBackdrop) return;
+    modalBackdrop.classList.remove('show');
+    saveSigilState();
+    animOn = false;
+    cancelAnimationFrame(animReq); animReq = null;
+  }
+  window.openSigilSmithy = openSigilSmithy;
+
   // ================== Expose ==================
- // ================== Expose ==================
-window.interactWithRelic = interactWithRelic;
-window.openAcademy       = openAcademy;
-window.openStaking       = openStaking;
-window.launchOracle      = launchOracle;
-window.openSecurityCheck = openSecurityCheck; // now opens the drawer
-window.openAltarModal    = openAltarModal;
-window.performBurn       = performBurn;
-window.setAltarPercent   = setAltarPercent;
-window.closeAltarModal   = closeAltarModal;
+  window.interactWithRelic   = interactWithRelic;
+  window.openAcademy         = openAcademy;
+  window.openStaking         = openStaking;
+  window.launchOracle        = launchOracle;
+  window.openSecurityCheck   = openSecurityCheck; // drawer or external fallback
+  window.openSecurityDrawer  = openSecurityDrawer;
+  window.closeSecurityDrawer = closeSecurityDrawer;
+
+  window.openAltarModal      = openAltarModal;
+  window.performBurn         = performBurn;
+  window.setAltarPercent     = setAltarPercent;
+  window.closeAltarModal     = closeAltarModal;
 </script>
 </body>
 </html>
