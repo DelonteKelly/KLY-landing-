@@ -613,7 +613,7 @@
   });
 
 
-  // ─── Security Drawer control ───
+  // ─── Security Drawer control (safe) ───
 const securityDrawer = document.getElementById('securityDrawer');
 const secBackdrop    = document.getElementById('secBackdrop');
 
@@ -621,26 +621,40 @@ function lockBody(lock){
   document.documentElement.style.overflow = lock ? 'hidden' : '';
   document.body.style.overscrollBehavior = lock ? 'contain' : '';
 }
+
 function openSecurityDrawer(){
+  if (!securityDrawer || !secBackdrop) return;
   securityDrawer.classList.add('open');
   secBackdrop.classList.add('show');
   lockBody(true);
 }
 function closeSecurityDrawer(){
+  if (!securityDrawer || !secBackdrop) return;
   securityDrawer.classList.remove('open');
   secBackdrop.classList.remove('show');
   lockBody(false);
 }
-secBackdrop.addEventListener('click', closeSecurityDrawer);
-window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
 
-// if you previously used openSecurityCheck(), repoint it:
-async function openSecurityCheck(){ openSecurityDrawer(); }
+// only wire events if elements exist
+if (secBackdrop) {
+  secBackdrop.addEventListener('click', closeSecurityDrawer);
+  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
+}
 
-// expose if needed
-window.openSecurityDrawer = openSecurityDrawer;
+// keep your public API; fallback to external if drawer missing
+async function openSecurityCheck(){
+  if (securityDrawer && secBackdrop) {
+    openSecurityDrawer();
+  } else {
+    const acct = await getActiveAccount();
+    const addr = acct || '';
+    openExternal(`https://revoke.cash/account/56/${addr}`);
+  }
+}
+
+window.openSecurityDrawer  = openSecurityDrawer;
 window.closeSecurityDrawer = closeSecurityDrawer;
-
+window.openSecurityCheck   = openSecurityCheck;
   // ================== Particles ==================
   function createParticles(){
     const particleCount = window.matchMedia("(prefers-reduced-motion: reduce)").matches
