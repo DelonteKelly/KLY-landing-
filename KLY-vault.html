@@ -281,8 +281,66 @@
           <h3 class="item-title">Security Center</h3>
           <p class="item-desc"><span class="hidden-text">Armor first. Adventure second.</span>Run wallet health checks, revoke risky approvals, and enable session guards.</p>
           <div class="blockchain-data"><span class="live-indicator" aria-hidden="true"></span><span>Tools: <code>Approvals • Phishing</code></span></div>
-          <button class="relic-cta" onclick="event.stopPropagation(); openSecurityCheck()" aria-label="Run security check">Run Checkup</button>
-        </article>
+          <button class="relic-cta"
+        onclick="event.stopPropagation(); openSecurityCenter()"
+        aria-label="Run security check">Run Checkup
+        </button>
+
+          <!-- ===== Security Center Modal ===== -->
+<div class="modal-backdrop" id="securityModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="secTitle">
+    <div class="modal-header">
+      <div class="pill"><span class="color-dot" style="background:#4caf50"></span> Security Center</div>
+      <div class="modal-title" id="secTitle">Wallet Health & Approvals</div>
+      <button class="btn" id="closeSecurityBtn" aria-label="Close Security Center">✖</button>
+    </div>
+
+    <div class="modal-body" style="gap:14px">
+      <div class="control-panel" style="min-width:320px">
+        <label>Status</label>
+        <div id="secStatus" class="pill" style="margin-bottom:8px">—</div>
+
+        <div style="display:grid;gap:8px">
+          <button class="btn primary" id="runQuickScanBtn">Run Quick Scan</button>
+          <button class="btn" id="toggleSessionGuardBtn">🔒 Enable Session Guard</button>
+        </div>
+
+        <div style="margin-top:10px;font-size:.85rem;color:#cfcfcf">
+          Quick Scan checks: wallet connection, BSC network, block latency.
+        </div>
+      </div>
+
+      <div class="control-panel" style="min-width:320px">
+        <label>Approvals & Revokes</label>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <a class="btn" id="revokeCashBtn" target="_blank" rel="noopener">Open revoke.cash (BSC)</a>
+          <a class="btn" id="bscScanTokenApprovals" target="_blank" rel="noopener">View Token Approvals (BscScan)</a>
+          <a class="btn" id="bscScanNftApprovals" target="_blank" rel="noopener">View NFT Approvals (BscScan)</a>
+        </div>
+        <div style="margin-top:10px;font-size:.85rem;color:#cfcfcf">
+          Tip: Revoke “infinite” allowances you no longer use.
+        </div>
+      </div>
+
+      <div class="control-panel" style="min-width:300px">
+        <label>Checklist</label>
+        <ul style="margin:6px 0 0 16px;line-height:1.5">
+          <li>Use a burner wallet for new mints.</li>
+          <li>Revoke stale allowances often.</li>
+          <li>Beware blind signatures & setApprovalForAll.</li>
+          <li>Confirm URLs (no look-alikes).</li>
+          <li>Keep seed phrase offline only.</li>
+        </ul>
+        <button class="btn" id="copyChecklistBtn" style="margin-top:8px">Copy Checklist</button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <span style="color:#c9c9c9">BSC • Chain ID 56 • Non-custodial tools</span>
+      <div class="pill" id="secMeta">—</div>
+    </div>
+  </div>
+</div>
 
         <!-- 🔮 NEW: Sigil Smithy (replaces Lore) -->
         <article class="vault-item memory-item" onclick="interactWithRelic(this, 'sigil')">
@@ -452,6 +510,121 @@
     if (saved.seed) seedInput.value = saved.seed;
     if (Number.isInteger(saved.paletteIndex)) currentPaletteIndex = saved.paletteIndex;
   });
+
+  // ===== Security Center logic =====
+const securityModal = document.getElementById('securityModal');
+const closeSecurityBtn = document.getElementById('closeSecurityBtn');
+const runQuickScanBtn = document.getElementById('runQuickScanBtn');
+const toggleSessionGuardBtn = document.getElementById('toggleSessionGuardBtn');
+const revokeCashBtn = document.getElementById('revokeCashBtn');
+const bscScanTokenApprovals = document.getElementById('bscScanTokenApprovals');
+const bscScanNftApprovals = document.getElementById('bscScanNftApprovals');
+const copyChecklistBtn = document.getElementById('copyChecklistBtn');
+const secStatus = document.getElementById('secStatus');
+const secMeta = document.getElementById('secMeta');
+
+let sessionGuardOn = false;
+
+// open/close
+function openSecurityCenter(){ 
+  securityModal.classList.add('show'); 
+  hydrateSecurityLinks(); 
+  updateGuardButton();
+  setSecStatus('info', 'Ready — connect wallet & run scan');
+}
+function closeSecurityCenter(){ securityModal.classList.remove('show'); }
+
+window.openSecurityCenter = openSecurityCenter; // for button onclick
+
+closeSecurityBtn.addEventListener('click', closeSecurityCenter);
+securityModal.addEventListener('click', (e)=>{ if(e.target === securityModal) closeSecurityCenter(); });
+
+// status helper
+function setSecStatus(level, msg){
+  const icon = {success:'✅', warning:'⚠️', error:'❌', info:'🔍'}[level] || '🔍';
+  secStatus.textContent = `${icon} ${msg}`;
+}
+
+// deep links (address-aware)
+async function hydrateSecurityLinks(){
+  const acct = await getActiveAccount();
+  const addr = acct || 'YOUR_ADDRESS';
+  // revoke.cash deep link (56 = BSC)
+  revokeCashBtn.href = `https://revoke.cash/account/56/${addr}`;
+  // BscScan quick pages
+  bscScanTokenApprovals.href = `https://bscscan.com/tokenapprovalchecker?search=${addr}`;
+  bscScanNftApprovals.href   = `https://bscscan.com/tokenapprovalchecker-nft?search=${addr}`;
+  secMeta.textContent = acct ? `Address: ${addr.slice(0,6)}…${addr.slice(-4)}` : 'No wallet connected';
+}
+
+// “Quick Scan”: wallet + chain + latency
+runQuickScanBtn.addEventListener('click', async ()=>{
+  try{
+    const acct = await getActiveAccount();
+    if(!acct){ setSecStatus('warning','Connect wallet to scan'); toast('Connect your wallet first','warning'); return; }
+
+    // network
+    await verifyNetwork(); // your existing helper
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const net = await provider.getNetwork();
+
+    if (net.chainId !== 56){ 
+      setSecStatus('error', `Wrong chain (${net.chainId}) — switch to BSC (56)`); 
+      return; 
+    }
+
+    // block latency (simple health indicator)
+    const t0 = performance.now();
+    const bn = await provider.getBlockNumber();
+    const dt = Math.round(performance.now() - t0);
+    setSecStatus('success', `OK — BSC #${bn} • RPC latency ${dt} ms`);
+    toast('Quick scan passed ✅','success');
+  }catch(e){
+    console.error(e);
+    setSecStatus('error','Scan failed — check console');
+  }
+});
+
+// Session Guard (soft lock: blocks tx requests from this page)
+function updateGuardButton(){
+  toggleSessionGuardBtn.textContent = sessionGuardOn ? '🔓 Disable Session Guard' : '🔒 Enable Session Guard';
+}
+toggleSessionGuardBtn.addEventListener('click', ()=>{
+  sessionGuardOn = !sessionGuardOn;
+  updateGuardButton();
+  toast(sessionGuardOn ? 'Session Guard enabled — txs blocked from this page' 
+                       : 'Session Guard disabled','info');
+});
+
+// simple proxy to intercept tx methods from this page
+const _origEthRequest = window.ethereum?.request?.bind(window.ethereum);
+if (window.ethereum && _origEthRequest){
+  window.ethereum.request = async (args)=>{
+    // allow reads & common safe methods
+    const safe = new Set(['eth_accounts','eth_requestAccounts','eth_chainId','eth_signTypedData_v4','wallet_switchEthereumChain','wallet_addEthereumChain','eth_getBalance','eth_call','eth_getBlockByNumber','eth_blockNumber']);
+    if (!sessionGuardOn || safe.has(args?.method)) return _origEthRequest(args);
+
+    // block writes/signing if guard is on
+    const risky = new Set(['eth_sendTransaction','eth_sign','personal_sign']);
+    if (risky.has(args.method) || (args.method === 'eth_call' && args.params?.[0]?.gas)) {
+      toast('Session Guard: blocked a sensitive request','warning');
+      throw new Error('SessionGuardBlocked');
+    }
+    return _origEthRequest(args);
+  };
+}
+
+// Copy checklist
+copyChecklistBtn.addEventListener('click', async ()=>{
+  const text = `Wallet Security Checklist:
+• Use a burner wallet for new mints
+• Revoke stale allowances often
+• Beware blind signatures & setApprovalForAll
+• Confirm URLs (no look-alikes)
+• Keep seed phrase offline only`;
+  await navigator.clipboard.writeText(text);
+  toast('Checklist copied','success');
+});
 
   // ================== Particles ==================
   function createParticles(){
