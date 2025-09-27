@@ -718,19 +718,24 @@
   let currentPaletteIndex = 0;
   let walletRawAddress = null;
 
-  // DPR-aware & responsive canvas
-  function resizeSigilCanvas(){
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
-    sigilCanvas.width  = maxSize * dpr;
-    sigilCanvas.height = maxSize * dpr;
-    sigilCanvas.style.width = maxSize + "px";
-    sigilCanvas.style.height = maxSize + "px";
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.scale(dpr, dpr);
-  }
-  resizeSigilCanvas();
-  window.addEventListener("resize", resizeSigilCanvas);
+// ─── Canvas sizing (logical vs device pixels) ─────────────────
+let DPR = 1, CSS_SIZE = 512, W = 512, H = 512; // W/H = logical (CSS) pixels
+
+function resizeSigilCanvas(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  CSS_SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+
+  W = CSS_SIZE; H = CSS_SIZE;                      // logical size used by drawing code
+  sigilCanvas.width  = Math.round(W * DPR);        // device pixels
+  sigilCanvas.height = Math.round(H * DPR);
+  sigilCanvas.style.width  = `${W}px`;
+  sigilCanvas.style.height = `${H}px`;
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(DPR, DPR);                             // now all coords are in logical pixels
+}
+resizeSigilCanvas();
+window.addEventListener("resize", resizeSigilCanvas);
 
   function xorshift(seed){ let x = seed>>>0; return ()=>((x^=x<<13,x^=x>>>17,x^=x<<5)>>>0)/0xFFFFFFFF; }
   function hash32(str){ let h = 2166136261>>>0; for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h>>>0; }
@@ -776,73 +781,71 @@
   let animReq = null, animOn = true, activeSeed = '', activeCfg = null;
   
   function drawFrame(t){
-    if (!activeCfg) return;
-    
-    const colors = palettes[currentPaletteIndex];
-    const rnd = xorshift(hash32(activeSeed));
-    const { sym, layers, rings, arcCount, coreRadius, wiggle, speed, runeCount } = activeCfg;
-    
-    // Clear and draw background
-    ctx.clearRect(0, 0, sigilCanvas.width, sigilCanvas.height);
-    ctx.drawImage(bgCache, 0, 0, sigilCanvas.width, sigilCanvas.height);
-    
-    // Draw central core
+  if (!activeCfg) return;
+
+  const colors = palettes[currentPaletteIndex];
+  const { sym, rings, coreRadius, speed } = activeCfg;
+
+  // Clear & draw background using logical size
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(bgCache, 0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(W/2, H/2);
+
+  // Animation rotation
+  const rotation = animOn ? (t * 0.001 * speed) % TAU : 0;
+  ctx.rotate(rotation);
+
+  // Concentric rings
+  rings.forEach((radius, i) => {
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, TAU);
+    ctx.stroke();
+  });
+
+  // Symmetry spokes + pulsing dots
+  for (let i = 0; i < sym; i++) {
+    const angle = (i / sym) * TAU;
     ctx.save();
-    ctx.translate(sigilCanvas.width/2, sigilCanvas.height/2);
-    
-    // Animated rotation
-    const rotation = animOn ? (t * 0.001 * speed) % TAU : 0;
-    ctx.rotate(rotation);
-    
-    // Draw concentric rings
-    rings.forEach((radius, i) => {
-      ctx.strokeStyle = colors[i % colors.length];
-      ctx.lineWidth = 2;
+    ctx.rotate(angle);
+
+    // spokes
+    rings.forEach(radius => {
+      ctx.strokeStyle = colors[(i + 1) % colors.length];
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, TAU);
+      ctx.moveTo(coreRadius, 0);
+      ctx.lineTo(radius, 0);
       ctx.stroke();
     });
-    
-    // Draw symmetrical patterns
-    for (let i = 0; i < sym; i++) {
-      const angle = (i / sym) * TAU;
-      ctx.save();
-      ctx.rotate(angle);
-      
-      // Draw radial lines with animation
-      rings.forEach(radius => {
-        ctx.strokeStyle = colors[(i + 1) % colors.length];
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(coreRadius, 0);
-        ctx.lineTo(radius, 0);
-        ctx.stroke();
-      });
-      
-      // Draw decorative elements
-      if (animOn) {
-        const pulse = Math.sin(t * 0.002 + i) * 0.5 + 0.5;
-        ctx.fillStyle = colors[0] + Math.round(pulse * 255).toString(16).padStart(2, '0');
-        ctx.beginPath();
-        ctx.arc(rings[0] || 150, 0, 5 + pulse * 3, 0, TAU);
-        ctx.fill();
-      }
-      
-      ctx.restore();
-    }
-    
-    // Draw central symbol
-    ctx.fillStyle = colors[0];
-    ctx.beginPath();
-    ctx.arc(0, 0, coreRadius, 0, TAU);
-    ctx.fill();
-    
-    ctx.restore();
-    
+
+    // decorative pulse
     if (animOn) {
-      animReq = requestAnimationFrame(drawFrame);
+      const pulse = Math.sin(t * 0.002 + i) * 0.5 + 0.5;
+      ctx.fillStyle = colors[0];
+      ctx.globalAlpha = 0.6 + 0.4 * pulse;   // use alpha properly
+      ctx.beginPath();
+      ctx.arc(rings[0] || 150, 0, 4 + pulse * 3, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
+
+    ctx.restore();
   }
+
+  // Core
+  ctx.fillStyle = colors[0];
+  ctx.beginPath();
+  ctx.arc(0, 0, coreRadius, 0, TAU);
+  ctx.fill();
+
+  ctx.restore();
+
+  if (animOn) animReq = requestAnimationFrame(drawFrame);
+}
 
   function toggleAnimation(){
     animOn = !animOn;
