@@ -1,11 +1,10 @@
+KLY vault 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The KLY Vault | Chamber of Secrets</title>
   <meta name="description" content="Unlock the sacred artifacts of the KLY Legacy with your Key of Ascension NFT">
   <meta property="og:title" content="The KLY Vault | Chamber of Secrets">
@@ -13,160 +12,576 @@
   <meta property="og:image" content="https://yourdomain.com/images/vault-social-preview.jpg">
   <meta property="og:url" content="https://yourdomain.com/vault.html">
   <meta name="twitter:card" content="summary_large_image">
-
-  <!-- Preconnect -->
+  
+  <!-- Preload critical resources -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
+  <link rel="preload" as="image" href="vault-door.png">
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js">
+  <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+  
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
-
-  <!-- Font Awesome (icons) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
+  
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
-
+  
   <style>
-    :root{
-      --gold-primary:#ffd700;--gold-secondary:#c5a042;--gold-dark:#8a6d0b;
-      --bg-dark:#0a0a0a;--bg-darker:#050505;--text-light:#f5f5f5;--text-dim:#aaaaaa;
-      --accent-glow:0 0 15px rgba(255,215,0,.7);--transition:all .4s cubic-bezier(.165,.84,.44,1)
+    :root {
+      --gold-primary: #ffd700;
+      --gold-secondary: #c5a042;
+      --gold-dark: #8a6d0b;
+      --bg-dark: #0a0a0a;
+      --bg-darker: #050505;
+      --text-light: #f5f5f5;
+      --text-dim: #aaaaaa;
+      --accent-glow: 0 0 15px rgba(255, 215, 0, 0.7);
+      --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     }
-    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    body{
-      background:var(--bg-dark);color:var(--text-light);
-      font-family:"Montserrat",sans-serif;overflow-x:hidden;position:relative;
-      min-height:100dvh; /* mobile safe */
-    }
-    .hidden{display:none!important}
-    a{cursor:pointer}
-
-    /* loading */
-    .loader{position:fixed;inset:0;background:var(--bg-darker);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity .8s ease-out}
-    .loader-spinner{width:50px;height:50px;border:5px solid rgba(255,215,0,.3);border-radius:50%;border-top-color:var(--gold-primary);animation:spin 1s ease-in-out infinite;margin-bottom:20px}
-    .loader-text{color:var(--gold-primary);font-family:"Cinzel Decorative",serif;letter-spacing:2px;text-transform:uppercase}
-
-    /* header */
-    .vault-header{position:sticky;top:0;z-index:1000;display:flex;justify-content:space-between;align-items:center;padding:20px 40px;background:rgba(10,10,10,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--gold-secondary);transition:var(--transition)}
-    .vault-header.scrolled{background:rgba(5,5,5,.95);box-shadow:0 5px 30px rgba(0,0,0,.5)}
-    .vault-logo{font-family:"Cinzel Decorative",serif;font-size:1.8rem;color:var(--gold-primary);text-shadow:var(--accent-glow);letter-spacing:2px;transition:var(--transition)}
-    .vault-logo:hover{text-shadow:0 0 20px rgba(255,215,0,.9)}
-    .vault-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .vault-nav a{color:var(--text-dim);text-decoration:none;margin-left:13px;font-size:.9rem;transition:var(--transition);position:relative;font-family:"Cinzel Decorative",serif;letter-spacing:1px}
-    .vault-nav a:hover{color:var(--gold-primary);text-shadow:0 0 5px var(--gold-primary)}
-    .vault-nav a::after{content:"";position:absolute;bottom:-5px;left:0;width:0;height:1px;background:var(--gold-primary);transition:width .3s ease}
-    .vault-nav a:hover::after{width:100%}
-    #connectWalletBtn{border:1px solid var(--gold-secondary);padding:8px 16px;border-radius:20px;background:transparent;color:var(--text-light);transition:var(--transition);font-family:"Cinzel Decorative",serif;letter-spacing:1px;display:flex;align-items:center;gap:8px}
-    #connectWalletBtn:hover{background:rgba(255,215,0,.1);border-color:var(--gold-primary);transform:translateY(-2px)}
-    #connectWalletBtn.connected{background:rgba(255,215,0,.1);border-color:var(--gold-primary)}
-    #walletAddress{margin-left:.5rem;font-size:.85rem;color:var(--gold-primary)}
     
-    /* bg canvas + scroll fix wrappers */
-    #threejs-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:1;opacity:.5}
-    .particles{position:fixed;inset:0;z-index:2;pointer-events:none}
-    .vault-page{position:relative;z-index:5}
-    .scroll-container{max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-
-    /* hero */
-    .vault-content{max-width:1200px;padding:100px 20px;margin:auto;text-align:center}
-    .vault-title{font-family:"Cinzel Decorative",serif;font-size:clamp(2.5rem,5vw,4rem);color:var(--gold-primary);margin-bottom:20px;text-shadow:0 0 20px rgba(255,215,0,.5);letter-spacing:3px;position:relative}
-    .vault-title::after{content:"";position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);width:100px;height:2px;background:var(--gold-primary)}
-    .vault-subtitle{font-size:clamp(1rem,2vw,1.2rem);color:var(--text-dim);margin:0 auto 40px;line-height:1.6;max-width:700px}
-    .enhanced-door{position:relative;max-width:800px;margin:60px auto;transition:var(--transition);transform:translateY(0);perspective:1000px}
-    .enhanced-door:hover{transform:translateY(-5px)}
-    .vault-image{width:100%;border:2px solid var(--gold-secondary);box-shadow:0 0 30px rgba(255,215,0,.3);border-radius:10px;transition:var(--transition)}
-    .enhanced-door:hover .vault-image{box-shadow:0 0 40px rgba(255,215,0,.5)}
-    .door-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;backdrop-filter:blur(3px);background:rgba(0,0,0,.5);text-align:center;border-radius:8px;transition:var(--transition)}
-    .vault-door-title{font-family:"Cinzel Decorative",serif;font-size:clamp(1.5rem,3vw,1.8rem);color:var(--gold-primary);margin-bottom:20px;text-shadow:var(--accent-glow)}
-    .unlock-btn{background:transparent;color:var(--gold-primary);border:1px solid var(--gold-secondary);padding:12px 30px;font-family:"Cinzel Decorative",serif;font-size:1.1rem;letter-spacing:1px;border-radius:30px;cursor:pointer;position:relative;overflow:hidden;transition:var(--transition)}
-    .unlock-btn:hover{background:rgba(197,160,66,.2);box-shadow:0 0 20px rgba(197,160,66,.4);transform:translateY(-2px)}
-    .unlock-btn::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,215,0,.3),transparent);transition:all .8s ease}
-    .unlock-btn:hover::before{left:100%}
-
-    /* vault grid */
-    .vault-container{background:radial-gradient(circle at center, rgba(20,5,40,.9) 0%, rgba(5,0,15,.95) 100%);border:1px solid rgba(255,215,0,.15);border-radius:16px;padding:2rem;box-shadow:0 0 30px rgba(123,31,162,.2);margin:2rem auto;max-width:1200px}
-    .vault-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;perspective:1000px;opacity:0;transform:translateY(20px);transition:var(--transition)}
-    .vault-items.visible{opacity:1;transform:translateY(0)}
-    .vault-item{position:relative;background:rgba(15,5,30,.7);border:1px solid;border-radius:12px;padding:1.5rem;transition:all .4s cubic-bezier(.175,.885,.32,1.275);cursor:pointer;overflow:hidden;transform-style:preserve-3d;opacity:0;transform:translateY(20px)}
-    .vault-item.visible{opacity:1;transform:translateY(0)}
-    .vault-item:hover{transform:translateY(-5px) rotateX(5deg);box-shadow:0 10px 25px rgba(123,31,162,.5)}
-    .governance-item{border-color:rgba(255,215,0,.3)}
-    .knowledge-item{border-color:rgba(75,0,130,.3)}
-    .wealth-item{border-color:rgba(0,255,127,.3)}
-    .oracle-item{border-color:rgba(138,43,226,.3)}
-    .defense-item{border-color:rgba(220,20,60,.3)}
-    .memory-item{border-color:rgba(100,149,237,.3)}
-    .governance-item:hover{border-color:rgba(255,215,0,.7)}
-    .knowledge-item:hover{border-color:rgba(75,0,130,.7)}
-    .wealth-item:hover{border-color:rgba(0,255,127,.7)}
-    .oracle-item:hover{border-color:rgba(138,43,226,.7)}
-    .defense-item:hover{border-color:rgba(220,20,60,.7)}
-    .memory-item:hover{border-color:rgba(100,149,237,.7)}
-    .item-icon{font-size:2.5rem;margin-bottom:1rem;position:relative;display:inline-block;transition:transform .3s ease}
-    .icon-aura{position:absolute;inset:-10px;border-radius:50%;opacity:0;transition:opacity .3s ease}
-    .governance-item .icon-aura{background:radial-gradient(circle,rgba(255,215,0,.4) 0%,transparent 70%)}
-    .knowledge-item .icon-aura{background:radial-gradient(circle,rgba(75,0,130,.4) 0%,transparent 70%)}
-    .wealth-item .icon-aura{background:radial-gradient(circle,rgba(0,255,127,.4) 0%,transparent 70%)}
-    .oracle-item .icon-aura{background:radial-gradient(circle,rgba(138,43,226,.4) 0%,transparent 70%)}
-    .defense-item .icon-aura{background:radial-gradient(circle,rgba(220,20,60,.4) 0%,transparent 70%)}
-    .memory-item .icon-aura{background:radial-gradient(circle,rgba(100,149,237,.4) 0%,transparent 70%)}
-    .vault-item:hover .icon-aura{opacity:.6}
-    .vault-item:hover .item-icon{transform:scale(1.1) rotate(5deg)}
-    .item-title{font-size:1.4rem;margin-bottom:.8rem;background:linear-gradient(90deg,#fff,#aaa);-webkit-background-clip:text;background-clip:text;color:transparent;font-family:"Cinzel Decorative",serif}
-    .item-desc{color:rgba(200,200,220,.8);line-height:1.5;margin-bottom:1.5rem;position:relative;font-size:.95rem}
-    .hidden-text{display:block;font-style:italic;color:rgba(255,255,255,.5);margin-bottom:.5rem;opacity:0;height:0;transition:all .3s ease}
-    .vault-item:hover .hidden-text{opacity:1;height:auto}
-    .blockchain-data{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;font-family:monospace;font-size:.9rem;color:rgba(150,200,255,.7)}
-    .live-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0f0;box-shadow:0 0 5px #0f0;animation:pulse 2s infinite}
-    @keyframes pulse{0%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}100%{opacity:.7;transform:scale(1)}}
-    .relic-cta{background:transparent;border:1px solid;color:#fff;padding:.5rem 1rem;border-radius:20px;cursor:pointer;transition:all .3s ease;font-weight:700;width:100%;font-family:"Montserrat",sans-serif}
-    .governance-item .relic-cta{border-color:gold;color:gold}
-    .knowledge-item .relic-cta{border-color:indigo;color:indigo}
-    .wealth-item .relic-cta{border-color:lime;color:lime}
-    .oracle-item .relic-cta{border-color:mediumpurple;color:mediumpurple}
-    .defense-item .relic-cta{border-color:crimson;color:crimson}
-    .memory-item .relic-cta{border-color:cornflowerblue;color:cornflowerblue}
-    .relic-cta:hover{background:rgba(255,255,255,.1);transform:translateY(-2px);box-shadow:0 2px 10px rgba(0,0,0,.3)}
-    .hidden-relic{border-color:rgba(255,255,255,.5)!important;animation:glow 3s infinite alternate}
-    @keyframes glow{from{box-shadow:0 0 5px rgba(255,255,255,.3)}to{box-shadow:0 0 20px rgba(255,255,255,.7)}}
-
-    /* status overlay */
-    .status-overlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,10,.95);color:var(--gold-primary);padding:25px 50px;border:1px solid var(--gold-secondary);font-family:"Cinzel Decorative",serif;z-index:9999;border-radius:10px;text-align:center;box-shadow:0 0 30px rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;gap:15px;opacity:0;transition:var(--transition);pointer-events:none}
-    .status-overlay.visible{opacity:1}
-    .status-icon{font-size:2rem}
-    .status-text{font-size:1.1rem;letter-spacing:1px}
-    .progress-bar{width:100%;height:3px;background:rgba(255,215,0,.2);border-radius:3px;overflow:hidden;margin-top:15px}
-    .progress-fill{height:100%;background:linear-gradient(to right,var(--gold-dark),var(--gold-primary));width:0;transition:width .3s ease}
-
-    /* content sections (Archives after unlock) */
-    .archives{max-width:1100px;margin:2rem auto;padding:0 1rem}
-    .section-title{font-family:"Cinzel Decorative",serif;font-size:2rem;margin:1.5rem 0 .75rem;color:var(--gold-primary)}
-    .card{background:linear-gradient(135deg,rgba(20,20,30,.9),rgba(10,10,18,.95));border:1px solid rgba(197,160,66,.15);border-radius:14px;padding:1.25rem 1.25rem 1.1rem;margin:.75rem 0;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-    .card h3{font-family:"Cinzel Decorative",serif;font-size:1.25rem;margin-bottom:.5rem}
-    .card p{color:#d7d7df;line-height:1.6}
-    .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;border:1px solid rgba(197,160,66,.35);font-size:.75rem;color:#e9e5d0;margin-right:.5rem;margin-bottom:.6rem;background:rgba(197,160,66,.08)}
-
-    .vault-footer{position:relative;z-index:10;text-align:center;padding:50px 30px;margin-top:50px;color:var(--text-dim);font-size:.8rem;border-top:1px solid rgba(197,160,66,.1)}
-
-    /* animations */
-    @keyframes doorOpen{0%{transform:scale(1);opacity:1}100%{transform:scale(.8) rotateY(90deg);opacity:0}}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* responsive */
-    @media(max-width:768px){
-      .vault-header{flex-direction:column;padding:15px}
-      .vault-logo{margin-bottom:12px}
-      .vault-content{padding:80px 16px}
-      .enhanced-door{margin:30px auto}
-      .vault-container{padding:1rem}
-      .archives{padding:0 .5rem}
+    /* Reset & global */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-family: "Montserrat", sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+    
+    a {
+      cursor: pointer;
+    }
+    
+    /* Loading overlay */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-darker);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.8s ease-out;
+    }
+    
+    .loader-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 215, 0, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--gold-primary);
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 20px;
+    }
+    
+    .loader-text {
+      color: var(--gold-primary);
+      font-family: "Cinzel Decorative", serif;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    
+    /* Layout and header */
+    .vault-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--gold-secondary);
+      transition: var(--transition);
+    }
+    
+    .vault-header.scrolled {
+      background: rgba(5, 5, 5, 0.95);
+      box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    .vault-logo {
+      font-family: "Cinzel Decorative", serif;
+      font-size: 1.8rem;
+      color: var(--gold-primary);
+      text-shadow: var(--accent-glow);
+      letter-spacing: 2px;
+      transition: var(--transition);
+    }
+    
+    .vault-logo:hover {
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+    }
+    
+    .vault-nav {
+      display: flex;
+      align-items: center;
+    }
+    
+    .vault-nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      margin-left: 25px;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      position: relative;
+      font-family: "Cinzel Decorative", serif;
+      letter-spacing: 1px;
+    }
+    
+    .vault-nav a:hover {
+      color: var(--gold-primary);
+      text-shadow: 0 0 5px var(--gold-primary);
+    }
+    
+    .vault-nav a::after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--gold-primary);
+      transition: width 0.3s ease;
+    }
+    
+    .vault-nav a:hover::after {
+      width: 100%;
+    }
+    
+    #connectWalletBtn {
+      border: 1px solid var(--gold-secondary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: transparent;
+      color: var(--text-light);
+      transition: var(--transition);
+      font-family: "Cinzel Decorative", serif;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    #connectWalletBtn:hover {
+      background: rgba(255, 215, 0, 0.1);
+      border-color: var(--gold-primary);
+      transform: translateY(-2px);
+    }
+    
+    #connectWalletBtn.connected {
+      background: rgba(255, 215, 0, 0.1);
+      border-color: var(--gold-primary);
+    }
+    
+    #walletAddress {
+      margin-left: 1rem;
+      font-size: 0.85rem;
+      color: var(--gold-primary);
+      font-family: "Montserrat", sans-serif;
+    }
+    
+    /* Content & visuals */
+    #threejs-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      opacity: 0.5;
+    }
+    
+    .vault-content {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      max-width: 1200px;
+      padding: 100px 20px;
+      margin: auto;
+    }
+    
+    .vault-title {
+      font-family: "Cinzel Decorative", serif;
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      color: var(--gold-primary);
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+      letter-spacing: 3px;
+      position: relative;
+    }
+    
+    .vault-title::after {
+      content: "";
+      position: absolute;
+      bottom: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 2px;
+      background: var(--gold-primary);
+    }
+    
+    .vault-subtitle {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      line-height: 1.6;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .enhanced-door {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      margin: 60px auto;
+      z-index: 3;
+      transition: var(--transition);
+      transform: translateY(0);
+    }
+    
+    .enhanced-door:hover {
+      transform: translateY(-5px);
+    }
+    
+    .vault-image {
+      width: 100%;
+      border: 2px solid var(--gold-secondary);
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+      border-radius: 10px;
+      transition: var(--transition);
+    }
+    
+    .enhanced-door:hover .vault-image {
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.5);
+    }
+    
+    .door-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(3px);
+      background: rgba(0, 0, 0, 0.5);
+      text-align: center;
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+    
+    .vault-door-title {
+      font-family: "Cinzel Decorative", serif;
+      font-size: clamp(1.5rem, 3vw, 1.8rem);
+      color: var(--gold-primary);
+      margin-bottom: 20px;
+      text-shadow: var(--accent-glow);
+    }
+    
+    .unlock-btn {
+      background: transparent;
+      color: var(--gold-primary);
+      border: 1px solid var(--gold-secondary);
+      padding: 12px 30px;
+      font-family: "Cinzel Decorative", serif;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      border-radius: 30px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    
+    .unlock-btn:hover {
+      background: rgba(197, 160, 66, 0.2);
+      box-shadow: 0 0 20px rgba(197, 160, 66, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .unlock-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 215, 0, 0.3),
+        transparent
+      );
+      transition: all 0.8s ease;
+    }
+    
+    .unlock-btn:hover::before {
+      left: 100%;
+    }
+    
+    .vault-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 30px;
+      margin-top: 80px;
+      padding: 0 20px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: var(--transition);
+    }
+    
+    .vault-items.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .vault-item {
+      background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+      border: 1px solid rgba(197, 160, 66, 0.3);
+      border-radius: 8px;
+      padding: 30px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    
+    .vault-item.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .vault-item:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 15px 40px rgba(197, 160, 66, 0.3);
+      border-color: var(--gold-primary);
+    }
+    
+    .vault-item::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(
+        to right,
+        transparent,
+        var(--gold-primary),
+        transparent
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .vault-item:hover::before {
+      opacity: 1;
+    }
+    
+    .item-icon {
+      font-size: 2.5rem;
+      color: var(--gold-primary);
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+    
+    .vault-item:hover .item-icon {
+      transform: scale(1.2);
+    }
+    
+    .item-title {
+      font-family: "Cinzel Decorative", serif;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: var(--gold-primary);
+    }
+    
+    .item-desc {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+    
+    .vault-footer {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 50px 30px;
+      margin-top: 50px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      border-top: 1px solid rgba(197, 160, 66, 0.1);
+    }
+    
+    /* Particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    .particle {
+      position: absolute;
+      background: var(--gold-primary);
+      border-radius: 50%;
+      opacity: 0.6;
+      filter: blur(1px);
+    }
+    
+    /* Status overlay */
+    .status-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 10, 0.95);
+      color: var(--gold-primary);
+      padding: 25px 50px;
+      border: 1px solid var(--gold-secondary);
+      font-family: "Cinzel Decorative", serif;
+      z-index: 9999;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      opacity: 0;
+      transition: var(--transition);
+      pointer-events: none;
+    }
+    
+    .status-overlay.visible {
+      opacity: 1;
+    }
+    
+    .status-icon {
+      font-size: 2rem;
+    }
+    
+    .status-text {
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+    }
+    
+    /* Progress bar */
+    .progress-bar {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 215, 0, 0.2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, var(--gold-dark), var(--gold-primary));
+      width: 0;
+      transition: width 0.3s ease;
+    }
+    
+    /* Door animation */
+    @keyframes doorOpen {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(0.8) rotateY(90deg);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .vault-header {
+        flex-direction: column;
+        padding: 15px;
+      }
+      
+      .vault-logo {
+        margin-bottom: 15px;
+      }
+      
+      .vault-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      
+      .vault-nav a {
+        margin: 0 10px 10px;
+      }
+      
+      .vault-content {
+        padding: 80px 20px;
+      }
+      
+      .enhanced-door {
+        margin: 30px auto;
+      }
+      
+      .vault-items {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .vault-title {
+        font-size: 2rem;
+      }
+      
+      .unlock-btn {
+        padding: 10px 20px;
+        font-size: 1rem;
+      }
+      
+      .status-overlay {
+        width: 90%;
+        padding: 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Loader -->
+  <!-- Loading overlay -->
   <div class="loader" id="pageLoader">
     <div class="loader-spinner"></div>
     <div class="loader-text">Entering the Vault...</div>
@@ -176,9 +591,8 @@
     <div class="vault-logo">THE KLY VAULT</div>
     <nav class="vault-nav">
       <a href="/portal.html">Portal</a>
-      <a href="/kly-academy.html">Academy</a>
+      <a href="/academy.html">Academy</a>
       <a href="/oracle.html">Oracle</a>
-      <a href="/status_correction.html">Status Correction</a>
       <button id="connectWalletBtn">
         <i class="fas fa-wallet"></i>
         <span>Connect Wallet</span>
@@ -187,200 +601,81 @@
     </nav>
   </header>
 
-  <div class="vault-page scroll-container">
+  <div id="vault-container">
     <canvas id="threejs-canvas"></canvas>
     <div class="particles" id="particles"></div>
-
     <div class="vault-content">
       <h1 class="vault-title">CHAMBER OF SECRETS</h1>
-      <p class="vault-subtitle">WHAT IS SOUGHT<br/>IS FOUND WITHIN</p>
-
+      <p class="vault-subtitle">WHAT IS SOUGHT<br />IS FOUND WITHIN</p>
       <div class="enhanced-door">
-        <img src="vault-door.png" alt="Ancient Vault Door with intricate carvings" class="vault-image" loading="lazy"/>
+        <img
+          src="vault-door.png"
+          alt="Ancient Vault Door with intricate carvings"
+          class="vault-image"
+          loading="lazy"
+        />
         <div class="door-overlay">
           <h2 class="vault-door-title">Key of Ascension Required</h2>
-          <button class="unlock-btn" id="unlockBtn" aria-label="Enter the vault after verification">
-            <i class="fas fa-key"></i> Enter the Vault
+          <button
+            class="unlock-btn"
+            id="unlockBtn"
+            aria-label="Enter the vault after verification"
+          >
+            <i class="fas fa-key"></i>
+            Enter the Vault
           </button>
         </div>
       </div>
-
-      <!-- Vault Grid -->
-      <div class="vault-container">
-        <div class="vault-items" id="vaultItems">
-          <!-- Council Proposals -->
-          <div class="vault-item governance-item" onclick="interactWithRelic(this, 'council')">
-            <div class="item-icon">🏛️<div class="icon-aura"></div></div>
-            <h3 class="item-title">Council Proposals</h3>
-            <p class="item-desc">
-              <span class="hidden-text">Your vote shapes the path.</span>
-              Browse and vote on active governance proposals for the KLY ecosystem (Snapshot-compatible).
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Snapshot Space: <code>kly.eth</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openSnapshot()">Open Snapshot</button>
-          </div>
-
-          <!-- Academy Library -->
-          <div class="vault-item knowledge-item" onclick="interactWithRelic(this, 'academy')">
-            <div class="item-icon">📚<div class="icon-aura"></div></div>
-            <h3 class="item-title">Academy Library</h3>
-            <p class="item-desc">
-              <span class="hidden-text">Sift the signal from the noise.</span>
-              Premium lessons, meditations, and exercises curated for Initiates. New drops weekly.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Access: <code>Key of Ascension</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openAcademy()">Enter Academy</button>
-          </div>
-
-          <!-- Staking & Rewards -->
-          <div class="vault-item wealth-item" onclick="interactWithRelic(this, 'staking')">
-            <div class="item-icon">💠<div class="icon-aura"></div></div>
-            <h3 class="item-title">Staking & Rewards</h3>
-            <p class="item-desc">
-              <span class="hidden-text">Let your KLY do the work.</span>
-              Stake KLY to accrue rewards and unlock seasonal Vault perks & allowlists.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Network: <code>BSC</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openStaking()">Open Staking</button>
-          </div>
-
-          <!-- Altar of Flames -->
-          <div class="vault-item wealth-item altar-item" onclick="interactWithRelic(this, 'altar')">
-            <div class="item-icon">🔥<div class="icon-aura"></div></div>
-            <h3 class="item-title">Altar of Flames</h3>
-            <p class="item-desc">
-              <span class="hidden-text">Offer what no longer serves; receive what endures.</span>
-              Make a sacred offering by burning your $KLY to unlock hidden boons, seasonal allowlists, or relic drops.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Action: <code>Burn $KLY → Perks</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openAltarModal()">Make Offering</button>
-          </div>
-
-          <!-- Oracle Readings -->
-          <div class="vault-item oracle-item" onclick="interactWithRelic(this, 'oracle')">
-            <div class="item-icon">🔮<div class="icon-aura"></div></div>
-            <h3 class="item-title">Oracle Readings</h3>
-            <p class="item-desc">
-              <span class="hidden-text">When the path is unclear, ask.</span>
-              Personalized AI-guided spreads seeded with on-chain signals and lunar cycles.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Status: <code>Live</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); launchOracle()">Ask the Oracle</button>
-          </div>
-
-          <!-- Security Center -->
-          <div class="vault-item defense-item" onclick="interactWithRelic(this, 'security')">
-            <div class="item-icon">🛡️<div class="icon-aura"></div></div>
-            <h3 class="item-title">Security Center</h3>
-            <p class="item-desc">
-              <span class="hidden-text">Armor first. Adventure second.</span>
-              Run wallet health checks, revoke risky approvals, and enable session guards.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Tools: <code>Approvals • Phishing</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openSecurityCheck()">Run Checkup</button>
-          </div>
-
-          <!-- Lore Archives -->
-          <div class="vault-item memory-item" onclick="interactWithRelic(this, 'lore')">
-            <div class="item-icon">📜<div class="icon-aura"></div></div>
-            <h3 class="item-title">Lore Archives</h3>
-            <p class="item-desc">
-              <span class="hidden-text">The ancestors remember.</span>
-              Timeline, rituals, and artifacts of the Kelly bloodline—searchable and beautifully rendered.
-            </p>
-            <div class="blockchain-data">
-              <span class="live-indicator"></span>
-              <span>Format: <code>Text • Audio • Image</code></span>
-            </div>
-            <button class="relic-cta" onclick="event.stopPropagation(); openLore()">Open Archives</button>
-          </div>
-
-          <!-- Hidden Relic -->
-          <div class="vault-item hidden-relic" id="thirdEyeRelic" style="display:none;">
-            <div class="item-icon">👁️<div class="icon-aura"></div></div>
-            <h3 class="item-title">The Third Eye</h3>
-            <p class="item-desc">You've proven your dedication. The deepest mysteries await...</p>
-            <button class="relic-cta" onclick="initiateAscension()">Begin Initiation</button>
-          </div>
+      <div class="vault-items" id="vaultItems">
+        <div class="vault-item">
+          <div class="item-icon">🗝️</div>
+          <h3 class="item-title">Keys of Sovereignty</h3>
+          <p class="item-desc">
+            Ancient digital keys that unlock governance rights within the
+            Tamaquah Nation's blockchain protocols.
+          </p>
+        </div>
+        <div class="vault-item">
+          <div class="item-icon">📜</div>
+          <h3 class="item-title">Scrolls of Creation</h3>
+          <p class="item-desc">
+            The original smart contracts that birthed the Kelly Legacy
+            ecosystem, etched permanently on-chain.
+          </p>
+        </div>
+        <div class="vault-item">
+          <div class="item-icon">💎</div>
+          <h3 class="item-title">Diamond Sigils</h3>
+          <p class="item-desc">
+            Rare NFTs representing ownership stakes in the physical Kelly
+            Legacy estates and artifacts.
+          </p>
+        </div>
+        <div class="vault-item">
+          <div class="item-icon">🔮</div>
+          <h3 class="item-title">Oracle Crystals</h3>
+          <p class="item-desc">
+            Predictive algorithms and AI models passed down through
+            generations of digital seers.
+          </p>
+        </div>
+        <div class="vault-item">
+          <div class="item-icon">⚔️</div>
+          <h3 class="item-title">Weapons of Light</h3>
+          <p class="item-desc">
+            Cryptographic tools for defending the network against malicious
+            actors and bad faith intrusions.
+          </p>
+        </div>
+        <div class="vault-item">
+          <div class="item-icon">🏺</div>
+          <h3 class="item-title">Vessels of Memory</h3>
+          <p class="item-desc">
+            Immutable storage containing the complete history and lore of the
+            Kelly bloodline.
+          </p>
         </div>
       </div>
-
-      <!-- ===== UNLOCKED ARCHIVES CONTENT ===== -->
-      <section class="archives hidden" id="archives">
-        <h2 class="section-title">The Anunna Archives</h2>
-
-        <div class="card">
-          <span class="chip">Origin</span>
-          <h3>Who Is the Anunna?</h3>
-          <p>Before Babylon twisted the tongue, before scribes rewrote the scrolls, they were known as the Anunna. Not gods, but elder kin. Star-born architects who descended not to rule but to seed. They carried the codes of civilization, the blueprint of remembrance. Their presence still hums in your marrow. The Anunna are not myth — they are memory.</p>
-        </div>
-
-        <div class="card">
-          <span class="chip">Celestial</span>
-          <h3>The Anunna Are Written in the Stars</h3>
-          <p>Look upward. The constellations are not random. They are records. The Dogon knew it. Kemet carved it. The Mayans mapped it. Sirius, Orion, the Pleiades — cosmic signposts left by your ancestors. The Anunna encoded their story above so you would never forget below. Every rising star is a reflection of the blood within you.</p>
-        </div>
-
-        <div class="card">
-          <span class="chip">Legacy</span>
-          <h3>Blood of the Builders</h3>
-          <p>The ziggurats of Sumer. The pyramids of Kemet. The mounds of Cahokia. Different lands, same hands. Different stones, same blood. The builders were not strangers — they were one family scattered, then renamed. That blood still flows through the so-called African American. You are not descendant of slaves. You are descendant of builders.</p>
-        </div>
-
-        <div class="card">
-          <span class="chip">Continuity</span>
-          <h3>From Ziggurats to Pyramids</h3>
-          <p>When the tongues split, so did the temples. In Sumer, they rose as ziggurats. In Kemet, as pyramids. In the Mississippian valley, as sacred mounds. All connected, all aligned to the heavens. Each structure was a key — earthbound antennas calling down light codes. You walk on the ruins of your own legacy.</p>
-        </div>
-
-        <div class="card">
-          <span class="chip">Remembrance</span>
-          <h3>You Are the Continuation</h3>
-          <p>The Anunna did not vanish. They transformed. Their legacy is not locked in stone tablets but carried in your DNA. Every cell is a scroll. Every breath, a remembrance. You are the continuation of the great work — the living vault. What was begun in the stars is completed in you.</p>
-        </div>
-
-        <h2 class="section-title">The Scroll of Frequency</h2>
-        <div class="card">
-          <span class="chip">Practice</span>
-          <h3>Frequency Is the First Technology</h3>
-          <p>Tune your being as you would an instrument. The cosmos does not respond to titles or roles — it answers vibration. When you align your breath with intention, when your thoughts harmonize with truth, the universe bends to meet you.</p>
-          <p><strong>Practices:</strong> Inhale 4 • Hold 7 • Exhale 8 (repeat). Speak your true name until it settles in the chest. Ask the Oracle only from stillness—the answer arrives in resonance.</p>
-        </div>
-
-        <h2 class="section-title">The Archive of the Ancestors</h2>
-        <div class="card">
-          <span class="chip">Ancestral</span>
-          <h3>Lineage & Remembrance</h3>
-          <p>The Washitaw Moors, the Yamassee Nation, the tribes of the Carolinas—renamed, registered, and yet never erased. Libations to the four directions, call-and-response songs, fire circles teaching lineage through story. When you touch the Archive, you are not reading. You are remembering.</p>
-        </div>
-
-        <h2 class="section-title">The Prophecy of Light</h2>
-        <div class="card">
-          <span class="chip">Revelation</span>
-          <h3>You Are the Dawn</h3>
-          <p>The old order collapses under its own lies. The prophecy is not of destruction, but illumination: from carbon to crystalline; from flesh to frequency; from slave to sovereign. The return is not of saviors, but of you remembering you are the savior you sought. Rise.</p>
-        </div>
-      </section>
-      <!-- ===== /UNLOCKED ARCHIVES CONTENT ===== -->
-
     </div>
   </div>
 
@@ -388,29 +683,36 @@
   <div class="status-overlay" id="statusOverlay">
     <div class="status-icon" id="statusIcon">🔍</div>
     <div class="status-text" id="statusText">Verifying access...</div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
   </div>
 
   <footer class="vault-footer">
     © 2025 Kelly Legacy Estates — Tamaquah Nation • Cycle 42 of the Great Alignment
   </footer>
 
-  <!-- Scripts (ESM) -->
+  <!-- Font Awesome for icons -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  
   <script type="module">
     import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
-    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js";
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
 
-    // ====== Constants ======
-    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Key of Ascension (ERC-721)
+    // Constants
+    const CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950";
     const CONTRACT_ABI = [
-      { inputs:[{ internalType:"address", name:"owner", type:"address"}],
-        name:"balanceOf", outputs:[{ internalType:"uint256", name:"", type:"uint256"}],
-        stateMutability:"view", type:"function"
-      }
+      {
+        inputs: [{ internalType: "address", name: "owner", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
     ];
     const BNB_CHAIN_ID = "0x38";
-
-    // ====== DOM ======
+    
+    // DOM elements
     const walletButton = document.getElementById("connectWalletBtn");
     const walletAddress = document.getElementById("walletAddress");
     const unlockBtn = document.getElementById("unlockBtn");
@@ -422,305 +724,382 @@
     const pageLoader = document.getElementById("pageLoader");
     const mainHeader = document.getElementById("mainHeader");
     const particlesContainer = document.getElementById("particles");
-    const archivesSection = document.getElementById("archives");
 
-    // ====== Init ======
-    document.addEventListener("DOMContentLoaded", () => {
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      // Simulate loading (remove this in production)
       setTimeout(() => {
-        pageLoader.style.opacity = "0";
+        pageLoader.style.opacity = '0';
         setTimeout(() => {
-          pageLoader.style.display = "none";
+          pageLoader.style.display = 'none';
           initScrollHandler();
           createParticles();
           initThreeJS();
-
-          // safer "already connected" check
-          if (window.ethereum) {
-            window.ethereum.request({ method: "eth_accounts" })
-              .then(accts => {
-                if (accts && accts[0]) updateWalletButton(true, shortenAddress(accts[0]));
-              }).catch(()=>{});
+          
+          // Check if wallet is already connected
+          if (window.ethereum && window.ethereum.selectedAddress) {
+            updateWalletButton(true, shortenAddress(window.ethereum.selectedAddress));
           }
         }, 800);
-      }, 1200);
-
-      walletButton.addEventListener("click", connectWallet);
-      unlockBtn.addEventListener("click", verifyNFTAccess);
+      }, 1500);
+      
+      // Add event listeners
+      walletButton.addEventListener('click', connectWallet);
+      unlockBtn.addEventListener('click', verifyNFTAccess);
     });
 
-    // ====== Particles ======
-    function createParticles(){
+    // Create floating particles
+    function createParticles() {
       const particleCount = window.innerWidth < 768 ? 30 : 60;
-      for (let i=0;i<particleCount;i++){
-        const p = document.createElement("div");
-        p.classList.add("particle");
-        const size = Math.random()*4+1;
-        const posX = Math.random()*100;
-        const posY = Math.random()*100;
-        const duration = Math.random()*15+10;
-        const delay = Math.random()*10;
-        const opacity = Math.random()*0.5+0.1;
-        p.style.position="absolute";
-        p.style.background="var(--gold-primary)";
-        p.style.borderRadius="50%";
-        p.style.filter="blur(1px)";
-        p.style.width = `${size}px`; p.style.height = `${size}px`;
-        p.style.left = `${posX}%`; p.style.top = `${posY}%`;
-        p.style.opacity = opacity;
-        animateParticle(p, duration, delay);
-        particlesContainer.appendChild(p);
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        
+        // Random properties
+        const size = Math.random() * 4 + 1;
+        const posX = Math.random() * 100;
+        const posY = Math.random() * 100;
+        const duration = Math.random() * 15 + 10;
+        const delay = Math.random() * 10;
+        const opacity = Math.random() * 0.5 + 0.1;
+        
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${posX}%`;
+        particle.style.top = `${posY}%`;
+        particle.style.opacity = opacity;
+        
+        // Animate particle
+        animateParticle(particle, duration, delay);
+        
+        particlesContainer.appendChild(particle);
       }
     }
-    function animateParticle(particle, duration, delay){
-      let start=null;
-      const initialX=parseFloat(particle.style.left);
-      const initialY=parseFloat(particle.style.top);
-      function step(ts){
-        if(!start) start = ts;
-        const progress = (ts-start)/(duration*1000);
-        if(progress < 1){
-          const newX = initialX + Math.sin(progress*Math.PI*2)*5;
-          const newY = initialY - progress*100;
-          const opacity = 0.1 + 0.4*(1-progress);
+
+    // Animate individual particle
+    function animateParticle(particle, duration, delay) {
+      let start = null;
+      const initialX = parseFloat(particle.style.left);
+      const initialY = parseFloat(particle.style.top);
+      
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        const progress = (timestamp - start) / (duration * 1000);
+        
+        if (progress < 1) {
+          // Move in gentle waves
+          const newX = initialX + Math.sin(progress * Math.PI * 2) * 5;
+          const newY = initialY - progress * 100;
+          const opacity = 0.1 + 0.4 * (1 - progress);
+          
           particle.style.left = `${newX}%`;
-          particle.style.top  = `${newY}%`;
+          particle.style.top = `${newY}%`;
           particle.style.opacity = opacity;
-          if(newY < -5){
-            particle.style.top='105%'; particle.style.left=`${initialX}%`; particle.style.opacity='0.1';
-            start = ts - delay*1000;
+          
+          // Reset particle when it goes off screen
+          if (newY < -5) {
+            particle.style.top = '105%';
+            particle.style.left = `${initialX}%`;
+            particle.style.opacity = '0.1';
+            start = timestamp - delay * 1000;
           }
+          
           requestAnimationFrame(step);
         } else {
-          particle.style.top='105%'; particle.style.left=`${initialX}%`; particle.style.opacity='0.1';
-          start=null;
-          setTimeout(()=>{ start = ts; requestAnimationFrame(step); }, delay*1000);
+          // Restart animation
+          particle.style.top = '105%';
+          particle.style.left = `${initialX}%`;
+          particle.style.opacity = '0.1';
+          start = null;
+          setTimeout(() => {
+            start = timestamp;
+            requestAnimationFrame(step);
+          }, delay * 1000);
         }
       }
-      setTimeout(()=>requestAnimationFrame(step), delay*1000);
+      
+      setTimeout(() => {
+        requestAnimationFrame(step);
+      }, delay * 1000);
     }
 
-    // ====== Three.js BG ======
-    function initThreeJS(){
+    // Initialize Three.js scene
+    function initThreeJS() {
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, .1, 1000);
-      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("threejs-canvas"), alpha:true, antialias:true });
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({
+        canvas: document.getElementById("threejs-canvas"),
+        alpha: true,
+        antialias: true
+      });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
-
-      const geometry = new THREE.TorusKnotGeometry(12,3,256,32);
-      const material = new THREE.MeshBasicMaterial({ color:0xd4af37, wireframe:true, transparent:true, opacity:.2});
+      
+      // Create torus knot geometry
+      const geometry = new THREE.TorusKnotGeometry(12, 3, 256, 32);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xd4af37,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.2
+      });
       const knot = new THREE.Mesh(geometry, material);
       scene.add(knot);
-
-      const glowGeometry = new THREE.SphereGeometry(15,32,32);
-      const glowMaterial = new THREE.MeshBasicMaterial({ color:0xd4af37, transparent:true, opacity:.05});
+      
+      // Add ambient glow
+      const glowGeometry = new THREE.SphereGeometry(15, 32, 32);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xd4af37,
+        transparent: true,
+        opacity: 0.05,
+        wireframe: false
+      });
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       scene.add(glow);
-
+      
       camera.position.z = 30;
-      (function animate(){
-        requestAnimationFrame(animate);
-        knot.rotation.x += .001; knot.rotation.y += .002;
-        glow.rotation.x += .0005; glow.rotation.y += .0005;
-        renderer.render(scene, camera);
-      })();
 
-      window.addEventListener("resize", ()=>{
-        camera.aspect = window.innerWidth/window.innerHeight;
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        knot.rotation.x += 0.001;
+        knot.rotation.y += 0.002;
+        glow.rotation.x += 0.0005;
+        glow.rotation.y += 0.0005;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
     }
 
-    // ====== Header scroll ======
-    function initScrollHandler(){
-      window.addEventListener("scroll", ()=>{
-        if (window.scrollY > 50) mainHeader.classList.add("scrolled");
-        else mainHeader.classList.remove("scrolled");
+    // Initialize scroll handler for header effect
+    function initScrollHandler() {
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+          mainHeader.classList.add('scrolled');
+        } else {
+          mainHeader.classList.remove('scrolled');
+        }
       });
     }
 
-    // ====== Wallet ======
-    async function connectWallet(){
-      try{
-        if(!window.ethereum){ showStatus("⚠️ MetaMask not found","error"); setTimeout(()=>window.open("https://metamask.io/download.html","_blank"),1500); return; }
-        showStatus("🔓 Connecting wallet...","info");
-        const accounts = await window.ethereum.request({ method:"eth_requestAccounts" });
+    // Wallet connection functions
+    async function connectWallet() {
+      try {
+        if (typeof window.ethereum === 'undefined') {
+          showStatus('⚠️ MetaMask not found', 'error');
+          setTimeout(() => {
+            window.open('https://metamask.io/download.html', '_blank');
+          }, 2000);
+          return;
+        }
+
+        // Request account access
+        showStatus('🔓 Connecting wallet...', 'info');
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        });
+        
+        // Verify network
         await verifyNetwork();
+        
         updateWalletButton(true, shortenAddress(accounts[0]));
-        showStatus("✅ Wallet connected","success");
-        window.ethereum.on("accountsChanged", handleAccountsChanged);
-        window.ethereum.on("chainChanged", handleChainChanged);
-      }catch(err){ console.error(err); showStatus("⚠️ Connection failed","error"); }
+        showStatus('✅ Wallet connected', 'success');
+        
+        // Set up event listeners
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+        window.ethereum.on('chainChanged', handleChainChanged);
+        
+      } catch (error) {
+        console.error('Wallet connection error:', error);
+        showStatus('⚠️ Connection failed', 'error');
+      }
     }
 
-    async function verifyNetwork(){
-      const current = await window.ethereum.request({ method:"eth_chainId" });
-      if(current !== BNB_CHAIN_ID){
-        showStatus("🌐 Switching to BSC...","info");
-        try{
-          await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BNB_CHAIN_ID }] });
-        }catch(switchError){
-          if(switchError.code === 4902){
-            await window.ethereum.request({ method:"wallet_addEthereumChain", params:[{
-              chainId:BNB_CHAIN_ID, chainName:"Binance Smart Chain",
-              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-              rpcUrls:["https://bsc-dataseed.binance.org/"], blockExplorerUrls:["https://bscscan.com"]
-            }]}).catch(e=>{ showStatus("⚠️ Please switch to BSC","error"); throw e; });
-          } else { showStatus("⚠️ Please switch to BSC","error"); throw switchError; }
+    async function verifyNetwork() {
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+      
+      if (currentChainId !== BNB_CHAIN_ID) {
+        showStatus('🌐 Switching to BSC...', 'info');
+        
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BNB_CHAIN_ID }],
+          });
+        } catch (switchError) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: BNB_CHAIN_ID,
+                  chainName: 'Binance Smart Chain',
+                  nativeCurrency: {
+                    name: 'BNB',
+                    symbol: 'BNB',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                  blockExplorerUrls: ['https://bscscan.com']
+                }]
+              });
+            } catch (addError) {
+              showStatus('⚠️ Please switch to BSC', 'error');
+              throw addError;
+            }
+          } else {
+            showStatus('⚠️ Please switch to BSC', 'error');
+            throw switchError;
+          }
         }
       }
     }
 
-    function handleAccountsChanged(accounts){
-      if(accounts.length===0){ updateWalletButton(false); showStatus("⚠️ Wallet disconnected","warning"); }
-      else{ updateWalletButton(true, shortenAddress(accounts[0])); }
-    }
-    function handleChainChanged(){ location.reload(); }
-    function updateWalletButton(connected, address=""){
-      if(connected){
-        walletButton.innerHTML = `<i class="fas fa-check-circle"></i><span>${address}</span>`;
-        walletButton.classList.add("connected");
-        walletAddress.textContent = address;
-        walletAddress.classList.remove("hidden");
-      }else{
-        walletButton.innerHTML = '<i class="fas fa-wallet"></i><span>Connect Wallet</span>';
-        walletButton.classList.remove("connected");
-        walletAddress.classList.add("hidden");
+    function handleAccountsChanged(accounts) {
+      if (accounts.length === 0) {
+        // Wallet disconnected
+        updateWalletButton(false);
+        showStatus('⚠️ Wallet disconnected', 'warning');
+      } else {
+        // Account changed
+        updateWalletButton(true, shortenAddress(accounts[0]));
       }
     }
-    const shortenAddress = a => `${a.substring(0,6)}...${a.substring(a.length-4)}`;
 
-    // ====== Gate: NFT Verify ======
-    async function verifyNFTAccess(){
-      if(!window.ethereum){ showStatus("🔑 Install a wallet first","warning"); return; }
-      const existing = await window.ethereum.request({ method:"eth_accounts" });
-      if(!existing || !existing[0]){ showStatus("🔑 Connect wallet first","warning"); return; }
-      try{
-        showStatus("🔍 Verifying NFT...","info");
+    function handleChainChanged() {
+      window.location.reload();
+    }
+
+    function updateWalletButton(connected, address = '') {
+      if (connected) {
+        walletButton.innerHTML = `<i class="fas fa-check-circle"></i><span>${address}</span>`;
+        walletButton.classList.add('connected');
+        walletAddress.textContent = address;
+        walletAddress.classList.remove('hidden');
+      } else {
+        walletButton.innerHTML = '<i class="fas fa-wallet"></i><span>Connect Wallet</span>';
+        walletButton.classList.remove('connected');
+        walletAddress.classList.add('hidden');
+      }
+    }
+
+    function shortenAddress(address) {
+      return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    }
+
+    // NFT verification
+    async function verifyNFTAccess() {
+      if (!window.ethereum || !window.ethereum.selectedAddress) {
+        showStatus('🔑 Connect wallet first', 'warning');
+        return;
+      }
+
+      try {
+        showStatus('🔍 Verifying NFT...', 'info');
         simulateProgress();
+        
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        
         const balance = await contract.balanceOf(await signer.getAddress());
-        const hasKey = ethers.BigNumber.isBigNumber(balance) ? balance.gt(0) : Number(balance)>0;
-        if(hasKey){
-          showStatus("✅ Access granted!","success");
+        
+        if (balance.gt(0)) {
+          showStatus('✅ Access granted!', 'success');
           unlockVault();
-        }else{
-          showStatus("⛔ Key of Ascension required","error");
+        } else {
+          showStatus('⛔ Key of Ascension required', 'error');
         }
-      }catch(e){ console.error(e); showStatus("⚠️ Verification failed","error"); }
-    }
-
-    function simulateProgress(){
-      let progress=0;
-      const interval=setInterval(()=>{
-        progress += Math.random()*10;
-        progressFill.style.width = `${Math.min(progress,100)}%`;
-        if(progress >= 100) clearInterval(interval);
-      }, 200);
-    }
-
-    function unlockVault(){
-      const doorOverlay = document.querySelector(".door-overlay");
-      doorOverlay.style.animation = "doorOpen 1s forwards";
-      setTimeout(()=>{
-        doorOverlay.style.display="none";
-        vaultItems.classList.add("visible");
-        document.querySelectorAll(".vault-item").forEach((item,idx)=>{
-          setTimeout(()=> item.classList.add("visible"), idx*100);
-        });
-        archivesSection.classList.remove("hidden"); // reveal content
-        setTimeout(()=> vaultItems.scrollIntoView({ behavior:"smooth", block:"start"}), 500);
-      },1000);
-    }
-
-    // ====== Status Overlay ======
-    function showStatus(message, type="info"){
-      let icon = "🔍";
-      if(type==="success") icon="✅"; else if(type==="error") icon="❌"; else if(type==="warning") icon="⚠️";
-      statusIcon.textContent = icon;
-      statusText.textContent = message;
-      progressFill.style.width = "0";
-      statusOverlay.classList.add("visible");
-      setTimeout(()=> statusOverlay.classList.remove("visible"), type==="success" ? 2000 : 3500);
-    }
-
-    // ====== Easter Egg ======
-    let vaultClicks=0;
-    const vaultContainer=document.querySelector(".vault-container");
-    if(vaultContainer){
-      vaultContainer.addEventListener("click", ()=>{
-        vaultClicks++;
-        if(vaultClicks>=7){
-          const egg=document.getElementById("thirdEyeRelic");
-          if(egg) egg.style.display="block";
-          try{ new Audio("mystical_chime.mp3").play(); }catch(_){}
-        }
-      });
-    }
-
-    // ====== Relic interactions & routes ======
-    const _hasShowStatus = typeof showStatus === "function";
-    function toast(msg,type="info"){ _hasShowStatus ? showStatus(msg,type) : console.log(`[${type}] ${msg}`); }
-    function interactWithRelic(el,type){
-      el.classList.add("relic-active"); setTimeout(()=> el.classList.remove("relic-active"), 500);
-      try{ window.navigator.vibrate?.(10); }catch(_){}
-      try{ new Audio("relic_interaction.mp3").play(); }catch(_){}
-      window.dispatchEvent(new CustomEvent("vault:relicClick",{ detail:{ type, ts:Date.now() }}));
-    }
-    const VAULT_ROUTES = {
-      snapshot:"https://snapshot.org/#/kly.eth",
-      academy:"/kly-academy.html",
-      staking:"https://staking.kellylegacyestates.com",
-      oracle:"/oracle.html",
-      security:"https://revoke.cash",
-      lore:"/lore.html"
-    };
-    const openExternal = url => window.open(url,"_blank","noopener,noreferrer");
-
-    async function openSnapshot(){ toast("Opening Snapshot…","info"); openExternal(VAULT_ROUTES.snapshot); }
-    async function openAcademy(){ toast("Entering Academy…","success"); location.href = VAULT_ROUTES.academy; }
-    async function openStaking(){ try{ await requireWalletBSC(); }catch(_){ return; } toast("Opening Staking…","info"); openExternal(VAULT_ROUTES.staking); }
-    async function launchOracle(){ toast("Consulting the Oracle…","info"); location.href = VAULT_ROUTES.oracle; }
-    async function openSecurityCheck(){ toast("Running security tools…","info"); openExternal(VAULT_ROUTES.security); }
-    async function openLore(){ toast("Opening Lore Archives…","info"); location.href = VAULT_ROUTES.lore; }
-
-    async function requireWalletBSC(){
-      if(!window.ethereum){ toast("⚠️ Wallet not found","error"); throw new Error("no wallet"); }
-      const accts = await window.ethereum.request({ method:"eth_accounts" });
-      if(!accts || !accts[0]){ try{ await window.ethereum.request({ method:"eth_requestAccounts" }); }catch(e){ toast("Connection cancelled","warning"); throw e; } }
-      const chain = await window.ethereum.request({ method:"eth_chainId" });
-      if(String(chain).toLowerCase() !== "0x38"){
-        try{ await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:"0x38" }] }); }
-        catch(e){ toast("Please switch to BSC","error"); throw e; }
+      } catch (error) {
+        console.error('NFT verification error:', error);
+        showStatus('⚠️ Verification failed', 'error');
       }
     }
 
-    function viewOnExplorer(addr){ openExternal(`https://bscscan.com/address/${String(addr).replace("…","")}`); }
+    function simulateProgress() {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 100) {
+          clearInterval(interval);
+          progressFill.style.width = '100%';
+        } else {
+          progressFill.style.width = `${progress}%`;
+        }
+      }, 200);
+    }
 
-    // ====== Altar placeholder (prevents errors) ======
-    let _altarOpen=false;
-    function openAltarModal(){ toast("Altar coming soon — burn-to-perk flow in progress.","warning"); _altarOpen=true; }
-    function performBurn(){ toast("Burn simulation — connect final contract when ready.","info"); }
-    function setAltarPercent(pct){ console.log("Altar percent set to", pct); }
-    function closeAltarModal(){ _altarOpen=false; }
+    function unlockVault() {
+      // Animate door opening
+      const doorOverlay = document.querySelector('.door-overlay');
+      doorOverlay.style.animation = 'doorOpen 1s forwards';
+      
+      // Show vault items with staggered animation
+      setTimeout(() => {
+        doorOverlay.style.display = 'none';
+        vaultItems.classList.add('visible');
+        
+        // Animate each item individually
+        const items = document.querySelectorAll('.vault-item');
+        items.forEach((item, index) => {
+          setTimeout(() => {
+            item.classList.add('visible');
+          }, index * 100);
+        });
+        
+        // Scroll to items
+        setTimeout(() => {
+          vaultItems.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 500);
+      }, 1000);
+    }
 
-    // Expose for inline onclick
-    window.interactWithRelic = interactWithRelic;
-    window.openSnapshot = openSnapshot;
-    window.openAcademy = openAcademy;
-    window.openStaking = openStaking;
-    window.launchOracle = launchOracle;
-    window.openSecurityCheck = openSecurityCheck;
-    window.openLore = openLore;
-    window.viewOnExplorer = viewOnExplorer;
-    window.openAltarModal = openAltarModal;
-    window.performBurn = performBurn;
-    window.setAltarPercent = setAltarPercent;
-    window.closeAltarModal = closeAltarModal;
-    window.initiateAscension = ()=> toast("Initiation sequence acknowledged.","success");
+    // Status message functions
+    function showStatus(message, type = 'info') {
+      // Set icon based on type
+      let icon;
+      switch(type) {
+        case 'success':
+          icon = '✅';
+          break;
+        case 'error':
+          icon = '❌';
+          break;
+        case 'warning':
+          icon = '⚠️';
+          break;
+        default:
+          icon = '🔍';
+      }
+      
+      statusIcon.textContent = icon;
+      statusText.textContent = message;
+      progressFill.style.width = '0';
+      
+      // Show overlay
+      statusOverlay.classList.add('visible');
+      
+      // Auto-hide after delay for non-error messages
+      if (type !== 'error') {
+        setTimeout(() => {
+          statusOverlay.classList.remove('visible');
+        }, type === 'success' ? 2000 : 3000);
+      }
+    }
   </script>
 </body>
 </html>
