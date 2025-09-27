@@ -734,181 +734,234 @@
     function setAltarPercent(pct){ console.log("Altar percent set to", pct); }
     function closeAltarModal(){ _altarOpen = false; }
 
-    // ================== Sigil Smithy ==================
-    const palettes = [
-      ["#ffd700","#c5a042","#8a6d0b","#ffffff","#111111"], // gold
-      ["#7b1fa2","#e040fb","#ce93d8","#f3e5f5","#0b0b13"], // amethyst
-      ["#00ffa3","#00d1ff","#0077ff","#e6fff9","#0b0b13"], // aqua
-      ["#ff5252","#ff1744","#ff8a80","#ffe5e5","#0b0b13"], // crimson
-      ["#64b5f6","#1e88e5","#0d47a1","#e3f2fd","#0b0b13"]  // cornflower
-    ];
-    let currentPaletteIndex = 0;
+ // ================== Sigil Smithy (Animated) ==================
+const palettes = [
+  ["#ffd700","#c5a042","#8a6d0b","#ffffff","#111111"], // gold
+  ["#7b1fa2","#e040fb","#ce93d8","#f3e5f5","#0b0b13"], // amethyst
+  ["#00ffa3","#00d1ff","#0077ff","#e6fff9","#0b0b13"], // aqua
+  ["#ff5252","#ff1744","#ff8a80","#ffe5e5","#0b0b13"], // crimson
+  ["#64b5f6","#1e88e5","#0d47a1","#e3f2fd","#0b0b13"]  // cornflower
+];
+let currentPaletteIndex = 0;
+let walletRawAddress = null;
 
-    // Simple xorshift32 PRNG seeded by u32
-    function xorshift(seed){
-      let x = seed >>> 0;
-      return function(){
-        x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
-        return ((x >>> 0) / 0xFFFFFFFF);
+// DPR-aware canvas
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+sigilCanvas.width  = 1024 * dpr;
+sigilCanvas.height = 1024 * dpr;
+sigilCanvas.style.width = "1024px";
+sigilCanvas.style.height = "1024px";
+ctx.scale(dpr, dpr);
+
+// PRNG + seed helpers
+function xorshift(seed){ let x = seed>>>0; return ()=>((x^=x<<13,x^=x>>>17,x^=x<<5)>>>0)/0xFFFFFFFF; }
+function hash32(str){
+  let h = 2166136261>>>0;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h>>>0;
+}
+function getEffectiveSeed(){ return (seedInput.value && seedInput.value.trim()) || walletRawAddress || randomSeed(); }
+function randomSeed(){ return 'seed-' + Math.random().toString(36).slice(2,10); }
+function saveSigilState(){ localStorage.setItem('kly_sigil_state', JSON.stringify({ seed: seedInput.value, paletteIndex: currentPaletteIndex })); }
+function cyclePalette(){ currentPaletteIndex = (currentPaletteIndex+1)%palettes.length; saveSigilState(); }
+
+// Cached background to avoid expensive per-frame work
+let bgCache = document.createElement('canvas'), bgCtx = bgCache.getContext('2d');
+bgCache.width = 1024; bgCache.height = 1024;
+
+function makeBackground(colors, rnd){
+  const c = bgCtx; c.save();
+  c.clearRect(0,0,1024,1024);
+  const g = c.createRadialGradient(512,512,40, 512,512, 620);
+  g.addColorStop(0, colors[3] + 'ee'); g.addColorStop(1, colors[4] + 'ff');
+  c.fillStyle = g; c.fillRect(0,0,1024,1024);
+
+  // subtle vignette
+  const v = c.createRadialGradient(512,512,520, 512,512, 700);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  c.fillStyle = v; c.fillRect(0,0,1024,1024);
+
+  // light grain
+  c.globalAlpha = 0.05;
+  for(let i=0;i<2000;i++){ c.fillStyle = colors[4]; c.fillRect(rnd()*1024, rnd()*1024, 1, 1); }
+  c.globalAlpha = 1; c.restore();
+}
+
+const TAU = Math.PI*2;
+const polar = (r,a)=>[512 + r*Math.cos(a), 512 + r*Math.sin(a)];
+
+// Sigil configuration derived from seed
+function buildSigilConfig(seed){
+  const rnd = xorshift(hash32(seed));
+  return {
+    sym: 8 + Math.floor(rnd()*8),          // 8..15
+    layers: 3 + Math.floor(rnd()*3),       // 3..5
+    rings: [140, 170, 200, 230].filter(()=>rnd()>.25),
+    arcCount: 8 + Math.floor(rnd()*8),
+    coreRadius: 14 + rnd()*22,
+    wiggle: 0.1 + rnd()*0.15,              // weave amplitude
+    speed: 0.3 + rnd()*0.5,                // animation speed
+    runeCount: 24 + Math.floor(rnd()*10)
+  };
+}
+
+// Animated renderer
+let animReq = null, animOn = false, activeSeed = '', activeCfg = null;
+
+function drawFrame(t){
+  const time = t/1000 * (activeCfg?.speed || 0.5); // seconds
+  const colors = palettes[currentPaletteIndex];
+  // background
+  ctx.drawImage(bgCache, 0, 0, 1024, 1024);
+
+  // rings (slight breathing)
+  ctx.save();
+  ctx.translate(0,0);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = colors[0];
+  const breath = 1 + Math.sin(time*1.4)*0.02;
+  for (const r of activeCfg.rings){
+    ctx.beginPath(); ctx.arc(512,512, r*breath, 0, TAU); ctx.stroke();
+  }
+
+  // spokes + glyphs
+  for (let li=0; li<activeCfg.layers; li++){
+    const baseR = 120 + li*70;
+    for (let i=0;i<activeCfg.sym;i++){
+      const baseA = (i/activeCfg.sym)*TAU + (li*0.07);
+      const a = baseA + Math.sin(time + i*0.3 + li*0.5) * activeCfg.wiggle;
+      const len = 50 + 30*Math.sin(time*0.6 + i);
+      const [x1,y1] = polar(baseR, a);
+      const [x2,y2] = polar(baseR + len, a);
+
+      // spoke
+      ctx.strokeStyle = colors[1];
+      ctx.lineWidth = 1.5 + li;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+
+      // terminal glyph (animated rotation)
+      ctx.save(); ctx.translate(x2,y2); ctx.rotate(a + time*0.4);
+      ctx.fillStyle = colors[2];
+      const shape = (i + li) % 4;
+      switch(shape){
+        case 0: ctx.fillRect(-6,-6,12,12); break;
+        case 1: ctx.beginPath(); ctx.moveTo(0,-8); ctx.lineTo(7,6); ctx.lineTo(-7,6); ctx.closePath(); ctx.fill(); break;
+        case 2: ctx.beginPath(); ctx.arc(0,0,7,0,TAU); ctx.fill(); break;
+        case 3: ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(0,-8); ctx.lineTo(8,0); ctx.lineTo(0,8); ctx.closePath(); ctx.fill(); break;
       }
+      ctx.restore();
+
+      // inner knot marks weaving
+      ctx.strokeStyle = colors[0]; ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      const [kx,ky] = polar(baseR - 26, a + Math.sin(a*3 + time)*0.08);
+      ctx.arc(kx,ky, 10 + 6*Math.sin(time + i), 0, TAU);
+      ctx.stroke();
     }
-    // Hash a string to u32
-    function hash32(str){
-      let h = 2166136261 >>> 0;
-      for (let i=0;i<str.length;i++){
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      return h >>> 0;
-    }
-    function getEffectiveSeed(){
-      const raw = (seedInput.value && seedInput.value.trim()) || walletRawAddress || randomSeed();
-      return raw.trim();
-    }
-    function randomSeed(){ return 'seed-' + Math.random().toString(36).slice(2,10); }
-    function saveSigilState(){
-      localStorage.setItem('kly_sigil_state', JSON.stringify({ seed: seedInput.value, paletteIndex: currentPaletteIndex }));
-    }
-    function cyclePalette(){
-      currentPaletteIndex = (currentPaletteIndex + 1) % palettes.length;
-      saveSigilState();
-    }
+  }
 
-    // Drawing utilities
-    function clearCanvas(c){
-      c.fillStyle = "#0b0b13";
-      c.fillRect(0,0,sigilCanvas.width,sigilCanvas.height);
-    }
-    function drawGradientBackground(c, colors, rnd){
-      const g = c.createRadialGradient(512,512,50, 512,512, 620);
-      g.addColorStop(0, colors[3] + 'ee');
-      g.addColorStop(1, colors[4] + 'ff');
-      c.fillStyle = g;
-      c.fillRect(0,0,1024,1024);
-      // subtle grain
-      c.globalAlpha = 0.05;
-      for(let i=0;i<3000;i++){
-        const x = rnd()*1024, y = rnd()*1024, a = (rnd()*2*Math.PI);
-        c.fillStyle = colors[4];
-        c.fillRect(x,y,1,1);
-      }
-      c.globalAlpha = 1;
-    }
-    function polarToXY(cx,cy,r,ang){ return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; }
+  // overlay arcs
+  ctx.strokeStyle = colors[0]+"aa"; ctx.lineWidth = 2.5;
+  for(let i=0;i<activeCfg.arcCount;i++){
+    const r = 260 + 120*Math.sin(time*0.3 + i);
+    const start = (i/activeCfg.arcCount)*TAU + time*0.2;
+    const span = Math.PI*0.5 + Math.sin(time + i)*Math.PI*0.35;
+    ctx.beginPath(); ctx.arc(512,512,r,start,start+span); ctx.stroke();
+  }
 
-    function drawSigil(c, colors, rnd){
-      const cx=512, cy=512;
+  // runic ring
+  ctx.fillStyle = colors[0];
+  ctx.globalAlpha = .85;
+  for(let i=0;i<activeCfg.runeCount;i++){
+    const a = (i/activeCfg.runeCount)*TAU + time*0.15;
+    const [rx,ry] = polar(360 + 6*Math.sin(time+i), a);
+    ctx.save(); ctx.translate(rx,ry); ctx.rotate(a);
+    ctx.fillRect(-2,-8,4,16);
+    ctx.fillRect(5,-5,2,10);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
 
-      // central ring
-      c.lineWidth = 4;
-      c.strokeStyle = colors[0];
-      for (let r=140; r<=220; r+= rnd()<.5?20:28){
-        c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
-      }
+  // center core (pulse)
+  const coreR = activeCfg.coreRadius * (1 + 0.08*Math.sin(time*2.2));
+  ctx.fillStyle = colors[1];
+  ctx.beginPath(); ctx.arc(512,512, coreR, 0, TAU); ctx.fill();
+  ctx.strokeStyle = colors[2]; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(512-18,512); ctx.lineTo(512+18,512); ctx.moveTo(512,512-18); ctx.lineTo(512,512+18); ctx.stroke();
 
-      // spokes + symbols (symmetry)
-      const sym = 8 + Math.floor(rnd()*8); // 8..15
-      const layers = 3 + Math.floor(rnd()*3); // 3..5
+  ctx.restore();
+  animReq = requestAnimationFrame(drawFrame);
+}
 
-      for (let li=0; li<layers; li++){
-        const baseR = 120 + li*70 + rnd()*20;
-        for (let i=0;i<sym;i++){
-          const a = (i/sym)*Math.PI*2 + (li*0.07);
-          const len = 40 + rnd()*80;
-          const [x1,y1] = polarToXY(cx,cy, baseR, a);
-          const [x2,y2] = polarToXY(cx,cy, baseR+len, a);
+function renderSigil(seed, paletteIndex=0){
+  const colors = palettes[paletteIndex];
+  paletteDot.style.background = colors[0];
 
-          // spoke
-          c.strokeStyle = colors[1];
-          c.lineWidth = 2 + li;
-          c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  // rebuild cached background & config when seed/palette changes
+  const rnd = xorshift(hash32(seed));
+  makeBackground(colors, rnd);
+  activeSeed = seed;
+  activeCfg = buildSigilConfig(seed);
 
-          // terminal glyph
-          c.fillStyle = colors[2];
-          const shape = Math.floor(rnd()*4);
-          c.save(); c.translate(x2,y2); c.rotate(a + Math.PI/2);
-          switch(shape){
-            case 0: c.fillRect(-6,-6,12,12); break;
-            case 1:
-              c.beginPath(); c.moveTo(0,-8); c.lineTo(7,6); c.lineTo(-7,6); c.closePath(); c.fill(); break;
-            case 2:
-              c.beginPath(); c.arc(0,0,7,0,Math.PI*2); c.fill(); break;
-            case 3:
-              c.beginPath(); c.moveTo(-8,0); c.lineTo(0,-8); c.lineTo(8,0); c.lineTo(0,8); c.closePath(); c.fill(); break;
-          }
-          c.restore();
+  const sym = activeCfg.sym;
+  sigilMeta.textContent = `seed: ${seed.slice(0,10)}…  •  sym:${sym}  •  palette:#${paletteIndex+1}`;
 
-          // inner knot marks
-          c.strokeStyle = colors[0]; c.lineWidth = 1.5;
-          c.beginPath();
-          const [kx,ky] = polarToXY(cx,cy, baseR - 30, a + Math.sin(a*3)*0.1);
-          c.arc(kx,ky, 10 + rnd()*12, 0, Math.PI*2);
-          c.stroke();
-        }
-      }
+  // kick/refresh animation
+  if (animOn) {
+    cancelAnimationFrame(animReq); animReq = null;
+    animReq = requestAnimationFrame(drawFrame);
+  } else {
+    // draw one static frame (t=0)
+    cancelAnimationFrame(animReq); animReq = null;
+    drawFrame(0);
+  }
+}
 
-      // overlay arc weave
-      c.strokeStyle = colors[0]+"aa";
-      c.lineWidth = 3;
-      for(let i=0;i<10;i++){
-        const r = 260 + rnd()*180;
-        const start = rnd()*Math.PI*2;
-        const end = start + (Math.PI*0.5 + rnd()*Math.PI*0.5);
-        c.beginPath(); c.arc(cx,cy,r,start,end); c.stroke();
-      }
+// Motion preference
+const prefersNoMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      // crest text-ish runes (simple marks)
-      c.fillStyle = colors[0];
-      c.globalAlpha = .85;
-      const runeCount = 28;
-      for(let i=0;i<runeCount;i++){
-        const a = (i/runeCount)*Math.PI*2 + .05;
-        const [rx,ry] = polarToXY(cx,cy, 360, a);
-        c.save(); c.translate(rx,ry); c.rotate(a);
-        c.fillRect(-2,-8,4,16);
-        c.fillRect(5,-5,2,10);
-        c.restore();
-      }
-      c.globalAlpha = 1;
+// Open/close controls
+async function openSigilSmithy(){
+  const acct = await getActiveAccount();
+  walletRawAddress = acct || null;
 
-      // center emblem
-      c.fillStyle = colors[1];
-      c.beginPath(); c.arc(cx,cy, rnd()*22+14, 0, Math.PI*2); c.fill();
-      c.strokeStyle = colors[2]; c.lineWidth=2;
-      c.beginPath(); c.moveTo(cx-18,cy); c.lineTo(cx+18,cy); c.moveTo(cx,cy-18); c.lineTo(cx,cy+18); c.stroke();
-    }
+  // seed defaults
+  if (!seedInput.value) seedInput.value = acct || randomSeed();
 
-    function renderSigil(seed, paletteIndex=0){
-      const colors = palettes[paletteIndex];
-      paletteDot.style.background = colors[0];
-      const rnd = xorshift(hash32(seed));
-      clearCanvas(ctx);
-      drawGradientBackground(ctx, colors, rnd);
-      drawSigil(ctx, colors, rnd);
+  modalBackdrop.classList.add('show');
+  modalBackdrop.setAttribute('aria-hidden','false');
 
-      const sym = 8 + Math.floor(hash32(seed) % 8);
-      sigilMeta.textContent = `seed: ${seed.slice(0,10)}…  •  sym:${sym}  •  palette:#${paletteIndex+1}`;
-    }
+  // load persisted state
+  const saved = JSON.parse(localStorage.getItem('kly_sigil_state') || '{}');
+  if (saved.seed && !acct) seedInput.value = saved.seed;
+  if (Number.isInteger(saved.paletteIndex)) currentPaletteIndex = saved.paletteIndex;
 
-    let walletRawAddress = null;
-    async function openSigilSmithy(){
-      // Auto-seed: wallet address if available
-      const acct = await getActiveAccount();
-      walletRawAddress = acct || null;
-      if (!seedInput.value){
-        seedInput.value = acct || randomSeed();
-      }
-      modalBackdrop.classList.add('show');
-      modalBackdrop.setAttribute('aria-hidden','false');
-      renderSigil(getEffectiveSeed(), currentPaletteIndex);
-    }
-    function closeSigilSmithy(){
-      modalBackdrop.classList.remove('show');
-      modalBackdrop.setAttribute('aria-hidden','true');
-      saveSigilState();
-    }
-    window.openSigilSmithy = openSigilSmithy;
+  // render + start anim unless user prefers reduced motion
+  animOn = !prefersNoMotion;
+  renderSigil(getEffectiveSeed(), currentPaletteIndex);
+}
+function closeSigilSmithy(){
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden','true');
+  saveSigilState();
+  animOn = false;
+  cancelAnimationFrame(animReq); animReq = null;
+}
+window.openSigilSmithy = openSigilSmithy;
 
+// Wire up Smithy controls (already defined in your DOMContentLoaded)
+generateBtn.onclick = () => { renderSigil(getEffectiveSeed(), currentPaletteIndex); };
+shufflePaletteBtn.onclick = () => { cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); };
+randomizeBtn.onclick = () => { seedInput.value = randomSeed(); cyclePalette(); renderSigil(getEffectiveSeed(), currentPaletteIndex); };
+copySeedBtn.onclick = async () => { await navigator.clipboard.writeText(getEffectiveSeed()); toast('Seed copied','success'); };
+downloadBtn.onclick = () => {
+  const link = document.createElement('a');
+  const fileSeed = getEffectiveSeed().replace(/[^a-zA-Z0-9_-]/g,'').slice(0,32) || 'sigil';
+  link.download = `kly-sigil_${fileSeed}.png`;
+  link.href = sigilCanvas.toDataURL('image/png');
+  link.click();
+};
+seedInput.onchange = () => { saveSigilState(); renderSigil(getEffectiveSeed(), currentPaletteIndex); };
     // ================== Expose for inline onclick ==================
     window.interactWithRelic = interactWithRelic;
     window.openAcademy = openAcademy;
