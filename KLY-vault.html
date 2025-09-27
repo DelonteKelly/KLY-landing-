@@ -266,6 +266,37 @@
   color:#eaeaea;
 }
 .btn.link:hover{color:var(--gold-primary); border-color:var(--gold-primary)}
+/* ── Security drawer ───────────────── */
+.sec-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  backdrop-filter:blur(2px); opacity:0; pointer-events:none; z-index:10998;
+  transition:opacity .25s ease;
+}
+.sec-backdrop.show{ opacity:1; pointer-events:auto }
+
+.sec-drawer{
+  position:fixed; top:0; right:0; height:100vh; width:min(880px,92vw);
+  background:rgba(10,10,16,.98);
+  border-left:1px solid rgba(197,160,66,.25);
+  box-shadow:-30px 0 60px rgba(0,0,0,.5);
+  transform:translateX(100%); transition:transform .35s cubic-bezier(.2,.8,.2,1);
+  z-index:11000; display:flex; flex-direction:column;
+}
+.sec-drawer.open{ transform:translateX(0) }
+
+.sec-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px; border-bottom:1px solid rgba(197,160,66,.18);
+}
+.sec-head h2{ font-family:"Cinzel Decorative",serif; color:var(--gold-primary); font-size:1.05rem; }
+
+.sec-close{
+  background:transparent; color:#eee; border:1px solid rgba(255,255,255,.15);
+  border-radius:10px; padding:6px 10px; cursor:pointer; transition:transform .2s ease;
+}
+.sec-close:hover{ transform:translateY(-1px) }
+
+.sec-frame{ flex:1; border:0; width:100%; height:100% }
   </style>
 </head>
 <body>
@@ -354,9 +385,8 @@
           <p class="item-desc"><span class="hidden-text">Armor first. Adventure second.</span>Run wallet health checks, revoke risky approvals, and enable session guards.</p>
           <div class="blockchain-data"><span class="live-indicator" aria-hidden="true"></span><span>Tools: <code>Approvals • Phishing</code></span></div>
           <button class="relic-cta"
-        onclick="event.stopPropagation(); openSecurityCenter()"
-        aria-label="Run security check">Run Checkup
-        </button>
+  onclick="event.stopPropagation(); openSecurityDrawer()"
+  aria-label="Run security check">Run Checkup</button>
 
           <!-- ===== Security Center Modal ===== -->
 <div class="sec-card">
@@ -478,6 +508,16 @@
       </div>
     </div>
   </div>
+
+  <!-- Security Drawer -->
+<div id="secBackdrop" class="sec-backdrop" aria-hidden="true"></div>
+<aside id="securityDrawer" class="sec-drawer" role="dialog" aria-modal="true" aria-labelledby="secTitle">
+  <header class="sec-head">
+    <h2 id="secTitle">Security Center</h2>
+    <button class="sec-close" aria-label="Close Security Center" onclick="closeSecurityDrawer()">✕</button>
+  </header>
+  <iframe src="/security.html" title="Security Center" class="sec-frame" loading="lazy"></iframe>
+</aside>
 
   <footer class="vault-footer">
     © 2025 Kelly Legacy Estates — Tamaquah Nation • Cycle 42 of the Great Alignment
@@ -686,6 +726,34 @@ copyChecklistBtn.addEventListener('click', async ()=>{
   await navigator.clipboard.writeText(text);
   toast('Checklist copied','success');
 });
+
+  // ─── Security Drawer control ───
+const securityDrawer = document.getElementById('securityDrawer');
+const secBackdrop    = document.getElementById('secBackdrop');
+
+function lockBody(lock){
+  document.documentElement.style.overflow = lock ? 'hidden' : '';
+  document.body.style.overscrollBehavior = lock ? 'contain' : '';
+}
+function openSecurityDrawer(){
+  securityDrawer.classList.add('open');
+  secBackdrop.classList.add('show');
+  lockBody(true);
+}
+function closeSecurityDrawer(){
+  securityDrawer.classList.remove('open');
+  secBackdrop.classList.remove('show');
+  lockBody(false);
+}
+secBackdrop.addEventListener('click', closeSecurityDrawer);
+window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSecurityDrawer(); });
+
+// if you previously used openSecurityCheck(), repoint it:
+async function openSecurityCheck(){ openSecurityDrawer(); }
+
+// expose if needed
+window.openSecurityDrawer = openSecurityDrawer;
+window.closeSecurityDrawer = closeSecurityDrawer;
 
   // ================== Particles ==================
   function createParticles(){
