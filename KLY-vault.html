@@ -707,16 +707,54 @@
   function setAltarPercent(pct){ console.log("Altar percent set to", pct); }
   function closeAltarModal(){ _altarOpen = false; }
 
-/* ============== 🔮 Sigil Smithy: Ancient Talisman Upgrade ============== */
-/* Helpers: light hash/noise, param shapes, metallic shading, runes */
+// ================== 🔮 Sigil Smithy — Ancient Talisman (complete) ==================
+
+// Palettes
+const palettes = [
+  ["#ffd700","#c5a042","#8a6d0b","#ffffff","#111111"],
+  ["#7b1fa2","#e040fb","#ce93d8","#f3e5f5","#0b0b13"],
+  ["#00ffa3","#00d1ff","#0077ff","#e6fff9","#0b0b13"],
+  ["#ff5252","#ff1744","#ff8a80","#ffe5e5","#0b0b13"],
+  ["#64b5f6","#1e88e5","#0d47a1","#e3f2fd","#0b0b13"]
+];
+
 let currentPaletteIndex = 0;
 let walletRawAddress = null;
 let animReq = null, animOn = true, activeSeed = '', activeCfg = null;
+
 const TAU = Math.PI * 2;
 
-// fast int hash
+// ----- Canvas sizing (logical vs device pixels)
+let DPR = 1, CSS_SIZE = 512, W = 512, H = 512;
+
+function resizeSigilCanvas(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  CSS_SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+
+  W = CSS_SIZE; H = CSS_SIZE;
+  sigilCanvas.width  = Math.round(W * DPR);   // device pixels
+  sigilCanvas.height = Math.round(H * DPR);
+  sigilCanvas.style.width  = `${W}px`;
+  sigilCanvas.style.height = `${H}px`;
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(DPR, DPR);                        // draw in logical px
+}
+resizeSigilCanvas();
+window.addEventListener("resize", resizeSigilCanvas);
+
+// ----- Seed helpers
+function getEffectiveSeed(){ return (seedInput.value && seedInput.value.trim()) || walletRawAddress || randomSeed(); }
+function randomSeed(){ return 'seed-' + Math.random().toString(36).slice(2,10); }
+function saveSigilState(){ localStorage.setItem('kly_sigil_state', JSON.stringify({ seed: seedInput.value, paletteIndex: currentPaletteIndex })); }
+function cyclePalette(){ currentPaletteIndex = (currentPaletteIndex+1)%palettes.length; saveSigilState(); }
+
+// ----- Background cache (stone + vignette)
+let bgCache = document.createElement('canvas'), bgCtx = bgCache.getContext('2d');
+bgCache.width = 1024; bgCache.height = 1024;
+
+// ===== Helpers: hash/noise, shapes, gradients, runes
 function h32(n){ n|=0; n = (n ^ (n>>>16)) * 0x45d9f3b; n = (n ^ (n>>>16)) * 0x45d9f3b; return (n ^ (n>>>16))>>>0; }
-// scalar noise (value noise w/ smoothstep)
 function noise2D(x, y, seed=0){
   const xi = Math.floor(x), yi = Math.floor(y);
   const xf = x - xi, yf = y - yi;
@@ -727,78 +765,56 @@ function noise2D(x, y, seed=0){
   const x2 = v01 + s(xf)*(v11 - v01);
   return x1 + s(yf)*(x2 - x1);
 }
-function fbm(x,y,seed,oct=4,fall=0.5,amp=1, freq=1){
+function fbm(x,y,seed,oct=4,fall=0.5,amp=1,freq=1){
   let v=0, a=amp, f=freq;
   for(let i=0;i<oct;i++){ v+= a*noise2D(x*f, y*f, seed+i*11); a*=fall; f*=2; }
   return v;
 }
-
 function polygonPath(ctx, sides, r){
-  ctx.moveTo(r,0);
-  const step = TAU/sides;
-  for(let i=1;i<=sides;i++){
-    const a= i*step; ctx.lineTo(r*Math.cos(a), r*Math.sin(a));
-  }
+  ctx.moveTo(r,0); const step = TAU/sides;
+  for(let i=1;i<=sides;i++){ const a= i*step; ctx.lineTo(r*Math.cos(a), r*Math.sin(a)); }
 }
 function starPath(ctx, points, rOuter, rInner){
-  const step = TAU/(points*2);
-  ctx.moveTo(rOuter,0);
-  for(let i=1;i<points*2;i++){
-    const r = (i%2===0)? rOuter : rInner;
-    const a = i*step;
-    ctx.lineTo(r*Math.cos(a), r*Math.sin(a));
-  }
+  const step = TAU/(points*2); ctx.moveTo(rOuter,0);
+  for(let i=1;i<points*2;i++){ const r=(i%2===0)?rOuter:rInner, a=i*step; ctx.lineTo(r*Math.cos(a), r*Math.sin(a)); }
   ctx.closePath();
 }
 function rosePoint(k, a, r){ const rad = r*Math.cos(k*a); return [rad*Math.cos(a), rad*Math.sin(a)]; }
 function ringGradient(ctx, r0, r1, colA, colB, alphaA=.95, alphaB=.1){
   const g = ctx.createRadialGradient(0,0, r0, 0,0, r1);
-  g.addColorStop(0, hexA(colA,alphaA));
-  g.addColorStop(1, hexA(colB,alphaB));
-  return g;
+  g.addColorStop(0, hexA(colA,alphaA)); g.addColorStop(1, hexA(colB,alphaB)); return g;
 }
-function hexA(hex, a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
-function hexToRgb(hex){
-  const n = hex.replace('#','');
-  const bigint = parseInt(n.length===3 ? n.split('').map(c=>c+c).join('') : n,16);
-  return [(bigint>>16)&255, (bigint>>8)&255, bigint&255];
-}
+function hexA(hex,a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function hexToRgb(hex){ const n=hex.replace('#',''); const v=parseInt(n.length===3?n.split('').map(c=>c+c).join(''):n,16); return [(v>>16)&255,(v>>8)&255,v&255]; }
 
-/* Minimal rune set (deterministic): 12 simple strokes/marks */
 function drawRune(ctx, size, id, color){
-  const rnd = id%12;
-  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth = Math.max(1, size*0.08); ctx.lineCap='round';
+  const rnd = id%12; ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=Math.max(1,size*0.08); ctx.lineCap='round';
   switch(rnd){
     case 0: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(size,0); ctx.stroke(); break;
     case 1: ctx.beginPath(); ctx.moveTo(0,-size); ctx.lineTo(0,size); ctx.stroke(); break;
     case 2: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(size,size); ctx.stroke(); break;
     case 3: ctx.beginPath(); ctx.moveTo(-size,size); ctx.lineTo(size,-size); ctx.stroke(); break;
-    case 4: ctx.beginPath(); polygonPath(ctx, 3, size); ctx.closePath(); ctx.stroke(); break;
-    case 5: ctx.beginPath(); polygonPath(ctx, 4, size); ctx.closePath(); ctx.stroke(); break;
-    case 6: ctx.beginPath(); polygonPath(ctx, 5, size); ctx.closePath(); ctx.stroke(); break;
-    case 7: ctx.beginPath(); starPath(ctx, 5, size, size*0.45); ctx.stroke(); break;
+    case 4: ctx.beginPath(); polygonPath(ctx,3,size); ctx.closePath(); ctx.stroke(); break;
+    case 5: ctx.beginPath(); polygonPath(ctx,4,size); ctx.closePath(); ctx.stroke(); break;
+    case 6: ctx.beginPath(); polygonPath(ctx,5,size); ctx.closePath(); ctx.stroke(); break;
+    case 7: ctx.beginPath(); starPath(ctx,5,size,size*0.45); ctx.stroke(); break;
     case 8: ctx.beginPath(); ctx.arc(0,0,size,0,TAU); ctx.stroke(); break;
     case 9: ctx.beginPath(); ctx.moveTo(-size,0); ctx.lineTo(0,-size); ctx.lineTo(size,0); ctx.stroke(); break;
     case 10: ctx.beginPath(); ctx.moveTo(-size,-size); ctx.lineTo(0,0); ctx.lineTo(size,-size); ctx.stroke(); break;
     case 11: ctx.beginPath(); ctx.arc(0,0,size,0,Math.PI); ctx.stroke(); break;
-  }
-  ctx.restore();
+  } ctx.restore();
 }
 
-/* ===== Background: aged stone + faint lattice ===== */
-function makeBackground(colors, rnd){
-  const c = bgCtx; c.save();
-  const S = 1024;
-  c.clearRect(0,0,S,S);
+// ----- Background painter (aged stone + lattice)
+function makeBackground(colors){
+  const c = bgCtx; c.save(); const S = 1024; c.clearRect(0,0,S,S);
 
   const base = c.createLinearGradient(0,0,S,S);
-  base.addColorStop(0, hexA(colors[4], .98));
-  base.addColorStop(1, hexA(colors[4], .92));
+  base.addColorStop(0, hexA(colors[4], .98)); base.addColorStop(1, hexA(colors[4], .92));
   c.fillStyle = base; c.fillRect(0,0,S,S);
 
   const glow = c.createRadialGradient(S/2,S/2,80, S/2,S/2, 520);
-  glow.addColorStop(0, hexA(colors[3], .15));
-  glow.addColorStop(1, 'rgba(0,0,0,.65)');
+  glow.addColorStop(0, hexA(colors[3], .15)); glow.addColorStop(1, 'rgba(0,0,0,.65)');
   c.fillStyle = glow; c.fillRect(0,0,S,S);
 
   c.globalAlpha=.12;
@@ -806,23 +822,18 @@ function makeBackground(colors, rnd){
     for(let x=0;x<S;x+=2){
       const v = fbm(x/240, y/240, h32(1337), 3, 0.6);
       const g = Math.floor(20+v*28);
-      c.fillStyle = `rgb(${g},${g},${g})`;
-      c.fillRect(x,y,2,2);
+      c.fillStyle = `rgb(${g},${g},${g})`; c.fillRect(x,y,2,2);
     }
   }
   c.globalAlpha=1;
 
-  c.strokeStyle = hexA(colors[2], .06); c.lineWidth=1;
-  c.beginPath();
-  for(let a=0;a<TAU;a+=TAU/36){
-    c.moveTo(S/2,S/2);
-    c.lineTo(S/2 + 520*Math.cos(a), S/2 + 520*Math.sin(a));
-  }
-  c.stroke();
-  c.restore();
+  c.strokeStyle = hexA(colors[2], .06); c.lineWidth=1; c.beginPath();
+  for(let a=0;a<TAU;a+=TAU/36){ c.moveTo(S/2,S/2); c.lineTo(S/2 + 520*Math.cos(a), S/2 + 520*Math.sin(a)); }
+  c.stroke(); c.restore();
 }
 
-/* ===== Parameter config from seed ===== */
+// ----- Config from seed
+function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
 function buildSigilConfig(seed){
   const n = hash32(seed);
   const rnd = (i=0)=> (h32(n + i*1013904223) % 10000) / 10000;
@@ -831,9 +842,7 @@ function buildSigilConfig(seed){
   const ringCount = 3 + Math.floor(rnd(3)*3);
   const rings = Array.from({length:ringCount}, (_,i)=> 140 + i*60 + Math.floor(rnd(4+i)*30));
   return {
-    sym,
-    layers,
-    rings,
+    sym, layers, rings,
     arcCount: 6 + Math.floor(rnd(7)*8),
     coreRadius: 20 + rnd(8)*26,
     wiggle: 0.08 + rnd(9)*0.12,
@@ -844,54 +853,36 @@ function buildSigilConfig(seed){
     seedInt: n
   };
 }
-function hash32(str){
-  let h = 2166136261>>>0;
-  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h>>>0;
-}
 
-/* ===== Main renderer ===== */
+// ----- Renderer
 function drawFrame(t){
   if (!activeCfg) return;
 
-  // Use logical canvas size (W/H), not device pixels
   const CW = W, CH = H;
   const cx = CW/2, cy = CH/2;
-
   const colors = palettes[currentPaletteIndex];
   const { sym, layers, rings, arcCount, coreRadius, wiggle, speed, runeCount, roseK, starPts, seedInt } = activeCfg;
-
   const time = animOn ? t*0.001*speed : 0;
 
-  // background
   ctx.clearRect(0,0,CW,CH);
   ctx.drawImage(bgCache, 0,0, CW,CH);
 
-  ctx.save();
-  ctx.translate(cx,cy);
+  ctx.save(); ctx.translate(cx,cy);
 
-  /* metallic disc (inner halo) */
   const rOuter = rings[rings.length-1] + 28;
   const rInner = rings[0] - 26;
   ctx.fillStyle = ringGradient(ctx, rInner*0.35, rOuter, colors[1], colors[2], .35, .02);
   ctx.beginPath(); ctx.arc(0,0,rOuter,0,TAU); ctx.fill();
 
-  /* etched rings with specular */
   rings.forEach((r,i)=>{
     const breathe = 1 + 0.015*Math.sin(time*1.7 + i);
     const rr = r*breathe;
-
-    ctx.strokeStyle = hexA(colors[0], .9); ctx.lineWidth = 2.2;
+    ctx.strokeStyle = hexA(colors[0], .9); ctx.lineWidth=2.2;
     ctx.beginPath(); ctx.arc(0,0, rr, 0, TAU); ctx.stroke();
-
-    ctx.strokeStyle = hexA('#ffffff', .12);
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.arc(0,0, rr, time*0.8, time*0.8 + Math.PI*0.35);
-    ctx.stroke();
+    ctx.strokeStyle = hexA('#ffffff', .12); ctx.lineWidth=3.5;
+    ctx.beginPath(); ctx.arc(0,0, rr, time*0.8, time*0.8 + Math.PI*0.35); ctx.stroke();
   });
 
-  /* symmetry spokes + end glyphs */
   for(let L=0; L<layers; L++){
     for(let i=0;i<sym;i++){
       const a0 = (i/sym)*TAU + L*0.07 + time*0.2;
@@ -902,17 +893,11 @@ function drawFrame(t){
 
       ctx.strokeStyle = hexA(colors[1], .85);
       ctx.lineWidth = 1.4 + L*0.6;
-      ctx.beginPath();
-      ctx.moveTo(r1*Math.cos(a), r1*Math.sin(a));
-      ctx.lineTo(r2*Math.cos(a), r2*Math.sin(a));
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(r1*Math.cos(a), r1*Math.sin(a)); ctx.lineTo(r2*Math.cos(a), r2*Math.sin(a)); ctx.stroke();
 
-      ctx.save();
-      ctx.translate(r2*Math.cos(a), r2*Math.sin(a));
-      ctx.rotate(a + time*0.4);
+      ctx.save(); ctx.translate(r2*Math.cos(a), r2*Math.sin(a)); ctx.rotate(a + time*0.4);
       ctx.fillStyle = hexA(colors[2], .85);
-      const glyph = (i+L)%4;
-      switch(glyph){
+      switch((i+L)%4){
         case 0: ctx.fillRect(-7,-7,14,14); break;
         case 1: ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(8,7); ctx.lineTo(-8,7); ctx.closePath(); ctx.fill(); break;
         case 2: ctx.beginPath(); ctx.arc(0,0,8,0,TAU); ctx.fill(); break;
@@ -922,10 +907,7 @@ function drawFrame(t){
     }
   }
 
-  /* braided rose-knot overlay */
-  ctx.strokeStyle = hexA(colors[0], .65);
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
+  ctx.strokeStyle = hexA(colors[0], .65); ctx.lineWidth=1.6; ctx.beginPath();
   const Rk = rings[Math.floor(rings.length/2)] - 18;
   for(let i=0;i<=720;i++){
     const a = (i/720)*TAU*2 + time*0.6;
@@ -935,9 +917,7 @@ function drawFrame(t){
   }
   ctx.stroke();
 
-  /* moving arcs */
-  ctx.strokeStyle = hexA(colors[0], .55);
-  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = hexA(colors[0], .55); ctx.lineWidth=2.2;
   for(let i=0;i<arcCount;i++){
     const r = rInner + (i/(arcCount-1))*(rOuter-rInner);
     const start = time*0.4 + (i/arcCount)*TAU;
@@ -945,9 +925,8 @@ function drawFrame(t){
     ctx.beginPath(); ctx.arc(0,0, r, start, start+len); ctx.stroke();
   }
 
-  /* runic ring */
   const RR = rOuter - 14;
-  const runeSize = 10 + (W/1024)*4; // use logical width
+  const runeSize = 10 + (CW/1024)*4;
   for(let i=0;i<runeCount;i++){
     const a = (i/runeCount)*TAU + time*0.15;
     const x = RR*Math.cos(a), y = RR*Math.sin(a);
@@ -956,53 +935,79 @@ function drawFrame(t){
     ctx.restore();
   }
 
-  /* center—star + core */
   ctx.save();
   ctx.fillStyle = ringGradient(ctx, 0, coreRadius*2.2, colors[2], colors[1], .9,.15);
   ctx.beginPath(); starPath(ctx, starPts, coreRadius*1.25, coreRadius*0.55); ctx.fill();
-
-  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalCompositeOperation='lighter';
   ctx.fillStyle = hexA(colors[1], .85);
   ctx.beginPath(); ctx.arc(0,0, coreRadius*(1+0.08*Math.sin(time*2.2)), 0, TAU); ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-
+  ctx.globalCompositeOperation='source-over';
   ctx.strokeStyle = hexA(colors[2], .8); ctx.lineWidth=1.6;
-  ctx.beginPath();
-  ctx.moveTo(-coreRadius-14,0); ctx.lineTo(coreRadius+14,0);
-  ctx.moveTo(0,-coreRadius-14); ctx.lineTo(0,coreRadius+14);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-coreRadius-14,0); ctx.lineTo(coreRadius+14,0); ctx.moveTo(0,-coreRadius-14); ctx.lineTo(0,coreRadius+14); ctx.stroke();
   ctx.restore();
 
-  /* faint outer glow */
-  ctx.globalCompositeOperation = 'screen';
-  ctx.strokeStyle = hexA(colors[0], .08);
-  ctx.lineWidth = 22;
+  ctx.globalCompositeOperation='screen';
+  ctx.strokeStyle = hexA(colors[0], .08); ctx.lineWidth=22;
   ctx.beginPath(); ctx.arc(0,0, rOuter+12, 0, TAU); ctx.stroke();
-  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalCompositeOperation='source-over';
 
   ctx.restore();
-
   if (animOn) animReq = requestAnimationFrame(drawFrame);
 }
 
+// ----- Toggle + render API (used by your existing buttons/listeners)
+function toggleAnimation(){
+  animOn = !animOn;
+  const label = animOn ? "⏸ Pause" : "▶ Animate";
+  if (toggleAnimBtn) toggleAnimBtn.textContent = label;
+  if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = label;
+  if (animOn){
+    cancelAnimationFrame(animReq);
+    animReq = requestAnimationFrame(drawFrame);
+  }else{
+    cancelAnimationFrame(animReq);
+    drawFrame(0);
+  }
+}
+window.toggleAnimation = toggleAnimation;
+
+function renderSigil(seed, paletteIndex=0){
+  const colors = palettes[paletteIndex];
+  if (paletteDot) paletteDot.style.background = colors[0];
+  makeBackground(colors);                 // refresh bg cache
+  activeSeed = seed;
+  activeCfg = buildSigilConfig(seed);
+  if (sigilMeta) sigilMeta.textContent = `seed: ${seed.slice(0,10)}… • sym:${activeCfg.sym} • palette:#${paletteIndex+1}`;
+
+  cancelAnimationFrame(animReq);
+  if (animOn){
+    animReq = requestAnimationFrame(drawFrame);
+    if (toggleAnimBtn) toggleAnimBtn.textContent = "⏸ Pause";
+    if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = "⏸ Pause";
+  } else {
+    drawFrame(0);
+    if (toggleAnimBtn) toggleAnimBtn.textContent = "▶ Animate";
+    if (toggleAnimBtnFooter) toggleAnimBtnFooter.textContent = "▶ Animate";
+  }
+}
+
+// ----- Modal open/close hooks
 async function openSigilSmithy(){
-  const acct = await getActiveAccount();
+  const acct = await getActiveAccount?.();
   walletRawAddress = acct || null;
   if (!seedInput.value) seedInput.value = acct || randomSeed();
   modalBackdrop.classList.add('show');
   animOn = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  resizeSigilCanvas();
   renderSigil(getEffectiveSeed(), currentPaletteIndex);
 }
-
 function closeSigilSmithy(){
   modalBackdrop.classList.remove('show');
   saveSigilState();
   animOn = false;
-  cancelAnimationFrame(animReq);
-  animReq = null;
+  cancelAnimationFrame(animReq); animReq = null;
 }
 window.openSigilSmithy = openSigilSmithy;
-
   // ================== Expose ==================
   window.interactWithRelic = interactWithRelic;
   window.openAcademy = openAcademy;
