@@ -1,334 +1,379 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Answer the Call | KLY Ascension</title>
+
+  <!-- Fonts / Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
+  <!-- Ethers (single include; remove duplicates) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
   <style>
-    :root {
-      --primary: #00ffa3;
-      --primary-dark: #00cc83;
-      --bg: #0f0f1b;
-      --bg-light: #1a1a2e;
-      --text: #e6f1ff;
-      --text-dim: #a0a8c0;
+    :root{
+      --primary:#00ffa3;
+      --primary-dark:#00cc83;
+      --bg:#0f0f1b;
+      --bg-2:#070710;
+      --text:#e6f1ff;
+      --text-dim:#a0a8c0;
+      --error:#ff3860;
+      --ok:#00ffa3;
+      --card:#151528;
+      --border:#213047;
+      --glow:0 0 18px rgba(0,255,163,.45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 600px at 50% -200px, rgba(0,255,163,.15), transparent 60%),
+        radial-gradient(ellipse at center, var(--bg) 0%, #000 100%);
+      color:var(--text);
+      font-family:'Orbitron',sans-serif;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      overflow-x:hidden; line-height:1.6; padding:24px;
     }
 
-    * {
-      box-sizing: border-box;
+    .portal-container{
+      width:min(880px, 92vw);
+      background:linear-gradient(180deg, rgba(21,21,40,.6), rgba(10,10,20,.5));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:2rem 1.5rem 2.25rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 60px rgba(0,0,0,.5), 0 0 80px rgba(0,255,163,.05) inset;
+      animation:fadeIn .9s ease both;
+      position:relative;
+      z-index:1;
+    }
+    .shine{
+      position:absolute; inset:-1px; border-radius:16px; pointer-events:none;
+      background: radial-gradient(800px 140px at 50% 0%, rgba(0,255,163,.12), transparent 70%);
+      mask: linear-gradient(#000, transparent 70%);
     }
 
-    body {
-      margin: 0;
-      background: radial-gradient(ellipse at center, var(--bg) 0%, #000 100%);
-      color: var(--text);
-      font-family: 'Orbitron', sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow-x: hidden;
-      line-height: 1.6;
+    h1{
+      margin:0 0 .25rem;
+      text-align:center;
+      font-size: clamp(26px, 5vw, 44px);
+      letter-spacing:.02em;
+      text-shadow:0 0 12px rgba(0,255,163,.5);
+    }
+    .subtitle{
+      text-align:center; margin:0 auto 1.25rem; color:var(--text-dim);
+      font-size: clamp(14px, 2.2vw, 18px); max-width:640px;
     }
 
-    .portal-container {
-      text-align: center;
-      animation: fadeIn 1s ease-in-out;
-      padding: 2rem;
-      max-width: 800px;
-      width: 90%;
-      position: relative;
-      z-index: 1;
+    .glow-circle{
+      width:240px; height:240px; border-radius:50%;
+      margin:32px auto 10px; position:relative; filter: drop-shadow(0 0 24px rgba(0,255,163,.35));
+      background:
+        radial-gradient(closest-side, rgba(0,255,163,.3), transparent 70%),
+        conic-gradient(from 0deg, rgba(0,255,163,.25), transparent 40%, rgba(0,255,163,.2));
+      animation:pulse 2.2s infinite ease-in-out;
+    }
+    .glow-circle:before,.glow-circle:after{
+      content:""; position:absolute; inset:-12px; border-radius:50%;
+      border:2px solid rgba(0,255,163,.35);
+      animation:spin 22s linear infinite;
+    }
+    .glow-circle:after{ inset:-22px; border-color:rgba(0,255,163,.18); animation-duration:36s; }
+
+    .btn-group{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin:18px 0 8px; }
+    button,.ghost-link{
+      padding:14px 24px; min-width:220px; border-radius:10px; border:1px solid var(--primary);
+      color:var(--primary); background:linear-gradient(180deg, rgba(0,255,163,.12), rgba(0,0,0,.0));
+      font-family:'Orbitron',sans-serif; font-weight:600; letter-spacing:.02em; cursor:pointer;
+      transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+      position:relative; overflow:hidden; text-align:center; display:inline-flex; align-items:center; justify-content:center;
+    }
+    button i{margin-right:8px}
+    button:hover,.ghost-link:hover{ transform:translateY(-2px); box-shadow:var(--glow); background:rgba(0,255,163,.18); color:#021; }
+    button:active{ transform:translateY(0) }
+    button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(.2); transform:none; box-shadow:none; }
+    .primary{ background:linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%); color:#001b11; border-color:transparent; }
+    .primary:hover{ box-shadow:0 0 22px rgba(0,255,163,.6); }
+    .danger{ border-color:var(--error); color:var(--error); }
+
+    /* Enter button as a link that can be "locked" */
+    .ghost-link{ text-decoration:none; }
+    .ghost-link.locked{ pointer-events:none; opacity:.55; }
+
+    #walletAddress{
+      display:none; margin:12px auto 0; font-size:14px; color:#0f241d;
+      background:rgba(0,255,163,.18); border:1px solid rgba(0,255,163,.4); border-radius:999px;
+      padding:8px 16px; width:max-content;
     }
 
-    .glow-circle {
-      width: 220px;
-      height: 220px;
-      border-radius: 50%;
-      background: radial-gradient(var(--primary) 10%, transparent 70%);
-      margin: 40px auto;
-      animation: pulse 2s infinite ease-in-out;
-      position: relative;
-      box-shadow: 0 0 60px rgba(0, 255, 163, 0.3);
+    #mintStatus{
+      min-height:28px; text-align:center; margin:14px 0 0;
+      font-size:15px;
     }
+    .status{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(12,16,24,.6); }
+    .status.ok{ border-color:rgba(0,255,163,.35); color:var(--ok) }
+    .status.err{ border-color:rgba(255,56,96,.35); color:var(--error) }
+    .status a{ color:inherit; text-decoration:underline dotted }
 
-    .glow-circle::before {
-      content: '';
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      right: -10px;
-      bottom: -10px;
-      border: 2px solid var(--primary);
-      border-radius: 50%;
-      animation: rotate 20s linear infinite;
-      opacity: 0.5;
-    }
+    /* Loading spinner */
+    .loading{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; margin-right:8px; animation:spin 1s linear infinite; display:inline-block; }
 
-    h1 {
-      font-size: clamp(24px, 5vw, 42px);
-      text-shadow: 0 0 12px var(--primary);
-      margin-bottom: 0.5rem;
-      font-weight: 700;
-    }
+    /* Ambient particles */
+    .particles{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+    .particle{ position:absolute; width:3px; height:3px; border-radius:50%; background:var(--primary); opacity:.35; filter:blur(.2px); animation: drift linear infinite; }
 
-    .subtitle {
-      color: var(--text-dim);
-      font-size: clamp(14px, 2vw, 18px);
-      margin-bottom: 2rem;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-    }
+    @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:1 } 50%{ transform:scale(1.08); opacity:.75 } }
+    @keyframes fadeIn{ from{opacity:0; transform:translateY(28px)} to{opacity:1; transform:translateY(0)} }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+    @keyframes drift{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(0, -120vh, 0) } }
 
-    .btn-group {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-      margin: 2rem 0;
-    }
-
-    button {
-      padding: 14px 28px;
-      background: transparent;
-      border: 2px solid var(--primary);
-      color: var(--primary);
-      font-size: 16px;
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border-radius: 4px;
-      position: relative;
-      overflow: hidden;
-      min-width: 220px;
-    }
-
-    button:hover {
-      background-color: var(--primary);
-      color: #000;
-      box-shadow: 0 0 20px rgba(0, 255, 163, 0.5);
-      transform: translateY(-2px);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background-color: transparent;
-      color: var(--primary);
-    }
-
-    button i {
-      margin-right: 8px;
-    }
-
-    #walletAddress {
-      margin: 1rem 0;
-      font-size: 14px;
-      color: var(--primary);
-      background: rgba(0, 255, 163, 0.1);
-      padding: 8px 16px;
-      border-radius: 20px;
-      display: inline-block;
-    }
-
-    #mintStatus {
-      margin: 1rem 0;
-      font-size: 16px;
-      min-height: 24px;
-    }
-
-    .success {
-      color: var(--primary);
-    }
-
-    .error {
-      color: #ff3860;
-    }
-
-    .particles {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    .particle {
-      position: absolute;
-      background: var(--primary);
-      border-radius: 50%;
-      opacity: 0.3;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.6; }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes rotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    @media (max-width: 600px) {
-      .glow-circle {
-        width: 180px;
-        height: 180px;
-      }
-      
-      .btn-group {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      button {
-        width: 100%;
-      }
+    @media (max-width:600px){
+      .portal-container{ padding:1.25rem 1rem 1.5rem }
+      .glow-circle{ width:190px; height:190px }
+      button,.ghost-link{ width:100%; min-width:unset }
     }
   </style>
 </head>
 <body>
   <div class="portal-container">
+    <div class="shine"></div>
+
     <h1>Welcome, Chosen Architect</h1>
-    <p class="subtitle">Connect your wallet to claim your Key of Ascension and gain access to the KLY ecosystem</p>
-    
-    <div class="glow-circle"></div>
+    <p class="subtitle">Connect your wallet to claim your <strong>Key of Ascension</strong> and unlock the KLY ecosystem.</p>
 
- <!-- In your button group -->
-<div class="btn-group">
-  <!-- Connect Button in HTML -->
-<button id="connectBtn">
-  <i class="fas fa-wallet"></i> Connect Wallet
-</button>
-  <button onclick="mintNFT()" id="mintBtn" disabled>
-    <i class="fas fa-key"></i> Mint Key of Ascension
-  </button>
-  <a href="/portal.html" style="text-decoration: none;">
-    <button id="enterBtn" disabled>
-      <i class="fas fa-door-open"></i> Enter the Portal
-    </button>
-  </a>
-</div>
+    <div class="glow-circle" aria-hidden="true"></div>
 
-    <div id="walletAddress" style="display: none;"></div>
+    <div class="btn-group">
+      <button id="connectBtn" class="primary"><i class="fas fa-wallet"></i><span>Connect Wallet</span></button>
+
+      <button id="mintBtn" aria-disabled="true" disabled>
+        <i class="fas fa-key"></i><span>Mint Key of Ascension</span>
+      </button>
+
+      <!-- Use a link we can lock/unlock; don't wrap a disabled <button> -->
+      <a id="enterLink" class="ghost-link locked" href="/portal.html">
+        <i class="fas fa-door-open"></i><span>Enter the Portal</span>
+      </a>
+    </div>
+
+    <div id="walletAddress"></div>
     <div id="mintStatus"></div>
   </div>
 
-  <div class="particles" id="particles"></div>
+  <div class="particles" id="particles" aria-hidden="true"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    // ====== CONFIG ======
+    const BSC_CHAIN_ID = 56;         // BNB Smart Chain mainnet
+    const BSC_PARAMS = {
+      chainId: '0x38',
+      chainName: 'BNB Smart Chain',
+      nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+      rpcUrls: ['https://bsc-dataseed.binance.org/'],
+      blockExplorerUrls: ['https://bscscan.com/']
+    };
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    const NFT_CONTRACT = '0xDA76d35742190283E340dbeE2038ecc978a56950';
+    const NFT_ABI = [
+      'function mintTo(address to, string uri) public',
+      'function balanceOf(address owner) view returns (uint256)'
+    ];
+    // Make sure we pass the URI with the ipfs:// scheme
+    const NFT_URI = 'ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by';
 
-<script>
-  // === CONFIGURATION ===
-  const NFT_CONTRACT = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-  const NFT_ABI = [
-    "function mintTo(address to, string uri) public",
-    "function balanceOf(address owner) view returns (uint256)"
-  ];
-  const BSC_CHAIN_ID = 56;
-  const NFT_URI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by"; // Key of Ascension
+    // ====== STATE ======
+    let provider, signer, userAddress, nft;
 
-  // === STATE ===
-  let provider, signer, userAddress, nftContract;
+    // ====== DOM ======
+    const connectBtn   = document.getElementById('connectBtn');
+    const mintBtn      = document.getElementById('mintBtn');
+    const enterLink    = document.getElementById('enterLink');
+    const walletBadge  = document.getElementById('walletAddress');
+    const mintStatusEl = document.getElementById('mintStatus');
+    const particlesEl  = document.getElementById('particles');
 
-  // === DOM ELEMENTS ===
-  const connectBtn = document.getElementById("connectBtn");
-  const mintBtn = document.getElementById("mintBtn");
-  const enterBtn = document.getElementById("enterBtn");
-
-  // === WALLET CONNECT ===
-  async function connectWallet() {
-    try {
-      if (!window.ethereum) {
-        alert("Please install MetaMask to continue.");
-        return;
-      }
-
-      // Request wallet access
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      const network = await provider.getNetwork();
-      if (network.chainId !== BSC_CHAIN_ID) {
-        alert("Please switch to Binance Smart Chain (Mainnet)");
-        return;
-      }
-
-      nftContract = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
-
-      connectBtn.innerHTML = `<i class="fas fa-check-circle"></i> Connected`;
-      connectBtn.disabled = true;
-      mintBtn.disabled = false;
-
-      await checkNFTBalance();
-    } catch (err) {
-      console.error("Connection error:", err);
-      alert("Wallet connection failed.");
-    }
-  }
-
-  // === MINT FUNCTION ===
-async function mintNFT() {
-  try {
-    mintBtn.disabled = true;
-    mintBtn.innerHTML = `<span class="loading"></span> Minting...`;
-
-    const metadataUri = "bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by"; // ← replace this with your real metadata URI
-
-    const tx = await nftContract.mintTo(userAddress, metadataUri);
-    await tx.wait();
-
-    alert("✅ Minted Key of Ascension!");
-    await checkNFTBalance();
-  } catch (err) {
-    console.error("Mint error:", err);
-    alert("Mint failed: " + (err?.reason || err?.message || "Unknown error"));
-  } finally {
-    mintBtn.innerHTML = `<i class="fas fa-key"></i> Mint Key of Ascension`;
-    mintBtn.disabled = false;
-  }
-}
-  // === CHECK NFT BALANCE ===
-  async function checkNFTBalance() {
-    try {
-      const balance = await nftContract.balanceOf(userAddress);
-      if (balance.gt(0)) {
-        enterBtn.disabled = false;
+    // ====== UTIL ======
+    const short = (addr) => addr ? `${addr.slice(0,6)}…${addr.slice(-4)}` : '';
+    const setStatus = (html, type) => {
+      if(!html){ mintStatusEl.innerHTML = ''; return; }
+      mintStatusEl.innerHTML = `<span class="status ${type||''}">${html}</span>`;
+    };
+    const lockPortal = (locked=true) => {
+      if(locked){ enterLink.classList.add('locked'); }
+      else { enterLink.classList.remove('locked'); }
+    };
+    const setMintLoading = (on=true) => {
+      if(on){
         mintBtn.disabled = true;
-        alert("🔓 Access granted. You already hold the Key.");
+        mintBtn.innerHTML = `<span class="loading"></span>Minting...`;
+      } else {
+        mintBtn.disabled = false;
+        mintBtn.innerHTML = `<i class="fas fa-key"></i><span>Mint Key of Ascension</span>`;
       }
-    } catch (err) {
-      console.error("Balance check error:", err);
-    }
-  }
+    };
 
-  // === INITIALIZE ===
-  window.addEventListener("DOMContentLoaded", () => {
-    connectBtn.addEventListener("click", connectWallet);
-    mintBtn.addEventListener("click", mintNFT);
-  });
-</script>
+    async function ensureBsc(){
+      const net = await provider.getNetwork();
+      if(net.chainId === BSC_CHAIN_ID) return true;
+
+      try{
+        await window.ethereum.request({
+          method:'wallet_switchEthereumChain',
+          params:[{ chainId: BSC_PARAMS.chainId }]
+        });
+        return true;
+      }catch(switchErr){
+        // If the chain hasn't been added to MetaMask
+        if(switchErr && switchErr.code === 4902){
+          try{
+            await window.ethereum.request({
+              method:'wallet_addEthereumChain',
+              params:[BSC_PARAMS]
+            });
+            return true;
+          }catch(addErr){
+            console.error('Add BSC error', addErr);
+            setStatus(`Please add/switch to BNB Smart Chain.`, 'err');
+            return false;
+          }
+        }else{
+          console.error('Switch chain error', switchErr);
+          setStatus(`Please switch to BNB Smart Chain.`, 'err');
+          return false;
+        }
+      }
+    }
+
+    async function connectWallet(){
+      try{
+        if(!window.ethereum){
+          setStatus(`No wallet detected. Install MetaMask or a Web3 wallet.`, 'err');
+          return;
+        }
+        await window.ethereum.request({ method:'eth_requestAccounts' });
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer   = provider.getSigner();
+        userAddress = await signer.getAddress();
+
+        const ok = await ensureBsc();
+        if(!ok) return;
+
+        nft = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
+
+        // UI updates
+        connectBtn.disabled = true;
+        connectBtn.innerHTML = `<i class="fas fa-check-circle"></i><span>Connected</span>`;
+        walletBadge.style.display = 'inline-block';
+        walletBadge.textContent = `Wallet: ${short(userAddress)}`;
+
+        await hydrateOwnershipState();
+
+      }catch(err){
+        console.error('Connection error:', err);
+        setStatus(err?.message || 'Wallet connection failed.', 'err');
+      }
+    }
+
+    async function hydrateOwnershipState(){
+      try{
+        setStatus(`Checking your access...`);
+        const bal = await nft.balanceOf(userAddress);
+        if(bal && bal.gt(0)){
+          // already holder
+          mintBtn.disabled = true;
+          lockPortal(false);
+          setStatus(`<i class="fas fa-unlock"></i> Access granted. You hold the Key.`);
+        }else{
+          // can mint
+          mintBtn.disabled = false;
+          lockPortal(true);
+          setStatus(`<i class="fas fa-key"></i> No Key detected yet — mint to unlock.`);
+        }
+      }catch(err){
+        console.error('Balance check error:', err);
+        setStatus(`Could not verify ownership. Try again.`, 'err');
+      }
+    }
+
+    async function mintNFT(){
+      try{
+        if(!nft || !signer) return setStatus(`Connect your wallet first.`, 'err');
+
+        setMintLoading(true);
+        setStatus(`Estimating gas...`);
+
+        // Optional: estimate gas to catch obvious reverts
+        try{
+          await nft.estimateGas.mintTo(userAddress, NFT_URI);
+        }catch(estErr){
+          console.warn('Gas estimate failed (may still succeed on-chain):', estErr);
+        }
+
+        const tx = await nft.mintTo(userAddress, NFT_URI);
+        setStatus(`Transaction sent — awaiting confirmation… <a target="_blank" rel="noopener" href="https://bscscan.com/tx/${tx.hash}">View on BscScan</a>`);
+
+        const receipt = await tx.wait();
+        setStatus(`<i class="fas fa-check-circle"></i> Minted! <a target="_blank" rel="noopener" href="https://bscscan.com/tx/${receipt.transactionHash}">BscScan</a>`, 'ok');
+
+        // Refresh state; unlock portal
+        await hydrateOwnershipState();
+
+      }catch(err){
+        console.error('Mint error:', err);
+        // Friendly error surfacing
+        const msg = err?.reason || err?.data?.message || err?.message || 'Mint failed.';
+        setStatus(`<i class="fas fa-triangle-exclamation"></i> ${msg}`, 'err');
+      }finally{
+        setMintLoading(false);
+      }
+    }
+
+    // Listeners for account / chain changes
+    function attachWalletListeners(){
+      if(!window.ethereum) return;
+      window.ethereum.on?.('accountsChanged', async (accs)=>{
+        if(!accs || !accs.length){ location.reload(); return; }
+        userAddress = accs[0];
+        walletBadge.textContent = `Wallet: ${short(userAddress)}`;
+        signer = provider.getSigner();
+        nft = new ethers.Contract(NFT_CONTRACT, NFT_ABI, signer);
+        await hydrateOwnershipState();
+      });
+      window.ethereum.on?.('chainChanged', ()=>{
+        // Hard refresh to pick up new provider state
+        location.reload();
+      });
+    }
+
+    // Ambient particles (subtle)
+    function spawnParticles(count=80){
+      const w = window.innerWidth, h = window.innerHeight;
+      for(let i=0;i<count;i++){
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 2.5 + 1;
+        p.style.width = `${size}px`; p.style.height = `${size}px`;
+        p.style.left = `${Math.random()*w}px`;
+        p.style.top = `${Math.random()*h}px`;
+        const dur = 18 + Math.random()*18;
+        p.style.animationDuration = `${dur}s`;
+        p.style.animationDelay = `${-Math.random()*dur}s`;
+        particlesEl.appendChild(p);
+      }
+    }
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', ()=>{
+      spawnParticles(90);
+      connectBtn.addEventListener('click', connectWallet);
+      mintBtn.addEventListener('click', mintNFT);
+      attachWalletListeners();
+    });
+  </script>
 </body>
 </html>
