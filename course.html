@@ -2,83 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Sovereignty Mastery Program</title>
+<title>Sovereignty Mastery Program — Web3 Gated</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@300;500;700&family=Kanit:wght@300;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+<!-- Animations / Web3 -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
 <style>
   :root{
-    --bg:#0b0f14; --panel:#0e1320; --card:#121825; --muted:#9fb0c9; --text:#eaf2ff;
-    --accent:#7c7cff; --accent-2:#5fe1b9; --gold:#f6c667; --ok:#22c55e; --warn:#f59e0b;
-    --border:rgba(255,255,255,.08); --shadow:0 12px 30px rgba(0,0,0,.35); --radius:14px;
-    --danger:#ff6b6b;
+    /* Dark glassy neon palette from your liked design */
+    --primary:#6C4DF6; --primary-2:#8A6DF9; --secondary:#FF7D05; --secondary-2:#FF9A3D;
+    --accent:#00E0FF; --accent-2:#5DEBFF; --ok:#00C853; --warn:#FFAB00; --danger:#FF3D00;
+    --bg:#050510; --panel:rgba(15,15,35,.85); --card:rgba(15,15,35,.8);
+    --muted:#b6c3e0; --text:#F5F5FF; --border:rgba(255,255,255,.15); --radius:16px;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:linear-gradient(180deg,#0b0f14 0%,#0e1320 100%);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  a{color:inherit;text-decoration:none}
-  .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+  html,body{margin:0;background:radial-gradient(at 80% 0%, rgba(108,77,246,.16) 0, transparent 50%),
+                           radial-gradient(at 0% 50%, rgba(0,224,255,.12) 0, transparent 50%),
+                           linear-gradient(180deg, #0b0f1c, #050510);
+            color:var(--text);font-family:Inter, 'Kanit', system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  .app{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
+  /* Floating Particles */
+  .particles{position:fixed;inset:0;z-index:-1;overflow:hidden}
+  .particle{position:absolute;border-radius:50%;opacity:.35;animation:float linear infinite}
+  @keyframes float{0%{transform:translateY(0)} 50%{transform:translateY(-100px)} 100%{transform:translateY(0)}}
+
   /* Sidebar */
-  .sidebar{position:sticky;top:0;align-self:start;height:100dvh;background:rgba(12,18,31,.7);backdrop-filter:blur(8px);border-right:1px solid var(--border);padding:18px;overflow:auto}
-  .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-  .brand i{color:var(--accent)}
-  .brand h1{font-size:1.1rem;margin:0;font-weight:800;letter-spacing:.2px}
+  .sidebar{position:sticky;top:0;align-self:start;height:100dvh;background:var(--panel);
+           backdrop-filter:blur(12px);border-right:1px solid var(--border);padding:20px;overflow:auto}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .brand i{color:var(--primary)}
+  .brand h1{font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;margin:0;font-weight:800;letter-spacing:.3px}
+  .user{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid var(--border);
+        padding:12px;border-radius:12px;margin-bottom:14px}
+  .avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+          background:linear-gradient(135deg,var(--primary),var(--accent));font-weight:800}
+  .wallet{font-size:.9rem}
+  .wallet small{opacity:.8}
+  .wallet .addr{font-family:monospace}
+  .wallet-actions{display:flex;gap:8px;margin-top:8px}
+  .btn{background:linear-gradient(90deg,var(--primary),var(--secondary));border:0;color:#fff;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:700;display:inline-flex;gap:8px;align-items:center}
+  .btn.secondary{background:transparent;border:2px solid var(--border);color:var(--text)}
+  .btn.ghost{background:transparent;border:0;color:var(--accent);text-decoration:underline}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
   .nav-section{margin-top:16px}
-  .nav-section h4{margin:14px 8px 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:#cbd5ff}
-  .tree{display:flex;flex-direction:column;gap:6px}
-  .tree button{width:100%;text-align:left;background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
-  .tree button:hover{background:rgba(255,255,255,.05)}
-  .tree .leaf{margin-left:12px;border-color:transparent;background:rgba(255,255,255,.04)}
-  .leaf.active{outline:2px solid rgba(124,124,255,.45)}
-  .pill{font-size:.75rem;color:#cfe2ff;background:rgba(255,255,255,.08);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+  .nav-section h4{margin:14px 8px 10px;font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:#cfe2ff}
+  .tree{display:flex;flex-direction:column;gap:8px}
+  .tree button{width:100%;text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);
+               padding:10px 12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  .tree button:hover{background:rgba(255,255,255,.07)}
+  .leaf{margin-left:12px}
+  .pill{font-size:.72rem;color:#0b0f14;background:linear-gradient(90deg,var(--primary),var(--secondary));
+        padding:3px 8px;border-radius:999px}
+  .badge{display:inline-grid;place-items:center;min-width:38px;height:38px;border-radius:10px;
+         background:rgba(124,124,255,.16);border:1px solid rgba(124,124,255,.3);font-weight:800;color:#bfbfff}
+
   /* Main */
   .main{padding:22px 24px}
   .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .search{flex:1;display:flex;align-items:center;background:#0f1522;border:1px solid var(--border);border-radius:999px;padding:8px 12px;gap:8px}
+  .search{flex:1;display:flex;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:999px;padding:8px 12px;gap:8px}
   .search input{flex:1;background:transparent;border:0;color:var(--text);outline:none}
   .filters{display:flex;gap:8px;flex-wrap:wrap}
   .chip{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#cfe2ff;border-radius:999px;padding:6px 10px;cursor:pointer}
   .chip.active{background:linear-gradient(90deg,var(--accent-2),var(--accent));color:#0b0f14;border:0}
   .tabs{display:flex;gap:8px;margin:12px 0 18px}
-  .tab{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.05);cursor:pointer}
-  .tab.active{background:linear-gradient(90deg,var(--accent),#8a7cff);color:#fff;border:0}
+  .tab{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.06);cursor:pointer}
+  .tab.active{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff;border:0}
   .breadcrumb{color:var(--muted);font-size:.9rem;margin:6px 0 14px}
+
   /* Cards grid */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-  .card{background:linear-gradient(180deg,var(--card),#0f1522);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px}
-  .badge{height:38px;width:38px;border-radius:10px;background:rgba(124,124,255,.16);border:1px solid rgba(124,124,255,.3);display:grid;place-items:center;font-weight:800;color:#bfbfff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px}
   .title{font-weight:700;margin:0}
   .muted{color:var(--muted)}
   .progress{height:10px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
-  .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#8a7cff,var(--gold))}
+  .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),#8a7cff,var(--secondary))}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .btn{background:linear-gradient(90deg,var(--accent),#8a7cff);border:0;color:#fff;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:700;display:inline-flex;gap:8px;align-items:center}
-  .btn.secondary{background:transparent;border:1px solid var(--border);color:#cfe2ff}
-  .btn:hover{transform:translateY(-1px)}
+  .lock{opacity:.55;position:relative}
+  .lock::after{content:"\f023  Gated";font-family:"Font Awesome 6 Free";font-weight:900;position:absolute;right:12px;top:12px;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:8px}
+
   /* Syllabus list */
   .syllabus{display:flex;flex-direction:column;gap:10px}
-  .syllabus .item{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--border);padding:12px;border-radius:12px}
-  .status-dot{width:10px;height:10px;border-radius:50%;background:#777}
-  .status-dot.done{background:var(--ok);box-shadow:0 0 10px rgba(34,197,94,.5)}
-  .status-dot.progress{background:var(--warn);box-shadow:0 0 10px rgba(245,158,11,.5)}
-  /* Detail */
-  .detail{background:linear-gradient(180deg,#0f1522,#0b101b);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .syllabus .item{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid var(--border);padding:12px;border-radius:14px}
+
+  /* Detail / Modal */
+  .detail{background:linear-gradient(180deg,rgba(20,20,40,.9),rgba(10,10,24,.95));border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
   .detail h2{margin:.2rem 0 0}
-  .detail .theme{color:var(--muted);margin-bottom:8px}
-  .detail .content{line-height:1.7}
-  .detail .content h3{margin:1.1rem 0 .5rem;color:var(--accent-2)}
-  .detail .content .practice{background:rgba(124,124,255,.08);border:1px dashed rgba(124,124,255,.35);border-radius:12px;padding:12px;margin:12px 0}
-  .detail-nav{display:flex;justify-content:space-between;gap:10px;margin-top:14px}
-  /* Progress view */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px}
-  .kpi{background:rgba(255,255,255,.04);border:1px solid var(--border);padding:14px;border-radius:12px}
-  .kpi h4{margin:0 0 6px}
-  .bar{height:12px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
-  .bar > span{height:100%;display:block;background:linear-gradient(90deg,var(--accent),#8a7cff,var(--gold))}
-  /* Toast */
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f1422;color:#eaf2ff;border:1px solid var(--border);padding:10px 14px;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:1000}
-  .toast.show{opacity:1}
+  .detail .theme{color:var(--accent)}
+  .detail .content h3{margin:1.1rem 0 .5rem;color:var(--secondary-2)}
+  .detail .content .practice{background:rgba(0,224,255,.1);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:12px;margin:12px 0}
+  .detail-nav{display:flex;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+  /* KPI */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:14px}
+  .kpi{background:rgba(255,255,255,.05);border:1px solid var(--border);padding:14px;border-radius:12px}
+
+  /* Connect Gate (center card) */
+  .connect-section{ text-align:center; max-width:900px; margin:0 auto 18px; padding:28px;
+    background:var(--card); border-radius:18px; border:1px solid var(--border); backdrop-filter:blur(10px); box-shadow:var(--shadow)}
+  .wallet-options{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .wallet-option{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer}
+  .wallet-option:hover{border-color:var(--primary);transform:translateY(-2px)}
+  .connect-note{font-size:.95rem;color:#cfd7ff}
+
+  /* Toast / Notification */
+  .toast{position:fixed;bottom:20px;right:20px;background:#0f1422;color:#eaf2ff;border:1px solid var(--border);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:1000}
+  .toast.show{opacity:1;pointer-events:auto}
+  .notice{position:fixed;bottom:24px;left:24px;display:flex;gap:10px;align-items:flex-start;background:#0b0f1c;border:1px solid var(--border);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);z-index:1000}
+  .notice.success{border-left:4px solid var(--ok)}
+  .notice.warn{border-left:4px solid var(--warn)}
+  .notice.error{border-left:4px solid var(--danger)}
+
+  /* Modal (for full content) */
+  .modal{position:fixed;inset:0;background:rgba(5,5,16,.9);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:10000}
+  .modal.active{display:flex}
+  .modal-card{width:min(900px,92vw);max-height:90vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px}
+  .modal-close{background:transparent;border:0;color:var(--text);cursor:pointer;font-size:1.2rem}
+
   /* Responsive */
   @media (max-width: 980px){
     .app{grid-template-columns:1fr}
@@ -87,6 +139,9 @@
 </style>
 </head>
 <body>
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
 <div class="app" id="app">
   <!-- Sidebar -->
   <aside class="sidebar" aria-label="Program Navigation">
@@ -94,12 +149,24 @@
       <i class="fa-solid fa-crown"></i>
       <h1>Sovereignty Mastery</h1>
     </div>
-    <div class="nav-section">
-      <h4>Areas</h4>
-      <div class="tree" id="areaTree">
-        <!-- populated by JS -->
+
+    <div class="user">
+      <div class="avatar" id="userAvatar">?</div>
+      <div class="wallet">
+        <div class="addr" id="walletAddress">Not connected</div>
+        <small id="walletChain">BNB Smart Chain</small>
+        <div class="wallet-actions">
+          <button class="btn secondary" id="connectWallet"><i class="fa-solid fa-wallet"></i> Connect</button>
+          <button class="btn ghost" id="disconnectWallet" style="display:none"><i class="fa-solid fa-link-slash"></i> Disconnect</button>
+        </div>
       </div>
     </div>
+
+    <div class="nav-section">
+      <h4>Areas</h4>
+      <div class="tree" id="areaTree"></div>
+    </div>
+
     <div class="nav-section">
       <h4>Shortcuts</h4>
       <div class="tree">
@@ -133,10 +200,18 @@
       <button class="tab" data-tab="syllabus" role="tab" aria-selected="false">Syllabus</button>
       <button class="tab" data-tab="progress" role="tab" aria-selected="false">Progress</button>
       <button class="tab" data-tab="resources" role="tab" aria-selected="false">Resources</button>
-      <button class="tab" data-tab="community" role="tab" aria-selected="false">Community</button>
     </div>
 
     <div class="breadcrumb" id="breadcrumb">Home</div>
+
+    <!-- Optional Connect Gate banner -->
+    <section class="connect-section" id="gateBanner">
+      <h2 style="font-family:'Space Grotesk',Inter,sans-serif;margin:0 0 8px;color:var(--accent)">Unlock Sovereign Track</h2>
+      <p class="connect-note">Hold at least <strong>5</strong> <span id="tokenSymbol">TOKEN</span> on <strong>BNB Smart Chain</strong> to access all 14 Sovereign modules.<br/>Core Program remains open to everyone.</p>
+      <div class="wallet-options">
+        <div class="wallet-option" id="bannerConnect"><i class="fa-solid fa-wallet wallet-icon"></i><span>Connect Wallet</span></div>
+      </div>
+    </section>
 
     <!-- Views -->
     <section id="view-overview" class="view">
@@ -151,23 +226,18 @@
       <div class="kpis">
         <div class="kpi">
           <h4>Total Completion</h4>
-          <div class="bar"><span id="totalBar" style="width:0%"></span></div>
+          <div class="progress"><span id="totalBar" style="width:0%"></span></div>
           <p class="muted"><span id="totalPct">0%</span> • <span id="completedCount">0</span>/<span id="totalCount">0</span> modules</p>
         </div>
         <div class="kpi">
           <h4>Core Program</h4>
-          <div class="bar"><span id="coreBar" style="width:0%"></span></div>
+          <div class="progress"><span id="coreBar" style="width:0%"></span></div>
           <p class="muted"><span id="corePct">0%</span> complete</p>
         </div>
         <div class="kpi">
           <h4>Sovereign Self</h4>
-          <div class="bar"><span id="svBar" style="width:0%"></span></div>
+          <div class="progress"><span id="svBar" style="width:0%"></span></div>
           <p class="muted"><span id="svPct">0%</span> complete</p>
-        </div>
-        <div class="kpi">
-          <h4>Time Spent</h4>
-          <p class="muted" id="timeSpent">0h 0m</p>
-          <button class="btn secondary" id="toggleTimer"><i class="fa-regular fa-clock"></i> Start Timer</button>
         </div>
       </div>
       <div class="grid" id="progressGrid"></div>
@@ -177,17 +247,10 @@
       <div class="card">
         <h3 class="title">Resources & Downloads</h3>
         <ul class="muted">
-          <li>📝 Worksheets: Sovereignty Audit, Resource Audit</li>
-          <li>🎧 Guided Practices: Deep Listening, Micro-Surrender</li>
-          <li>📚 Reading List: Presence, Shadow Work, Non-Duality</li>
+          <li>📝 Worksheets: Sovereignty Audit, Resource Audit, Boundaries Scripts</li>
+          <li>🎧 Practices: Deep Listening, Micro-Surrender, Box Breathing (4-4-6-2)</li>
+          <li>📚 Reading: Presence, Nonviolent Communication, Essentialism</li>
         </ul>
-      </div>
-    </section>
-
-    <section id="view-community" class="view" hidden>
-      <div class="card">
-        <h3 class="title">Community</h3>
-        <p class="muted">Host circles, Q&A, and office hours here. Embed your platform or link out.</p>
       </div>
     </section>
 
@@ -208,6 +271,7 @@
           <button class="btn" id="btnNext">Next <i class="fa-solid fa-arrow-right-long"></i></button>
         </div>
         <button class="btn" id="btnToggleComplete"><i class="fa-regular fa-circle-check"></i> Mark Complete</button>
+        <button class="btn secondary" id="btnFull"><i class="fa-regular fa-expand"></i> Full View</button>
       </div>
     </section>
   </main>
@@ -216,9 +280,32 @@
 <!-- Toast -->
 <div class="toast" id="toast" role="status" aria-live="polite">Saved</div>
 
+<!-- Modal Full Content -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="margin:0;display:flex;align-items:center;gap:10px"><span class="badge" id="modalNum">1</span> <span id="modalTitle">Module</span></h3>
+      <button class="modal-close" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
 <script>
 /* =========================
-   Data Model (edit here)
+   CONFIG (Web3 Gate)
+========================= */
+const TOKEN_ADDRESS   = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // TODO: put SolCoin ERC-20 address
+const REQUIRED_TOKENS = 5;   // gate at 5 tokens
+const CHAIN_ID   = 56;       // BNB Smart Chain
+const CHAIN_NAME = 'BNB Smart Chain';
+const RPC_URL    = 'https://bsc-dataseed.binance.org';
+const ERC20_ABI  = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+const toHexChainId = (id) => '0x' + id.toString(16);
+
+/* =========================
+   COURSE (Core 7 + Sovereign 14)
+   — The Sovereign track matches what we finalized
 ========================= */
 const COURSE = {
   areas: [
@@ -281,35 +368,135 @@ const COURSE = {
     {
       id:'sovereign',
       name:'The Sovereign Self',
-      description:'7-module journey into inner authority & stewardship',
+      description:'14-module journey into inner authority & stewardship',
       modules: [
-        { id:'sv1', order:1, title:'The Call to Sovereignty', theme:'Claim your inner throne',
-          objectives:['Identify where authority was surrendered','Trust the sovereign whisper','Discern ego vs soul','Commit to the call'],
-          content:`<h3>Key Lessons</h3><ol><li>Recognizing the Whisper</li><li>Where You Gave Power Away</li><li>The Archetype of The Sovereign</li><li>The Sovereignty Audit</li></ol>`
+        /* sv1 - sv14 condensed from your finalized track */
+        { id:'sv1', order:1, title:'Foundation of Sovereignty', theme:'Understanding Personal Power',
+          objectives:[
+            "Understand historical and philosophical roots of sovereignty",
+            "Identify where you've surrendered personal authority",
+            "Differentiate ego power vs. soul-aligned power",
+            "Establish a daily sovereignty practice",
+            "Write a personal sovereignty declaration"
+          ],
+          content: `
+            <h3>Core Concept</h3>
+            <p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy.</p>
+            <div class="lesson"><h4>Historic Context across cultures</h4>
+              <ul><li>Ma’at (Kemet) — order, balance, reciprocity.</li><li>Stoicism — internal locus of control.</li><li>Indigenous — stewardship and relational responsibility.</li></ul>
+            </div>
+            <div class="lesson"><h4>Internal vs External authority</h4>
+              <ul><li>Compliance vs coherence with values.</li><li>Approval-seeking leaks power.</li><li>Choose structures deliberately; revoke misaligned consent.</li></ul>
+            </div>
+            <div class="lesson"><h4>Ego’s illusion of control</h4>
+              <ul><li>Prediction ≠ safety.</li><li>Influence from congruence, not force.</li><li>Letting go reallocates energy to strategy.</li></ul>
+            </div>
+            <div class="lesson"><h4>Daily sovereignty habits</h4>
+              <ul><li>AM/PM bookends stabilize state.</li><li>Identity stacks via signals (language, posture, environment).</li><li>Consistency > intensity.</li></ul>
+            </div>
+            <div class="lesson"><h4>Energy management basics</h4>
+              <ul><li>Attention grows identity.</li><li>Boundaries conserve voltage.</li><li>Recovery is an investment.</li></ul>
+            </div>
+            <div class="practice"><strong>Action:</strong> Reclaim one area within 48 hours.</div>
+          `
         },
-        { id:'sv2', order:2, title:'Dismantling the False Thrones', theme:'Name the illusions',
-          objectives:['Expose disempowering systems','Meet inner tyrants','Dissolve hidden contracts'],
-          content:`<h3>Practice — Breaking the Spell</h3><p>Write one limiting myth and declare: “This no longer rules me.”</p>`
+        { id:'sv2', order:2, title:'Boundaries & Energy Protection', theme:'Creating Safe Containers',
+          objectives:["Map boundary patterns","Set guilt-free limits","Apply protection techniques","Respond to violations","Context-specific rules"],
+          content: `
+            <h3>Core Concept</h3><p>Boundaries define where you end and others begin.</p>
+            <div class="lesson"><h4>Rigid vs porous vs healthy</h4><ul><li>Context-aware, explicit, enforceable.</li></ul></div>
+            <div class="lesson"><h4>Shielding/Grounding/Cleansing</h4><ul><li>Breath, posture, cadence.</li></ul></div>
+            <div class="lesson"><h4>Say “No” without apology</h4><ul><li>Direct, no justifying.</li></ul></div>
+            <div class="lesson"><h4>Scripts & escalation</h4><ul><li>Standard → request → consequence.</li></ul></div>
+            <div class="lesson"><h4>Contextual boundaries</h4><ul><li>Work, family, digital.</li></ul></div>
+          `
         },
-        { id:'sv3', order:3, title:'The Inner Throne', theme:'Authority within',
-          objectives:['Anchor core values','Presence as throne','Self-anointing rituals'],
-          content:`<h3>Practice — Alignment Scan</h3><p>Sit tall, breathe, and re-seat yourself on the inner throne.</p>`
+        { id:'sv3', order:3, title:'Authentic Decision Making', theme:'Listening to Inner Wisdom',
+          objectives:["Spot fear patterns","Guidance rituals","Decondition reactivity","Values filters","Act on intuition"],
+          content: `
+            <h3>Core Concept</h3><p>Aligned choices emerge from values, body wisdom, and intuition.</p>
+            <div class="lesson"><h4>Somatic Yes/No</h4><ul><li>Train interoception.</li></ul></div>
+            <div class="lesson"><h4>Values as filters</h4><ul><li>3–5 values; score options.</li></ul></div>
+          `
         },
-        { id:'sv4', order:4, title:'Boundaries, Consent & the Language of Power', theme:'Clear, Clean, Kind',
-          objectives:['Boundaries as sacred agreements','Consent as currency','C3 communication'],
-          content:`<blockquote>“What you allow becomes your law.”</blockquote>`
+        { id:'sv4', order:4, title:'Sovereign Communication', theme:'Expressing Truth with Power',
+          objectives:["Express needs","Active listening","Conflict in center","Release blame","Language upgrades"],
+          content: `
+            <h3>Core Concept</h3><p>Clarity + compassion + conviction—without attachment to outcome.</p>
+            <div class="lesson"><h4>NVC basics</h4><ul><li>Observe, feel, need, request.</li></ul></div>
+            <div class="lesson"><h4>Power language swaps</h4><ul><li>“I choose” over “have to”.</li></ul></div>
+          `
         },
-        { id:'sv5', order:5, title:'Alchemy of Resources & Right Livelihood', theme:'Stewardship',
-          objectives:['Steward time/energy/money/relations','Align work with soul','Redirect resources intentionally'],
-          content:`<h3>Worksheet — Resource Audit</h3><p>Find leaks & alignments across four ledgers; choose one shift.</p>`
+        { id:'sv5', order:5, title:'Financial Sovereignty', theme:'Wealth as Energy Exchange',
+          objectives:["Audit beliefs","Align income","Spend by values","Flow mindset","Design systems"],
+          content: `
+            <h3>Core Concept</h3><p>Shift from scarcity to stewardship; build systems that serve freedom.</p>
+            <div class="lesson"><h4>Beliefs inventory</h4><ul><li>Update with evidence & anchors.</li></ul></div>
+            <div class="lesson"><h4>Flow vs storage</h4><ul><li>Buffers, investments, generosity.</li></ul></div>
+          `
         },
-        { id:'sv6', order:6, title:'Systems of Self-Governance', theme:'Design beats discipline',
-          objectives:['Rhythms & agreements','Personal constitution','Reduce decision fatigue'],
-          content:`<h3>Exercise — Constitution</h3><p>5 Core Laws, 3 Practices, 2 Red Lines. Read aloud 21 days.</p>`
+        { id:'sv6', order:6, title:'Sovereign Relationships', theme:'Connecting Without Losing Self',
+          objectives:["Spot patterns","Self-connection","Mutual respect","Balance closeness/space","Ask clearly"],
+          content: `
+            <h3>Core Concept</h3><p>Intimacy with autonomy; presence without enmeshment.</p>
+            <div class="lesson"><h4>Repair rituals</h4><ul><li>Own impact; set prevention.</li></ul></div>
+          `
         },
-        { id:'sv7', order:7, title:'The Sovereign in Service', theme:'Steward the commons',
-          objectives:['From isolation to contribution','Gift without depletion','Lead in reciprocity'],
-          content:`<h3>Exercise — Service Vision</h3><p>What gift burns to be shared? Make one move in 72 hours.</p>`
+        { id:'sv7', order:7, title:'Living as Sovereign Being', theme:'Integration & Mastery',
+          objectives:["Daily ritualization","Resilience","Environmental design","Aligned default","Intentional creation"],
+          content: `
+            <h3>Core Concept</h3><p>Make sovereignty your default operating system.</p>
+            <div class="lesson"><h4>From reaction to creation</h4><ul><li>Calendar values; weekly review.</li></ul></div>
+          `
+        },
+        { id:'sv8', order:8, title:'Lawful Foundations', theme:'Rights, Duties, Jurisdiction',
+          objectives:["Rights vs privileges","Jurisdictions","Identity docs","Lawful comms","Record organization"],
+          content: `
+            <h3>Core Concept</h3><p>Distinguish frameworks and act accordingly.</p>
+            <div class="lesson"><h4>Jurisdiction basics</h4><ul><li>Subject-matter, personal, territorial + consent.</li></ul></div>
+          `
+        },
+        { id:'sv9', order:9, title:'Status Correction Essentials', theme:'Identity, Notice, Standing',
+          objectives:["Map status","Draft declarations","Use timelines","Maintain consistency","Avoid contradictions"],
+          content: `
+            <h3>Core Concept</h3><p>Clean declarations + consistent conduct.</p>
+            <div class="lesson"><h4>Avoid estoppel</h4><ul><li>Reservations on signatures; keep objections.</li></ul></div>
+          `
+        },
+        { id:'sv10', order:10, title:'Affidavits & Notices', theme:'Truth in the Record',
+          objectives:["Structure affidavit","Facts not fluff","Proper service","Track responses","Close loop"],
+          content: `
+            <h3>Core Concept</h3><p>Affidavits are sworn truth; notices create process.</p>
+            <div class="lesson"><h4>Elements</h4><ul><li>Competency, numbered facts, exhibits, jurat.</li></ul></div>
+          `
+        },
+        { id:'sv11', order:11, title:'Trusts & PMA', theme:'Private Structures',
+          objectives:["Purpose definition","Roles & duties","Bylaws","Separate capacities","Minutes & records"],
+          content: `
+            <h3>Core Concept</h3><p>Structure stewardship and community.</p>
+            <div class="lesson"><h4>Trustee obligations</h4><ul><li>Loyalty, care, segregation.</li></ul></div>
+          `
+        },
+        { id:'sv12', order:12, title:'Right to Travel (Education)', theme:'Safety, Notice, Documentation',
+          objectives:["ID packet","Calm scripts","Escalation","Recording","Debrief"],
+          content: `
+            <h3>Core Concept</h3><p>Preparation turns pressure into poise.</p>
+            <div class="lesson"><h4>Recording laws</h4><ul><li>Know consent rules; back up fast.</li></ul></div>
+          `
+        },
+        { id:'sv13', order:13, title:'Commercial Remedies (Education)', theme:'Invoices, Liens, Cures',
+          objectives:["Remedy ladder","Notices before claims","Track timelines","Avoid frivolous","Seek counsel"],
+          content: `
+            <h3>Core Concept</h3><p>Match remedy to facts and forum.</p>
+            <div class="lesson"><h4>Notice–fault–cure</h4><ul><li>Neutral tone; procedural escalation.</li></ul></div>
+          `
+        },
+        { id:'sv14', order:14, title:'Record & Publish', theme:'Make it Real in the World',
+          objectives:["Choose venues","Organize repos","Consistent formats","Versioning","Cold backups"],
+          content: `
+            <h3>Core Concept</h3><p>Records are the spine of sovereignty.</p>
+            <div class="lesson"><h4>Versioning</h4><ul><li>Semantic versions + changelogs; never overwrite finals.</li></ul></div>
+          `
         }
       ]
     }
@@ -317,68 +504,34 @@ const COURSE = {
 };
 
 /* =========================
-   State & Utilities
+   STATE & UTILS
 ========================= */
 const $ = (sel,root=document)=>root.querySelector(sel);
 const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
-const qs = new URLSearchParams(location.hash.replace(/^#\//,'').split('?')[1]);
+const STORAGE_KEYS = { PROGRESS:'sv_progress_v2' };
+let accessGranted = false; // toggled after token check
+let tokenSymbolCached = 'TOKEN';
 
-const STORAGE_KEYS = {
-  PROGRESS: 'sv_progress_v1',
-  TIMER: 'sv_timer_v1'
-};
-
-const state = {
-  filter: 'all',
-  search: '',
-  tab: 'overview',
-  timer: { running:false, startedAt:null, totalMs: loadTimer() }
-};
-
-function loadProgress(){
-  try{ return JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRESS)) || {} }catch{ return {} }
-}
-function saveProgress(p){ localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(p)); toast('Progress saved'); }
-function loadTimer(){
-  try{ const t = JSON.parse(localStorage.getItem(STORAGE_KEYS.TIMER)); return t?.totalMs||0 }catch{ return 0 }
-}
-function saveTimer(){ localStorage.setItem(STORAGE_KEYS.TIMER, JSON.stringify({ totalMs: state.timer.totalMs })); }
-function toast(msg){ const el = $('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 900); }
-
-function allModules(){
-  return COURSE.areas.flatMap(a=>a.modules.map(m=>({ ...m, areaId:a.id, areaName:a.name })));
-}
-
-function getModuleByKey(areaId, id){
-  return COURSE.areas.find(a=>a.id===areaId)?.modules.find(m=>m.id===id);
-}
-
-function progressOf(mod){
-  const p = loadProgress();
-  return p[`${mod.areaId}:${mod.id}`] || { status:'not-started', percent:0 };
-}
-
-function setProgress(mod, status){
-  const p = loadProgress();
-  const key = `${mod.areaId}:${mod.id}`;
-  const prev = p[key] || { percent:0 };
-  p[key] = { status, percent: status==='completed'?100:(status==='in-progress'?Math.max(prev.percent,25):0) };
-  saveProgress(p);
-  render();
-}
-
-function percentCompleted(areaFilter){
-  const mods = allModules().filter(m=>!areaFilter || m.areaId===areaFilter);
-  const done = mods.filter(m=>progressOf(m).status==='completed').length;
-  return { done, total:mods.length, pct: mods.length? Math.round(done/mods.length*100):0 };
-}
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 1100); }
+function allModules(){ return COURSE.areas.flatMap(a=>a.modules.map(m=>({ ...m, areaId:a.id, areaName:a.name }))); }
+function progressLoad(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRESS))||{} }catch{ return {} } }
+function progressSave(p){ localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(p)); toast('Saved'); }
+function progressOf(mod){ const p=progressLoad(); return p[`${mod.areaId}:${mod.id}`]||{status:'not-started',percent:0}; }
+function setProgress(mod,status){ const p=progressLoad(); const k=`${mod.areaId}:${mod.id}`; const prev=p[k]||{percent:0}; p[k]={status,percent:status==='completed'?100:(status==='in-progress'?Math.max(prev.percent,25):0)}; progressSave(p); render(); }
+function percentCompleted(areaId){ const mods = allModules().filter(m=>!areaId||m.areaId===areaId); const done=mods.filter(m=>progressOf(m).status==='completed').length; return {done,total:mods.length,pct:mods.length?Math.round(done/mods.length*100):0}; }
 
 /* =========================
-   Rendering
+   RENDERING
 ========================= */
+const state = { tab:'overview', filter:'all', search:'' };
+
+function gateLocked(areaId){
+  if(areaId!=='sovereign') return false;
+  return !accessGranted; // gate sovereign by token
+}
+
 function renderSidebar(){
-  const wrap = $('#areaTree');
-  wrap.innerHTML = '';
+  const wrap = $('#areaTree'); wrap.innerHTML='';
   COURSE.areas.forEach(area=>{
     const headerBtn = document.createElement('button');
     headerBtn.innerHTML = `<span><i class="fa-solid fa-layer-group"></i> ${area.name}</span><span class="pill">${area.modules.length}</span>`;
@@ -388,14 +541,13 @@ function renderSidebar(){
     area.modules.forEach(m=>{
       const leaf = document.createElement('button');
       leaf.className = 'leaf';
-      const k = `${area.id}:${m.id}`;
       const st = progressOf({areaId:area.id,id:m.id}).status;
-      const dot = st==='completed' ? '<span class="status-dot done" title="Completed"></span>' :
-                 st==='in-progress' ? '<span class="status-dot progress" title="In progress"></span>' :
-                 '<span class="status-dot" title="Not started"></span>';
-      leaf.innerHTML = `<span style="display:flex;align-items:center;gap:10px">${dot}<strong>${m.order}.</strong> ${m.title}</span>
+      const dot = st==='completed' ? '<span class="badge" title="Done"><i class="fa-solid fa-check"></i></span>' :
+                 st==='in-progress' ? '<span class="badge" title="In progress">•</span>' : '<span class="badge" title="Not started">–</span>';
+      leaf.innerHTML = `<span style="display:flex;align-items:center;gap:10px">${dot}<strong>${area.id==='core'?m.order:m.id.replace('sv','')}</strong> ${m.title}</span>
                         <span class="pill">${area.id==='core'?'Core':'Sovereign'}</span>`;
-      leaf.addEventListener('click', ()=>openModule(area.id, m.id));
+      if(gateLocked(area.id)){ leaf.classList.add('lock'); }
+      leaf.addEventListener('click', ()=> gateLocked(area.id) ? askConnect() : openModule(area.id,m.id));
       wrap.appendChild(leaf);
     });
   });
@@ -404,10 +556,10 @@ function renderSidebar(){
 function moduleMatches(m){
   const st = progressOf(m).status;
   const matchesStatus =
-    state.filter==='all' ? true :
-    state.filter==='not-started' ? st==='not-started' :
-    state.filter==='in-progress' ? st==='in-progress' :
-    state.filter==='completed' ? st==='completed' :
+    state.filter==='all'? true :
+    state.filter==='not-started'? st==='not-started' :
+    state.filter==='in-progress'? st==='in-progress' :
+    state.filter==='completed'? st==='completed' :
     state.filter===m.areaId;
   const s = state.search.trim().toLowerCase();
   const matchesSearch = !s || [m.title,m.theme,...(m.objectives||[])].join(' ').toLowerCase().includes(s);
@@ -415,16 +567,16 @@ function moduleMatches(m){
 }
 
 function renderOverview(){
-  const grid = $('#overviewGrid');
-  grid.innerHTML = '';
+  const grid = $('#overviewGrid'); grid.innerHTML='';
   allModules().filter(moduleMatches).sort((a,b)=> (a.areaId===b.areaId ? a.order-b.order : a.areaId.localeCompare(b.areaId)) )
     .forEach(m=>{
       const p = progressOf(m);
       const card = document.createElement('div');
       card.className='card';
+      if(gateLocked(m.areaId)) card.classList.add('lock');
       card.innerHTML = `
         <div class="row">
-          <div style="display:flex;gap:10px;align-items:center">
+          <div style="display:flex;gap:12px;align-items:center">
             <div class="badge">${m.areaId==='core'?m.order:m.id.replace('sv','')}</div>
             <div>
               <h3 class="title">${m.title}</h3>
@@ -437,16 +589,15 @@ function renderOverview(){
         <div class="progress" aria-hidden="true"><span style="width:${p.percent}%"></span></div>
         <div class="row">
           <span class="muted">${p.status==='not-started'?'Not Started':p.status==='in-progress'?'In Progress':'Completed'}</span>
-          <button class="btn" aria-label="Open ${m.title}"><i class="fa-regular fa-book-open"></i> Open</button>
+          <button class="btn" aria-label="Open ${m.title}"><i class="fa-regular fa-book-open"></i> ${gateLocked(m.areaId)?'Unlock':'Open'}</button>
         </div>`;
-      card.querySelector('.btn').addEventListener('click', ()=>openModule(m.areaId,m.id));
+      card.querySelector('.btn').addEventListener('click', ()=> gateLocked(m.areaId) ? askConnect() : openModule(m.areaId,m.id));
       grid.appendChild(card);
     });
 }
 
 function renderSyllabus(){
-  const list = $('#syllabusList');
-  list.innerHTML='';
+  const list = $('#syllabusList'); list.innerHTML='';
   COURSE.areas.forEach(area=>{
     const header = document.createElement('div');
     header.className='item';
@@ -460,7 +611,7 @@ function renderSyllabus(){
       if(!moduleMatches({...m, areaId:area.id})) return;
       const p = progressOf({areaId:area.id,id:m.id});
       const row = document.createElement('div');
-      row.className='item';
+      row.className = 'item' + (gateLocked(area.id)?' lock':'');
       row.innerHTML = `
         <div class="badge">${area.id==='core'?m.order:m.id.replace('sv','')}</div>
         <div>
@@ -470,8 +621,8 @@ function renderSyllabus(){
           </div>
           <div class="progress" aria-hidden="true"><span style="width:${p.percent}%"></span></div>
         </div>
-        <button class="btn">Open</button>`;
-      row.querySelector('.btn').addEventListener('click', ()=>openModule(area.id,m.id));
+        <button class="btn">${gateLocked(area.id)?'Unlock':'Open'}</button>`;
+      row.querySelector('.btn').addEventListener('click', ()=> gateLocked(area.id) ? askConnect() : openModule(area.id,m.id));
       list.appendChild(row);
     });
   });
@@ -481,14 +632,13 @@ function renderProgress(){
   const {done,total,pct} = percentCompleted();
   $('#completedCount').textContent = done; $('#totalCount').textContent = total;
   $('#totalPct').textContent = pct+'%'; $('#totalBar').style.width = pct+'%';
-
   const core = percentCompleted('core'); $('#corePct').textContent=core.pct+'%'; $('#coreBar').style.width=core.pct+'%';
   const sv = percentCompleted('sovereign'); $('#svPct').textContent=sv.pct+'%'; $('#svBar').style.width=sv.pct+'%';
 
   const grid = $('#progressGrid'); grid.innerHTML='';
   allModules().forEach(m=>{
     const p = progressOf(m);
-    const c = document.createElement('div'); c.className='card';
+    const c = document.createElement('div'); c.className='card' + (gateLocked(m.areaId)?' lock':'');
     c.innerHTML = `<div class="row"><strong>${m.title}</strong><span class="pill">${m.areaId==='core'?'Core':'Sovereign'}</span></div>
                    <div class="muted">${m.theme}</div>
                    <div class="progress" aria-hidden="true"><span style="width:${p.percent}%"></span></div>
@@ -499,8 +649,8 @@ function renderProgress(){
                        <button class="btn mark-done"><i class="fa-regular fa-circle-check"></i> Complete</button>
                      </div>
                    </div>`;
-    c.querySelector('.mark-in').addEventListener('click', ()=>{ setProgress(m,'in-progress'); });
-    c.querySelector('.mark-done').addEventListener('click', ()=>{ setProgress(m,'completed'); });
+    c.querySelector('.mark-in').addEventListener('click', ()=> gateLocked(m.areaId)?askConnect():setProgress(m,'in-progress'));
+    c.querySelector('.mark-done').addEventListener('click', ()=> gateLocked(m.areaId)?askConnect():setProgress(m,'completed'));
     grid.appendChild(c);
   });
 }
@@ -508,7 +658,7 @@ function renderProgress(){
 function renderModuleDetail(areaId, id){
   const area = COURSE.areas.find(a=>a.id===areaId);
   const mod = area.modules.find(m=>m.id===id);
-  const keyIndex = allModules().findIndex(x=>x.areaId===areaId && x.id===id);
+  const index = allModules().findIndex(x=>x.areaId===areaId && x.id===id);
   const list = allModules();
 
   $('#moduleDetail').hidden = false;
@@ -525,24 +675,19 @@ function renderModuleDetail(areaId, id){
   $('#detailCrumb').innerHTML = `<a href="#/">Home</a> · <a href="#/tab/syllabus">Syllabus</a> · <span>${mod.title}</span>`;
 
   $('#btnBack').onclick = ()=>history.back();
-  $('#btnPrev').onclick = ()=> {
-    const prev = list[keyIndex-1] || list[list.length-1];
-    openModule(prev.areaId, prev.id);
-  };
-  $('#btnNext').onclick = ()=> {
-    const next = list[keyIndex+1] || list[0];
-    openModule(next.areaId, next.id);
-  };
+  $('#btnPrev').onclick = ()=> { const prev = list[index-1] || list[list.length-1]; gateLocked(prev.areaId)?askConnect():openModule(prev.areaId, prev.id); };
+  $('#btnNext').onclick = ()=> { const next = list[index+1] || list[0]; gateLocked(next.areaId)?askConnect():openModule(next.areaId, next.id); };
   $('#btnToggleComplete').onclick = ()=>{
     const current = progressOf({areaId,id}).status;
     setProgress({areaId,id}, current==='completed'?'in-progress':'completed');
     renderModuleDetail(areaId,id);
   };
+  $('#btnFull').onclick = ()=> openModalFull(mod, areaId);
 }
 
 function renderBreadcrumb(){
   const t = state.tab;
-  const map = { overview:'Home', syllabus:'Home · Syllabus', progress:'Home · Progress', resources:'Home · Resources', community:'Home · Community' };
+  const map = { overview:'Home', syllabus:'Home · Syllabus', progress:'Home · Progress', resources:'Home · Resources' };
   $('#breadcrumb').textContent = map[t] || 'Home';
 }
 
@@ -559,115 +704,209 @@ function render(){
     btn.classList.toggle('active', btn.dataset.tab===state.tab);
     btn.setAttribute('aria-selected', btn.dataset.tab===state.tab ? 'true' : 'false');
   });
+  // gate banner
+  $('#gateBanner').style.display = accessGranted ? 'none' : 'block';
 }
 
 /* =========================
-   Interactions
+   INTERACTIONS / ROUTING
 ========================= */
-function openTab(tab){
-  state.tab = tab;
-  location.hash = `#/tab/${tab}`;
-  $('#moduleDetail').hidden = true;
-  render();
-}
-
-function setFilter(filter){
-  state.filter = filter;
-  $$('#filters .chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===filter || (filter==='all' && c.dataset.filter==='all')));
-  render();
-}
-
+function openTab(tab){ state.tab = tab; location.hash = `#/tab/${tab}`; $('#moduleDetail').hidden = true; render(); }
+function setFilter(filter){ state.filter = filter; $$('#filters .chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===filter || (filter==='all' && c.dataset.filter==='all'))); render(); }
 function openModule(areaId, id){
-  // set in-progress if brand new
-  const p = progressOf({areaId,id});
-  if(p.status==='not-started') setProgress({areaId,id}, 'in-progress');
+  if(gateLocked(areaId)) return askConnect();
+  const p = progressOf({areaId,id}); if(p.status==='not-started') setProgress({areaId,id}, 'in-progress');
   location.hash = `#/module/${areaId}/${id}`;
 }
+function applySearch(v){ state.search = v; render(); }
 
-function applySearch(value){
-  state.search = value;
-  render();
-}
-
-/* Timer */
-let timerTick = null;
-function startTimer(){
-  if(state.timer.running) return;
-  state.timer.running = true;
-  state.timer.startedAt = Date.now();
-  $('#toggleTimer').textContent = 'Stop Timer';
-  $('#toggleTimer').prepend(Object.assign(document.createElement('i'),{className:'fa-regular fa-circle-stop',style:'margin-right:8px'}));
-  timerTick = setInterval(()=>{
-    const total = state.timer.totalMs + (state.timer.running ? Date.now() - state.timer.startedAt : 0);
-    $('#timeSpent').textContent = msToH(total);
-  }, 1000);
-}
-function stopTimer(){
-  if(!state.timer.running) return;
-  state.timer.totalMs += Date.now() - state.timer.startedAt;
-  state.timer.running = false; state.timer.startedAt = null;
-  clearInterval(timerTick); timerTick=null;
-  saveTimer();
-  $('#toggleTimer').innerHTML = '<i class="fa-regular fa-clock"></i> Start Timer';
-  $('#timeSpent').textContent = msToH(state.timer.totalMs);
-}
-function msToH(ms){ const m = Math.floor(ms/60000), h = Math.floor(m/60), mm = m%60; return `${h}h ${mm}m`; }
-
-/* =========================
-   Routing (hash-based)
-========================= */
 function route(){
   const hash = location.hash.replace(/^#\//,'');
   if(!hash){ openTab('overview'); return; }
   const [kind,a,b] = hash.split('/');
   if(kind==='tab' && a){ state.tab = a; $('#moduleDetail').hidden = true; render(); return; }
-  if(kind==='module' && a && b){
-    state.tab = 'syllabus';
-    render();
-    $('#moduleDetail').hidden=false;
-    renderModuleDetail(a,b);
-    return;
-  }
+  if(kind==='module' && a && b){ state.tab = 'syllabus'; render(); $('#moduleDetail').hidden=false; renderModuleDetail(a,b); return; }
   openTab('overview');
 }
 
 /* =========================
-   Event Wiring
+   Modal (Full Content)
 ========================= */
-window.addEventListener('hashchange', route);
-document.addEventListener('DOMContentLoaded', ()=>{
+function openModalFull(mod, areaId){
+  const modal = $('#modal'); const body = $('#modalBody');
+  $('#modalNum').textContent = areaId==='core' ? mod.order : mod.id.replace('sv','');
+  $('#modalTitle').textContent = mod.title;
+  body.innerHTML = `
+    <div class="content">
+      <h3 style="color:var(--accent)">Theme</h3><p class="muted">${mod.theme}</p>
+      <h3>Objectives</h3><ul>${mod.objectives.map(o=>`<li>${o}</li>`).join('')}</ul>
+      ${mod.content}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn secondary" id="modalMarkIn"><i class="fa-regular fa-bookmark"></i> Save Progress</button>
+      <button class="btn" id="modalMarkDone"><i class="fa-regular fa-circle-check"></i> Mark Complete</button>
+    </div>
+  `;
+  $('#modalMarkIn').onclick = ()=>{ setProgress({areaId,id:mod.id},'in-progress'); toast('Progress saved'); };
+  $('#modalMarkDone').onclick = ()=>{
+    setProgress({areaId,id:mod.id},'completed');
+    const pAll = percentCompleted(); if(pAll.done===pAll.total){ confetti({particleCount:180,spread:70,origin:{y:.6}}); }
+  };
+  $('#modal').classList.add('active');
+}
+$('#modalClose').addEventListener('click', ()=> $('#modal').classList.remove('active'));
+$('#modal').addEventListener('click', e=>{ if(e.target.id==='modal') $('#modal').classList.remove('active'); });
+
+/* =========================
+   Wallet Connect (Web3Modal + Ethers)
+========================= */
+let web3Modal, extProvider, provider, signer, tokenContract, userAddress=null;
+
+function notice(msg,type='info'){
+  const n=document.createElement('div'); n.className='notice '+(type==='success'?'success':type==='warn'?'warn':type==='error'?'error':'');
+  n.innerHTML=`<i class="fa-solid ${type==='success'?'fa-check-circle':type==='warn'?'fa-triangle-exclamation':type==='error'?'fa-circle-exclamation':'fa-circle-info'}"></i>
+               <div>${msg}</div>
+               <button class="btn ghost" style="margin-left:8px" onclick="this.parentNode.remove()">Close</button>`;
+  document.body.appendChild(n); setTimeout(()=>{ n.remove?.(); }, 6000);
+}
+function askConnect(){ notice('Sovereign track is token-gated. Connect your wallet to unlock.', 'warn'); }
+
+function setupWeb3(){
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: { rpc: { [CHAIN_ID]: RPC_URL }, chainId: CHAIN_ID }
+    }
+  };
+  web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions, theme:'dark' });
+}
+
+async function connect(){
+  try{
+    extProvider = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(extProvider, "any");
+    await provider.send("eth_requestAccounts", []);
+    const net = await provider.getNetwork();
+    if(net.chainId !== CHAIN_ID){
+      try{
+        await extProvider.request({ method:"wallet_switchEthereumChain", params:[{ chainId: toHexChainId(CHAIN_ID) }] });
+      }catch(switchErr){
+        await extProvider.request({ method:"wallet_addEthereumChain", params:[{
+          chainId: toHexChainId(CHAIN_ID), chainName: CHAIN_NAME,
+          nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+          rpcUrls:[RPC_URL], blockExplorerUrls:["https://bscscan.com"]
+        }]}).catch(()=>{ notice(`Please switch to ${CHAIN_NAME} in your wallet.`, 'warn'); throw new Error('chain'); });
+      }
+    }
+    signer = provider.getSigner(); userAddress = await signer.getAddress();
+    tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
+
+    // UI
+    $('#userAvatar').textContent = userAddress.substring(2,4).toUpperCase();
+    $('#walletAddress').textContent = `${userAddress.slice(0,8)}...${userAddress.slice(-4)}`;
+    $('#disconnectWallet').style.display='inline-flex';
+
+    await checkAccess();
+
+    // listeners
+    extProvider.removeAllListeners?.();
+    extProvider.on?.("accountsChanged", async (accounts)=>{ if(!accounts?.length) return disconnect(); userAddress=accounts[0]; await checkAccess(); });
+    extProvider.on?.("chainChanged", async ()=>{ provider = new ethers.providers.Web3Provider(extProvider,"any"); tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider); await checkAccess(); });
+    extProvider.on?.("disconnect", ()=> disconnect());
+  }catch(e){ console.error(e); notice('Connection failed or cancelled.', 'error'); }
+}
+
+async function checkAccess(){
+  try{
+    const [raw, decimals, symbol] = await Promise.all([
+      tokenContract.balanceOf(userAddress),
+      tokenContract.decimals().catch(()=>18),
+      tokenContract.symbol().catch(()=> 'TOKEN')
+    ]);
+    tokenSymbolCached = symbol || 'TOKEN';
+    $('#tokenSymbol').textContent = tokenSymbolCached;
+
+    const human = Number(ethers.utils.formatUnits(raw, decimals));
+    if(human >= REQUIRED_TOKENS){
+      accessGranted = true;
+      notice(`Access granted — Balance: ${human.toLocaleString()} ${tokenSymbolCached}`, 'success');
+    }else{
+      accessGranted = false;
+      notice(`You have ${human.toLocaleString()} ${tokenSymbolCached}. Need at least ${REQUIRED_TOKENS} ${tokenSymbolCached} to unlock Sovereign track.`, 'warn');
+    }
+    render();
+  }catch(err){ console.error(err); notice('Could not read token balance. Check TOKEN_ADDRESS and network.', 'error'); }
+}
+
+async function disconnect(){
+  try{ if(extProvider?.disconnect && typeof extProvider.disconnect==='function'){ await extProvider.disconnect(); } }catch{}
+  try{ await web3Modal.clearCachedProvider(); }catch{}
+  provider=signer=tokenContract=extProvider=null; userAddress=null; accessGranted=false;
+  $('#userAvatar').textContent='?'; $('#walletAddress').textContent='Not connected'; $('#disconnectWallet').style.display='none';
+  render();
+  notice('Wallet disconnected','info');
+}
+
+/* =========================
+   Particles
+========================= */
+function createParticles(){
+  const c = $('#particles'); const count = 36;
+  const colors = ['var(--primary)','var(--secondary)','var(--accent)','var(--primary-2)','var(--accent-2)'];
+  for(let i=0;i<count;i++){
+    const el=document.createElement('div'); el.className='particle';
+    const size = Math.random()*10+3; const x=Math.random()*100; const y=Math.random()*100;
+    el.style.width=size+'px'; el.style.height=size+'px';
+    el.style.left=x+'%'; el.style.top=y+'%';
+    el.style.background = colors[(Math.random()*colors.length)|0];
+    el.style.animationDuration = (Math.random()*20+10)+'s';
+    el.style.animationDelay = (Math.random()*5)+'s';
+    c.appendChild(el);
+  }
+}
+
+/* =========================
+   INIT & EVENTS
+========================= */
+function bindEvents(){
   // Tabs
   $$('.tab').forEach(t => t.addEventListener('click', ()=>openTab(t.dataset.tab)));
   // Filters
   $$('#filters .chip').forEach(c=>c.addEventListener('click', ()=>setFilter(c.dataset.filter)));
   // Search
   $('#searchInput').addEventListener('input', e=>applySearch(e.target.value));
-  // Timer
-  $('#toggleTimer').addEventListener('click', ()=> state.timer.running ? stopTimer() : startTimer());
-
   // Sidebar quick links
   $$('.sidebar [data-action="open-tab"]').forEach(b=> b.addEventListener('click', ()=>openTab(b.dataset.tab)));
+  // Routing
+  window.addEventListener('hashchange', route);
+  // Wallet buttons
+  $('#connectWallet').addEventListener('click', connect);
+  $('#disconnectWallet').addEventListener('click', disconnect);
+  $('#bannerConnect').addEventListener('click', connect);
+}
 
-  // Initial
+document.addEventListener('DOMContentLoaded', ()=>{
+  createParticles();
+  setupWeb3();
   render();
   route();
-  // init time spent
-  $('#timeSpent').textContent = msToH(state.timer.totalMs);
+  bindEvents();
+  if (window.Web3Modal && web3Modal?.cachedProvider) { connect().catch(()=>{}); }
 });
 
 /* =========================
    Keyboard Shortcuts
 ========================= */
 /*
-  g o  -> overview
-  g s  -> syllabus
-  g p  -> progress
-  /    -> focus search
+  g o -> overview
+  g s -> syllabus
+  g p -> progress
+  /   -> focus search
 */
-let gPressed = false;
-document.addEventListener('keydown', (e)=>{
+let gPressed=false;
+document.addEventListener('keydown',(e)=>{
   if(e.key==='/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); $('#searchInput').focus(); }
-  if(e.key.toLowerCase()==='g'){ gPressed = true; setTimeout(()=>gPressed=false, 800); return; }
+  if(e.key.toLowerCase()==='g'){ gPressed=true; setTimeout(()=>gPressed=false,800); return; }
   if(gPressed){
     if(e.key.toLowerCase()==='o') openTab('overview');
     if(e.key.toLowerCase()==='s') openTab('syllabus');
