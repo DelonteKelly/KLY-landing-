@@ -411,11 +411,11 @@
 
 <script>
 /* ================== CONFIG ================== */
-const TOKEN_ADDRESS   = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // <-- your SolCoin ERC-20 on BNB
-const REQUIRED_TOKENS = 5;                          // gate at 5 tokens
+const TOKEN_ADDRESS   = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026';
+const REQUIRED_TOKENS = 5;
 
 // Target network (BNB Smart Chain)
-const CHAIN_ID   = 56; // 1=Ethereum, 56=BNB, 137=Polygon, etc.
+const CHAIN_ID   = 56;
 const CHAIN_NAME = 'BNB Smart Chain';
 const RPC_URL    = 'https://bsc-dataseed.binance.org';
 
@@ -427,14 +427,9 @@ const ERC20_ABI = [
 ];
 
 /* ================== HELPERS / GLOBALS ================== */
-function toHexChainId(id) {
-  const n = (typeof id === 'bigint') ? id : BigInt(id);
-  return '0x' + n.toString(16);
-}
-
-const isEthersV6 = !!ethers.BrowserProvider; // v6 exposes BrowserProvider
-const getFormatUnits = () =>
-  (ethers.utils && ethers.utils.formatUnits) ? ethers.utils.formatUnits : ethers.formatUnits;
+function toHexChainId(id) { const n = (typeof id === 'bigint') ? id : BigInt(id); return '0x' + n.toString(16); }
+const isEthersV6 = !!ethers.BrowserProvider;
+const getFormatUnits = () => (ethers.utils && ethers.utils.formatUnits) ? ethers.utils.formatUnits : ethers.formatUnits;
 
 let web3Modal, extProvider, provider, signer, tokenContract;
 
@@ -451,31 +446,24 @@ let tokenSymbol = 'TOKEN';
 let tokenDecimals = 18;
 
 /* ================== WEB3MODAL SETUP (FIXED) ================== */
-// Robust constructors (v1 UMD builds)
-const Web3ModalCtor       = window.Web3Modal?.default || window.Web3Modal || null;
-const WalletConnectPkgV1  = window.WalletConnectProvider?.default || window.WalletConnectProvider || null;
+const Web3ModalCtor      = window.Web3Modal?.default || window.Web3Modal || null;
+const WalletConnectPkgV1 = window.WalletConnectProvider?.default || window.WalletConnectProvider || null;
 
 function setupWeb3Modal() {
-  if (!Web3ModalCtor) {
-    console.warn('Web3Modal v1 not found on window; will use injected provider (MetaMask/Coinbase) if present.');
-    return null;
-  }
+  if (!Web3ModalCtor) { console.warn('Web3Modal v1 not found; using injected provider only.'); return null; }
   const providerOptions = {
     walletconnect: {
       package: WalletConnectPkgV1,
-      options: {
-        rpc: { [CHAIN_ID]: RPC_URL },
-        chainId: CHAIN_ID
-      }
+      options: { rpc: { [CHAIN_ID]: RPC_URL }, chainId: CHAIN_ID }
     }
   };
   return new Web3ModalCtor({ cacheProvider: true, providerOptions, theme: 'dark' });
 }
 web3Modal = setupWeb3Modal();
 
-/* ================== COURSE DATA (14 modules) ================== */// const courseModules = [
-  {
-    id: 1,
+/* ================== COURSE DATA (14 modules) ================== */
+const courseModules = [
+  id: 1,
     title: "Foundation of Sovereignty",
     subtitle: "Understanding Personal Power",
     concept: "Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, and energy.",
@@ -1421,18 +1409,30 @@ const modalClose       = document.getElementById('modalClose');
 const miniMeta         = document.getElementById('miniMeta');
 
 /* ================== STORAGE ================== */
-function loadProgress(address = userAddress) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY(address));
-    userProgress = raw ? JSON.parse(raw) : {};
-  } catch { userProgress = {}; }
-}
-function saveProgress(address = userAddress) {
-  localStorage.setItem(STORAGE_KEY(address), JSON.stringify(userProgress));
-  updateProgressUI();
+function loadProgress(address = userAddress) { try { const raw = localStorage.getItem(STORAGE_KEY(address)); userProgress = raw ? JSON.parse(raw) : {}; } catch { userProgress = {}; } }
+function saveProgress(address = userAddress) { localStorage.setItem(STORAGE_KEY(address), JSON.stringify(userProgress)); updateProgressUI(); }
+
+/* ================== UI / CONTENT ================== */
+function createParticles() {
+  const particlesContainer = document.getElementById('particles');
+  if (!particlesContainer) return;
+  const particleCount = 30;
+  for (let i = 0; i < particleCount; i++) {
+    const p = document.createElement('div');
+    p.classList.add('particle');
+    const size = Math.random() * 10 + 2;
+    const posX = Math.random() * 100;
+    const posY = Math.random() * 100;
+    const animationDuration = Math.random() * 20 + 10;
+    const animationDelay = Math.random() * 5;
+    const opacity = Math.random() * 0.3 + 0.1;
+    const colors = ['var(--primary)','var(--secondary)','var(--accent)','var(--primary-light)','var(--accent-light)'];
+    Object.assign(p.style, { width:`${size}px`, height:`${size}px`, left:`${posX}%`, top:`${posY}%`, animationDuration:`${animationDuration}s`, animationDelay:`${animationDelay}s`, opacity });
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    particlesContainer.appendChild(p);
+  }
 }
 
-/* ================== UI / CONTENT ================== *///                       function createParticles() {
   const particlesContainer = document.getElementById('particles');
   const particleCount = 30;
   for (let i = 0; i < particleCount; i++) {
@@ -1854,116 +1854,78 @@ function showNotification(message, type = 'info') {
 }
 
 
+
+
 /* ================== NOTIFICATIONS ================== */
 function showNotification(message, type = 'info') {
-  const notification = document.createElement('div');
-  notification.classList.add('notification', type);
-
-  const icons = {
-    success: 'fa-check-circle',
-    error: 'fa-exclamation-circle',
-    warning: 'fa-exclamation-triangle',
-    info: 'fa-info-circle'
-  };
-
-  notification.innerHTML = `
+  const n = document.createElement('div');
+  n.classList.add('notification', type);
+  const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
+  n.innerHTML = `
     <i class="fas ${icons[type]} notification-icon" aria-hidden="true"></i>
-    <div class="notification-content">
-      <div class="notification-message">${message}</div>
-    </div>
-    <button class="notification-close" aria-label="Dismiss notification"><i class="fas fa-times" aria-hidden="true"></i></button>
-  `;
-
-  document.body.appendChild(notification);
-  notification.querySelector('.notification-close').addEventListener('click', () => notification.remove());
-  setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
+    <div class="notification-content"><div class="notification-message">${message}</div></div>
+    <button class="notification-close" aria-label="Dismiss notification"><i class="fas fa-times" aria-hidden="true"></i></button>`;
+  document.body.appendChild(n);
+  n.querySelector('.notification-close').addEventListener('click', () => n.remove());
+  setTimeout(() => { if (n.parentNode) n.remove(); }, 5000);
 }
 
 /* ================== WALLET FLOW (FIXED) ================== */
 async function connectWallet() {
   try {
-    // ✅ Use the local web3Modal instance if available
     if (!web3Modal) web3Modal = setupWeb3Modal();
 
     if (web3Modal && typeof web3Modal.connect === 'function') {
       extProvider = await web3Modal.connect();
-    } else if (window.ethereum && typeof window.ethereum.request === 'function') {
-      // Fallback to injected provider (MetaMask, Coinbase, etc.)
+    } else if (window.ethereum?.request) {
       extProvider = window.ethereum;
       await extProvider.request({ method: 'eth_requestAccounts' });
     } else {
       throw new Error('No wallet provider found. Install MetaMask or use WalletConnect.');
     }
 
-    // Wrap provider (ethers v5 vs v6)
-    provider = isEthersV6
-      ? new ethers.BrowserProvider(extProvider)
-      : new ethers.providers.Web3Provider(extProvider, 'any');
+    provider = isEthersV6 ? new ethers.BrowserProvider(extProvider) : new ethers.providers.Web3Provider(extProvider, 'any');
 
-    // Ensure target chain
     const net = await provider.getNetwork();
     const currentChainId = isEthersV6 ? Number(net.chainId) : net.chainId;
     if (currentChainId !== CHAIN_ID) {
       try {
-        await extProvider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: toHexChainId(CHAIN_ID) }]
-        });
-      } catch (switchErr) {
+        await extProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: toHexChainId(CHAIN_ID) }] });
+      } catch {
         try {
           await extProvider.request({
             method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: toHexChainId(CHAIN_ID),
-              chainName: CHAIN_NAME,
-              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-              rpcUrls: [RPC_URL],
-              blockExplorerUrls: ['https://bscscan.com']
-            }]
+            params: [{ chainId: toHexChainId(CHAIN_ID), chainName: CHAIN_NAME, nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }, rpcUrls: [RPC_URL], blockExplorerUrls: ['https://bscscan.com'] }]
           });
-        } catch (addErr) {
+        } catch {
           showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, 'warning');
           return;
         }
       }
     }
 
-    // Address & contract
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
-
     tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
 
-    // Token meta
-    try {
-      tokenDecimals = Number(await tokenContract.decimals());
-      tokenSymbol   = String(await tokenContract.symbol());
-    } catch {
-      tokenDecimals = 18;
-      tokenSymbol   = 'TOKEN';
-    }
+    try { tokenDecimals = Number(await tokenContract.decimals()); tokenSymbol = String(await tokenContract.symbol()); } catch { tokenDecimals = 18; tokenSymbol = 'TOKEN'; }
 
-    // Header UI
-    if (userAvatar) userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
+    if (userAvatar)      userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
     if (walletAddressEl) walletAddressEl.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`;
-    if (disconnectBtn) disconnectBtn.style.display = 'flex';
+    if (disconnectBtn)   disconnectBtn.style.display = 'flex';
 
-    // Progress + gate
     loadProgress(userAddress);
     await checkAccess();
 
-    // prevent duplicate listeners
     try { extProvider.removeAllListeners?.(); } catch {}
     extProvider.on?.('accountsChanged', async (accounts) => {
-      if (!accounts || accounts.length === 0) return disconnectWallet();
+      if (!accounts?.length) return disconnectWallet();
       userAddress = accounts[0];
       loadProgress(userAddress);
       await checkAccess();
     });
     extProvider.on?.('chainChanged', async () => {
-      provider = isEthersV6
-        ? new ethers.BrowserProvider(extProvider)
-        : new ethers.providers.Web3Provider(extProvider, 'any');
+      provider = isEthersV6 ? new ethers.BrowserProvider(extProvider) : new ethers.providers.Web3Provider(extProvider, 'any');
       tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
       await checkAccess();
     });
@@ -1980,33 +1942,29 @@ async function checkAccess() {
   try {
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
-
     const rawBal = await tokenContract.balanceOf(userAddress);
-    const raw = (typeof rawBal === 'bigint')
-      ? rawBal
-      : (rawBal?._hex ? BigInt(rawBal._hex) : BigInt(rawBal.toString()));
+    const raw = (typeof rawBal === 'bigint') ? rawBal : (rawBal?._hex ? BigInt(rawBal._hex) : BigInt(rawBal.toString()));
     const human = Number(getFormatUnits()(raw, tokenDecimals));
-
     const pretty = (n)=> n.toLocaleString(undefined,{maximumFractionDigits:4});
     const need = Number(REQUIRED_TOKENS);
 
     if (human >= need) {
-      if (connectSection) connectSection.style.display = 'none';
-      if (moduleContent)  moduleContent.style.display  = 'block';
+      connectSection && (connectSection.style.display = 'none');
+      moduleContent  && (moduleContent.style.display  = 'block');
       showNotification(`Access granted · Balance: ${pretty(human)} ${tokenSymbol}`, 'success');
 
       const lastKey = LAST_MODULE_KEY(userAddress);
       const last = Number(localStorage.getItem(lastKey) || '1');
       if (location.hash.match(/module=(\d+)/i)) {
-        applyHashModule?.(); // deep link has priority
+        applyHashModule?.();
       } else if (last >= 1 && last <= (window.courseModules?.length || 14)) {
         currentModule = last;
       }
       updateUI?.();
 
     } else {
-      if (connectSection) connectSection.style.display = 'block';
-      if (moduleContent)  moduleContent.style.display  = 'none';
+      connectSection && (connectSection.style.display = 'block');
+      moduleContent  && (moduleContent.style.display  = 'none');
       const deficit = Math.max(0, need - human);
       if (!document.getElementById('gateCtas') && connectSection) {
         const node = document.createElement('div');
@@ -2014,12 +1972,8 @@ async function checkAccess() {
         node.innerHTML = `
           <div class="connect-note">You have <strong>${pretty(human)} ${tokenSymbol}</strong>. Need <strong>${pretty(deficit)} ${tokenSymbol}</strong> more.</div>
           <div class="wallet-options" role="group" aria-label="More options">
-            <a class="wallet-option" href="https://pancakeswap.finance" target="_blank" rel="noopener">
-              <i class="fas fa-store wallet-icon" aria-hidden="true"></i><span>Buy ${tokenSymbol}</span>
-            </a>
-            <a class="wallet-option" href="https://bridge.bnbchain.org" target="_blank" rel="noopener">
-              <i class="fas fa-arrows-rotate wallet-icon" aria-hidden="true"></i><span>Bridge to BNB</span>
-            </a>
+            <a class="wallet-option" href="https://pancakeswap.finance" target="_blank" rel="noopener"><i class="fas fa-store wallet-icon" aria-hidden="true"></i><span>Buy ${tokenSymbol}</span></a>
+            <a class="wallet-option" href="https://bridge.bnbchain.org" target="_blank" rel="noopener"><i class="fas fa-arrows-rotate wallet-icon" aria-hidden="true"></i><span>Bridge to BNB</span></a>
           </div>`;
         connectSection.appendChild(node);
       }
@@ -2032,31 +1986,17 @@ async function checkAccess() {
 }
 
 async function disconnectWallet() {
-  try {
-    if (extProvider?.disconnect && typeof extProvider.disconnect === 'function') {
-      await extProvider.disconnect();
-    }
-  } catch (err) {
-    console.warn('Provider disconnect failed:', err);
-  }
-
-  try {
-    // ✅ use local web3Modal instance
-    if (web3Modal?.clearCachedProvider) {
-      await web3Modal.clearCachedProvider();
-    }
-  } catch (err) {
-    console.warn('Clear cache failed:', err);
-  }
+  try { if (extProvider?.disconnect && typeof extProvider.disconnect === 'function') await extProvider.disconnect(); } catch (err) { console.warn('Provider disconnect failed:', err); }
+  try { if (web3Modal?.clearCachedProvider) await web3Modal.clearCachedProvider(); } catch (err) { console.warn('Clear cache failed:', err); }
 
   userAddress = null;
   provider = signer = tokenContract = null;
 
-  if (userAvatar) userAvatar.textContent = '?';
+  if (userAvatar)      userAvatar.textContent = '?';
   if (walletAddressEl) walletAddressEl.textContent = 'Not connected';
-  if (disconnectBtn) disconnectBtn.style.display = 'none';
-  if (connectSection) connectSection.style.display = 'block';
-  if (moduleContent) moduleContent.style.display = 'none';
+  if (disconnectBtn)   disconnectBtn.style.display = 'none';
+  if (connectSection)  connectSection.style.display = 'block';
+  if (moduleContent)   moduleContent.style.display = 'none';
 
   showNotification('Wallet disconnected', 'info');
 }
@@ -2073,7 +2013,6 @@ window.addEventListener('hashchange', () => { applyHashModule(); updateUI?.(); }
 
 /* ================== KEYBOARD NAV (global) ================== */
 document.addEventListener('keydown', (e)=>{
-  // Arrow left/right to switch modules (only when not typing)
   const tag = (document.activeElement?.tagName||'').toLowerCase();
   const typing = tag === 'textarea' || tag === 'input';
   if (typing || modalOverlay?.classList.contains('active')) return;
@@ -2090,20 +2029,16 @@ if (location.protocol === 'file:') {
 /* ================== INIT ================== */
 function init() {
   console.log('ethers version?', ethers?.version);
-  console.log('web3Modal present?', !!web3Modal);   // ✅ check the local instance
+  console.log('web3Modal present?', !!web3Modal);
 
   createParticles?.();
   setupModal?.();
   renderCourseMenu?.();
 
-  // Guest mode progress (until wallet connects)
   loadProgress('guest');
-
-  // Honor hash before initial UI
   applyHashModule();
   updateUI?.();
 
-  // Listeners
   connectWalletBtn?.addEventListener('click', connectWallet);
   disconnectBtn?.addEventListener('click', disconnectWallet);
   prevModuleBtn?.addEventListener('click', () => navigateModule(-1));
@@ -2111,29 +2046,20 @@ function init() {
   document.getElementById('mPrev')?.addEventListener('click',()=>navigateModule(-1));
   document.getElementById('mNext')?.addEventListener('click',()=>navigateModule(1));
 
-  // Progress buttons (default wiring; quizzes override on open)
   document.getElementById('saveProgressBtn')?.addEventListener('click', () => {
     userProgress[currentModule] = 'in-progress';
     saveProgress();
-
     const statusIndicator = document.getElementById('modalStatusIndicator');
     const statusText = document.getElementById('modalStatusText');
     if (statusIndicator) statusIndicator.className = 'status-indicator in-progress';
     if (statusText)      statusText.textContent = 'In Progress';
-
     showNotification('Progress saved', 'info');
   });
-  // Wire default complete (will be overridden if a quiz is present when modal opens)
   wireDefaultComplete?.();
-
-  // Daily streak bump
   bumpStreak?.();
 
-  // ✅ Auto-reconnect using the **local** instance (not window.web3Modal)
   if (!web3Modal) web3Modal = setupWeb3Modal();
-  if (web3Modal?.cachedProvider) {
-    connectWallet().catch(() => {});
-  }
+  if (web3Modal?.cachedProvider) { connectWallet().catch(()=>{}); }
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
