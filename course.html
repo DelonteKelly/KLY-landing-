@@ -450,24 +450,30 @@ let userAddress = null;
 let tokenSymbol = 'TOKEN';
 let tokenDecimals = 18;
 
-/* ================== WEB3MODAL SETUP ================== */
-const providerOptions = {
-  walletconnect: {
-    package: window.WalletConnectProvider?.default,
-    options: {
-      rpc: { [CHAIN_ID]: RPC_URL },
-      chainId: CHAIN_ID
-    }
-  }
-};
-web3Modal = new (window.Web3Modal?.default || function(){})({
-  cacheProvider: true,
-  providerOptions,
-  theme: 'dark'
-});
+/* ================== WEB3MODAL SETUP (FIXED) ================== */
+// Robust constructors (v1 UMD builds)
+const Web3ModalCtor       = window.Web3Modal?.default || window.Web3Modal || null;
+const WalletConnectPkgV1  = window.WalletConnectProvider?.default || window.WalletConnectProvider || null;
 
-/* ================== COURSE DATA (14 modules) ================== */
-const courseModules = [
+function setupWeb3Modal() {
+  if (!Web3ModalCtor) {
+    console.warn('Web3Modal v1 not found on window; will use injected provider (MetaMask/Coinbase) if present.');
+    return null;
+  }
+  const providerOptions = {
+    walletconnect: {
+      package: WalletConnectPkgV1,
+      options: {
+        rpc: { [CHAIN_ID]: RPC_URL },
+        chainId: CHAIN_ID
+      }
+    }
+  };
+  return new Web3ModalCtor({ cacheProvider: true, providerOptions, theme: 'dark' });
+}
+web3Modal = setupWeb3Modal();
+
+/* ================== COURSE DATA (14 modules) ================== */// const courseModules = [
   {
     id: 1,
     title: "Foundation of Sovereignty",
@@ -1396,6 +1402,7 @@ const courseModules = [
     badge: "Hot"
   }
 ];
+
 /* ================== DOM REFS ================== */
 const connectSection   = document.getElementById('connectSection');
 const moduleContent    = document.getElementById('moduleContent');
@@ -1425,8 +1432,7 @@ function saveProgress(address = userAddress) {
   updateProgressUI();
 }
 
-/* ================== UI / CONTENT ================== */
-function createParticles() {
+/* ================== UI / CONTENT ================== *///                       function createParticles() {
   const particlesContainer = document.getElementById('particles');
   const particleCount = 30;
   for (let i = 0; i < particleCount; i++) {
@@ -1847,24 +1853,52 @@ function showNotification(message, type = 'info') {
   setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
 }
 
-/* ================== WALLET FLOW (HARDENED) ================== */
+
+/* ================== NOTIFICATIONS ================== */
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.classList.add('notification', type);
+
+  const icons = {
+    success: 'fa-check-circle',
+    error: 'fa-exclamation-circle',
+    warning: 'fa-exclamation-triangle',
+    info: 'fa-info-circle'
+  };
+
+  notification.innerHTML = `
+    <i class="fas ${icons[type]} notification-icon" aria-hidden="true"></i>
+    <div class="notification-content">
+      <div class="notification-message">${message}</div>
+    </div>
+    <button class="notification-close" aria-label="Dismiss notification"><i class="fas fa-times" aria-hidden="true"></i></button>
+  `;
+
+  document.body.appendChild(notification);
+  notification.querySelector('.notification-close').addEventListener('click', () => notification.remove());
+  setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
+}
+
+/* ================== WALLET FLOW (FIXED) ================== */
 async function connectWallet() {
   try {
-    // Get an EIP-1193 provider (Web3Modal v1 or injected)
-    if (window.Web3Modal && window.web3Modal && typeof web3Modal.connect === 'function') {
+    // ✅ Use the local web3Modal instance if available
+    if (!web3Modal) web3Modal = setupWeb3Modal();
+
+    if (web3Modal && typeof web3Modal.connect === 'function') {
       extProvider = await web3Modal.connect();
     } else if (window.ethereum && typeof window.ethereum.request === 'function') {
+      // Fallback to injected provider (MetaMask, Coinbase, etc.)
       extProvider = window.ethereum;
-      // Request accounts ONCE (avoid duplicate prompts)
       await extProvider.request({ method: 'eth_requestAccounts' });
     } else {
-      throw new Error('No wallet provider found. Install MetaMask or a compatible wallet.');
+      throw new Error('No wallet provider found. Install MetaMask or use WalletConnect.');
     }
 
     // Wrap provider (ethers v5 vs v6)
     provider = isEthersV6
-      ? new ethers.BrowserProvider(extProvider)                         // v6
-      : new ethers.providers.Web3Provider(extProvider, 'any');          // v5
+      ? new ethers.BrowserProvider(extProvider)
+      : new ethers.providers.Web3Provider(extProvider, 'any');
 
     // Ensure target chain
     const net = await provider.getNetwork();
@@ -1898,13 +1932,9 @@ async function connectWallet() {
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
 
-    tokenContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_ABI,
-      provider // read-only for balanceOf
-    );
+    tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
 
-    // Token meta (best effort)
+    // Token meta
     try {
       tokenDecimals = Number(await tokenContract.decimals());
       tokenSymbol   = String(await tokenContract.symbol());
@@ -1914,14 +1944,12 @@ async function connectWallet() {
     }
 
     // Header UI
-    userAvatar && (userAvatar.textContent = userAddress.substring(2, 4).toUpperCase());
-    walletAddressEl && (walletAddressEl.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`);
-    disconnectBtn && (disconnectBtn.style.display = 'flex');
+    if (userAvatar) userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
+    if (walletAddressEl) walletAddressEl.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`;
+    if (disconnectBtn) disconnectBtn.style.display = 'flex';
 
-    // Progress for this wallet
+    // Progress + gate
     loadProgress(userAddress);
-
-    // Gate check
     await checkAccess();
 
     // prevent duplicate listeners
@@ -1954,37 +1982,33 @@ async function checkAccess() {
     userAddress = await signer.getAddress();
 
     const rawBal = await tokenContract.balanceOf(userAddress);
-    // Handle v5 BigNumber or v6 bigint seamlessly
     const raw = (typeof rawBal === 'bigint')
       ? rawBal
       : (rawBal?._hex ? BigInt(rawBal._hex) : BigInt(rawBal.toString()));
-
     const human = Number(getFormatUnits()(raw, tokenDecimals));
+
     const pretty = (n)=> n.toLocaleString(undefined,{maximumFractionDigits:4});
     const need = Number(REQUIRED_TOKENS);
 
     if (human >= need) {
-      connectSection && (connectSection.style.display = 'none');
-      moduleContent && (moduleContent.style.display  = 'block');
+      if (connectSection) connectSection.style.display = 'none';
+      if (moduleContent)  moduleContent.style.display  = 'block';
       showNotification(`Access granted · Balance: ${pretty(human)} ${tokenSymbol}`, 'success');
 
-      // Auto-resume last module for wallet or honor hash
       const lastKey = LAST_MODULE_KEY(userAddress);
       const last = Number(localStorage.getItem(lastKey) || '1');
       if (location.hash.match(/module=(\d+)/i)) {
-        applyHashModule(); // deep link has priority
-      } else if (last >= 1 && last <= courseModules.length) {
+        applyHashModule?.(); // deep link has priority
+      } else if (last >= 1 && last <= (window.courseModules?.length || 14)) {
         currentModule = last;
       }
-      updateUI();
+      updateUI?.();
 
     } else {
-      connectSection && (connectSection.style.display = 'block');
-      moduleContent && (moduleContent.style.display  = 'none');
+      if (connectSection) connectSection.style.display = 'block';
+      if (moduleContent)  moduleContent.style.display  = 'none';
       const deficit = Math.max(0, need - human);
-      // Inject CTA once (avoid duplicates)
-      const exists = document.getElementById('gateCtas');
-      if (!exists && connectSection) {
+      if (!document.getElementById('gateCtas') && connectSection) {
         const node = document.createElement('div');
         node.id = 'gateCtas';
         node.innerHTML = `
@@ -1996,8 +2020,7 @@ async function checkAccess() {
             <a class="wallet-option" href="https://bridge.bnbchain.org" target="_blank" rel="noopener">
               <i class="fas fa-arrows-rotate wallet-icon" aria-hidden="true"></i><span>Bridge to BNB</span>
             </a>
-          </div>
-        `;
+          </div>`;
         connectSection.appendChild(node);
       }
       showNotification(`Hold at least ${need} ${tokenSymbol} to unlock.`, 'warning');
@@ -2018,7 +2041,8 @@ async function disconnectWallet() {
   }
 
   try {
-    if (window.web3Modal?.clearCachedProvider) {
+    // ✅ use local web3Modal instance
+    if (web3Modal?.clearCachedProvider) {
       await web3Modal.clearCachedProvider();
     }
   } catch (err) {
@@ -2045,18 +2069,17 @@ function applyHashModule() {
     if (m >= 1 && m <= courseModules.length) currentModule = m;
   }
 }
-window.addEventListener('hashchange', () => { applyHashModule(); updateUI(); });
+window.addEventListener('hashchange', () => { applyHashModule(); updateUI?.(); });
 
 /* ================== KEYBOARD NAV (global) ================== */
 document.addEventListener('keydown', (e)=>{
   // Arrow left/right to switch modules (only when not typing)
   const tag = (document.activeElement?.tagName||'').toLowerCase();
   const typing = tag === 'textarea' || tag === 'input';
-  if (typing || modalOverlay.classList.contains('active')) return;
+  if (typing || modalOverlay?.classList.contains('active')) return;
   if (e.key === 'ArrowLeft') navigateModule(-1);
   if (e.key === 'ArrowRight') navigateModule(1);
 });
-
 
 /* Secure context hint */
 if (location.protocol === 'file:') {
@@ -2067,18 +2090,18 @@ if (location.protocol === 'file:') {
 /* ================== INIT ================== */
 function init() {
   console.log('ethers version?', ethers?.version);
-  console.log('web3Modal?', !!window.web3Modal);
+  console.log('web3Modal present?', !!web3Modal);   // ✅ check the local instance
 
-  createParticles();
-  setupModal();
-  renderCourseMenu();
+  createParticles?.();
+  setupModal?.();
+  renderCourseMenu?.();
 
   // Guest mode progress (until wallet connects)
   loadProgress('guest');
 
   // Honor hash before initial UI
   applyHashModule();
-  updateUI();
+  updateUI?.();
 
   // Listeners
   connectWalletBtn?.addEventListener('click', connectWallet);
@@ -2095,19 +2118,20 @@ function init() {
 
     const statusIndicator = document.getElementById('modalStatusIndicator');
     const statusText = document.getElementById('modalStatusText');
-    statusIndicator.className = 'status-indicator in-progress';
-    statusText.textContent = 'In Progress';
+    if (statusIndicator) statusIndicator.className = 'status-indicator in-progress';
+    if (statusText)      statusText.textContent = 'In Progress';
 
     showNotification('Progress saved', 'info');
   });
   // Wire default complete (will be overridden if a quiz is present when modal opens)
-  wireDefaultComplete();
+  wireDefaultComplete?.();
 
   // Daily streak bump
-  bumpStreak();
+  bumpStreak?.();
 
-  // Auto-reconnect (Web3Modal v1)
-  if (window.web3Modal?.cachedProvider) {
+  // ✅ Auto-reconnect using the **local** instance (not window.web3Modal)
+  if (!web3Modal) web3Modal = setupWeb3Modal();
+  if (web3Modal?.cachedProvider) {
     connectWallet().catch(() => {});
   }
 }
