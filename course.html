@@ -427,7 +427,15 @@ const ERC20_ABI = [
 ];
 
 /* ================== HELPERS / GLOBALS ================== */
-const toHexChainId = (id) => '0x' + id.toString(16);
+function toHexChainId(id) {
+  const n = (typeof id === 'bigint') ? id : BigInt(id);
+  return '0x' + n.toString(16);
+}
+
+const isEthersV6 = !!ethers.BrowserProvider; // v6 exposes BrowserProvider
+const getFormatUnits = () =>
+  (ethers.utils && ethers.utils.formatUnits) ? ethers.utils.formatUnits : ethers.formatUnits;
+
 let web3Modal, extProvider, provider, signer, tokenContract;
 
 const STORAGE_KEY       = (addr) => `sovereigntyProgress:${(addr||'guest').toLowerCase()}`;
@@ -445,14 +453,14 @@ let tokenDecimals = 18;
 /* ================== WEB3MODAL SETUP ================== */
 const providerOptions = {
   walletconnect: {
-    package: window.WalletConnectProvider.default,
+    package: window.WalletConnectProvider?.default,
     options: {
       rpc: { [CHAIN_ID]: RPC_URL },
       chainId: CHAIN_ID
     }
   }
 };
-web3Modal = new window.Web3Modal.default({
+web3Modal = new (window.Web3Modal?.default || function(){})({
   cacheProvider: true,
   providerOptions,
   theme: 'dark'
@@ -1839,65 +1847,76 @@ function showNotification(message, type = 'info') {
   setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
 }
 
-/* ================== WALLET FLOW ================== */
+/* ================== WALLET FLOW (HARDENED) ================== */
 async function connectWallet() {
   try {
-    if (window.Web3Modal && web3Modal) {
+    // Get an EIP-1193 provider (Web3Modal v1 or injected)
+    if (window.Web3Modal && window.web3Modal && typeof web3Modal.connect === 'function') {
       extProvider = await web3Modal.connect();
-    } else if (window.ethereum) {
-      // Fallback to injected provider (MetaMask, etc.)
+    } else if (window.ethereum && typeof window.ethereum.request === 'function') {
       extProvider = window.ethereum;
+      // Request accounts ONCE (avoid duplicate prompts)
       await extProvider.request({ method: 'eth_requestAccounts' });
     } else {
-      throw new Error('No wallet provider found.');
+      throw new Error('No wallet provider found. Install MetaMask or a compatible wallet.');
     }
-    provider = new ethers.providers.Web3Provider(extProvider, "any");
 
-    // Helps some mobile wallets
-    await provider.send("eth_requestAccounts", []);
+    // Wrap provider (ethers v5 vs v6)
+    provider = isEthersV6
+      ? new ethers.BrowserProvider(extProvider)                         // v6
+      : new ethers.providers.Web3Provider(extProvider, 'any');          // v5
 
     // Ensure target chain
     const net = await provider.getNetwork();
-    if (net.chainId !== CHAIN_ID) {
+    const currentChainId = isEthersV6 ? Number(net.chainId) : net.chainId;
+    if (currentChainId !== CHAIN_ID) {
       try {
         await extProvider.request({
-          method: "wallet_switchEthereumChain",
+          method: 'wallet_switchEthereumChain',
           params: [{ chainId: toHexChainId(CHAIN_ID) }]
         });
       } catch (switchErr) {
         try {
           await extProvider.request({
-            method: "wallet_addEthereumChain",
+            method: 'wallet_addEthereumChain',
             params: [{
               chainId: toHexChainId(CHAIN_ID),
               chainName: CHAIN_NAME,
-              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
               rpcUrls: [RPC_URL],
-              blockExplorerUrls: ["https://bscscan.com"]
+              blockExplorerUrls: ['https://bscscan.com']
             }]
           });
         } catch (addErr) {
-          showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, "warning");
+          showNotification(`Please switch to ${CHAIN_NAME} in your wallet.`, 'warning');
           return;
         }
       }
     }
 
     // Address & contract
-    signer = provider.getSigner();
+    signer = await provider.getSigner();
     userAddress = await signer.getAddress();
-    tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
 
-    // Token meta
+    tokenContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_ABI,
+      provider // read-only for balanceOf
+    );
+
+    // Token meta (best effort)
     try {
-      tokenDecimals = await tokenContract.decimals();
-      tokenSymbol   = await tokenContract.symbol();
-    } catch { tokenDecimals = 18; tokenSymbol = 'TOKEN'; }
+      tokenDecimals = Number(await tokenContract.decimals());
+      tokenSymbol   = String(await tokenContract.symbol());
+    } catch {
+      tokenDecimals = 18;
+      tokenSymbol   = 'TOKEN';
+    }
 
     // Header UI
-    userAvatar.textContent = userAddress.substring(2, 4).toUpperCase();
-    walletAddressEl.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`;
-    disconnectBtn.style.display = "flex";
+    userAvatar && (userAvatar.textContent = userAddress.substring(2, 4).toUpperCase());
+    walletAddressEl && (walletAddressEl.textContent = `${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`);
+    disconnectBtn && (disconnectBtn.style.display = 'flex');
 
     // Progress for this wallet
     loadProgress(userAddress);
@@ -1906,43 +1925,48 @@ async function connectWallet() {
     await checkAccess();
 
     // prevent duplicate listeners
-    extProvider.removeAllListeners?.();
-    extProvider.on?.("accountsChanged", async (accounts) => {
+    try { extProvider.removeAllListeners?.(); } catch {}
+    extProvider.on?.('accountsChanged', async (accounts) => {
       if (!accounts || accounts.length === 0) return disconnectWallet();
       userAddress = accounts[0];
       loadProgress(userAddress);
       await checkAccess();
     });
-    extProvider.on?.("chainChanged", async () => {
-      provider = new ethers.providers.Web3Provider(extProvider, "any");
+    extProvider.on?.('chainChanged', async () => {
+      provider = isEthersV6
+        ? new ethers.BrowserProvider(extProvider)
+        : new ethers.providers.Web3Provider(extProvider, 'any');
       tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
       await checkAccess();
     });
-    extProvider.on?.("disconnect", () => disconnectWallet());
+    extProvider.on?.('disconnect', () => disconnectWallet());
 
   } catch (err) {
-    console.error(err);
-    showNotification("Connection failed or cancelled.", "error");
+    console.error('[connectWallet] Error:', err);
+    const cancelled = (err?.code === 4001) || /rejected/i.test(err?.message||'');
+    showNotification(cancelled ? 'Connection cancelled.' : 'Connection failed.', 'error');
   }
 }
 
 async function checkAccess() {
   try {
-    signer = provider.getSigner();
+    signer = await provider.getSigner();
     userAddress = await signer.getAddress();
 
-    const [rawBal] = await Promise.all([
-      tokenContract.balanceOf(userAddress)
-    ]);
+    const rawBal = await tokenContract.balanceOf(userAddress);
+    // Handle v5 BigNumber or v6 bigint seamlessly
+    const raw = (typeof rawBal === 'bigint')
+      ? rawBal
+      : (rawBal?._hex ? BigInt(rawBal._hex) : BigInt(rawBal.toString()));
 
-    const human = Number(ethers.utils.formatUnits(rawBal, tokenDecimals));
+    const human = Number(getFormatUnits()(raw, tokenDecimals));
     const pretty = (n)=> n.toLocaleString(undefined,{maximumFractionDigits:4});
-    const need = REQUIRED_TOKENS;
+    const need = Number(REQUIRED_TOKENS);
 
     if (human >= need) {
-      connectSection.style.display = "none";
-      moduleContent.style.display  = "block";
-      showNotification(`Access granted · Balance: ${pretty(human)} ${tokenSymbol}`, "success");
+      connectSection && (connectSection.style.display = 'none');
+      moduleContent && (moduleContent.style.display  = 'block');
+      showNotification(`Access granted · Balance: ${pretty(human)} ${tokenSymbol}`, 'success');
 
       // Auto-resume last module for wallet or honor hash
       const lastKey = LAST_MODULE_KEY(userAddress);
@@ -1955,12 +1979,12 @@ async function checkAccess() {
       updateUI();
 
     } else {
-      connectSection.style.display = "block";
-      moduleContent.style.display  = "none";
+      connectSection && (connectSection.style.display = 'block');
+      moduleContent && (moduleContent.style.display  = 'none');
       const deficit = Math.max(0, need - human);
       // Inject CTA once (avoid duplicates)
       const exists = document.getElementById('gateCtas');
-      if (!exists) {
+      if (!exists && connectSection) {
         const node = document.createElement('div');
         node.id = 'gateCtas';
         node.innerHTML = `
@@ -1976,39 +2000,41 @@ async function checkAccess() {
         `;
         connectSection.appendChild(node);
       }
-      showNotification(`Hold at least ${need} ${tokenSymbol} to unlock.`, "warning");
+      showNotification(`Hold at least ${need} ${tokenSymbol} to unlock.`, 'warning');
     }
   } catch (e) {
-    console.error(e);
-    showNotification("Could not read token balance. Check TOKEN_ADDRESS and network.", "error");
+    console.error('[checkAccess] Error:', e);
+    showNotification('Could not read token balance. Check TOKEN_ADDRESS and network.', 'error');
   }
 }
 
 async function disconnectWallet() {
   try {
-    if (extProvider?.disconnect && typeof extProvider.disconnect === "function") {
+    if (extProvider?.disconnect && typeof extProvider.disconnect === 'function') {
       await extProvider.disconnect();
     }
   } catch (err) {
-    console.warn("Provider disconnect failed:", err);
+    console.warn('Provider disconnect failed:', err);
   }
 
   try {
-    await web3Modal.clearCachedProvider();
+    if (window.web3Modal?.clearCachedProvider) {
+      await web3Modal.clearCachedProvider();
+    }
   } catch (err) {
-    console.warn("Clear cache failed:", err);
+    console.warn('Clear cache failed:', err);
   }
 
   userAddress = null;
   provider = signer = tokenContract = null;
 
-  userAvatar.textContent = "?";
-  walletAddressEl.textContent = "Not connected";
-  disconnectBtn.style.display = "none";
-  connectSection.style.display = "block";
-  moduleContent.style.display = "none";
+  if (userAvatar) userAvatar.textContent = '?';
+  if (walletAddressEl) walletAddressEl.textContent = 'Not connected';
+  if (disconnectBtn) disconnectBtn.style.display = 'none';
+  if (connectSection) connectSection.style.display = 'block';
+  if (moduleContent) moduleContent.style.display = 'none';
 
-  showNotification("Wallet disconnected", "info");
+  showNotification('Wallet disconnected', 'info');
 }
 
 /* ================== HASH / DEEP LINK ================== */
@@ -2040,6 +2066,9 @@ if (location.protocol === 'file:') {
 
 /* ================== INIT ================== */
 function init() {
+  console.log('ethers version?', ethers?.version);
+  console.log('web3Modal?', !!window.web3Modal);
+
   createParticles();
   setupModal();
   renderCourseMenu();
@@ -2052,15 +2081,15 @@ function init() {
   updateUI();
 
   // Listeners
-  connectWalletBtn.addEventListener('click', connectWallet);
-  disconnectBtn.addEventListener('click', disconnectWallet);
-  prevModuleBtn.addEventListener('click', () => navigateModule(-1));
-  nextModuleBtn.addEventListener('click', () => navigateModule(1));
-  document.getElementById('mPrev').addEventListener('click',()=>navigateModule(-1));
-  document.getElementById('mNext').addEventListener('click',()=>navigateModule(1));
+  connectWalletBtn?.addEventListener('click', connectWallet);
+  disconnectBtn?.addEventListener('click', disconnectWallet);
+  prevModuleBtn?.addEventListener('click', () => navigateModule(-1));
+  nextModuleBtn?.addEventListener('click', () => navigateModule(1));
+  document.getElementById('mPrev')?.addEventListener('click',()=>navigateModule(-1));
+  document.getElementById('mNext')?.addEventListener('click',()=>navigateModule(1));
 
   // Progress buttons (default wiring; quizzes override on open)
-  document.getElementById('saveProgressBtn').addEventListener('click', () => {
+  document.getElementById('saveProgressBtn')?.addEventListener('click', () => {
     userProgress[currentModule] = 'in-progress';
     saveProgress();
 
@@ -2077,8 +2106,8 @@ function init() {
   // Daily streak bump
   bumpStreak();
 
-  // Auto-reconnect
-  if (web3Modal?.cachedProvider) {
+  // Auto-reconnect (Web3Modal v1)
+  if (window.web3Modal?.cachedProvider) {
     connectWallet().catch(() => {});
   }
 }
