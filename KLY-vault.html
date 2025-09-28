@@ -635,105 +635,136 @@
       });
     }
 
-    // ================== Wallet helpers ==================
-    async function getActiveAccount(){
-      if(!window.ethereum) return null;
-      const accounts = await window.ethereum.request({ method:"eth_accounts" });
-      return accounts?.[0] ?? null;
-    }
+   // ================== Wallet helpers (mobile-safe) ==================
+let provider = null;
 
-    async function connectWallet(){
-      try{
-        if(!window.ethereum){ showStatus("⚠️ MetaMask not found", "error"); setTimeout(()=>openExternal("https://metamask.io/download.html"), 1200); return; }
-        showStatus("🔓 Connecting wallet...", "info");
-        const accounts = await window.ethereum.request({ method:"eth_requestAccounts" });
-        await verifyNetwork();
-        updateWalletUI(true, accounts[0]);
-        showStatus("✅ Wallet connected", "success");
+function detectProvider(){
+  // Prefer MetaMask, then Coinbase, then first detected
+  if (window.ethereum?.providers?.length){
+    provider =
+      window.ethereum.providers.find(p => p.isMetaMask) ||
+      window.ethereum.providers.find(p => p.isCoinbaseWallet) ||
+      window.ethereum.providers[0];
+  } else if (window.ethereum){
+    provider = window.ethereum;
+  } else if (window.trustwallet){        // Trust Wallet legacy
+    provider = window.trustwallet;
+  } else if (window.BinanceChain){       // Binance Wallet legacy
+    provider = window.BinanceChain;
+  }
+  return provider || null;
+}
 
-        window.ethereum.on("accountsChanged", handleAccountsChanged);
-        window.ethereum.on("chainChanged", handleChainChanged);
-      }catch(err){
-        const cancelled = err?.code === 4001;
-        showStatus(cancelled ? "🛑 Request cancelled" : "⚠️ Connection failed", cancelled ? "warning" : "error");
-        console.error("Wallet connection error:", err);
-      }
-    }
+async function getActiveAccount(){
+  detectProvider();
+  if(!provider) return null;
+  try{
+    const accounts = await provider.request({ method:"eth_accounts" });
+    return accounts?.[0] ?? null;
+  }catch{ return null; }
+}
 
-    async function verifyNetwork(){
-      if (!window.ethereum) return;
-      const currentChainId = await window.ethereum.request({ method:"eth_chainId" });
-      if (currentChainId !== BNB_CHAIN_ID){
-        showStatus("🌐 Switching to BSC...", "info");
-        try {
-          await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId: BNB_CHAIN_ID }] });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            try {
-              await window.ethereum.request({
-                method:"wallet_addEthereumChain",
-                params:[{
-                  chainId: BNB_CHAIN_ID,
-                  chainName: "Binance Smart Chain",
-                  nativeCurrency: { name:"BNB", symbol:"BNB", decimals:18 },
-                  rpcUrls: ["https://bsc-dataseed.binance.org/"],
-                  blockExplorerUrls: ["https://bscscan.com"]
-                }]
-              });
-            } catch (addError) {
-              showStatus("⚠️ Please add/switch to BSC", "error"); throw addError;
-            }
-          } else {
-            showStatus("⚠️ Please switch to BSC", "error"); throw switchError;
-          }
-        }
-      }
-    }
+async function connectWallet(){
+  detectProvider();
 
-    function handleAccountsChanged(accounts){
-      if (!accounts.length){ updateWalletUI(false); showStatus("⚠️ Wallet disconnected", "warning"); }
-      else { updateWalletUI(true, accounts[0]); }
-    }
-    function handleChainChanged(){ location.reload(); }
+  if(!provider){
+    showStatus("⚠️ No wallet detected — open in your wallet’s dapp browser.", "error");
+    return;
+  }
 
-    function updateWalletUI(connected, account=""){
-      if (!walletButton || !walletAddressEl) return;
-      if (connected){
-        const short = shortenAddress(account);
-        walletButton.innerHTML = `<i class="fas fa-check-circle" aria-hidden="true"></i><span>${short}</span>`;
-        walletButton.classList.add("connected");
-        walletAddressEl.textContent = short;
-        walletAddressEl.classList.remove("hidden");
+  try{
+    showStatus("🔓 Connecting wallet...", "info");
+    const accounts = await provider.request({ method:"eth_requestAccounts" });
+
+    await verifyNetwork();
+    updateWalletUI(true, accounts[0]);
+    showStatus("✅ Wallet connected", "success");
+
+    // Rebind listeners on the active provider
+    provider.removeAllListeners?.("accountsChanged");
+    provider.removeAllListeners?.("chainChanged");
+    provider.on?.("accountsChanged", handleAccountsChanged);
+    provider.on?.("chainChanged", handleChainChanged);
+  }catch(err){
+    const cancelled = err?.code === 4001;
+    showStatus(cancelled ? "🛑 Request cancelled" : "⚠️ Connection failed", cancelled ? "warning" : "error");
+    console.error("Wallet connection error:", err);
+  }
+}
+
+async function verifyNetwork(){
+  detectProvider();
+  if (!provider) return;
+
+  const currentChainId = await provider.request({ method:"eth_chainId" });
+  if (currentChainId !== BNB_CHAIN_ID){
+    showStatus("🌐 Switching to BSC...", "info");
+    try {
+      await provider.request({ method:"wallet_switchEthereumChain", params:[{ chainId: BNB_CHAIN_ID }] });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        await provider.request({
+          method:"wallet_addEthereumChain",
+          params:[{
+            chainId: BNB_CHAIN_ID,
+            chainName: "Binance Smart Chain",
+            nativeCurrency: { name:"BNB", symbol:"BNB", decimals:18 },
+            rpcUrls: ["https://bsc-dataseed.binance.org/"],
+            blockExplorerUrls: ["https://bscscan.com"]
+          }]
+        });
       } else {
-        walletButton.innerHTML = '<i class="fas fa-wallet" aria-hidden="true"></i><span>Connect Wallet</span>';
-        walletButton.classList.remove("connected");
-        walletAddressEl.classList.add("hidden");
+        showStatus("⚠️ Please switch to BSC", "error");
+        throw switchError;
       }
     }
-    const shortenAddress = (a) => `${a.substring(0,6)}...${a.substring(a.length-4)}`;
+  }
+}
 
-    // ================== Gate: NFT Verify ==================
-    async function verifyNFTAccess(){
-      if (!window.ethereum){ showStatus("🔑 Connect wallet first", "warning"); return; }
-      try{
-        const accounts = await window.ethereum.request({ method:"eth_requestAccounts" });
-        const owner = accounts[0];
-        showStatus("🔍 Verifying NFT...", "info"); simulateProgress();
-        await verifyNetwork();
+function handleAccountsChanged(accounts){
+  if (!accounts.length){ updateWalletUI(false); showStatus("⚠️ Wallet disconnected", "warning"); }
+  else { updateWalletUI(true, accounts[0]); }
+}
+function handleChainChanged(){ location.reload(); }
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-        const balance = await contract.balanceOf(owner);
+function updateWalletUI(connected, account=""){
+  if (!walletButton || !walletAddressEl) return;
+  if (connected){
+    const short = shortenAddress(account);
+    walletButton.innerHTML = `<i class="fas fa-check-circle" aria-hidden="true"></i><span>${short}</span>`;
+    walletButton.classList.add("connected");
+    walletAddressEl.textContent = short;
+    walletAddressEl.classList.remove("hidden");
+  } else {
+    walletButton.innerHTML = '<i class="fas fa-wallet" aria-hidden="true"></i><span>Connect Wallet</span>';
+    walletButton.classList.remove("connected");
+    walletAddressEl.classList.add("hidden");
+  }
+}
+const shortenAddress = (a) => `${a.substring(0,6)}...${a.substring(a.length-4)}`;
 
-        const hasAccess = ethers.BigNumber.isBigNumber(balance) ? balance.gt(0) : Number(balance) > 0;
-        if (hasAccess){ showStatus("✅ Access granted!", "success"); unlockVault(); }
-        else { showStatus("⛔ Key of Ascension required", "error"); }
-      }catch(e){
-        const cancelled = e?.code === 4001;
-        showStatus(cancelled ? "🛑 Request cancelled" : "⚠️ Verification failed", cancelled ? "warning" : "error");
-        console.error("NFT verification error:", e);
-      }
-    }
+async function verifyNFTAccess(){
+  detectProvider();
+  if (!provider){ showStatus("🔑 Connect wallet first", "warning"); return; }
+  try{
+    const accounts = await provider.request({ method:"eth_requestAccounts" });
+    const owner = accounts[0];
+    showStatus("🔍 Verifying NFT...", "info"); simulateProgress();
+    await verifyNetwork();
+
+    const ethersProvider = new ethers.providers.Web3Provider(provider);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, ethersProvider);
+    const balance = await contract.balanceOf(owner);
+
+    const hasAccess = ethers.BigNumber.isBigNumber(balance) ? balance.gt(0) : Number(balance) > 0;
+    if (hasAccess){ showStatus("✅ Access granted!", "success"); unlockVault(); }
+    else { showStatus("⛔ Key of Ascension required", "error"); }
+  }catch(e){
+    const cancelled = e?.code === 4001;
+    showStatus(cancelled ? "🛑 Request cancelled" : "⚠️ Verification failed", cancelled ? "warning" : "error");
+    console.error("NFT verification error:", e);
+  }
+}
 
     function simulateProgress(){
       if (!progressFill) return;
