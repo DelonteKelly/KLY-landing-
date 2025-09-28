@@ -208,7 +208,19 @@
       border-top:1px solid var(--glass-border);backdrop-filter:blur(10px);padding:.6rem 1rem;display:none;gap:.8rem;z-index:9999}
     @media (max-width:768px){.bottom-nav{display:flex}}
     .bottom-nav .btn{flex:1}
-  </style>
+  
+/* Accessibility helpers */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+/* Status pill for modal state */
+.status-indicator{display:inline-block;width:.7rem;height:.7rem;border-radius:50%;background:#777;margin-right:.4rem;vertical-align:middle}
+.status-indicator.in-progress{background:var(--warning)}
+.status-indicator.completed{background:var(--success)}
+
+</style>
 </head>
 <body>
   <!-- Floating Particles Background -->
@@ -229,7 +241,7 @@
           <div class="avatar" id="userAvatar" aria-hidden="true">?</div>
           <div class="wallet-info">
             <div class="wallet-address" id="walletAddress">Not connected</div>
-            <button class="disconnect-btn" id="disconnectBtn" style="display: none;" aria-label="Disconnect wallet">
+            <button type="button" class="disconnect-btn" id="disconnectBtn" style="display: none;" aria-label="Disconnect wallet">
               <i class="fas fa-unlink" aria-hidden="true"></i> Disconnect
             </button>
           </div>
@@ -240,7 +252,7 @@
             <span>Your Progress</span>
             <span id="progressPercentage" aria-live="polite">0%</span>
           </div>
-          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="progressPercentage">
+          <div id="progressBar" class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="progressPercentage">
             <div class="progress-fill" id="progressFill" style="width: 0%"></div>
           </div>
         </div>
@@ -267,7 +279,7 @@
             Access requires holding at least <strong>5 SolCoin</strong> on <strong>BNB Smart Chain</strong>.
           </p>
           <div class="wallet-options" role="group" aria-label="Wallet Options">
-            <button class="wallet-option" id="connectWalletBtn" aria-label="Connect wallet">
+            <button type="button" class="wallet-option" id="connectWalletBtn" aria-label="Connect wallet">
               <i class="fas fa-wallet wallet-icon" aria-hidden="true"></i>
               <span>Connect Wallet</span>
             </button>
@@ -281,10 +293,10 @@
               <span id="moduleTitle">Foundation of Sovereignty</span>
             </div>
             <div class="module-nav" role="group" aria-label="Module Navigation">
-              <button class="btn btn-outline btn-sm" id="prevModuleBtn" disabled aria-label="Previous module">
+              <button type="button" class="btn btn-outline btn-sm" id="prevModuleBtn" disabled aria-label="Previous module">
                 <i class="fas fa-chevron-left" aria-hidden="true"></i> Previous
               </button>
-              <button class="btn btn-primary btn-sm" id="nextModuleBtn" aria-label="Next module">
+              <button type="button" class="btn btn-primary btn-sm" id="nextModuleBtn" aria-label="Next module">
                 Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
@@ -335,7 +347,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem;">
               <div id="miniMeta" style="font-size:.9rem;color:#bbb;"></div>
               <div>
-                <button class="btn btn-primary" id="openModal" aria-haspopup="dialog">
+                <button type="button" class="btn btn-primary" id="openModal" aria-haspopup="dialog" aria-controls="modalOverlay" aria-expanded="false">
                   <i class="fas fa-expand" aria-hidden="true"></i> View Full Module Content
                 </button>
               </div>
@@ -357,9 +369,9 @@
   </div>
 
   <!-- Modal -->
-  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalModuleTitle" aria-describedby="modalModuleContent">
-    <div class="modal-container" tabindex="-1">
-      <button class="modal-close" id="modalClose" aria-label="Close dialog">
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modalModuleTitle" aria-describedby="modalModuleContent" tabindex="-1">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Close dialog">
         <i class="fas fa-times" aria-hidden="true"></i>
       </button>
 
@@ -393,8 +405,8 @@
 
   <!-- Mobile Bottom Nav -->
   <div class="bottom-nav" role="group" aria-label="Mobile Navigation">
-    <button class="btn btn-outline btn-sm" id="mPrev" aria-label="Previous module"><i class="fas fa-chevron-left" aria-hidden="true"></i> Prev</button>
-    <button class="btn btn-primary btn-sm" id="mNext" aria-label="Next module">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+    <button type="button" class="btn btn-outline btn-sm" id="mPrev" aria-label="Previous module"><i class="fas fa-chevron-left" aria-hidden="true"></i> Prev</button>
+    <button type="button" class="btn btn-primary btn-sm" id="mNext" aria-label="Next module">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
   </div>
 
 <script>
@@ -1515,7 +1527,11 @@ function updateUI() {
   objectivesList.innerHTML = safeList(module.objectives).map(obj => `<li>${obj}</li>`).join('') || '<li>No objectives listed.</li>';
 
   const lessonsList = document.getElementById('moduleLessons');
-  lessonsList.innerHTML = safeList(module.lessons).map(lesson => `<li>${lesson}</li>`).join('') || '<li>No lessons listed.</li>';
+  lessonsList.innerHTML = safeList(module.lessons).map(l => {
+  if (typeof l === 'string') return `<li>${l}</li>`;
+  const core = Array.isArray(l.core) && l.core.length ? `<ul>${l.core.map(p=>`<li>${p}</li>`).join('')}</ul>` : '';
+  return `<li><strong>${l.title||''}</strong>${core}</li>`;
+}).join('') || '<li>No lessons listed.</li>';
 
   const questionsList = document.getElementById('practiceQuestions');
   questionsList.innerHTML = safeList(module.questions).map(q => `<li>${q}</li>`).join('') || '<li>No questions for this module.</li>';
@@ -1596,6 +1612,7 @@ function trapFocus(e){
 }
 
 function openModal() {
+  document.getElementById('openModal')?.setAttribute('aria-expanded','true');
   const module = courseModules.find(m => m.id === currentModule);
   if (!module) return;
 
@@ -1615,7 +1632,11 @@ function openModal() {
     </div>
     <div class="modal-section">
       <h3><i class="fas fa-book-open" aria-hidden="true"></i> Key Lessons</h3>
-      <ul>${safeList(module.lessons).map(l => `<li>${l}</li>`).join('')}</ul>
+<ul>${safeList(module.lessons).map(l => {
+  if (typeof l === "string") return `<li>${l}</li>`;
+  const core = Array.isArray(l.core) && l.core.length ? `<ul>${l.core.map(p=>`<li>${p}</li>`).join("")}</ul>` : "";
+  return `<li><strong>${l.title||""}</strong>${core}</li>`;
+}).join("")}</ul>
     </div>
     <div class="practice-box">
       <div class="practice-title"><i class="fas fa-pen-fancy" aria-hidden="true"></i> Sovereignty Practice</div>
@@ -1658,6 +1679,7 @@ function openModal() {
 }
 
 function closeModal() {
+  document.getElementById('openModal')?.setAttribute('aria-expanded','false');
   modalOverlay.classList.remove('active');
   document.body.style.overflow = 'auto';
   lastFocusedBeforeModal?.focus();
@@ -1820,7 +1842,15 @@ function showNotification(message, type = 'info') {
 /* ================== WALLET FLOW ================== */
 async function connectWallet() {
   try {
-    extProvider = await web3Modal.connect();
+    if (window.Web3Modal && web3Modal) {
+      extProvider = await web3Modal.connect();
+    } else if (window.ethereum) {
+      // Fallback to injected provider (MetaMask, etc.)
+      extProvider = window.ethereum;
+      await extProvider.request({ method: 'eth_requestAccounts' });
+    } else {
+      throw new Error('No wallet provider found.');
+    }
     provider = new ethers.providers.Web3Provider(extProvider, "any");
 
     // Helps some mobile wallets
@@ -2000,6 +2030,13 @@ document.addEventListener('keydown', (e)=>{
   if (e.key === 'ArrowLeft') navigateModule(-1);
   if (e.key === 'ArrowRight') navigateModule(1);
 });
+
+
+/* Secure context hint */
+if (location.protocol === 'file:') {
+  console.warn('Running over file:// may block some wallet features. Serve over http(s) for best results.');
+  try { showNotification('Tip: Open this page over https:// (not file://) for wallet connectivity.', 'info'); } catch(e) {}
+}
 
 /* ================== INIT ================== */
 function init() {
