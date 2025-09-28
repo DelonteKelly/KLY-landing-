@@ -1991,426 +1991,459 @@
   <div class="toast" id="toast" role="status" aria-live="polite"><i class="fas fa-check-circle"></i> Saved</div>
 
   <!-- Ethers v5 -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    // ===== helpers =====
-    const $ = (s, r=document) => r.querySelector(s);
-    const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-    const toast = (m='Saved ✔️', icon='check-circle') => {
-      const t = $('#toast'); 
-      t.innerHTML = `<i class="fas fa-${icon}"></i> ${m}`;
-      t.classList.add('show'); 
-      setTimeout(() => t.classList.remove('show'), 2000);
-    };
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+/* ===============================
+   Small UX framework + helpers
+   =============================== */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const raf = (fn) => new Promise(r => requestAnimationFrame(() => { fn?.(); r(); }));
 
-    // ===== progress state =====
-    const STORAGE_KEY = 'sovereignty-progress-v2';
-    const state = { 
-      completed: new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')),
-      timeSpent: parseInt(localStorage.getItem('sovereignty-time') || '0'),
-      achievements: JSON.parse(localStorage.getItem('sovereignty-achievements') || '[]')
-    };
+const toast = (m='Saved ✔️', icon='check-circle') => {
+  const t = $('#toast');
+  if (!t) return;
+  t.innerHTML = `<i class="fas fa-${icon}"></i> ${m}`;
+  t.classList.add('show');
+  clearTimeout(toast.__t);
+  toast.__t = setTimeout(() => t.classList.remove('show'), 1600);
+};
 
-    function updateProgressUI() {
-      const keys = ['awakening-1','awakening-2','awakening-3','awakening-4','awakening-5','awakening-6','awakening-7'];
-      const done = keys.filter(k => state.completed.has(k)).length;
-      const pct = Math.round((done/keys.length)*100);
-      
-      $('#progressPct').textContent = `${pct}% Complete`;
-      $('#progressFill').style.width = `${pct}%`;
-      $('#progressCount').textContent = `${done} of ${keys.length} Modules Completed`;
-      
-      // Update time spent
-      const hours = Math.floor(state.timeSpent / 60);
-      const minutes = state.timeSpent % 60;
-      $('#timeSpent').textContent = `Time spent: ${hours}h ${minutes}m`;
-      
-      // Update card status indicators
-      $$('.modules-grid .module-card').forEach(card => {
-        const n = card.getAttribute('data-module');
-        const key = `awakening-${n}`;
-        const ind = $('.status-indicator', card); 
-        const text = $('.status-text', card);
-        
-        if (state.completed.has(key)) { 
-          ind.classList.add('completed'); 
-          ind.classList.remove('in-progress'); 
-          text.textContent = 'Completed'; 
-        } else if (card.dataset.opened === '1') { 
-          ind.classList.add('in-progress'); 
-          ind.classList.remove('completed'); 
-          text.textContent = 'In Progress'; 
-        } else { 
-          ind.classList.remove('completed', 'in-progress'); 
-          text.textContent = 'Not Started'; 
-        }
-      });
-      
-      // Check for achievements
-      checkAchievements();
-    }
-    
-    function saveProgress() { 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(state.completed))); 
-      localStorage.setItem('sovereignty-time', state.timeSpent.toString());
-      localStorage.setItem('sovereignty-achievements', JSON.stringify(state.achievements));
-      updateProgressUI(); 
-      toast('Progress saved'); 
-    }
-    
-    function checkAchievements() {
-      const keys = ['awakening-1','awakening-2','awakening-3','awakening-4','awakening-5','awakening-6','awakening-7'];
-      const done = keys.filter(k => state.completed.has(k)).length;
-      
-      const newAchievements = [];
-      if (done >= 1 && !state.achievements.includes('first-step')) {
-        state.achievements.push('first-step');
-        newAchievements.push('First Step: Completed your first module!');
-      }
-      if (done >= 3 && !state.achievements.includes('journey-begun')) {
-        state.achievements.push('journey-begun');
-        newAchievements.push('Journey Begun: Completed 3 modules!');
-      }
-      if (done >= 7 && !state.achievements.includes('sovereign-master')) {
-        state.achievements.push('sovereign-master');
-        newAchievements.push('Sovereign Master: Completed all modules!');
-      }
-      
-      if (newAchievements.length > 0) {
-        saveProgress();
-        newAchievements.forEach(ach => {
-          setTimeout(() => toast(ach, 'trophy'), 500);
-        });
-      }
-    }
+const debounce = (fn, wait=300) => {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+};
 
-    // ===== detail view injection =====
-    function injectArticle(el) {
-      const title = $('h3', el)?.textContent || 'Module';
-      const theme = $('h4', el)?.textContent?.replace(/^Theme:\s*/,'') || '';
-      $('#detailTitle').textContent = title; 
-      $('#detailTheme').textContent = theme;
-      
-      const body = $('#detailBody'); 
-      body.innerHTML = '';
-      Array.from(el.children).forEach(ch => body.appendChild(ch.cloneNode(true)));
-      
-      // Wire completion checkboxes
-      $$('#detailBody .module-complete input[type="checkbox"]').forEach(cb => {
-        const k = cb.getAttribute('data-track'); 
-        cb.checked = state.completed.has(k);
-        cb.addEventListener('change', e => { 
-          if (e.target.checked) state.completed.add(k); 
-          else state.completed.delete(k); 
-          saveProgress(); 
-        });
-      });
-      
-      // Wealth Codes internal nav
-      $$('#detailBody .nav-button').forEach(b => b.addEventListener('click', () => {
-        const m = /Code\s+(\d+)/i.exec(b.textContent.trim()); 
-        if (m) showModule('swc'+m[1]);
-      }));
-      
-      // Start time tracking for this module view
-      startTimeTracking();
-    }
-    
-    let timeTrackingInterval;
-    function startTimeTracking() {
-      clearInterval(timeTrackingInterval);
-      timeTrackingInterval = setInterval(() => {
-        state.timeSpent++;
-        saveProgress();
-      }, 60000); // Update every minute
-    }
-    
-    function stopTimeTracking() {
-      clearInterval(timeTrackingInterval);
-    }
+const shortAddr = (a='') => a ? `${a.slice(0,6)}…${a.slice(-4)}` : '';
 
-    function showModule(id) {
-      let src;
-      if (typeof id === 'number' || /^[1-7]$/.test(String(id))) {
-        src = $(`#courseContent article#module${id}`);
-        const card = $(`.modules-grid .module-card[data-module="${id}"]`); 
-        if (card) card.dataset.opened = '1';
-      } else if (/^swc[1-7]$/.test(String(id))) { 
-        src = $(`#courseContent #${id}`); 
-      }
-      
-      if (!src) { 
-        console.warn('Module not found', id); 
-        return; 
-      }
-      
-      injectArticle(src);
-      $('#moduleDetail').style.display = 'block';
-      $('#backToModules').style.display = 'inline-block';
-      $('#moduleDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      updateProgressUI();
-    }
-    
-    function hideModule() { 
-      $('#moduleDetail').style.display = 'none'; 
-      $('#backToModules').style.display = 'none'; 
-      stopTimeTracking();
-    }
-    
-    function restoreCheckboxes() { 
-      $$('#courseContent .module-complete input[type="checkbox"]').forEach(cb => {
-        const k = cb.getAttribute('data-track'); 
-        cb.checked = state.completed.has(k); 
-      }); 
-      updateProgressUI(); 
-    }
-    
-    // Sovereign Self module navigation
-    function showSovereignModule(id) {
-      // Hide all sovereign modules
-      $$('.sovereign-module').forEach(module => {
-        module.style.display = 'none';
-      });
-      
-      // Show the selected module
-      const selectedModule = $(`#${id}`);
-      if (selectedModule) {
-        selectedModule.style.display = 'block';
-        selectedModule.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      
-      // Update navigation buttons
-      $$('.nav-button').forEach(button => {
-        button.classList.remove('active');
-      });
-      
-      // Find and activate the clicked button
-      const activeButton = $(`.nav-button[onclick="showSovereignModule('${id}')"]`);
-      if (activeButton) {
-        activeButton.classList.add('active');
-      }
-    }
-    
-    window.showModule = showModule; 
-    window.hideModule = hideModule;
-    window.showSovereignModule = showSovereignModule;
+/* ===============================
+   Theme
+   =============================== */
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  $('#themeToggle i').className = saved === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  $('#themeToggle i').className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
 
-    // ===== wallet (ethers v5) =====
-    const CHAIN_NAMES = { 
-      '0x1': 'Ethereum',
-      '0xaa36a7': 'Sepolia',
-      '0x89': 'Polygon',
-      '0xa4b1': 'Arbitrum',
-      '0xa': 'Optimism',
-      '0x38': 'BNB' 
-    };
-    
-    const CONFIG = {
-      ENABLE_GATE: true,
-      TOKEN_ADDRESS: '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52', // KLY (example)
-      MIN_TOKEN: 500,
-      ERC20_ABI: ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"]
-    };
-    
-    let provider, signer, account, chainId;
+/* ===============================
+   Progress state (Awakening 1–7)
+   =============================== */
+const STORAGE_KEY = 'sovereignty-progress-v2';
+const KEYS = ['awakening-1','awakening-2','awakening-3','awakening-4','awakening-5','awakening-6','awakening-7'];
 
-    const connectBtn = $('#connectBtn'), 
-          provChip = $('#provChip'), 
-          addrChip = $('#addrChip'), 
-          chainChip = $('#chainChip'), 
-          balChip = $('#balChip'), 
-          gateChip = $('#gateChip');
-    
-    function short(a) { return `${a.slice(0,6)}…${a.slice(-4)}`; }
+const state = {
+  completed: new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')),
+  timeSpent: parseInt(localStorage.getItem('sovereignty-time') || '0', 10),
+  achievements: JSON.parse(localStorage.getItem('sovereignty-achievements') || '[]'),
+  currentModuleKey: null
+};
 
-    async function connectWallet() {
-      if (!window.ethereum) { 
-        toast('Install MetaMask', 'exclamation-triangle'); 
-        window.open('https://metamask.io/download', '_blank'); 
-        return; 
-      }
-      
-      try {
-        const accs = await ethereum.request({ method: 'eth_requestAccounts' });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        account = accs[0]; 
-        chainId = await ethereum.request({ method: 'eth_chainId' });
-        
-        paintWallet(); 
-        await refreshNative(); 
-        if (CONFIG.ENABLE_GATE) await checkGate();
-        
-        // Event listeners
-        ethereum.on('accountsChanged', async a => {
-          if (!a.length) { 
-            account = null; 
-            paintWallet(); 
-            return; 
-          }
-          account = a[0]; 
-          paintWallet(); 
-          await refreshNative(); 
-          if (CONFIG.ENABLE_GATE) await checkGate();
-        });
-        
-        ethereum.on('chainChanged', async cid => {
-          chainId = cid; 
-          paintWallet(); 
-          await refreshNative(); 
-          if (CONFIG.ENABLE_GATE) await checkGate();
-        });
-        
-      } catch (e) { 
-        console.error(e); 
-        toast('Wallet connection failed', 'exclamation-triangle'); 
-      }
-    }
-    
-    function paintWallet() {
-      const hasEth = !!window.ethereum;
-      provChip.style.display = hasEth ? 'none' : 'inline-flex';
-      
-      if (account) {
-        $('#addrShort').textContent = short(account);
-        $('#chainName').textContent = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
-        addrChip.style.display = 'inline-flex'; 
-        addrChip.classList.add('ok');
-        chainChip.style.display = 'inline-flex';
-        balChip.style.display = 'inline-flex';
-        connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
-        connectBtn.disabled = true;
-      } else {
-        addrChip.style.display = 'none'; 
-        chainChip.style.display = 'none'; 
-        balChip.style.display = 'none'; 
-        gateChip.style.display = 'none';
-        connectBtn.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-        connectBtn.disabled = false;
-      }
-    }
-    
-    async function refreshNative() {
-      if (!provider || !account) return;
-      
-      try {
-        $('#refreshBal').innerHTML = '<span class="loader"></span>';
-        const wei = await provider.getBalance(account);
-        const eth = Number(ethers.utils.formatEther(wei));
-        $('#nativeBal').textContent = `${eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${CHAIN_NAMES[chainId] === 'Polygon' ? 'MATIC' : 'ETH'}`;
-        $('#refreshBal').innerHTML = '<i class="fa-solid fa-rotate"></i>';
-        toast('Balance updated', 'coins');
-      } catch (e) {
-        console.error(e);
-        $('#refreshBal').innerHTML = '<i class="fa-solid fa-rotate"></i>';
-        toast('Balance update failed', 'exclamation-triangle');
-      }
-    }
-    
-    async function checkGate() {
-      try {
-        if (!provider || !account) { 
-          gateChip.style.display = 'none'; 
-          return; 
-        }
-        
-        gateChip.style.display = 'inline-flex'; 
-        $('#gateText').innerHTML = '<span class="loader"></span> Checking access…';
-        
-        const token = new ethers.Contract(CONFIG.TOKEN_ADDRESS, CONFIG.ERC20_ABI, provider);
-        const [raw, dec] = await Promise.all([token.balanceOf(account), token.decimals()]);
-        const bal = Number(ethers.utils.formatUnits(raw, dec));
-        
-        if (bal >= CONFIG.MIN_TOKEN) {
-          $('#gateText').innerHTML = `✅ ${bal.toFixed(2)} KLY — Access Granted`;
-          gateChip.classList.add('ok');
-        } else {
-          $('#gateText').innerHTML = `❌ ${bal.toFixed(2)} KLY — Need ${CONFIG.MIN_TOKEN}+`;
-          gateChip.classList.remove('ok');
-        }
-      } catch (e) { 
-        console.error(e); 
-        $('#gateText').innerHTML = 'Error checking token';
-      }
-    }
+const persist = debounce(() => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(state.completed)));
+  localStorage.setItem('sovereignty-time', String(state.timeSpent));
+  localStorage.setItem('sovereignty-achievements', JSON.stringify(state.achievements));
+}, 250);
 
-    // ===== theme toggle =====
-    function initTheme() {
-      const savedTheme = localStorage.getItem('theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      updateThemeIcon(savedTheme);
-    }
-    
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      updateThemeIcon(newTheme);
-    }
-    
-    function updateThemeIcon(theme) {
-      const icon = $('#themeToggle i');
-      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
+function updateProgressUI() {
+  const done = KEYS.filter(k => state.completed.has(k)).length;
+  const pct = Math.round((done/KEYS.length)*100);
+  $('#progressPct').textContent = `${pct}% Complete`;
+  $('#progressFill').style.width = `${pct}%`;
+  $('#progressCount').textContent = `${done} of ${KEYS.length} Modules Completed`;
+  const h = Math.floor(state.timeSpent / 60), m = state.timeSpent % 60;
+  $('#timeSpent').textContent = `Time spent: ${h}h ${m}m`;
 
-    // ===== init =====
-    document.addEventListener('DOMContentLoaded', () => {
-      // Initialize theme
-      initTheme();
-      
-      // Initialize progress
-      restoreCheckboxes();
-      
-      // Event listeners
-      document.addEventListener('keydown', e => { 
-        if (e.key === 'Escape') hideModule(); 
-      });
-      
-      connectBtn.addEventListener('click', connectWallet);
-      $('#refreshBal').addEventListener('click', refreshNative);
-      $('#themeToggle').addEventListener('click', toggleTheme);
-      
-      $('#copyAddr').addEventListener('click', async () => { 
-        try { 
-          await navigator.clipboard.writeText(account || ''); 
-          toast('Address copied', 'copy'); 
-        } catch { 
-          toast('Copy failed', 'exclamation-triangle'); 
-        } 
-      });
-      
-      // Navigation
-      $$('.nav-item').forEach(item => {
-        item.addEventListener('click', () => {
-          $$('.nav-item').forEach(i => i.classList.remove('active'));
-          item.classList.add('active');
-          // Here you would implement section switching
-          toast(`Showing ${item.dataset.target}`, 'eye');
-        });
-      });
-      
-      // Auto-open M1 once
-      if (!localStorage.getItem('__opened_once__')) { 
-        showModule(1); 
-        localStorage.setItem('__opened_once__', '1'); 
-      }
-      
-      // Prepaint provider hint
-      paintWallet();
-      
-      // Wire up Sovereign Self completion checkboxes
-      $$('.sovereign-module .completion-checkbox input').forEach(cb => {
-        const k = cb.getAttribute('data-track'); 
-        cb.checked = state.completed.has(k);
-        cb.addEventListener('change', e => { 
-          if (e.target.checked) state.completed.add(k); 
-          else state.completed.delete(k); 
-          saveProgress(); 
-        });
-      });
+  // Cards: reflect status
+  $$('.modules-grid .module-card').forEach(card => {
+    const key = `awakening-${card.getAttribute('data-module')}`;
+    const ind = $('.status-indicator', card);
+    const txt = $('.status-text', card);
+    ind.classList.remove('completed', 'in-progress');
+    if (state.completed.has(key)) { ind.classList.add('completed'); txt.textContent = 'Completed'; }
+    else if (state.currentModuleKey === key) { ind.classList.add('in-progress'); txt.textContent = 'In Progress'; }
+    else { txt.textContent = 'Not Started'; }
+  });
+
+  // Achievements (non-intrusive toasts)
+  const newA = [];
+  if (done >= 1 && !state.achievements.includes('first-step')) { state.achievements.push('first-step'); newA.push('First Step: Completed your first module!'); }
+  if (done >= 3 && !state.achievements.includes('journey-begun')) { state.achievements.push('journey-begun'); newA.push('Journey Begun: Completed 3 modules!'); }
+  if (done >= 7 && !state.achievements.includes('sovereign-master')) { state.achievements.push('sovereign-master'); newA.push('Sovereign Master: Completed all modules!'); }
+  if (newA.length) { persist(); newA.forEach((msg, i) => setTimeout(() => toast(msg, 'trophy'), 500 + i*600)); }
+
+  // Refresh cert block if visible (uses last-known balances)
+  if (typeof updateCertificateEligibilityUI === 'function') {
+    const courseDone = KEYS.every(k => state.completed.has(k));
+    updateCertificateEligibilityUI({ courseDone });
+  }
+}
+
+function saveProgress(silent=false) {
+  persist();
+  updateProgressUI();
+  if (!silent) toast('Progress saved');
+}
+
+/* ===============================
+   Detail view: content injection
+   =============================== */
+let timeTimer, pageVisible = true;
+function startTimeTracking() {
+  clearInterval(timeTimer);
+  timeTimer = setInterval(() => {
+    if (!pageVisible) return;
+    state.timeSpent++;
+    persist();
+    updateProgressUI();
+  }, 60000);
+}
+function stopTimeTracking() { clearInterval(timeTimer); }
+
+document.addEventListener('visibilitychange', () => { pageVisible = !document.hidden; });
+
+function injectArticle(el) {
+  const title = $('h3', el)?.textContent || 'Module';
+  const theme = $('h4', el)?.textContent?.replace(/^Theme:\s*/,'') || '';
+  $('#detailTitle').textContent = title;
+  $('#detailTheme').textContent = theme;
+
+  const body = $('#detailBody'); body.innerHTML = '';
+  Array.from(el.children).forEach(ch => body.appendChild(ch.cloneNode(true)));
+
+  // Track which awakening module is "current" for card status
+  const idMatch = /module(\d+)/.exec(el.id);
+  state.currentModuleKey = idMatch ? `awakening-${idMatch[1]}` : state.currentModuleKey;
+
+  // Wire completion checkboxes inside detail
+  $$('#detailBody .module-complete input[type="checkbox"]').forEach(cb => {
+    const k = cb.getAttribute('data-track');
+    cb.checked = state.completed.has(k);
+    cb.addEventListener('change', (e) => {
+      if (e.target.checked) state.completed.add(k); else state.completed.delete(k);
+      saveProgress(true);
     });
-  </script>
+  });
+
+  // Wire internal nav buttons (Wealth Codes)
+  $$('#detailBody .nav-button').forEach(b => b.addEventListener('click', () => {
+    const m = /Code\s+(\d+)/i.exec(b.textContent.trim());
+    if (m) showModule('swc'+m[1]);
+  }));
+
+  startTimeTracking();
+}
+
+function showModule(id) {
+  let src;
+  if (/^\d$/.test(String(id))) {
+    src = $(`#courseContent article#module${id}`);
+  } else if (/^swc[1-7]$/.test(String(id))) {
+    src = $(`#courseContent #${id}`);
+  }
+  if (!src) return console.warn('Module not found', id);
+
+  injectArticle(src);
+  $('#moduleDetail').style.display = 'block';
+  $('#backToModules').style.display = 'inline-block';
+  $('#moduleDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  updateProgressUI();
+}
+
+function hideModule() {
+  $('#moduleDetail').style.display = 'none';
+  $('#backToModules').style.display = 'none';
+  state.currentModuleKey = null;
+  stopTimeTracking();
+  updateProgressUI();
+}
+
+function restoreCheckboxes() {
+  $$('#courseContent .module-complete input[type="checkbox"]').forEach(cb => {
+    const k = cb.getAttribute('data-track');
+    cb.checked = state.completed.has(k);
+  });
+}
+
+/* =======================================
+   Sovereign Self module navigation (SV)
+   ======================================= */
+function showSovereignModule(id) {
+  $$('.sovereign-module').forEach(m => m.style.display = 'none');
+  const node = $(`#${id}`);
+  if (node) { node.style.display = 'block'; node.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  $$('.nav-button').forEach(b => b.classList.remove('active'));
+  const btn = $(`.nav-button[onclick="showSovereignModule('${id}')"]`);
+  if (btn) btn.classList.add('active');
+}
+// sync SV completion
+function wireSovereignCheckboxes() {
+  $$('.sovereign-module .completion-checkbox input').forEach(cb => {
+    const k = cb.getAttribute('data-track');
+    cb.checked = state.completed.has(k);
+    cb.addEventListener('change', (e) => {
+      if (e.target.checked) state.completed.add(k); else state.completed.delete(k);
+      saveProgress(true);
+    });
+  });
+}
+
+/* ===============================
+   Sections (nav real switching)
+   =============================== */
+function showSection(target) {
+  // You can later add actual containers per section; for now we highlight and scroll
+  $$('.main-nav .nav-item').forEach(i => i.classList.remove('active'));
+  $(`.main-nav .nav-item[data-target="${target}"]`)?.classList.add('active');
+  // Optionally route to anchors or focus key blocks:
+  if (target === 'progress') $('.progress-container')?.scrollIntoView({ behavior: 'smooth' });
+  if (target === 'modules') $('#modulesGrid')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ===============================
+   Wallet / Gate (BNB + dual tokens)
+   =============================== */
+const EXPECTED_CHAIN = '0x38'; // BNB Smart Chain
+
+const CHAIN_NAMES = {
+  '0x1': 'Ethereum','0xaa36a7': 'Sepolia','0x89': 'Polygon','0xa4b1': 'Arbitrum','0xa': 'Optimism','0x38': 'BNB'
+};
+const NATIVE_SYMBOL = { '0x1':'ETH','0xaa36a7':'ETH','0x89':'MATIC','0xa4b1':'ETH','0xa':'ETH','0x38':'BNB' };
+
+const CONFIG = {
+  ENABLE_GATE: true,
+  TOKENS: {
+    KLY: { address: '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52', min: 500 },
+    SOL: { address: '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026', min: 1 } // SólCoin
+  },
+  ERC20_ABI: [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+  ]
+};
+
+let provider, signer, account, chainId, listenersWired=false;
+
+const connectBtn = $('#connectBtn'),
+      provChip = $('#provChip'),
+      addrChip = $('#addrChip'),
+      chainChip = $('#chainChip'),
+      balChip  = $('#balChip'),
+      gateChip = $('#gateChip');
+
+function paintWallet() {
+  const hasEth = !!window.ethereum;
+  provChip.style.display = hasEth ? 'none' : 'inline-flex';
+  if (account) {
+    $('#addrShort').textContent = shortAddr(account);
+    $('#chainName').textContent = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
+    addrChip.style.display = 'inline-flex'; addrChip.classList.add('ok');
+    chainChip.style.display = 'inline-flex';
+    balChip.style.display = 'inline-flex';
+    connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
+    connectBtn.disabled = true;
+  } else {
+    addrChip.style.display = 'none'; chainChip.style.display = 'none'; balChip.style.display = 'none';
+    gateChip.style.display = 'none';
+    connectBtn.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    connectBtn.disabled = false;
+  }
+}
+
+async function ensureExpectedChain() {
+  if (!window.ethereum) return false;
+  if (chainId === EXPECTED_CHAIN) return true;
+  try {
+    await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: EXPECTED_CHAIN }] });
+    return true;
+  } catch (err) {
+    if (err?.code === 4902) {
+      try {
+        await ethereum.request({
+          method:'wallet_addEthereumChain',
+          params:[{
+            chainId: EXPECTED_CHAIN,
+            chainName: 'BNB Smart Chain',
+            nativeCurrency: { name:'BNB', symbol:'BNB', decimals:18 },
+            rpcUrls: ['https://bsc-dataseed.binance.org'],
+            blockExplorerUrls: ['https://bscscan.com']
+          }]
+        });
+        return true;
+      } catch (e) {}
+    }
+    toast('Please switch to BNB Smart Chain', 'triangle-exclamation');
+    return false;
+  }
+}
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    toast('Install MetaMask', 'exclamation-triangle');
+    window.open('https://metamask.io/download','_blank');
+    return;
+  }
+  try {
+    connectBtn.innerHTML = '<span class="loader"></span> Connecting…';
+    const accs = await ethereum.request({ method: 'eth_requestAccounts' });
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    account = accs?.[0] || null;
+    chainId = await ethereum.request({ method: 'eth_chainId' });
+
+    await ensureExpectedChain();
+    chainId = await ethereum.request({ method: 'eth_chainId' });
+
+    paintWallet();
+    await refreshNative();
+    if (CONFIG.ENABLE_GATE) await checkGate();
+
+    if (!listenersWired) {
+      ethereum.on('accountsChanged', async (a) => {
+        account = a?.[0] || null;
+        paintWallet();
+        await refreshNative();
+        if (CONFIG.ENABLE_GATE) await checkGate();
+      });
+      ethereum.on('chainChanged', async (cid) => {
+        chainId = cid;
+        await ensureExpectedChain();
+        chainId = await ethereum.request({ method:'eth_chainId' });
+        paintWallet();
+        await refreshNative();
+        if (CONFIG.ENABLE_GATE) await checkGate();
+      });
+      listenersWired = true;
+    }
+    connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
+  } catch (e) {
+    console.error(e);
+    connectBtn.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    toast('Wallet connection failed', 'exclamation-triangle');
+  }
+}
+
+async function refreshNative() {
+  if (!provider || !account) return;
+  try {
+    $('#refreshBal').innerHTML = '<span class="loader"></span>';
+    const wei = await provider.getBalance(account);
+    const native = Number(ethers.utils.formatEther(wei));
+    const sym = NATIVE_SYMBOL[chainId] || 'ETH';
+    $('#nativeBal').textContent = `${native.toLocaleString(undefined,{ maximumFractionDigits:6 })} ${sym}`;
+    $('#refreshBal').innerHTML = '<i class="fa-solid fa-rotate"></i>';
+  } catch (e) {
+    console.error(e);
+    $('#refreshBal').innerHTML = '<i class="fa-solid fa-rotate"></i>';
+    toast('Balance update failed', 'exclamation-triangle');
+  }
+}
+
+async function getErc20Balance(addr) {
+  const c = new ethers.Contract(addr, CONFIG.ERC20_ABI, provider);
+  const [raw, dec, sym] = await Promise.all([
+    c.balanceOf(account),
+    c.decimals(),
+    c.symbol().catch(()=> 'TOKEN')
+  ]);
+  const num = Number(ethers.utils.formatUnits(raw, dec));
+  return { num, sym };
+}
+
+async function checkGate() {
+  try {
+    if (!provider || !account) { gateChip.style.display = 'none'; return; }
+    gateChip.style.display = 'inline-flex';
+    $('#gateText').innerHTML = '<span class="loader"></span> Checking access…';
+
+    const [{ num:kly, sym:klySym }, { num:sol, sym:solSym }] = await Promise.all([
+      getErc20Balance(CONFIG.TOKENS.KLY.address),
+      getErc20Balance(CONFIG.TOKENS.SOL.address)
+    ]);
+
+    const klyOk = kly >= CONFIG.TOKENS.KLY.min;
+    const solOk = sol >= CONFIG.TOKENS.SOL.min;
+    const pretty = (n) => n < 1000 ? n.toFixed(2) : Math.round(n).toString();
+
+    if (klyOk && solOk) {
+      $('#gateText').innerHTML = `✅ ${pretty(kly)} ${klySym} & ${pretty(sol)} ${solSym} — Access Granted`;
+      gateChip.classList.add('ok');
+    } else {
+      const need = [
+        klyOk ? '' : `Need ${CONFIG.TOKENS.KLY.min}+ ${klySym}`,
+        solOk ? '' : `Need ${CONFIG.TOKENS.SOL.min}+ ${solSym}`
+      ].filter(Boolean).join(' • ');
+      $('#gateText').innerHTML = `❌ ${pretty(kly)} ${klySym} • ${pretty(sol)} ${solSym} — ${need}`;
+      gateChip.classList.remove('ok');
+    }
+
+    // Certificate panel sync
+    if (typeof updateCertificateEligibilityUI === 'function') {
+      const courseDone = KEYS.every(k => state.completed.has(k));
+      updateCertificateEligibilityUI({ kly, sol, klySym, solSym, courseDone });
+    }
+  } catch (e) {
+    console.error(e);
+    $('#gateText').innerHTML = 'Error checking tokens';
+    gateChip.classList.remove('ok');
+  }
+}
+
+/* ===============================
+   Certificate eligibility block
+   =============================== */
+function updateCertificateEligibilityUI({ kly, sol, klySym='KLY', solSym='SOL', courseDone }) {
+  if ($('#courseStatus')) $('#courseStatus').textContent = courseDone ? '✅ Completed' : '❌ Incomplete';
+  if (typeof kly === 'number') $('#klyStatus').textContent = `${kly.toFixed(2)} ${klySym}`;
+  if (typeof sol === 'number') $('#solStatus').textContent = `${sol.toFixed(2)} ${solSym}`;
+  const eligible = courseDone &&
+    (typeof kly === 'number' ? kly >= CONFIG.TOKENS.KLY.min : true) &&
+    (typeof sol === 'number' ? sol >= CONFIG.TOKENS.SOL.min : true);
+  if ($('#mintCertificateBtn')) $('#mintCertificateBtn').disabled = !eligible;
+  if ($('#certMintStatus')) $('#certMintStatus').textContent = eligible ? 'Eligible' : 'Not eligible yet';
+}
+
+/* ===============================
+   Init
+   =============================== */
+document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
+  restoreCheckboxes();
+  wireSovereignCheckboxes();
+  updateProgressUI();
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideModule(); });
+  $('#themeToggle').addEventListener('click', toggleTheme);
+  $('#refreshBal').addEventListener('click', refreshNative);
+  $('#copyAddr').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(account || ''); toast('Address copied', 'copy'); }
+    catch { toast('Copy failed', 'exclamation-triangle'); }
+  });
+  connectBtn.addEventListener('click', connectWallet);
+
+  // Real section switching (no more fake toasts)
+  $$('.nav-item').forEach(item => item.addEventListener('click', () => showSection(item.dataset.target)));
+
+  // Auto-open Module 1 once for a guided start
+  if (!localStorage.getItem('__opened_once__')) {
+    await raf(() => showModule(1));
+    localStorage.setItem('__opened_once__', '1');
+  }
+
+  // Paint wallet chips at rest
+  paintWallet();
+});
+
+// Expose minimal globals used by markup
+window.showModule = showModule;
+window.hideModule = hideModule;
+window.showSovereignModule = showSovereignModule;
+</script>
 </body>
 </html>
