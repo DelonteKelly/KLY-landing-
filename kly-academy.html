@@ -127,6 +127,57 @@
     .toast.good{border-left-color:var(--lime)}
     .toast.bad{border-left-color:var(--danger)}
     .toast.warn{border-left-color:var(--sun)}
+/* --- Mobile polish + safe-area fixes (paste below your current styles) --- */
+
+/* prevent notch overlap for the sticky topbar */
+.topbar{ padding-top: env(safe-area-inset-top); }
+
+/* toast: respect safe-area, sensible width, easy tap targets */
+.toast{
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-width: min(92vw, 520px);
+  touch-action: pan-y; /* enable swipe-down to dismiss (JS handles actual hide) */
+}
+
+/* compact layout for small phones */
+@media (max-width: 680px){
+  .container{ padding:14px; }
+
+  /* topbar + chips/buttons shrink a bit */
+  .topbar-inner{ padding:12px 14px; gap:10px; }
+  .brand .text{ font-size:14px; letter-spacing:.4px; }
+  .chip{ padding:6px 10px; font-size:12px }
+  .btn{ padding:8px 12px; border-radius:10px; }
+
+  /* hero */
+  h1{ font-size:28px; line-height:1.15; }
+  .grid-hero{ gap:12px; margin-top:14px; }
+  .card{ padding:16px; border-radius:14px; }
+  .mini{ grid-template-columns:1fr; gap:10px; }
+  .stat{ padding:10px; gap:8px }
+
+  /* KPI ring smaller */
+  .ring{ --size:72px; }
+
+  /* main grid collapses */
+  .grid-main{ grid-template-columns:1fr; gap:12px; margin-top:12px; }
+
+  /* sidebar/menu + lesson blocks tighten */
+  .menu button{ padding:10px; }
+  .num{ width:32px; height:32px; }
+  .acc-sum{ padding:12px; }
+  .acc-body{ padding:0 12px 12px; }
+  .two{ grid-template-columns:1fr; } /* stack two-column sections */
+}
+
+/* optional: show toast at top under header (uncomment to use) */
+/*
+.toast{
+  top: calc(16px + env(safe-area-inset-top));
+  bottom: auto;
+}
+*/
   </style>
 </head>
 <body>
@@ -467,7 +518,7 @@ function updateProgress(){
 }
 
 /* ==============================
-   TOAST
+   TOAST (auto-hide, tap/swipe dismiss)
 ============================== */
 function notify(title, msg, kind="info", icon="fa-circle-info"){
   toastTitle.textContent = title; toastMsg.textContent = msg;
@@ -476,10 +527,37 @@ function notify(title, msg, kind="info", icon="fa-circle-info"){
   if(kind==="good") toast.classList.add("good");
   else if(kind==="bad") toast.classList.add("bad");
   else if(kind==="warn") toast.classList.add("warn");
+
   toast.hidden = false;
-  clearTimeout(notify._t); notify._t = setTimeout(()=>toast.hidden=true, 4200);
+
+  // clear any previous timer and schedule a new one
+  if(notify._timer) clearTimeout(notify._timer);
+  notify._timer = setTimeout(hideToast, 4200);
+
+  // fallback in case timers are throttled (mobile browsers)
+  if(notify._raf) cancelAnimationFrame(notify._raf);
+  const start = performance.now();
+  (function loop(t){
+    if(t - start > 4500) { hideToast(); return; }
+    notify._raf = requestAnimationFrame(loop);
+  })(start);
 }
-function hideToast(){ toast.hidden = true; }
+
+// tap X button
+function hideToast(){ 
+  toast.hidden = true; 
+  if(notify._timer) clearTimeout(notify._timer);
+  if(notify._raf) cancelAnimationFrame(notify._raf);
+}
+
+// swipe down to dismiss (mobile)
+let _touchY=null;
+toast.addEventListener('touchstart', e=>{ _touchY = e.touches[0].clientY; }, {passive:true});
+toast.addEventListener('touchmove', e=>{
+  if(_touchY==null) return;
+  const dy = e.touches[0].clientY - _touchY;
+  if(dy > 24) hideToast();
+}, {passive:true});
 
 /* ==============================
    WEB3
@@ -493,68 +571,155 @@ async function initWeb3Modal(){
   };
   web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions, theme:"dark" });
 }
-async function connect(){
-  try{
-    btnConnect.disabled=true; btnConnect.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
-    const instance = await web3Modal.connect();
-    provider = new ethers.providers.Web3Provider(instance, "any");
-    signer = provider.getSigner(); account = await signer.getAddress();
+/* ---------- FIXED CONNECT / AFTERCONNECT / DISCONNECT ---------- */
 
-    // Network check/switch
-    const net = await provider.getNetwork();
+let walletInstance = null; // keep a handle so we can remove listeners / clear cache
+
+function setConnectUI(state){
+  // state: 'idle' | 'connecting' | 'connected'
+  if(state === 'connecting'){
+    btnConnect.disabled = true;
+    btnConnect.hidden = false;            // ensure it's visible while connecting
+    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
+  }else if(state === 'connected'){
+    btnConnect.disabled = false;
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    btnConnect.hidden = true;             // hide after success
+    btnDisconnect.hidden = false;
+    pillAddr.hidden = false;
+  }else{ // idle
+    btnConnect.disabled = false;
+    btnConnect.hidden = false;
+    btnDisconnect.hidden = true;
+    pillAddr.hidden = true;
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+  }
+}
+
+// small helper so toasts never get stuck
+function notifyAuto(title, msg, kind="info", icon="fa-circle-info"){
+  notify(title, msg, kind, icon);
+  clearTimeout(notifyAuto._t);
+  notifyAuto._t = setTimeout(()=>hideToast(), 4200);
+}
+
+async function connect(){
+  setConnectUI('connecting');
+
+  try{
+    // init/connect
+    walletInstance = await web3Modal.connect();
+    // de-dupe any previous listeners to avoid multiple afterConnect calls
+    walletInstance.removeAllListeners?.();
+
+    provider = new ethers.providers.Web3Provider(walletInstance, "any");
+    await provider.send("eth_requestAccounts", []); // iOS/WalletConnect reliability
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+
+    // ensure chain is BSC; if switched/added, rebuild provider+signer
+    const net = await provider.getNetwork().catch(()=>({ chainId: 0 }));
     if(net.chainId !== BSC.idDec){
-      try{ await instance.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BSC.idHex }] }); }
-      catch(e){
-        if(e?.code===4902){
-          await instance.request({ method:"wallet_addEthereumChain", params:[{
-            chainId:BSC.idHex, chainName:BSC.name, nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
+      try{
+        await walletInstance.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BSC.idHex }] });
+      }catch(e){
+        if(e?.code === 4902){
+          await walletInstance.request({ method:"wallet_addEthereumChain", params:[{
+            chainId:BSC.idHex, chainName:BSC.name,
+            nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
             rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
-          }]});
+          }] });
+        }else{
+          throw e; // bubble other errors
         }
       }
+      // chain changed → recreate provider/signer to avoid stale refs
+      provider = new ethers.providers.Web3Provider(walletInstance, "any");
+      signer = provider.getSigner();
+      account = await signer.getAddress();
     }
 
-    instance.on?.("accountsChanged", accs => { if(!accs?.length) return disconnect(); account = accs[0]; afterConnect(); });
-    instance.on?.("chainChanged", afterConnect);
-    instance.on?.("disconnect", disconnect);
+    // listeners (single set thanks to removeAllListeners above)
+    walletInstance.on?.("accountsChanged", async (accs)=>{
+      if(!accs?.length) return disconnect();
+      account = accs[0];
+      await afterConnect();               // refresh UI/balances
+    });
+    walletInstance.on?.("chainChanged", async ()=>{
+      provider = new ethers.providers.Web3Provider(walletInstance, "any");
+      signer   = provider.getSigner();
+      account  = await signer.getAddress().catch(()=>account);
+      await afterConnect();
+    });
+    walletInstance.on?.("disconnect", ()=> disconnect());
 
-    await afterConnect();
+    await afterConnect();                  // final UI + balance
+    setConnectUI('connected');             // hide connect button, show address
   }catch(err){
-    notify("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
-    btnConnect.disabled=false; btnConnect.innerHTML='<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    console.error('[connect] failed:', err);
+    notifyAuto("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
+    setConnectUI('idle');
   }
 }
+
 async function afterConnect(){
-  const short = `${account.slice(0,6)}…${account.slice(-4)}`;
-  addrShort.textContent = short; addrFull.textContent = account; avatar.textContent = account.slice(2,4).toUpperCase();
-  pillAddr.hidden=false; btnDisconnect.hidden=false; btnConnect.hidden=true;
-  netNameEl.textContent = BSC.name;
-
   try{
+    if(!provider || !signer || !account) throw new Error('Missing provider/signer/account');
+
+    // top/right UI
+    const short = `${account.slice(0,6)}…${account.slice(-4)}`;
+    addrShort.textContent = short;
+    addrFull.textContent  = account;
+    avatar.textContent    = account.slice(2,4).toUpperCase();
+    netNameEl.textContent = BSC.name;
+
+    // read KLY balance
     const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals()]);
+    const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals().catch(()=>18)]);
     const bal = Number(ethers.utils.formatUnits(raw, dec));
-    klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{maximumFractionDigits:4})} KLY`;
+    klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
+
+    // progress ring & gate
     const p = Math.min(100, Math.round((Math.min(bal, 100) / 100) * 100));
-    ring.style.setProperty("--p", p + "%"); ring.setAttribute("data-label", p + "%");
-    if(bal >= 100){ notify("Access Granted","You have enough KLY to unlock content.","good","fa-unlock"); }
-    else { notify("Access Locked","Need ≥ 100 KLY. Use PancakeSwap to acquire.","warn","fa-lock"); }
+    ring.style.setProperty("--p", p + "%");
+    ring.setAttribute("data-label", p + "%");
+
+    if(bal >= 100){
+      notifyAuto("Access Granted", "You have enough KLY to unlock content.", "good", "fa-unlock");
+    }else{
+      notifyAuto("Access Locked", "Need ≥ 100 KLY. Use PancakeSwap to acquire.", "warn", "fa-lock");
+    }
+
+    updateProgress();
   }catch(e){
-    notify("Read Error","Could not read KLY balance.","bad","fa-bug");
+    console.error('[afterConnect] error:', e);
+    notifyAuto("Read Error","Could not read KLY balance.","bad","fa-bug");
   }
-
-  // restore
-  updateProgress();
 }
+
 async function disconnect(){
-  try{ await web3Modal?.clearCachedProvider?.(); }catch{}
-  provider = signer = account = null;
-  btnConnect.hidden=false; btnDisconnect.hidden=true; pillAddr.hidden=true;
-  addrFull.textContent="Not connected"; avatar.textContent="KA";
-  btnConnect.disabled=false; btnConnect.innerHTML='<i class="fa-solid fa-wallet"></i> Connect Wallet';
-  notify("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
-}
+  try{
+    // some wallets expose disconnect, others don't
+    await walletInstance?.disconnect?.();
+  }catch{}
+  try{
+    await web3Modal?.clearCachedProvider?.();
+  }catch{}
 
+  walletInstance = null;
+  provider = signer = account = null;
+
+  // reset UI
+  addrFull.textContent = "Not connected";
+  avatar.textContent   = "KA";
+  netNameEl.textContent= "Not connected";
+  klyBalanceEl.textContent = "—";
+  ring.style.setProperty("--p", "0%");
+  ring.setAttribute("data-label", "0%");
+
+  setConnectUI('idle');
+  notifyAuto("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
+}
 /* ==============================
    MINT
 ============================== */
