@@ -52,8 +52,8 @@
     *{animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important}
   }
 
-  /* Layout */
-  .shell{display:grid; grid-template-rows:auto 1fr; min-height:100vh}
+  /* Global shells */
+  .shell{display:grid; grid-template-rows:auto 1fr auto; min-height:100vh}
   .top{
     position:sticky; top:0; z-index:50; backdrop-filter:blur(10px) saturate(1.05);
     background:linear-gradient(180deg, rgba(7,10,18,.9), rgba(7,10,18,.65));
@@ -65,28 +65,66 @@
   .brand i{color:var(--cyn); filter:drop-shadow(0 0 10px rgba(122,233,255,.6))}
   .brand-title{font-family:"Space Grotesk"; font-weight:800; letter-spacing:.4px}
   .rchip{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; border:1px solid var(--line); color:#cfe2ff; background:var(--glass)}
+
+  /* Buttons with animated gradient motion */
   .btn{
-    border:1px solid var(--line); color:var(--ink); background:linear-gradient(90deg, rgba(122,233,255,.18), rgba(141,123,255,.18));
+    --grad-x:0%;
+    border:1px solid var(--line); color:var(--ink);
+    background:linear-gradient(90deg, rgba(122,233,255,.18), rgba(141,123,255,.18));
     padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:10px;
-    box-shadow:0 0 0 1px rgba(122,233,255,.12); transition:transform var(--time) var(--ease), box-shadow var(--time);
+    box-shadow:0 0 0 1px rgba(122,233,255,.12);
+    transition:transform var(--time) var(--ease), box-shadow var(--time), background-position .6s var(--ease);
+    background-size:200% 100%; background-position:var(--grad-x) 50%;
   }
-  .btn:hover{transform:translateY(-1px); box-shadow:0 0 0 1px rgba(141,123,255,.2)}
+  .btn:hover{transform:translateY(-1px); box-shadow:0 0 0 1px rgba(141,123,255,.2); --grad-x:100%}
   .btn-ghost{background:transparent}
+
   .addr{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
   .hide{display:none!important}
 
-  /* Main grid */
+  /* HERO — cinematic landing */
+  .hero{
+    position:relative; overflow:hidden;
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(1200px 800px at 10% -5%, rgba(122,233,255,.12), transparent 60%),
+      radial-gradient(1200px 800px at 90% -10%, rgba(141,123,255,.12), transparent 60%);
+  }
+  .hero-wrap{max-width:1150px; margin:0 auto; padding:56px 18px 32px}
+  .hero-grid{display:grid; grid-template-columns:1.2fr .8fr; gap:22px; align-items:center}
+  @media (max-width:980px){ .hero-grid{grid-template-columns:1fr} }
+  .hero-title{font-family:"Space Grotesk"; font-weight:800; letter-spacing:.4px; font-size:clamp(28px, 5vw, 48px); line-height:1.06; margin:0 0 10px}
+  .hero-sub{color:var(--muted); margin:0 0 16px}
+  .hero-cta{display:flex; gap:10px; flex-wrap:wrap}
+  .hero-card{background:linear-gradient(180deg, var(--glass2), rgba(255,255,255,.03)); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:var(--shadow)}
+  .callouts{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px}
+  @media (max-width:780px){ .callouts{grid-template-columns:1fr} }
+  .aurora-waves{
+    position:absolute; inset:-20% -10% auto -10%; height:180px; pointer-events:none; opacity:.55;
+    background:linear-gradient(90deg, rgba(122,233,255,.25), rgba(141,123,255,.2), rgba(255,119,225,.18));
+    filter:blur(24px);
+    animation:wave 9s var(--ease) infinite alternate;
+  }
+  @keyframes wave{
+    0%{transform:translateY(0) skewX(-5deg)}
+    100%{transform:translateY(-20px) skewX(5deg)}
+  }
+  /* Particle canvas (subtle) */
+  #auroraParticles{position:absolute; inset:0; z-index:0; opacity:.25}
+
+  /* MAIN LAYOUT */
   .main{display:grid; grid-template-columns:280px 1fr 320px; gap:18px; padding:18px}
   @media (max-width:1100px){ .main{grid-template-columns:1fr} }
 
   /* Panels */
   .panel{
+    position:relative;
     background:linear-gradient(180deg, var(--glass2), rgba(255,255,255,.03));
     border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px;
   }
   .panel h3{margin:0 0 10px}
 
-  /* Sidebar (left) */
+  /* Sidebar */
   .profile{display:flex; align-items:center; gap:12px; padding-bottom:12px; border-bottom:1px dashed var(--line); margin-bottom:12px}
   .avatar{width:48px; height:48px; border-radius:50%; display:grid; place-items:center; font-weight:800;
     background:
@@ -105,7 +143,7 @@
   }
   .tag{margin-left:auto; background:linear-gradient(90deg, var(--mint), var(--cyn)); color:#06101a; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800}
 
-  /* Center: curriculum + detail */
+  /* Center */
   .searchbar{display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.06); border:1px solid var(--line); padding:8px 12px; border-radius:999px}
   .searchbar input{flex:1; background:transparent; border:0; color:var(--ink); outline:none}
   .filter-row{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 6px}
@@ -115,14 +153,26 @@
   .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:14px}
   .card{
     background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-    border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; position:relative;
+    border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; position:relative; overflow:hidden;
   }
   .card:hover{border-color:rgba(141,123,255,.5)}
-  .card.lock{opacity:.55}
+  .card.lock{opacity:.85}
   .row{display:flex; justify-content:space-between; align-items:center; gap:10px}
   .muted{color:var(--muted)}
   .progress{height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden}
-  .progress > span{display:block; height:100%; background:linear-gradient(90deg, var(--cyn), #b0a8ff, var(--pnk)); width:0%}
+  .progress > span{display:block; height:100%; background:linear-gradient(90deg, var(--cyn), #b0a8ff, var(--pnk)); width:0%; transition:width .5s var(--ease)}
+
+  /* Lock overlay + preview */
+  .lock-overlay{
+    position:absolute; inset:0; display:grid; place-items:center;
+    background:linear-gradient(180deg, rgba(7,10,18,.4), rgba(7,10,18,.65));
+    backdrop-filter:blur(2px);
+  }
+  .lock-box{
+    display:flex; flex-direction:column; gap:8px; align-items:center; text-align:center;
+    background:rgba(255,255,255,.06); border:1px dashed var(--line); padding:12px; border-radius:12px;
+  }
+  .preview-snippet{max-height:64px; overflow:hidden; mask-image:linear-gradient(180deg, #000 60%, transparent); font-size:13px}
 
   .detail{margin-top:12px; border:1px solid var(--line); border-radius:var(--radius); padding:18px; display:none}
   .detail.show{display:block}
@@ -130,12 +180,12 @@
   .pill.ready{border-color:rgba(105,255,180,.4); color:#c4ffe3}
   .lesson{background:rgba(122,233,255,.08); border-left:3px solid var(--cyn); padding:12px; border-radius:0 10px 10px 0; margin:10px 0}
 
-  /* Right: gate + certificate */
+  /* Right column: gate + cert */
   .ring{--p:0; --size:88px; width:var(--size); height:var(--size); border-radius:50%;
     background:
       radial-gradient(closest-side,#0000 78%,#0000 0 99%,#0000 0),
       conic-gradient(var(--mint) var(--p), #23273a 0);
-    position:relative;
+    position:relative; transition:background .6s var(--ease);
   }
   .ring::before{
     content:attr(data-label); position:absolute; inset:8px; border-radius:50%; display:grid; place-items:center; color:#a8f9ff;
@@ -153,7 +203,20 @@
   .x{background:transparent; border:0; color:var(--ink); cursor:pointer}
   .x:hover{color:var(--red)}
 
-  /* Mobile */
+  /* Conversion sections */
+  .section{padding:24px 18px; border-top:1px solid var(--line)}
+  .faq dt{font-weight:800; margin-top:12px}
+  .faq dd{margin:6px 0 12px; color:var(--muted)}
+  .testis{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px}
+  .quote{border:1px solid var(--line); border-radius:12px; padding:14px; background:rgba(255,255,255,.04)}
+  .pricing{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px}
+  .price-card{border:1px solid var(--line); border-radius:14px; padding:16px; background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02))}
+  .price{font-size:28px; font-weight:800}
+
+  /* Footer */
+  footer{border-top:1px solid var(--line); padding:16px 18px; color:var(--muted); text-align:center}
+
+  /* Mobile nudges */
   @media (max-width:860px){
     .topbar{gap:8px}
     .rchip.hide-sm{display:none}
@@ -175,14 +238,52 @@
       </div>
       <div style="display:flex; gap:10px; align-items:center">
         <span id="chip-progress" class="rchip hide-sm"><i class="fa-solid fa-chart-simple"></i><span id="chip-text">0/21 Complete</span></span>
+        <span id="xp-chip" class="rchip hide-sm"><i class="fa-solid fa-bolt"></i><span id="xp-text">0 XP</span></span>
         <button id="btn-connect" class="btn"><i class="fa-solid fa-wallet"></i> Connect</button>
         <span id="addr-chip" class="rchip addr hide" aria-live="polite"><i class="fa-solid fa-user-astronaut"></i><span id="addr-short">0x…</span></span>
       </div>
     </div>
   </header>
 
+  <!-- 🔮 HERO / LANDING -->
+  <section class="hero" id="hero">
+    <canvas id="auroraParticles" aria-hidden="true"></canvas>
+    <div class="aurora-waves"></div>
+    <div class="hero-wrap">
+      <div class="hero-grid">
+        <div>
+          <h1 class="hero-title">Reclaim Your Authority.<br/>Live Sovereign.</h1>
+          <p class="hero-sub">
+            Sovereignty Mastery is a token-gated path into inner authority, aligned decision-making, and embodied leadership.
+            Web3 access proves ownership and unlocks the Sovereign track when you hold the required tokens.
+          </p>
+          <div class="hero-cta">
+            <button id="hero-connect" class="btn"><i class="fa-solid fa-plug-circle-bolt"></i> Connect Wallet & Begin</button>
+            <a href="#dashboard" class="btn btn-ghost"><i class="fa-regular fa-circle-play"></i> Preview the Curriculum</a>
+          </div>
+          <div class="callouts">
+            <div class="hero-card"><strong>Why Web3?</strong><div class="muted">Ownership, portability, and on-chain proof of progress.</div></div>
+            <div class="hero-card"><strong>Gate Logic</strong><div class="muted">Hold tokens → unlock Sovereign modules.</div></div>
+            <div class="hero-card"><strong>On-chain Certificate</strong><div class="muted">Mint an ERC-721 NFT when complete.</div></div>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <strong>Access Status</strong>
+            <div class="ring" id="hero-ring" data-label="0%"></div>
+          </div>
+          <p id="hero-msg" class="muted" style="margin:8px 0 0">Connect wallet to explore Sovereignty Mastery.</p>
+          <div style="display:flex; gap:8px; margin-top:10px">
+            <span class="rchip"><i class="fa-solid fa-coins"></i> Required: <strong style="margin-left:6px" id="req-tokens">5</strong></span>
+            <span class="rchip"><i class="fa-solid fa-shield"></i> Chain: BNB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- MAIN -->
-  <div class="wrap main">
+  <div class="wrap main" id="dashboard">
 
     <!-- LEFT: SIDEBAR -->
     <aside class="panel" aria-label="Navigation">
@@ -253,6 +354,16 @@
               <div class="progress"><span id="bar-sov"></span></div>
               <div class="muted"><span id="done-sov">0</span>/<span id="count-sov">0</span></div>
             </div>
+
+            <!-- 📊 Gamification cards -->
+            <div class="card">
+              <div class="row"><strong>XP</strong><span class="pill" id="pill-xp">0</span></div>
+              <div class="muted">Earn +50 XP per module completion. <span id="streak-text" class="pill" style="margin-left:6px">Streak: 0</span></div>
+            </div>
+            <div class="card">
+              <div class="row"><strong>Rank</strong><span class="pill" id="pill-rank">—</span></div>
+              <div class="muted" id="rank-desc">Complete more to boost your rank.</div>
+            </div>
           </div>
           <div id="grid-progress" class="grid" style="margin-top:12px"></div>
         </section>
@@ -277,9 +388,9 @@
             <div class="badge" id="detail-num">1</div>
             <h3 id="detail-title" style="margin:0">Module</h3>
           </div>
-          <span class="pill" id="detail-area">Area</span>
-          <span class="pill" id="detail-status">Not Started</span>
-          <span class="pill" id="detail-theme">Theme</span>
+        <span class="pill" id="detail-area">Area</span>
+        <span class="pill" id="detail-status">Not Started</span>
+        <span class="pill" id="detail-theme">Theme</span>
         </div>
         <div id="detail-body" style="margin-top:8px"></div>
         <div class="row" style="gap:8px; flex-wrap:wrap; margin-top:10px">
@@ -298,7 +409,7 @@
         <h3 style="margin:0">Access Gate</h3>
         <div class="ring" id="ring" data-label="0%"></div>
       </div>
-      <p class="muted" id="gate-note">Hold <strong>5</strong> <span id="tokenSymbol">TOKEN</span> on BNB Chain to unlock the Sovereign track.</p>
+      <p class="muted" id="gate-note">Connect wallet to explore Sovereignty Mastery.</p>
       <div class="card">
         <div class="row">
           <div style="display:flex; gap:10px; align-items:center">
@@ -315,9 +426,57 @@
       <div class="row" style="margin:6px 0"><span class="muted">Progress</span><strong id="cert-progress">0 / 21</strong></div>
       <button class="btn" id="btn-mint" disabled><i class="fa-solid fa-certificate"></i> Mint Certificate</button>
       <div id="mint-status" class="muted" style="margin-top:8px"></div>
+
+      <!-- Metadata preview -->
+      <div id="nft-preview" class="card" style="margin-top:12px; display:none">
+        <div class="row"><strong>Certificate Preview</strong><span class="pill" id="nft-edition">Edition —</span></div>
+        <div class="muted" id="nft-name">—</div>
+        <div class="muted" id="nft-attrs" style="margin-top:6px">Attributes: —</div>
+        <div id="share-wrap" style="margin-top:10px; display:none">
+          <a id="share-x" class="btn btn-ghost" target="_blank" rel="noopener"><i class="fa-brands fa-x-twitter"></i> Share on X</a>
+        </div>
+      </div>
     </aside>
 
   </div>
+
+  <!-- 🔗 Conversion Sections -->
+  <section class="section wrap">
+    <h3>FAQ</h3>
+    <dl class="faq">
+      <dt>What is token-gated access?</dt>
+      <dd>Holding the required tokens unlocks the Sovereign track automatically when your wallet is connected.</dd>
+      <dt>Which chain?</dt>
+      <dd>BNB Smart Chain (BSC). You’ll be prompted to switch or add the network if needed.</dd>
+      <dt>Do I need crypto to learn?</dt>
+      <dd>No. You can preview Core content and locked lesson snippets without tokens.</dd>
+    </dl>
+  </section>
+
+  <section class="section wrap">
+    <h3>What Learners Say</h3>
+    <div class="testis">
+      <blockquote class="quote">“This program gave me language and structure for power I always felt but couldn’t name.” — <strong>Amara</strong></blockquote>
+      <blockquote class="quote">“The daily practices + Web3 proof of progress hit different.” — <strong>Jalen</strong></blockquote>
+      <blockquote class="quote">“Sovereignty finally feels embodied, not theoretical.” — <strong>Rae</strong></blockquote>
+    </div>
+  </section>
+
+  <section class="section wrap">
+    <h3>Access Tiers</h3>
+    <div class="pricing">
+      <div class="price-card">
+        <div class="price">Free</div>
+        <div class="muted">Preview Core lessons, see Sovereign snippets.</div>
+      </div>
+      <div class="price-card">
+        <div class="price">Sovereign</div>
+        <div class="muted">Hold required tokens to unlock all modules + on-chain certificate.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>© Sovereignty Mastery — Built with love & Web3 ✨</footer>
 </div>
 
 <!-- Modal -->
@@ -333,19 +492,24 @@
 
 <script>
 /* =========================
-   CONFIG — TOKEN GATE
+   CONFIG — TOKEN GATE + NFT
 ========================= */
-const TOKEN_ADDRESS   = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // <-- set your ERC-20
-const REQUIRED_TOKENS = 5;
-const CHAIN_ID        = 56;  // BNB Smart Chain
-const CHAIN_NAME      = 'BNB Smart Chain';
-const RPC_URL         = 'https://bsc-dataseed.binance.org';
-const ERC20_ABI       = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+const TOKEN_ADDRESS    = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // <-- ERC-20
+const REQUIRED_TOKENS  = 5;
+const CHAIN_ID         = 56;  // BNB Smart Chain
+const CHAIN_NAME       = 'BNB Smart Chain';
+const RPC_URL          = 'https://bsc-dataseed.binance.org';
+
+const NFT_ADDRESS      = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // Thirdweb ERC-721
+// If using Thirdweb-style "mintTo(address, uri)": set TOKEN_URI. Otherwise swap ABI & fn accordingly.
+const TOKEN_URI        = 'ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by'; // Key of Ascension
+const ERC20_ABI        = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+const ERC721_MINT_ABI  = ['function mintTo(address _to, string _uri) payable']; // Thirdweb minimal
 const toHex = (n)=>'0x'+n.toString(16);
 
 /* =========================
    COURSE DATA (Core 7 + Sovereign 14)
-   — content kept compact; extend freely
+   (same base content; snippets added)
 ========================= */
 const COURSE = {
   areas: [
@@ -353,29 +517,36 @@ const COURSE = {
       id:'core', name:'Core Program', description:'7-module path to awakening & embodiment', modules: [
         { id:'1', order:1, title:'Foundations of Self-Awareness', theme:'Becoming the Observer',
           objectives:['Lost-in-thought vs observing thought','Daily mindfulness practices','Journaling for clarity','3-Layer Belief Audit'],
+          preview:`Self-awareness is the doorway. Learn to witness thoughts without getting pulled under.`,
           content:`<h3>Core Concept</h3><p>Self-awareness is the foundation of awakening—stepping out of unconscious streams to observe with clarity and compassion.</p>
                    <div class="lesson"><strong>Practice — Thought Observation</strong><p>Set a 5-minute timer and label thoughts “thinking…” as they arise. Let them pass.</p></div>
                    <h3>Journaling</h3><ul><li>What thoughts keep recurring?</li><li>What emotions am I skipping?</li><li>Where did I operate on autopilot?</li></ul>` },
         { id:'2', order:2, title:'Breaking the Illusion of Ego', theme:'You Are Not Your Story',
           objectives:['Ego vs Essence','Roles & labels','Silent Watcher practice','Ego defenses'],
+          preview:`See through roles and labels. Meet the silent watcher beyond identity.`,
           content:`<h3>Core Concept</h3><p>See through roles and labels; meet the silent watcher beyond narrative identity.</p>
                    <div class="lesson"><strong>Practice — Identity Inventory</strong><p>List identities you wear; ask: “Without this, am I still here?”</p></div>` },
         { id:'3', order:3, title:'Entering the Now', theme:'Presence is Power',
           objectives:['Past/Future fixation','Sensory anchoring','Listening as meditation','Finding the silent gap'],
+          preview:`Anchor attention in breath and senses; reclaim power from past/future loops.`,
           content:`<h3>Core Concept</h3><p>Anchor attention in breath and senses; find the gap between thoughts.</p>
                    <div class="lesson"><strong>Practice — Deep Listening</strong><p>Offer another your full attention; return to pure hearing whenever mind wanders.</p></div>` },
         { id:'4', order:4, title:'Surrender & Emotional Alchemy', theme:'Freedom Through Letting Go',
           objectives:['What surrender is','Somatic flow of emotion','3-Step alchemy','Forgiveness as liberation'],
+          preview:`Transmute emotion by allowing, feeling, and releasing. Freedom is in the letting go.`,
           content:`<h3>Core Concept</h3><p>Transmute emotion by allowing, feeling, and releasing.</p>
                    <div class="lesson"><strong>Practice — Micro-Surrender</strong><p>Choose one irritation today; say a conscious “yes” to it and feel the shift.</p></div>` },
         { id:'5', order:5, title:'The Illusion of Separation', theme:'Remembering Oneness',
           objectives:['Seeing through duality','Relational mirrors','Nature as teacher','Entanglement & connection'],
+          preview:`See the unity behind duality; meet relationships and nature as mirrors.`,
           content:`<h3>Core Concept</h3><p>See the unity behind duality; meet relationships and nature as mirrors.</p>` },
         { id:'6', order:6, title:'Embodied Enlightenment', theme:'Wisdom in Action',
           objectives:['Transcendence → integration','4 pillars of embodiment','Shadow & wholeness','Chop wood, carry water'],
+          preview:`Bring realization into rhythm. Design practices that keep truth alive in motion.`,
           content:`<h3>Core Concept</h3><p>Integrate realization into daily life: design rhythms, embrace shadow, act with presence.</p>` },
         { id:'7', order:7, title:'Living as Awareness', theme:'The Unfolding Mystery',
           objectives:['Form & formlessness','Flow & spontaneity','Gift of impermanence','Beyond seeking'],
+          preview:`Rest as awareness; move with spontaneity and ease.`,
           content:`<h3>Core Concept</h3><p>Rest as awareness; move with spontaneity, impermanence, and effortless action.</p>` }
       ]
     },
@@ -383,46 +554,60 @@ const COURSE = {
       id:'sovereign', name:'The Sovereign Self', description:'14-module journey into inner authority & stewardship', modules: [
         { id:'sv1',order:1, title:'Foundation of Sovereignty', theme:'Understanding Personal Power',
           objectives:['Roots of sovereignty','Where you surrendered authority','Ego vs soul power','Daily practice','Declaration'],
+          preview:`Sovereignty is your birthright: clean authority over thought, emotion, choice, energy.`,
           content:`<h3>Core Concept</h3><p>Sovereignty is your birthright to complete authority over your being—thoughts, emotions, choices, energy.</p>
                    <div class="lesson"><strong>Action:</strong> Reclaim one area within 48 hours.</div>` },
         { id:'sv2',order:2, title:'Boundaries & Energy Protection', theme:'Creating Safe Containers',
           objectives:['Map patterns','Guilt-free limits','Protection techniques','Respond to violations','Context rules'],
+          preview:`Boundaries define where you end & others begin. Craft them without guilt.`,
           content:`<h3>Core Concept</h3><p>Boundaries define where you end & others begin.</p>` },
         { id:'sv3',order:3, title:'Authentic Decision Making', theme:'Listening to Inner Wisdom',
           objectives:['Spot fear patterns','Guidance rituals','Decondition reactivity','Values filters','Act on intuition'],
+          preview:`Aligned choices emerge from values, body wisdom, and intuition.`,
           content:`<h3>Core Concept</h3><p>Aligned choices emerge from values, body wisdom, and intuition.</p>` },
         { id:'sv4',order:4, title:'Sovereign Communication', theme:'Expressing Truth with Power',
           objectives:['Express needs','Active listening','Center conflict','Release blame','Language upgrades'],
+          preview:`Truth + compassion + clarity — without attachment to outcome.`,
           content:`<h3>Core Concept</h3><p>Clarity + compassion + conviction—without attachment to outcome.</p>` },
         { id:'sv5',order:5, title:'Financial Sovereignty', theme:'Wealth as Energy Exchange',
           objectives:['Audit beliefs','Align income','Spend by values','Flow mindset','Systems'],
+          preview:`Shift from scarcity to stewardship; architect systems for freedom.`,
           content:`<h3>Core Concept</h3><p>Shift from scarcity to stewardship; build systems for freedom.</p>` },
         { id:'sv6',order:6, title:'Sovereign Relationships', theme:'Connecting Without Losing Self',
           objectives:['Spot patterns','Self-connection','Mutual respect','Closeness/space','Ask clearly'],
+          preview:`Intimacy with autonomy: presence without enmeshment.`,
           content:`<h3>Core Concept</h3><p>Intimacy with autonomy; presence without enmeshment.</p>` },
         { id:'sv7',order:7, title:'Living as Sovereign Being', theme:'Integration & Mastery',
           objectives:['Daily ritualization','Resilience','Environment design','Aligned default','Intentional creation'],
+          preview:`Make sovereignty your default operating system.`,
           content:`<h3>Core Concept</h3><p>Make sovereignty your default OS.</p>` },
         { id:'sv8',order:8, title:'Lawful Foundations', theme:'Rights, Duties, Jurisdiction',
           objectives:['Rights vs privileges','Jurisdictions','Identity docs','Lawful comms','Records'],
+          preview:`Distinguish frameworks and act accordingly.`,
           content:`<h3>Core Concept</h3><p>Distinguish frameworks and act accordingly.</p>` },
         { id:'sv9',order:9, title:'Status Correction Essentials', theme:'Identity, Notice, Standing',
           objectives:['Map status','Declarations','Timelines','Consistency','Avoid contradictions'],
+          preview:`Clean declarations + consistent conduct.`,
           content:`<h3>Core Concept</h3><p>Clean declarations + consistent conduct.</p>` },
         { id:'sv10',order:10, title:'Affidavits & Notices', theme:'Truth in the Record',
           objectives:['Structure','Facts not fluff','Service','Track responses','Close loop'],
+          preview:`Affidavits are sworn truth; notices create process.`,
           content:`<h3>Core Concept</h3><p>Affidavits are sworn truth; notices create process.</p>` },
         { id:'sv11',order:11, title:'Trusts & PMA', theme:'Private Structures',
           objectives:['Purpose','Roles & duties','Bylaws','Separate capacities','Minutes & records'],
+          preview:`Structure stewardship & community privately.`,
           content:`<h3>Core Concept</h3><p>Structure stewardship & community.</p>` },
         { id:'sv12',order:12, title:'Right to Travel (Education)', theme:'Safety, Notice, Documentation',
           objectives:['ID packet','Calm scripts','Escalation','Recording','Debrief'],
+          preview:`Preparation turns pressure into poise.`,
           content:`<h3>Core Concept</h3><p>Preparation turns pressure into poise.</p>` },
         { id:'sv13',order:13, title:'Commercial Remedies (Education)', theme:'Invoices, Liens, Cures',
           objectives:['Remedy ladder','Notices before claims','Track timelines','Avoid frivolous','Seek counsel'],
+          preview:`Match remedy to facts and forum.`,
           content:`<h3>Core Concept</h3><p>Match remedy to facts and forum.</p>` },
         { id:'sv14',order:14, title:'Record & Publish', theme:'Make it Real in the World',
           objectives:['Choose venues','Organize repos','Consistent formats','Versioning','Cold backups'],
+          preview:`Records are the spine of sovereignty.`,
           content:`<h3>Core Concept</h3><p>Records are the spine of sovereignty.</p>` }
       ]
     }
@@ -430,16 +615,27 @@ const COURSE = {
 };
 
 /* =========================
-   STATE & ELEMENTS
+   STATE, ELEMENTS, STORAGE
 ========================= */
-const $ = (s, r=document)=>r.querySelector(s);
+const $  = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+const STORAGE = {
+  PROGRESS:'sv_progress_v4',
+  OPEN:'sv_open_v1',
+  XP:'sv_xp_v1',
+  STREAK:'sv_streak_v1'
+};
+
+let accessGranted=false, tokenSymbolCached='TOKEN';
+let state={ tab:'overview', filter:'all', search:'', openId:null };
+let web3Modal, extProvider, provider, signer, token, account=null;
 
 const E = {
-  // header
-  btnConnect: $('#btn-connect'),
+  // header + hero
+  btnConnect: $('#btn-connect'), heroConnect: $('#hero-connect'),
   addrChip: $('#addr-chip'), addrShort: $('#addr-short'),
-  chipText: $('#chip-text'),
+  chipText: $('#chip-text'), xpChip: $('#xp-chip'), xpText: $('#xp-text'),
+  heroMsg: $('#hero-msg'), heroRing: $('#hero-ring'), reqTokens: $('#req-tokens'),
   // sidebar
   avatar: $('#avatar'), addrFull: $('#addr-full'),
   btnDisconnect: $('#btn-disconnect'), btnReconnect: $('#btn-reconnect'),
@@ -459,29 +655,33 @@ const E = {
   pillTotal: $('#pill-total'), barTotal: $('#bar-total'), doneTotal: $('#done-total'), countTotal: $('#count-total'),
   pillCore: $('#pill-core'), barCore: $('#bar-core'), doneCore: $('#done-core'), countCore: $('#count-core'),
   pillSov: $('#pill-sov'), barSov: $('#bar-sov'), doneSov: $('#done-sov'), countSov: $('#count-sov'),
+  // gamification
+  pillXP: $('#pill-xp'), streakText: $('#streak-text'), pillRank: $('#pill-rank'), rankDesc: $('#rank-desc'),
   // modal
   modal: $('#modal'), modalClose: $('#modal-close'), modalTitle: $('#modal-title'),
-  modalNum: $('#modal-num'), modalName: $('#modal-name'), modalBody: $('#modal-body')
+  modalNum: $('#modal-num'), modalName: $('#modal-name'), modalBody: $('#modal-body'),
+  // nft preview
+  nftPreview: $('#nft-preview'), nftName: $('#nft-name'), nftAttrs: $('#nft-attrs'), nftEdition: $('#nft-edition'), shareWrap: $('#share-wrap'), shareX: $('#share-x'),
 };
 
-const STORAGE = { PROGRESS:'sv_progress_v3', OPEN:'sv_open_v1' };
-let accessGranted = false;
-let tokenSymbolCached = 'TOKEN';
-let state = { tab:'overview', filter:'all', search:'', openId:null };
+E.reqTokens.textContent = REQUIRED_TOKENS;
 
 /* =========================
    HELPERS
 ========================= */
 function allModules(){ return COURSE.areas.flatMap(a => a.modules.map(m => ({...m, areaId:a.id, areaName:a.name}))); }
-function progressLoad(){ try{return JSON.parse(localStorage.getItem(STORAGE.PROGRESS))||{}}catch{ return {} } }
+function progressLoad(){ try{return JSON.parse(localStorage.getItem(STORAGE.PROGRESS))||{}}catch{return{}} }
 function progressSave(p){ localStorage.setItem(STORAGE.PROGRESS, JSON.stringify(p)); }
 function keyOf(m){ return `${m.areaId}:${m.id}` }
-function progressOf(m){ const p = progressLoad(); return p[keyOf(m)] || {status:'not-started', percent:0} }
+function progressOf(m){ const p=progressLoad(); return p[keyOf(m)]||{status:'not-started', percent:0} }
 function setProgress(m, status){
   const p = progressLoad(); const k = keyOf(m);
   const prev = p[k] || {percent:0};
   p[k] = { status, percent: status==='completed' ? 100 : status==='in-progress' ? Math.max(prev.percent,25) : 0 };
-  progressSave(p); renderAll();
+  progressSave(p);
+  // XP & streak on completion edge
+  if(status==='completed' && prev.percent<100){ addXP(50); tickStreak(); }
+  renderAll();
 }
 function percentCompleted(areaId){
   const mods = allModules().filter(m => !areaId || m.areaId===areaId);
@@ -489,7 +689,24 @@ function percentCompleted(areaId){
   return {done, total:mods.length, pct:mods.length ? Math.round(done/mods.length*100) : 0};
 }
 function gateLocked(areaId){ return areaId==='sovereign' && !accessGranted; }
-function notifyOK(msg){ if(typeof confetti==='function'){ confetti({particleCount:80, spread:60, origin:{y:.85}, colors:["#7ae9ff","#8d7bff","#69ffb4"]}); } console.log(msg); }
+function notifyOK(msg){ if(typeof confetti==='function'){ confetti({particleCount:90, spread:64, origin:{y:.85}, colors:["#7ae9ff","#8d7bff","#69ffb4"]}); } console.log(msg); }
+
+/* XP / Streak */
+function loadXP(){ return Number(localStorage.getItem(STORAGE.XP)||0); }
+function saveXP(v){ localStorage.setItem(STORAGE.XP, String(v)); }
+function addXP(n){ const v=loadXP()+n; saveXP(v); }
+function loadStreak(){ try{return JSON.parse(localStorage.getItem(STORAGE.STREAK))||{count:0,last:''}}catch{return{count:0,last:''}} }
+function saveStreak(s){ localStorage.setItem(STORAGE.STREAK, JSON.stringify(s)); }
+function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function tickStreak(){
+  const s=loadStreak(); const t=todayStr();
+  if(s.last===t) return; // already counted today
+  // simple day diff
+  const last = s.last ? new Date(s.last) : null;
+  const diff = last ? Math.round((new Date(t)-last)/86400000) : null;
+  s.count = diff===1 ? s.count+1 : 1;
+  s.last=t; saveStreak(s);
+}
 
 /* =========================
    RENDER — SIDEBAR & MENUS
@@ -525,7 +742,7 @@ function matchFilters(m){
     f==='completed'? st==='completed' :
     f===m.areaId;
   const s = state.search.trim().toLowerCase();
-  const bySearch = !s || [m.title, m.theme, ...(m.objectives||[])].join(' ').toLowerCase().includes(s);
+  const bySearch = !s || [m.title, m.theme, ...(m.objectives||[]), m.preview||''].join(' ').toLowerCase().includes(s);
   return byStatus && bySearch;
 }
 
@@ -534,6 +751,7 @@ function cardFor(m){
   const el = document.createElement('div');
   el.className = 'card' + (gateLocked(m.areaId)?' lock':'');
   el.setAttribute('role','listitem');
+
   el.innerHTML = `
     <div class="row">
       <div style="display:flex; gap:10px; align-items:center">
@@ -542,7 +760,7 @@ function cardFor(m){
       </div>
       <span class="pill">${m.areaId==='core'?'Core':'Sovereign'}</span>
     </div>
-    <div class="muted">Objectives: ${m.objectives.slice(0,2).join(' • ')}${m.objectives.length>2?'…':''}</div>
+    <div class="muted preview-snippet">${m.preview||'—'}</div>
     <div class="progress" aria-hidden="true"><span style="width:${p.percent}%"></span></div>
     <div class="row">
       <span class="muted">${p.status==='completed'?'Completed':p.status==='in-progress'?'In Progress':'Not Started'}</span>
@@ -554,6 +772,21 @@ function cardFor(m){
   `;
   el.querySelector('[data-act="in"]').onclick = ()=> gateLocked(m.areaId) ? E.btnGateConnect.click() : setProgress(m,'in-progress');
   el.querySelector('[data-act="open"]').onclick = ()=> gateLocked(m.areaId) ? E.btnGateConnect.click() : openModule(m.areaId, m.id);
+
+  if(gateLocked(m.areaId)){
+    const overlay = document.createElement('div');
+    overlay.className='lock-overlay';
+    overlay.innerHTML = `
+      <div class="lock-box">
+        <i class="fa-solid fa-lock"></i>
+        <div><strong>Locked</strong></div>
+        <div class="muted" style="max-width:360px">You hold <span id="overlay-hold">0</span> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock Sovereign track.</div>
+        <button class="btn btn-ghost" data-act="connect"><i class="fa-solid fa-plug-circle-bolt"></i> Connect</button>
+      </div>
+    `;
+    overlay.querySelector('[data-act="connect"]').onclick = ()=> E.btnGateConnect.click();
+    el.appendChild(overlay);
+  }
   return el;
 }
 
@@ -567,7 +800,6 @@ function renderOverview(){
 function renderSyllabus(){
   E.gridSyllabus.innerHTML = '';
   COURSE.areas.forEach(area=>{
-    // section header
     const head = document.createElement('div');
     head.className='card';
     head.innerHTML = `<div class="row"><div style="display:flex; gap:10px; align-items:center"><i class="fa-solid fa-layer-group"></i><strong>${area.name}</strong></div><span class="muted">${area.description}</span></div>`;
@@ -585,6 +817,16 @@ function renderProgress(){
   E.doneCore.textContent = core.done; E.countCore.textContent = core.total; E.pillCore.textContent = core.pct+'%'; E.barCore.style.width = core.pct+'%';
   E.doneSov.textContent = sov.done; E.countSov.textContent = sov.total; E.pillSov.textContent = sov.pct+'%'; E.barSov.style.width = sov.pct+'%';
 
+  const xp = loadXP(); E.pillXP.textContent = xp+' XP'; E.xpText.textContent = xp+' XP';
+  const sr = loadStreak(); E.streakText.textContent = 'Streak: '+sr.count;
+
+  // Solo gamification: rank vs theoretical max
+  const maxXP = (all.total)*50;
+  const percentile = maxXP ? Math.round((xp/maxXP)*100) : 0;
+  const rankTxt = percentile>=90?'Top 10%':percentile>=70?'Top 30%':percentile>=50?'Top 50%':'Rising';
+  E.pillRank.textContent = rankTxt;
+  E.rankDesc.textContent = `You’ve earned ${xp} / ${maxXP} XP (${percentile}%).`;
+
   E.gridProgress.innerHTML='';
   allModules().forEach(m=> E.gridProgress.appendChild(cardFor(m)));
 }
@@ -598,10 +840,8 @@ function openModule(areaId, id){
   const idx = list.findIndex(x=>x.areaId===areaId && x.id===id);
   const m = list[idx]; if(!m) return;
 
-  // mark in-progress if fresh
   if(progressOf(m).status==='not-started') setProgress(m,'in-progress');
 
-  // show detail
   $('#view-syllabus').classList.add('hide');
   E.detail.classList.add('show'); state.openId = keyOf(m); localStorage.setItem(STORAGE.OPEN, state.openId);
 
@@ -624,11 +864,10 @@ function openModule(areaId, id){
   E.btnMark.onclick = ()=>{
     const cur = progressOf(m).status;
     setProgress(m, cur==='completed' ? 'in-progress' : 'completed');
-    // refresh inline
     openModule(areaId, id);
   };
 
-  renderTabs(); // ensure right view states
+  renderTabs();
 }
 
 function openModal(m){
@@ -673,32 +912,23 @@ function setFilter(f){
 function renderCenter(){ renderOverview(); renderSyllabus(); renderProgress(); }
 
 /* =========================
-   HEADER/RIGHT UI
+   HEADER/RIGHT/ HERO UI
 ========================= */
 function updateHeaderAndRight(){
   const all = percentCompleted();
   E.chipText.textContent = `${all.done}/${all.total} Complete`;
   E.certProgress.textContent = `${all.done} / ${all.total}`;
-  const pct = Math.min(100, all.pct); E.ring.style.setProperty('--p', pct+'%'); E.ring.setAttribute('data-label', pct+'%');
+  const pct = Math.min(100, all.pct);
+  E.ring.style.setProperty('--p', pct+'%'); E.ring.setAttribute('data-label', pct+'%');
+  E.heroRing.style.setProperty('--p', pct+'%'); E.heroRing.setAttribute('data-label', pct+'%');
   const canMint = all.done===all.total;
   E.certStatus.textContent = canMint ? 'Ready to Mint' : 'Locked';
   E.btnMint.disabled = !canMint;
 }
 
 /* =========================
-   RENDER ALL
-========================= */
-function renderAll(){
-  renderSidebar();
-  renderCenter();
-  renderTabs();
-  updateHeaderAndRight();
-}
-
-/* =========================
    WEB3: CONNECT / GATE / MINT
 ========================= */
-let web3Modal, extProvider, provider, signer, token, account=null;
 function setupWeb3(){
   const providerOptions = {
     walletconnect: {
@@ -735,7 +965,6 @@ async function connect(){
     E.addrShort.textContent = short; E.addrFull.textContent = account; E.avatar.textContent = account.slice(2,4).toUpperCase();
     E.btnDisconnect.classList.remove('hide'); E.btnReconnect.classList.add('hide');
 
-    // listeners
     extProvider.removeAllListeners?.();
     extProvider.on?.('accountsChanged', accs=>{ if(!accs?.length) return disconnect(); account=accs[0]; checkGate(); });
     extProvider.on?.('chainChanged', ()=>{ provider = new ethers.providers.Web3Provider(extProvider,'any'); signer = provider.getSigner(); token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider); checkGate(); });
@@ -744,14 +973,17 @@ async function connect(){
     await checkGate();
   }catch(err){ console.error(err); E.btnReconnect.classList.remove('hide'); }
 }
+
 async function disconnect(){
   try{ await web3Modal?.clearCachedProvider?.(); }catch{}
   try{ if(extProvider?.disconnect && typeof extProvider.disconnect==='function'){ await extProvider.disconnect(); } }catch{}
   provider=signer=token=extProvider=null; account=null; accessGranted=false;
   E.btnConnect.classList.remove('hide'); E.addrChip.classList.add('hide'); E.btnDisconnect.classList.add('hide'); E.btnReconnect.classList.add('hide');
   E.addrFull.textContent='Not connected'; E.avatar.textContent='SM'; E.tokenBalance.textContent='—';
+  E.heroMsg.textContent = 'Connect wallet to explore Sovereignty Mastery.';
   renderAll();
 }
+
 async function checkGate(){
   try{
     const [raw, dec, sym] = await Promise.all([
@@ -763,27 +995,65 @@ async function checkGate(){
     E.tokenSymbol.textContent = tokenSymbolCached;
     const bal = Number(ethers.utils.formatUnits(raw, dec));
     E.tokenBalance.textContent = `${bal.toLocaleString(undefined,{maximumFractionDigits:4})} ${tokenSymbolCached}`;
+
+    // Progressive gate messaging (hero + right)
+    if(!account){
+      E.heroMsg.textContent = 'Connect wallet to explore Sovereignty Mastery.';
+      $('#gate-note').textContent = 'Connect wallet to explore Sovereignty Mastery.';
+    } else if(bal < REQUIRED_TOKENS){
+      E.heroMsg.innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock Sovereign track.`;
+      $('#gate-note').innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock the Sovereign track.`;
+    } else {
+      E.heroMsg.innerHTML = `<strong>Access Granted.</strong> Sovereign modules unlocked.`;
+      $('#gate-note').innerHTML = `Access granted. You can open all Sovereign modules.`;
+    }
+
     accessGranted = bal >= REQUIRED_TOKENS;
     renderAll();
   }catch(e){ console.error('Gate read error', e); }
 }
 
+// Bind connect controls
+$('#btn-gate-connect').addEventListener('click', connect);
 E.btnConnect.addEventListener('click', connect);
-E.btnGateConnect.addEventListener('click', connect);
+E.heroConnect.addEventListener('click', connect);
 E.btnDisconnect.addEventListener('click', disconnect);
 E.btnReconnect.addEventListener('click', connect);
 
 /* =========================
-   CERT MINT (placeholder wire)
+   CERT MINT — ERC-721 mintTo
 ========================= */
 E.btnMint.addEventListener('click', async ()=>{
   const all = percentCompleted();
   if(all.done!==all.total) return;
-  // Replace with your NFT mint call if needed.
-  E.btnMint.disabled = true; E.mintStatus.textContent = 'Simulating mint…';
-  await new Promise(r=>setTimeout(r,900));
-  E.mintStatus.innerHTML = '<span style="color:#a5ffcf"><i class="fa-solid fa-check"></i> Minted!</span>';
-  notifyOK('Certificate minted!');
+
+  if(!signer){ await connect(); if(!signer) return; }
+  try{
+    E.btnMint.disabled = true; E.mintStatus.textContent = 'Preparing mint…';
+    const nft = new ethers.Contract(NFT_ADDRESS, ERC721_MINT_ABI, signer);
+    const tx = await nft.mintTo(account, TOKEN_URI);
+    E.mintStatus.textContent = 'Minting… awaiting confirmation';
+    const receipt = await tx.wait();
+    notifyOK('Certificate minted!');
+
+    // Simple metadata preview (local since we can’t fetch here)
+    E.nftPreview.style.display='block';
+    E.nftName.textContent = 'Sovereignty Mastery — Key of Ascension';
+    E.nftEdition.textContent = 'Edition: On-chain';
+    E.nftAttrs.textContent = 'Attributes: Completion, Sovereign Track, Proof of Mastery';
+
+    // Share to X
+    const shareText = encodeURIComponent('I just minted my Sovereignty Mastery certificate on BNB. On-chain proof of progress. #Web3 #Sovereignty');
+    const shareUrl  = encodeURIComponent('https://bscscan.com/tx/'+receipt.transactionHash);
+    E.shareWrap.style.display='block';
+    E.shareX.href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
+
+    E.mintStatus.innerHTML = '<span style="color:#a5ffcf"><i class="fa-solid fa-check"></i> Minted!</span>';
+  }catch(err){
+    console.error(err);
+    E.mintStatus.innerHTML = '<span style="color:#ff9aa8"><i class="fa-solid fa-triangle-exclamation"></i> Mint failed. Check console.</span>';
+    E.btnMint.disabled = false;
+  }
 });
 
 /* =========================
@@ -794,13 +1064,39 @@ E.filters.addEventListener('click', (e)=>{
   setFilter(btn.dataset.filter);
 });
 E.search.addEventListener('input', e=>{ state.search = e.target.value; renderCenter(); });
-
-// sidebar quick tabs
 $$('.side-menu .sbtn[data-tab]').forEach(b=> b.addEventListener('click', ()=> { switchTab(b.dataset.tab); renderAll(); window.scrollTo({top:0, behavior:'smooth'}); }));
 
 /* =========================
-   ROUTING (hash)
+   PARTICLES — soft floating stars
 ========================= */
+(function particles(){
+  const c = document.getElementById('auroraParticles'); const ctx = c.getContext('2d');
+  let W=0,H=0, dots=[];
+  function resize(){ W=c.width=window.innerWidth; H=c.height=Math.min(360, window.innerHeight*0.36); dots = Array.from({length:80}, ()=>({x:Math.random()*W,y:Math.random()*H, r:Math.random()*1.6+0.3, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15})); }
+  function step(){
+    ctx.clearRect(0,0,W,H);
+    ctx.globalAlpha=0.7;
+    dots.forEach(d=>{
+      d.x+=d.vx; d.y+=d.vy;
+      if(d.x<0||d.x>W) d.vx*=-1;
+      if(d.y<0||d.y>H) d.vy*=-1;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(122,233,255,.35)'; ctx.fill();
+    });
+    requestAnimationFrame(step);
+  }
+  window.addEventListener('resize', resize); resize(); step();
+})();
+
+/* =========================
+   ROUTING & INIT
+========================= */
+function renderAll(){
+  renderSidebar();
+  renderCenter();
+  renderTabs();
+  updateHeaderAndRight();
+}
 function route(){
   const hash = location.hash.replace(/^#\//,'');
   if(!hash){ switchTab('overview'); return; }
@@ -809,15 +1105,6 @@ function route(){
   if(kind==='module' && a && b){ switchTab('syllabus'); openModule(a,b); return; }
   switchTab('overview');
 }
-window.addEventListener('hashchange', route);
-
-/* =========================
-   INIT
-========================= */
-function renderInitialMenus(){
-  // left quick menus already bound; render area+modules in sidebar:
-  renderSidebar();
-}
 function restoreOpenDetail(){
   const openKey = localStorage.getItem(STORAGE.OPEN);
   if(openKey){
@@ -825,15 +1112,15 @@ function restoreOpenDetail(){
     if(areaId && id){ switchTab('syllabus'); openModule(areaId, id); }
   }
 }
-function renderAllFirst(){ renderInitialMenus(); renderAll(); }
 
 document.addEventListener('DOMContentLoaded', ()=>{
   setupWeb3();
-  renderAllFirst();
+  renderAll();
   route();
   restoreOpenDetail();
   if(window.Web3Modal && web3Modal?.cachedProvider){ connect().catch(()=>{}); }
 });
+window.addEventListener('hashchange', route);
 </script>
 </body>
 </html>
