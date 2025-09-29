@@ -494,18 +494,26 @@
 /* =========================
    CONFIG — TOKEN GATE + NFT
 ========================= */
-const TOKEN_ADDRESS    = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // <-- ERC-20
+const TOKEN_ADDRESS    = '0x7a732Ae6b2Db2ceACc3Ffe6F63F3B9B0Ce94A026'; // ERC-20
 const REQUIRED_TOKENS  = 5;
 const CHAIN_ID         = 56;  // BNB Smart Chain
 const CHAIN_NAME       = 'BNB Smart Chain';
 const RPC_URL          = 'https://bsc-dataseed.binance.org';
 
-const NFT_ADDRESS      = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // Thirdweb ERC-721
-// If using Thirdweb-style "mintTo(address, uri)": set TOKEN_URI. Otherwise swap ABI & fn accordingly.
-const TOKEN_URI        = 'ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by'; // Key of Ascension
-const ERC20_ABI        = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
-const ERC721_MINT_ABI  = ['function mintTo(address _to, string _uri) payable']; // Thirdweb minimal
-const toHex = (n)=>'0x'+n.toString(16);
+const NFT_ADDRESS      = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // ERC-721 (Thirdweb-style)
+const TOKEN_URI        = 'ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by';
+
+/* Minimal ABIs */
+const ERC20_ABI       = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)'];
+const ERC721_MINT_ABI = ['function mintTo(address _to, string _uri) payable'];
+
+/* Utils */
+const toHex = (n)=>'0x'+Number(n).toString(16);
+function showError(msg){
+  console.error(msg);
+  const el = document.getElementById('gate-note');
+  if(el) el.innerHTML = `<span style="color:#ff9aa8"><i class="fa-solid fa-triangle-exclamation"></i> ${msg}</span>`;
+}
 
 /* =========================
    COURSE DATA (Core 7 + Sovereign 14)
@@ -619,12 +627,7 @@ const COURSE = {
 ========================= */
 const $  = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
-const STORAGE = {
-  PROGRESS:'sv_progress_v4',
-  OPEN:'sv_open_v1',
-  XP:'sv_xp_v1',
-  STREAK:'sv_streak_v1'
-};
+const STORAGE = { PROGRESS:'sv_progress_v4', OPEN:'sv_open_v1', XP:'sv_xp_v1', STREAK:'sv_streak_v1' };
 
 let accessGranted=false, tokenSymbolCached='TOKEN';
 let state={ tab:'overview', filter:'all', search:'', openId:null };
@@ -658,16 +661,15 @@ const E = {
   // gamification
   pillXP: $('#pill-xp'), streakText: $('#streak-text'), pillRank: $('#pill-rank'), rankDesc: $('#rank-desc'),
   // modal
-  modal: $('#modal'), modalClose: $('#modal-close'), modalTitle: $('#modal-title'),
+  modal: $('#modal'), modalClose: $('#modal-close'),
   modalNum: $('#modal-num'), modalName: $('#modal-name'), modalBody: $('#modal-body'),
   // nft preview
   nftPreview: $('#nft-preview'), nftName: $('#nft-name'), nftAttrs: $('#nft-attrs'), nftEdition: $('#nft-edition'), shareWrap: $('#share-wrap'), shareX: $('#share-x'),
 };
-
-E.reqTokens.textContent = REQUIRED_TOKENS;
+if(E.reqTokens) E.reqTokens.textContent = REQUIRED_TOKENS;
 
 /* =========================
-   HELPERS
+   HELPERS: Progress / XP / Streak
 ========================= */
 function allModules(){ return COURSE.areas.flatMap(a => a.modules.map(m => ({...m, areaId:a.id, areaName:a.name}))); }
 function progressLoad(){ try{return JSON.parse(localStorage.getItem(STORAGE.PROGRESS))||{}}catch{return{}} }
@@ -679,7 +681,6 @@ function setProgress(m, status){
   const prev = p[k] || {percent:0};
   p[k] = { status, percent: status==='completed' ? 100 : status==='in-progress' ? Math.max(prev.percent,25) : 0 };
   progressSave(p);
-  // XP & streak on completion edge
   if(status==='completed' && prev.percent<100){ addXP(50); tickStreak(); }
   renderAll();
 }
@@ -690,8 +691,6 @@ function percentCompleted(areaId){
 }
 function gateLocked(areaId){ return areaId==='sovereign' && !accessGranted; }
 function notifyOK(msg){ if(typeof confetti==='function'){ confetti({particleCount:90, spread:64, origin:{y:.85}, colors:["#7ae9ff","#8d7bff","#69ffb4"]}); } console.log(msg); }
-
-/* XP / Streak */
 function loadXP(){ return Number(localStorage.getItem(STORAGE.XP)||0); }
 function saveXP(v){ localStorage.setItem(STORAGE.XP, String(v)); }
 function addXP(n){ const v=loadXP()+n; saveXP(v); }
@@ -700,8 +699,7 @@ function saveStreak(s){ localStorage.setItem(STORAGE.STREAK, JSON.stringify(s));
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 function tickStreak(){
   const s=loadStreak(); const t=todayStr();
-  if(s.last===t) return; // already counted today
-  // simple day diff
+  if(s.last===t) return;
   const last = s.last ? new Date(s.last) : null;
   const diff = last ? Math.round((new Date(t)-last)/86400000) : null;
   s.count = diff===1 ? s.count+1 : 1;
@@ -709,7 +707,7 @@ function tickStreak(){
 }
 
 /* =========================
-   RENDER — SIDEBAR & MENUS
+   RENDER — SIDEBAR, CARDS, LISTS, PROGRESS
 ========================= */
 function renderSidebar(){
   E.menu.innerHTML='';
@@ -729,10 +727,6 @@ function renderSidebar(){
     });
   });
 }
-
-/* =========================
-   RENDER — CARDS & LISTS
-========================= */
 function matchFilters(m){
   const st = progressOf(m).status;
   const f = state.filter;
@@ -745,13 +739,11 @@ function matchFilters(m){
   const bySearch = !s || [m.title, m.theme, ...(m.objectives||[]), m.preview||''].join(' ').toLowerCase().includes(s);
   return byStatus && bySearch;
 }
-
 function cardFor(m){
   const p = progressOf(m);
   const el = document.createElement('div');
   el.className = 'card' + (gateLocked(m.areaId)?' lock':'');
   el.setAttribute('role','listitem');
-
   el.innerHTML = `
     <div class="row">
       <div style="display:flex; gap:10px; align-items:center">
@@ -774,29 +766,25 @@ function cardFor(m){
   el.querySelector('[data-act="open"]').onclick = ()=> gateLocked(m.areaId) ? E.btnGateConnect.click() : openModule(m.areaId, m.id);
 
   if(gateLocked(m.areaId)){
-    const overlay = document.createElement('div');
-    overlay.className='lock-overlay';
+    const overlay = document.createElement('div'); overlay.className='lock-overlay';
     overlay.innerHTML = `
       <div class="lock-box">
         <i class="fa-solid fa-lock"></i>
         <div><strong>Locked</strong></div>
         <div class="muted" style="max-width:360px">You hold <span id="overlay-hold">0</span> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock Sovereign track.</div>
         <button class="btn btn-ghost" data-act="connect"><i class="fa-solid fa-plug-circle-bolt"></i> Connect</button>
-      </div>
-    `;
+      </div>`;
     overlay.querySelector('[data-act="connect"]').onclick = ()=> E.btnGateConnect.click();
     el.appendChild(overlay);
   }
   return el;
 }
-
 function renderOverview(){
   E.gridOverview.innerHTML = '';
   allModules().filter(matchFilters).sort((a,b)=> (a.areaId===b.areaId ? (a.order||0)-(b.order||0) : a.areaId.localeCompare(b.areaId))).forEach(m=>{
     E.gridOverview.appendChild(cardFor(m));
   });
 }
-
 function renderSyllabus(){
   E.gridSyllabus.innerHTML = '';
   COURSE.areas.forEach(area=>{
@@ -804,28 +792,25 @@ function renderSyllabus(){
     head.className='card';
     head.innerHTML = `<div class="row"><div style="display:flex; gap:10px; align-items:center"><i class="fa-solid fa-layer-group"></i><strong>${area.name}</strong></div><span class="muted">${area.description}</span></div>`;
     E.gridSyllabus.appendChild(head);
-
     area.modules.filter(m=>matchFilters({...m, areaId:area.id})).forEach(m=>{
       E.gridSyllabus.appendChild(cardFor({...m, areaId:area.id, areaName:area.name}));
     });
   });
 }
-
 function renderProgress(){
   const all = percentCompleted(); const core = percentCompleted('core'); const sov = percentCompleted('sovereign');
   E.doneTotal.textContent = all.done; E.countTotal.textContent = all.total; E.pillTotal.textContent = all.pct+'%'; E.barTotal.style.width = all.pct+'%';
   E.doneCore.textContent = core.done; E.countCore.textContent = core.total; E.pillCore.textContent = core.pct+'%'; E.barCore.style.width = core.pct+'%';
   E.doneSov.textContent = sov.done; E.countSov.textContent = sov.total; E.pillSov.textContent = sov.pct+'%'; E.barSov.style.width = sov.pct+'%';
 
-  const xp = loadXP(); E.pillXP.textContent = xp+' XP'; E.xpText.textContent = xp+' XP';
-  const sr = loadStreak(); E.streakText.textContent = 'Streak: '+sr.count;
+  const xp = loadXP(); if(E.pillXP) E.pillXP.textContent = xp+' XP'; if(E.xpText) E.xpText.textContent = xp+' XP';
+  const sr = loadStreak(); if(E.streakText) E.streakText.textContent = 'Streak: '+sr.count;
 
-  // Solo gamification: rank vs theoretical max
   const maxXP = (all.total)*50;
   const percentile = maxXP ? Math.round((xp/maxXP)*100) : 0;
   const rankTxt = percentile>=90?'Top 10%':percentile>=70?'Top 30%':percentile>=50?'Top 50%':'Rising';
-  E.pillRank.textContent = rankTxt;
-  E.rankDesc.textContent = `You’ve earned ${xp} / ${maxXP} XP (${percentile}%).`;
+  if(E.pillRank) E.pillRank.textContent = rankTxt;
+  if(E.rankDesc) E.rankDesc.textContent = `You’ve earned ${xp} / ${maxXP} XP (${percentile}%).`;
 
   E.gridProgress.innerHTML='';
   allModules().forEach(m=> E.gridProgress.appendChild(cardFor(m)));
@@ -866,10 +851,8 @@ function openModule(areaId, id){
     setProgress(m, cur==='completed' ? 'in-progress' : 'completed');
     openModule(areaId, id);
   };
-
   renderTabs();
 }
-
 function openModal(m){
   E.modal.classList.add('show');
   E.modalNum.textContent = m.areaId==='core'?m.order:m.id.replace('sv','');
@@ -882,16 +865,15 @@ function openModal(m){
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
       <button class="chip" id="modal-mark-in"><i class="fa-regular fa-bookmark"></i> Save Progress</button>
       <button class="btn" id="modal-mark-done"><i class="fa-regular fa-circle-check"></i> Mark Complete</button>
-    </div>
-  `;
+    </div>`;
   $('#modal-mark-in').onclick = ()=> setProgress(m,'in-progress');
   $('#modal-mark-done').onclick = ()=>{
     setProgress(m,'completed');
     const all = percentCompleted(); if(all.done===all.total){ notifyOK('All modules complete!'); }
   };
 }
-E.modalClose.onclick = ()=> E.modal.classList.remove('show');
-E.modal.addEventListener('click', e=>{ if(e.target===E.modal) E.modal.classList.remove('show'); });
+if(E.modalClose) E.modalClose.onclick = ()=> E.modal.classList.remove('show');
+if(E.modal) E.modal.addEventListener('click', e=>{ if(e.target===E.modal) E.modal.classList.remove('show'); });
 
 /* =========================
    TABS, FILTERS, SEARCH
@@ -920,7 +902,7 @@ function updateHeaderAndRight(){
   E.certProgress.textContent = `${all.done} / ${all.total}`;
   const pct = Math.min(100, all.pct);
   E.ring.style.setProperty('--p', pct+'%'); E.ring.setAttribute('data-label', pct+'%');
-  E.heroRing.style.setProperty('--p', pct+'%'); E.heroRing.setAttribute('data-label', pct+'%');
+  if(E.heroRing){ E.heroRing.style.setProperty('--p', pct+'%'); E.heroRing.setAttribute('data-label', pct+'%'); }
   const canMint = all.done===all.total;
   E.certStatus.textContent = canMint ? 'Ready to Mint' : 'Locked';
   E.btnMint.disabled = !canMint;
@@ -930,9 +912,10 @@ function updateHeaderAndRight(){
    WEB3: CONNECT / GATE / MINT
 ========================= */
 function setupWeb3(){
+  if(!window.Web3Modal){ showError('Web3Modal script not found.'); return; }
   const providerOptions = {
     walletconnect: {
-      package: window.WalletConnectProvider.default,
+      package: window.WalletConnectProvider?.default || window.WalletConnectProvider,
       options: { rpc: { [CHAIN_ID]: RPC_URL }, chainId: CHAIN_ID }
     }
   };
@@ -941,117 +924,127 @@ function setupWeb3(){
 
 async function connect(){
   try{
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if(!isSecure){ showError('Wallets require HTTPS or localhost.'); return; }
+
     extProvider = await web3Modal.connect();
+    if(!extProvider){ showError('No wallet provider returned.'); return; }
+
     provider = new ethers.providers.Web3Provider(extProvider, 'any');
-    signer = provider.getSigner(); account = await signer.getAddress();
-
-    const net = await provider.getNetwork();
-    if(net.chainId !== CHAIN_ID){
-      try{ await extProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: toHex(CHAIN_ID) }] }); }
-      catch(e){
-        await extProvider.request({ method:'wallet_addEthereumChain', params:[{
-          chainId: toHex(CHAIN_ID), chainName: CHAIN_NAME,
-          nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},
-          rpcUrls:[RPC_URL], blockExplorerUrls:['https://bscscan.com']
-        }]}).catch(()=>{ alert(`Please switch to ${CHAIN_NAME}.`); throw e; });
-      }
-    }
-
-    token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
-
-    // UI wire
-    E.btnConnect.classList.add('hide'); E.addrChip.classList.remove('hide');
-    const short = `${account.slice(0,6)}…${account.slice(-4)}`;
-    E.addrShort.textContent = short; E.addrFull.textContent = account; E.avatar.textContent = account.slice(2,4).toUpperCase();
-    E.btnDisconnect.classList.remove('hide'); E.btnReconnect.classList.add('hide');
+    signer = provider.getSigner(); account = await signer.getAddress().catch(()=>null);
 
     extProvider.removeAllListeners?.();
     extProvider.on?.('accountsChanged', accs=>{ if(!accs?.length) return disconnect(); account=accs[0]; checkGate(); });
     extProvider.on?.('chainChanged', ()=>{ provider = new ethers.providers.Web3Provider(extProvider,'any'); signer = provider.getSigner(); token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider); checkGate(); });
     extProvider.on?.('disconnect', ()=> disconnect());
 
+    const net = await provider.getNetwork();
+    if(Number(net.chainId) !== Number(CHAIN_ID)){
+      try{
+        await extProvider.request({ method:'wallet_switchEthereumChain', params:[{ chainId: toHex(CHAIN_ID) }] });
+      }catch(switchErr){
+        try{
+          await extProvider.request({ method:'wallet_addEthereumChain', params:[{
+            chainId: toHex(CHAIN_ID), chainName: CHAIN_NAME,
+            nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},
+            rpcUrls:[RPC_URL], blockExplorerUrls:['https://bscscan.com']
+          }] });
+        }catch(addErr){ showError(`Please switch to ${CHAIN_NAME} in your wallet.`); throw addErr; }
+      }
+    }
+
+    token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
+
+    E.btnConnect?.classList.add('hide'); E.addrChip?.classList.remove('hide');
+    const short = account ? `${account.slice(0,6)}…${account.slice(-4)}` : '0x…';
+    if(E.addrShort) E.addrShort.textContent = short;
+    if(E.addrFull)  E.addrFull.textContent  = account || '—';
+    if(E.avatar && account) E.avatar.textContent = account.slice(2,4).toUpperCase();
+    E.btnDisconnect?.classList.remove('hide'); E.btnReconnect?.classList.add('hide');
+
     await checkGate();
-  }catch(err){ console.error(err); E.btnReconnect.classList.remove('hide'); }
+  }catch(err){
+    console.error('connect() failed:', err);
+    showError('Could not connect. If using WalletConnect, try MetaMask/injected or refresh over HTTPS.');
+    E.btnReconnect?.classList.remove('hide');
+  }
 }
 
 async function disconnect(){
   try{ await web3Modal?.clearCachedProvider?.(); }catch{}
   try{ if(extProvider?.disconnect && typeof extProvider.disconnect==='function'){ await extProvider.disconnect(); } }catch{}
   provider=signer=token=extProvider=null; account=null; accessGranted=false;
-  E.btnConnect.classList.remove('hide'); E.addrChip.classList.add('hide'); E.btnDisconnect.classList.add('hide'); E.btnReconnect.classList.add('hide');
-  E.addrFull.textContent='Not connected'; E.avatar.textContent='SM'; E.tokenBalance.textContent='—';
-  E.heroMsg.textContent = 'Connect wallet to explore Sovereignty Mastery.';
+  E.btnConnect?.classList.remove('hide'); E.addrChip?.classList.add('hide'); E.btnDisconnect?.classList.add('hide'); E.btnReconnect?.classList.add('hide');
+  if(E.addrFull) E.addrFull.textContent='Not connected'; if(E.avatar) E.avatar.textContent='SM'; if(E.tokenBalance) E.tokenBalance.textContent='—';
+  if(E.heroMsg) E.heroMsg.textContent = 'Connect wallet to explore Sovereignty Mastery.';
   renderAll();
 }
 
 async function checkGate(){
   try{
+    if(!provider || !account){
+      const node = $('#gate-note'); if(node) node.textContent='Connect wallet to explore Sovereignty Mastery.';
+      if(E.heroMsg) E.heroMsg.textContent='Connect wallet to explore Sovereignty Mastery.';
+      return;
+    }
+    const read = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider);
     const [raw, dec, sym] = await Promise.all([
-      token.balanceOf(account),
-      token.decimals().catch(()=>18),
-      token.symbol().catch(()=> 'TOKEN')
+      read.balanceOf(account),
+      read.decimals().catch(()=>18),
+      read.symbol().catch(()=> 'TOKEN')
     ]);
     tokenSymbolCached = sym || 'TOKEN';
-    E.tokenSymbol.textContent = tokenSymbolCached;
+    if(E.tokenSymbol) E.tokenSymbol.textContent = tokenSymbolCached;
     const bal = Number(ethers.utils.formatUnits(raw, dec));
-    E.tokenBalance.textContent = `${bal.toLocaleString(undefined,{maximumFractionDigits:4})} ${tokenSymbolCached}`;
+    if(E.tokenBalance) E.tokenBalance.textContent = `${bal.toLocaleString(undefined,{maximumFractionDigits:4})} ${tokenSymbolCached}`;
 
-    // Progressive gate messaging (hero + right)
-    if(!account){
-      E.heroMsg.textContent = 'Connect wallet to explore Sovereignty Mastery.';
-      $('#gate-note').textContent = 'Connect wallet to explore Sovereignty Mastery.';
-    } else if(bal < REQUIRED_TOKENS){
-      E.heroMsg.innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock Sovereign track.`;
-      $('#gate-note').innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock the Sovereign track.`;
-    } else {
-      E.heroMsg.innerHTML = `<strong>Access Granted.</strong> Sovereign modules unlocked.`;
-      $('#gate-note').innerHTML = `Access granted. You can open all Sovereign modules.`;
+    const gateNote = $('#gate-note');
+    if(bal < REQUIRED_TOKENS){
+      if(E.heroMsg) E.heroMsg.innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock Sovereign track.`;
+      if(gateNote) gateNote.innerHTML = `You hold <strong>${bal}</strong> ${tokenSymbolCached}. <strong>${REQUIRED_TOKENS}</strong> required to unlock the Sovereign track.`;
+    }else{
+      if(E.heroMsg) E.heroMsg.innerHTML = `<strong>Access Granted.</strong> Sovereign modules unlocked.`;
+      if(gateNote) gateNote.innerHTML = `Access granted. You can open all Sovereign modules.`;
     }
 
     accessGranted = bal >= REQUIRED_TOKENS;
     renderAll();
-  }catch(e){ console.error('Gate read error', e); }
+  }catch(e){ console.error('Gate read error', e); showError('Failed to read token balance. Check RPC/contract.'); }
 }
 
-// Bind connect controls
-$('#btn-gate-connect').addEventListener('click', connect);
-E.btnConnect.addEventListener('click', connect);
-E.heroConnect.addEventListener('click', connect);
-E.btnDisconnect.addEventListener('click', disconnect);
-E.btnReconnect.addEventListener('click', connect);
+/* Bind connect controls */
+if(E.btnGateConnect) E.btnGateConnect.addEventListener('click', connect);
+E.btnConnect?.addEventListener('click', connect);
+E.heroConnect?.addEventListener('click', connect);
+E.btnDisconnect?.addEventListener('click', disconnect);
+E.btnReconnect?.addEventListener('click', connect);
 
 /* =========================
    CERT MINT — ERC-721 mintTo
 ========================= */
-E.btnMint.addEventListener('click', async ()=>{
+E.btnMint?.addEventListener('click', async ()=>{
   const all = percentCompleted();
   if(all.done!==all.total) return;
-
   if(!signer){ await connect(); if(!signer) return; }
   try{
-    E.btnMint.disabled = true; E.mintStatus.textContent = 'Preparing mint…';
+    E.btnMint.disabled = true; if(E.mintStatus) E.mintStatus.textContent = 'Minting…';
     const nft = new ethers.Contract(NFT_ADDRESS, ERC721_MINT_ABI, signer);
     const tx = await nft.mintTo(account, TOKEN_URI);
-    E.mintStatus.textContent = 'Minting… awaiting confirmation';
     const receipt = await tx.wait();
     notifyOK('Certificate minted!');
-
-    // Simple metadata preview (local since we can’t fetch here)
-    E.nftPreview.style.display='block';
-    E.nftName.textContent = 'Sovereignty Mastery — Key of Ascension';
-    E.nftEdition.textContent = 'Edition: On-chain';
-    E.nftAttrs.textContent = 'Attributes: Completion, Sovereign Track, Proof of Mastery';
-
-    // Share to X
-    const shareText = encodeURIComponent('I just minted my Sovereignty Mastery certificate on BNB. On-chain proof of progress. #Web3 #Sovereignty');
-    const shareUrl  = encodeURIComponent('https://bscscan.com/tx/'+receipt.transactionHash);
-    E.shareWrap.style.display='block';
-    E.shareX.href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
-
-    E.mintStatus.innerHTML = '<span style="color:#a5ffcf"><i class="fa-solid fa-check"></i> Minted!</span>';
+    if(E.nftPreview){ E.nftPreview.style.display='block'; }
+    if(E.nftName)    E.nftName.textContent = 'Sovereignty Mastery — Key of Ascension';
+    if(E.nftEdition) E.nftEdition.textContent = 'Edition: On-chain';
+    if(E.nftAttrs)   E.nftAttrs.textContent = 'Attributes: Completion, Sovereign Track, Proof of Mastery';
+    if(E.shareWrap && E.shareX){
+      const shareText = encodeURIComponent('I just minted my Sovereignty Mastery certificate on BNB. On-chain proof of progress. #Web3 #Sovereignty');
+      const shareUrl  = encodeURIComponent('https://bscscan.com/tx/'+receipt.transactionHash);
+      E.shareWrap.style.display='block'; E.shareX.href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
+    }
+    if(E.mintStatus) E.mintStatus.innerHTML = '<span style="color:#a5ffcf"><i class="fa-solid fa-check"></i> Minted!</span>';
   }catch(err){
     console.error(err);
-    E.mintStatus.innerHTML = '<span style="color:#ff9aa8"><i class="fa-solid fa-triangle-exclamation"></i> Mint failed. Check console.</span>';
+    if(E.mintStatus) E.mintStatus.innerHTML = '<span style="color:#ff9aa8"><i class="fa-solid fa-triangle-exclamation"></i> Mint failed. Check console.</span>';
     E.btnMint.disabled = false;
   }
 });
@@ -1059,27 +1052,25 @@ E.btnMint.addEventListener('click', async ()=>{
 /* =========================
    EVENTS — FILTERS, SEARCH, TABS
 ========================= */
-E.filters.addEventListener('click', (e)=>{
+E.filters?.addEventListener('click', (e)=>{
   const btn = e.target.closest('.chip'); if(!btn) return;
   setFilter(btn.dataset.filter);
 });
-E.search.addEventListener('input', e=>{ state.search = e.target.value; renderCenter(); });
+E.search?.addEventListener('input', e=>{ state.search = e.target.value; renderCenter(); });
 $$('.side-menu .sbtn[data-tab]').forEach(b=> b.addEventListener('click', ()=> { switchTab(b.dataset.tab); renderAll(); window.scrollTo({top:0, behavior:'smooth'}); }));
 
 /* =========================
    PARTICLES — soft floating stars
 ========================= */
 (function particles(){
-  const c = document.getElementById('auroraParticles'); const ctx = c.getContext('2d');
-  let W=0,H=0, dots=[];
+  const c = document.getElementById('auroraParticles'); if(!c) return;
+  const ctx = c.getContext('2d'); let W=0,H=0, dots=[];
   function resize(){ W=c.width=window.innerWidth; H=c.height=Math.min(360, window.innerHeight*0.36); dots = Array.from({length:80}, ()=>({x:Math.random()*W,y:Math.random()*H, r:Math.random()*1.6+0.3, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15})); }
   function step(){
-    ctx.clearRect(0,0,W,H);
-    ctx.globalAlpha=0.7;
+    ctx.clearRect(0,0,W,H); ctx.globalAlpha=0.7;
     dots.forEach(d=>{
       d.x+=d.vx; d.y+=d.vy;
-      if(d.x<0||d.x>W) d.vx*=-1;
-      if(d.y<0||d.y>H) d.vy*=-1;
+      if(d.x<0||d.x>W) d.vx*=-1; if(d.y<0||d.y>H) d.vy*=-1;
       ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
       ctx.fillStyle='rgba(122,233,255,.35)'; ctx.fill();
     });
@@ -1091,12 +1082,7 @@ $$('.side-menu .sbtn[data-tab]').forEach(b=> b.addEventListener('click', ()=> { 
 /* =========================
    ROUTING & INIT
 ========================= */
-function renderAll(){
-  renderSidebar();
-  renderCenter();
-  renderTabs();
-  updateHeaderAndRight();
-}
+function renderAll(){ renderSidebar(); renderCenter(); renderTabs(); updateHeaderAndRight(); }
 function route(){
   const hash = location.hash.replace(/^#\//,'');
   if(!hash){ switchTab('overview'); return; }
