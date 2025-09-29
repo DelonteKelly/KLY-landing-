@@ -237,6 +237,12 @@
     .toast.good{border-left-color:var(--lime)}
     .toast.bad{border-left-color:var(--danger)}
     .toast.warn{border-left-color:var(--sun)}
+    /* Toast motion (add near the existing .toast rules) */
+.toast{
+  opacity:0; transform:translateY(8px); transition:opacity .28s ease, transform .28s ease;
+}
+.toast.toast--show{ opacity:1; transform:translateY(0) }
+.toast.toast--hide{ opacity:0; transform:translateY(8px) }
 
     /* Mobile polish + safe-area */
     .topbar{ padding-top: env(safe-area-inset-top); }
@@ -643,31 +649,49 @@ function updateProgress(){
 /* ==============================
    TOAST
 ============================== */
+/* Toast (robust) */
 function notify(title, msg, kind="info", icon="fa-circle-info"){
-  toastTitle.textContent = title; toastMsg.textContent = msg;
+  toastTitle.textContent = title;
+  toastMsg.textContent = msg;
   toastIcon.className = `fa-solid ${icon}`;
-  toast.classList.remove("good","bad","warn");
+
+  toast.classList.remove("good","bad","warn","toast--hide");
   if(kind==="good") toast.classList.add("good");
   else if(kind==="bad") toast.classList.add("bad");
   else if(kind==="warn") toast.classList.add("warn");
 
-  toast.hidden = false;
-  if(notify._timer) clearTimeout(notify._timer);
-  notify._timer = setTimeout(hideToast, 4200);
+  toast.style.display = "flex";
+  toast.setAttribute("aria-hidden","false");
+  // force reflow so the show class animates even if we just hid it
+  void toast.offsetWidth;
+  toast.classList.add("toast--show");
 
-  if(notify._raf) cancelAnimationFrame(notify._raf);
-  const start = performance.now();
-  (function loop(t){
-    if(t - start > 4500) { hideToast(); return; }
-    notify._raf = requestAnimationFrame(loop);
-  })(start);
-}
-function hideToast(){ 
-  toast.hidden = true; 
-  if(notify._timer) clearTimeout(notify._timer);
-  if(notify._raf) cancelAnimationFrame(notify._raf);
+  // clear previous timers
+  if (notify._t) clearTimeout(notify._t);
+  if (notify._t2) clearTimeout(notify._t2);
+
+  // Auto-hide after 4.2s; also hide on any tap to the toast
+  notify._t = setTimeout(()=> hideToast(), 4200);
 }
 
+function hideToast(){
+  toast.classList.remove("toast--show");
+  toast.classList.add("toast--hide");
+  toast.setAttribute("aria-hidden","true");
+
+  if (notify._t) clearTimeout(notify._t);
+  if (notify._t2) clearTimeout(notify._t2);
+
+  // Remove from flow after transition ends (fallback at 400ms)
+  const done = ()=> {
+    toast.style.display = "none";
+    toast.removeEventListener("transitionend", done);
+  };
+  toast.addEventListener("transitionend", done, { once:true });
+  notify._t2 = setTimeout(done, 400);
+}
+// Close on click/tap anywhere on the toast (in case timers get throttled)
+toast.addEventListener("click", hideToast);
 /* ==============================
    WEB3
 ============================== */
@@ -812,10 +836,11 @@ function hasInviteAccess(){ return inviteUnlocked === true; }
 function updateAccessState(balanceNum){
   const access = hasTokenAccess(balanceNum) || hasInviteAccess();
   curriculumWrap.classList.toggle('locked', !access);
-  if(access){
-    notifyAuto("Welcome","Access granted. Enjoy the course.","good","fa-unlock");
-  }else{
-    // show a gentle note but don't spam
+
+  // only show once per session
+  if (access && !sessionStorage.getItem("kly_welcome_shown")) {
+    notify("Welcome","Access granted. Enjoy the course.","good","fa-unlock");
+    sessionStorage.setItem("kly_welcome_shown","1");
   }
 }
 
