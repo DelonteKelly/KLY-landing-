@@ -5,18 +5,24 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="theme-color" content="#060713"/>
+  <meta name="color-scheme" content="dark light"/>
+  <meta name="description" content="KLY Academy — Private, action-first DeFi curriculum. Unlock access with KLY or invite code and mint your on-chain credential."/>
   <title>KLY Academy — DeFi Neon • Private</title>
+
+  <!-- Performance: preconnects -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <!-- Fonts & Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-dW5Y0k5w1A8x3q0rq4vC3x1u8y7yWqf1nZk2L8t1lU0xqH0mQkU3eR0b3pS9b3QX0W1v1hJ4W7v1W3z5p6f4xA==" crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
   <!-- Motion & FX -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-b7xZQ7bqQYcVY8y2m3y1tA8u7wG2aNn8qKJx2N1d0yq1F8u2o6FJcP7d+7wP3m1Yx3b7C2b3v0b3r+qzj+8Q4w==" crossorigin="anonymous" referrerpolicy="no-referrer"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-  <!-- Web3 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <!-- Web3 (kept v5 stack for compatibility; see comments in code for v2 pointers) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" integrity="sha512-B1yovt3q5pXo8kJf+5l6mD4v1lH3J21r7vW0Sxk1AnmLkq4xJr3tK3v0x7cRrXoL0k8mOZrYt8N6ZcQ9md9yWQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
@@ -28,7 +34,7 @@
       --border:rgba(132,255,255,.18);
       --txt:#E9EEFF; --muted:#B9C3E5;
       --cyn:#00eaff; --pnk:#ff3bff; --vio:#9333ff; --sun:#ffb300; --lime:#00ff95;
-      --gold:#FFD98A; --gold2:#FFB74A;
+      --gold:#FFD98A; --gold2:#FFB74A; --line:rgba(255,255,255,.16);
       --danger:#ff3d3d;
 
       --glow-cyn:0 0 24px rgba(0,234,255,.35);
@@ -36,6 +42,7 @@
       --glow-vio:0 0 24px rgba(147,51,255,.35);
 
       --radius:16px; --radius-sm:12px;
+      --focus: 0 0 0 2px rgba(0,234,255,.55), 0 0 0 4px rgba(0,234,255,.18);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -68,10 +75,17 @@
       0%{ transform:translateY(-2%) scale(1); }
       100%{ transform:translateY(2%) scale(1.04); }
     }
+    @media (prefers-reduced-motion: reduce){
+      html{ scroll-behavior:auto }
+      body::before{ animation:none }
+    }
 
     a{color:var(--cyn); text-decoration:none}
     a:hover{opacity:.9}
     .container{max-width:1200px;margin:0 auto;padding:20px}
+
+    /* Focus styles for accessibility */
+    :focus-visible{ outline: none; box-shadow: var(--focus); border-radius: 10px; }
 
     /* Topbar */
     .topbar{
@@ -101,6 +115,7 @@
       box-shadow:var(--glow-cyn);transition:transform .2s, box-shadow .2s
     }
     .btn:hover{transform:translateY(-1px);box-shadow:var(--glow-pnk)}
+    .btn:disabled{ opacity:.6; cursor:not-allowed }
     .btn-ghost{background:transparent}
 
     /* Hero */
@@ -169,40 +184,37 @@
     .btn-mark{background:linear-gradient(90deg,var(--cyn),var(--pnk));border:0;color:#06101a;border-radius:10px;padding:10px 14px;font-weight:800}
 
     /* Certificate */
-.cert-img{
-  position: relative;
-  border:1px solid var(--line);
-  border-radius:14px;
-  overflow:hidden;                 /* prevent the seal from making it overflow */
-  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-  padding:10px;                    /* gives a frame around the image */
-  display:grid; place-items:center;
-}
+    .cert-img{
+      position: relative;
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      padding:10px;
+      display:grid; place-items:center;
+    }
+    .cert-img img{
+      width:100%;
+      height:auto;
+      max-height:min(60vh, 520px);
+      object-fit:contain;
+      display:block;
+    }
+    .cert-img .seal{
+      position:absolute;
+      top:10px; right:10px;
+      font-weight:800; letter-spacing:.04em;
+      background:rgba(0,0,0,.45);
+      color:#f7e3b1;
+      border:1px dashed rgba(255,255,255,.25);
+      padding:6px 10px; border-radius:8px;
+      transform:rotate(10deg);
+      backdrop-filter:blur(4px);
+    }
+    @media (max-width:480px){
+      .cert-img .seal{ transform:rotate(8deg) scale(.9); top:8px; right:8px; }
+    }
 
-/* Image scales down, keeps aspect ratio, never exceeds container */
-.cert-img img{
-  width:100%;
-  height:auto;
-  max-height:min(60vh, 520px);     /* important on mobile (in-wallet browsers) */
-  object-fit:contain;              /* show the whole image */
-  display:block;
-}
-
-/* “Founder’s Seal” ribbon stays inside and scales on small screens */
-.cert-img .seal{
-  position:absolute;
-  top:10px; right:10px;
-  font-weight:800; letter-spacing:.04em;
-  background:rgba(0,0,0,.45);
-  color:#f7e3b1;
-  border:1px dashed rgba(255,255,255,.25);
-  padding:6px 10px; border-radius:8px;
-  transform:rotate(10deg);
-  backdrop-filter:blur(4px);
-}
-@media (max-width:480px){
-  .cert-img .seal{ transform:rotate(8deg) scale(.9); top:8px; right:8px; }
-}
     /* Members-only blur overlay */
     .lock-wrap{ position:relative }
     .locked .lock-blur{ filter:blur(4px); pointer-events:none; user-select:none; }
@@ -237,6 +249,8 @@
     .toast.good{border-left-color:var(--lime)}
     .toast.bad{border-left-color:var(--danger)}
     .toast.warn{border-left-color:var(--sun)}
+    .toast[aria-hidden="true"]{ display:none }
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
     /* Mobile polish + safe-area */
     .topbar{ padding-top: env(safe-area-inset-top); }
@@ -271,64 +285,64 @@
   <!-- Topbar -->
   <div class="topbar">
     <div class="container topbar-inner">
-      <div class="brand">
-        <i class="fa-solid fa-graduation-cap"></i>
+      <div class="brand" aria-label="KLY Academy">
+        <i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>
         <div class="text">KLY ACADEMY</div>
-        <span class="ribbon"><i class="fa-solid fa-lock"></i> Private Cohort</span>
+        <span class="ribbon" aria-label="Private Cohort"><i class="fa-solid fa-lock" aria-hidden="true"></i> Private Cohort</span>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
-        <span id="chip-progress" class="chip"><i class="fa-solid fa-chart-simple"></i> <span id="chip-text">0/12 Complete</span></span>
-        <button id="btn-connect" class="btn"><i class="fa-solid fa-wallet"></i> Connect Wallet</button>
-        <span id="pill-addr" class="chip" hidden><i class="fa-solid fa-user-astronaut"></i> <span id="addr-short">0x…</span></span>
-        <button id="btn-about" class="btn btn-ghost" title="About Membership"><i class="fa-regular fa-gem"></i></button>
+        <span id="chip-progress" class="chip" aria-live="polite"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> <span id="chip-text">0/12 Complete</span></span>
+        <button id="btn-connect" class="btn" type="button" aria-controls="pill-addr"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Connect Wallet</button>
+        <span id="pill-addr" class="chip" hidden><i class="fa-solid fa-user-astronaut" aria-hidden="true"></i> <span id="addr-short">0x…</span></span>
+        <button id="btn-about" class="btn btn-ghost" type="button" title="About Membership" aria-haspopup="dialog" aria-controls="modal"><i class="fa-regular fa-gem" aria-hidden="true"></i><span class="sr-only">About membership</span></button>
       </div>
     </div>
   </div>
 
   <div class="container">
     <!-- Hero -->
-    <section class="grid-hero">
+    <section class="grid-hero" aria-label="Hero">
       <div class="card animate__animated animate__fadeInUp">
         <h1><span class="grad">Own</span> the Future of Finance</h1>
         <p>Invitation-only, action-first curriculum for sovereign builders. Complete the track and mint your on-chain credential.</p>
-        <div class="mini">
-          <div class="stat"><i class="fa-solid fa-shield-halved"></i><div><strong>Self-Custody</strong><br><small>Keys stay with you</small></div></div>
-          <div class="stat"><i class="fa-solid fa-bolt"></i><div><strong>Action-based</strong><br><small>Do, not just read</small></div></div>
-          <div class="stat"><i class="fa-solid fa-certificate"></i><div><strong>Proof</strong><br><small>NFT certificate</small></div></div>
+        <div class="mini" role="list">
+          <div class="stat" role="listitem"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><div><strong>Self-Custody</strong><br><small>Keys stay with you</small></div></div>
+          <div class="stat" role="listitem"><i class="fa-solid fa-bolt" aria-hidden="true"></i><div><strong>Action-based</strong><br><small>Do, not just read</small></div></div>
+          <div class="stat" role="listitem"><i class="fa-solid fa-certificate" aria-hidden="true"></i><div><strong>Proof</strong><br><small>NFT certificate</small></div></div>
         </div>
       </div>
-      <div class="card animate__animated animate__fadeInUp" style="--animate-delay:.06s">
+      <div class="card animate__animated animate__fadeInUp" style="--animate-delay:.06s" aria-labelledby="access-title">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <h3 style="margin:0">Access Gate</h3>
-          <div class="ring" id="ring" data-label="0%"></div>
+          <h3 id="access-title" style="margin:0">Access Gate</h3>
+          <div class="ring" id="ring" data-label="0%" aria-label="Access progress ring"></div>
         </div>
         <p class="muted">Unlock with <strong>≥ 100 KLY</strong> on <strong>BNB Chain</strong> <em>or</em> an <strong>Invite Code</strong>.</p>
         <div style="display:flex;gap:14px;align-items:center;margin-top:8px">
-          <i class="fa-solid fa-coins" style="color:var(--cyn)"></i>
+          <i class="fa-solid fa-coins" style="color:var(--cyn)" aria-hidden="true"></i>
           <div><div class="muted">Your KLY balance</div><strong id="kly-balance">—</strong></div>
         </div>
         <div style="display:flex;gap:14px;align-items:center;margin-top:8px">
-          <i class="fa-solid fa-network-wired" style="color:var(--pnk)"></i>
+          <i class="fa-solid fa-network-wired" style="color:var(--pnk)" aria-hidden="true"></i>
           <div><div class="muted">Network</div><strong id="net-name">Not connected</strong></div>
         </div>
         <div class="vip-input" style="margin-top:12px">
-          <input id="invite-code" inputmode="latin" placeholder="Enter Invite Code (e.g., AURORA-777)" aria-label="Invite Code">
-          <button id="btn-redeem" class="btn vip-btn"><i class="fa-solid fa-key"></i> Redeem</button>
+          <input id="invite-code" inputmode="latin" autocomplete="one-time-code" placeholder="Enter Invite Code (e.g., AURORA-777)" aria-label="Invite Code">
+          <button id="btn-redeem" class="btn vip-btn" type="button"><i class="fa-solid fa-key" aria-hidden="true"></i> Redeem</button>
         </div>
         <small class="muted">Codes are single-use per wallet. Keep yours private.</small>
       </div>
     </section>
 
     <!-- Main -->
-    <section class="grid-main">
+    <section class="grid-main" aria-label="Main content">
       <!-- Sidebar -->
-      <aside class="card">
+      <aside class="card" aria-labelledby="profile-title">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px">
-          <h3 style="margin:0">Profile</h3>
-          <button id="btn-disconnect" class="btn btn-ghost" hidden><i class="fa-solid fa-right-from-bracket"></i> Disconnect</button>
+          <h3 id="profile-title" style="margin:0">Profile</h3>
+          <button id="btn-disconnect" class="btn btn-ghost" type="button" hidden><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Disconnect</button>
         </div>
         <div class="profile">
-          <div class="avatar" id="avatar">KA</div>
+          <div class="avatar" id="avatar" aria-hidden="true">KA</div>
           <div>
             <div style="font-weight:800">Learner</div>
             <div id="addr-full" class="addr">Not connected</div>
@@ -344,41 +358,41 @@
       </aside>
 
       <!-- Lessons (locked until access) -->
-      <main id="curriculum-wrap" class="card lock-wrap locked">
+      <main id="curriculum-wrap" class="card lock-wrap locked" aria-labelledby="curriculum-title">
         <div class="lock-blur">
           <div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px; display:flex; align-items:center; gap:8px">
-            <h3 style="margin:0">Curriculum</h3>
-            <span class="chip" title="Members Only"><i class="fa-solid fa-lock"></i> Members Only</span>
+            <h3 id="curriculum-title" style="margin:0">Curriculum</h3>
+            <span class="chip" title="Members Only" aria-label="Members Only"><i class="fa-solid fa-lock" aria-hidden="true"></i> Members Only</span>
           </div>
           <div id="accordion"></div>
         </div>
-        <div class="lock-overlay">
+        <div class="lock-overlay" aria-hidden="false" aria-label="Access required overlay">
           <div class="overlay-card">
-            <h3 style="margin:0"><i class="fa-solid fa-gem" style="color:var(--gold2)"></i> Exclusive Access</h3>
+            <h3 style="margin:0"><i class="fa-solid fa-gem" style="color:var(--gold2)" aria-hidden="true"></i> Exclusive Access</h3>
             <p class="muted" style="margin:6px 0 10px">Connect a wallet with ≥ 100 KLY or redeem your invite. Welcome to the inner circle.</p>
             <div style="display:flex; gap:8px; flex-wrap:wrap">
-              <button id="btn-overlay-connect" class="btn"><i class="fa-solid fa-plug-circle-bolt"></i> Connect Wallet</button>
-              <a href="#apply" id="btn-waitlist" class="btn btn-ghost"><i class="fa-regular fa-envelope"></i> Request Invite</a>
+              <button id="btn-overlay-connect" class="btn" type="button"><i class="fa-solid fa-plug-circle-bolt" aria-hidden="true"></i> Connect Wallet</button>
+              <a href="#apply" id="btn-waitlist" class="btn btn-ghost"><i class="fa-regular fa-envelope" aria-hidden="true"></i> Request Invite</a>
             </div>
           </div>
         </div>
       </main>
 
       <!-- Certificate -->
-      <aside class="card">
+      <aside class="card" aria-labelledby="certificate-title">
         <div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px; position:relative">
-          <h3 style="margin:0">Certificate</h3>
+          <h3 id="certificate-title" style="margin:0">Certificate</h3>
         </div>
         <div class="cert-img">
-          <span class="seal">Founder’s Seal</span>
-          <img src="https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeidmaskps5ouvljx7li667xnvalle566d577vixhtj5rejphrx5bua/Key%20of%20Ascension.PNG" alt="KLY Certificate">
+          <span class="seal" aria-hidden="true">Founder’s Seal</span>
+          <img src="https://blush-worthy-ape-39.mypinata.cloud/ipfs/bafybeidmaskps5ouvljx7li667xnvalle566d577vixhtj5rejphrx5bua/Key%20of%20Ascension.PNG" alt="KLY Certificate preview">
         </div>
         <p class="muted">Finish all modules to mint your NFT certificate.</p>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;margin:10px 0 14px">
           <div>Progress</div><strong id="cert-progress">0 / 12</strong>
           <div>Status</div><strong id="cert-status">Locked</strong>
         </div>
-        <button id="btn-mint" class="btn" disabled><i class="fa-solid fa-certificate"></i> Mint Certificate</button>
+        <button id="btn-mint" class="btn" type="button" disabled aria-busy="false"><i class="fa-solid fa-certificate" aria-hidden="true"></i> Mint Certificate</button>
         <div id="mint-status" class="muted" style="margin-top:10px"></div>
       </aside>
     </section>
@@ -389,37 +403,41 @@
   </div>
 
   <!-- About Membership Modal -->
-  <div id="modal" class="topbar" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(6,7,19,.85); backdrop-filter:blur(10px)">
+  <div id="modal" class="topbar" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(6,7,19,.85); backdrop-filter:blur(10px)"
+       role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
     <div class="container" style="max-width:820px; margin-top:60px">
       <div class="card" style="position:relative">
-        <button id="modal-close" class="btn btn-ghost" style="position:absolute; top:10px; right:10px"><i class="fa-solid fa-xmark"></i></button>
-        <h3 style="margin:0 0 6px"><i class="fa-solid fa-gem" style="color:var(--gold2)"></i> Membership</h3>
+        <button id="modal-close" class="btn btn-ghost" style="position:absolute; top:10px; right:10px" type="button" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        <h3 id="modal-title" style="margin:0 0 6px"><i class="fa-solid fa-gem" style="color:var(--gold2)" aria-hidden="true"></i> Membership</h3>
         <p class="muted">This is a private cohort. Access requires a qualifying on-chain balance or an invite code issued by the team. Invitations are non-transferable and bound to your wallet.</p>
         <div class="vip-input" style="margin-top:10px">
-          <input id="invite-code-2" placeholder="Enter Invite Code" aria-label="Invite Code">
-          <button id="btn-redeem-2" class="btn vip-btn"><i class="fa-solid fa-key"></i> Redeem</button>
+          <input id="invite-code-2" placeholder="Enter Invite Code" aria-label="Invite Code" autocomplete="one-time-code" inputmode="latin">
+          <button id="btn-redeem-2" class="btn vip-btn" type="button"><i class="fa-solid fa-key" aria-hidden="true"></i> Redeem</button>
         </div>
         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
-          <button id="btn-modal-connect" class="btn"><i class="fa-solid fa-plug-circle-bolt"></i> Connect Wallet</button>
-          <a href="#apply" class="btn btn-ghost"><i class="fa-regular fa-envelope"></i> Join Waitlist</a>
+          <button id="btn-modal-connect" class="btn" type="button"><i class="fa-solid fa-plug-circle-bolt" aria-hidden="true"></i> Connect Wallet</button>
+          <a href="#apply" class="btn btn-ghost"><i class="fa-regular fa-envelope" aria-hidden="true"></i> Join Waitlist</a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="toast" class="toast" hidden>
-    <i id="toast-icon" class="fa-solid fa-circle-info"></i>
+  <!-- Toast (aria-live for screen readers) -->
+  <div id="toast" class="toast" aria-live="polite" aria-atomic="true" aria-hidden="true">
+    <i id="toast-icon" class="fa-solid fa-circle-info" aria-hidden="true"></i>
     <div>
       <div id="toast-title" style="font-weight:800;margin-bottom:4px">Info</div>
       <div id="toast-msg" class="muted">Message</div>
     </div>
-    <button class="x" onclick="hideToast()"><i class="fa-solid fa-xmark"></i></button>
+    <button class="x" type="button" aria-label="Dismiss notification" onclick="hideToast()"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
   </div>
 
 <script>
 /* ==============================
    CONFIG
+   (NOTE) WalletConnect v1 & Web3Modal v1 are legacy. For production,
+   consider WalletConnect v2 + Web3Modal v2/3 or wagmi/RainbowKit.
 ============================== */
 const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
 const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
@@ -433,10 +451,8 @@ const NFT_CONTRACT_ABI = [
 const TOTAL_MODULES = 12;
 const BSC = { idDec:56, idHex:"0x38", name:"BNB Smart Chain", rpc:"https://bsc-dataseed.binance.org/" };
 
-/* Invite codes (client-side demo). Replace with your backend/allowlist when ready. */
-const INVITES = new Set([
-  "AURORA-777", "AURORA-888", "KLY-ALPHA", "NEON-PRIME"
-]);
+/* Invite codes (client-side demo). Replace with server verification for real gating. */
+const INVITES = new Set(["AURORA-777","AURORA-888","KLY-ALPHA","NEON-PRIME"]);
 
 /* ==============================
    STATE
@@ -514,7 +530,7 @@ const modules = [
     {label:"Tip", html:`<p>Use a second “approval wallet” for dApps to limit exposure.</p>`}
   ]),
   M("module3","Beginner",3,"Using DEXs",[
-    {label:"Objectives", html:`<ul><li>Understand AMMs</li><li>Execute a swap safely</li><li>Configure slippage & gas</li></ul>`},
+    {label:"Objectives", html:`<ul><li>Understand AMMs</li><li>Execute a swap safely</li><li>Configure slippage &amp; gas</li></ul>`},
     {label:"How AMMs Work", html:`<p>AMMs keep a pool of two tokens; the product <code class="code">x * y = k</code> stays constant.</p>`},
     {label:"Swap Checklist", html:`<ul>
       <li>Verify token contract (official link)</li>
@@ -527,19 +543,19 @@ const modules = [
       <ul><li>Staking</li><li>Lending</li><li>LP (IL risk)</li></ul>
     </div><div class="callout"><strong>Thumb Rule:</strong> Higher APY → higher risk.</div></div>`}
   ]),
-  M("module5","Beginner",5,"Safety & Strategy",[
-    {label:"Threats", html:`<ul><li>Phishing & fake sites</li><li>Rugpulls</li><li>Malicious approvals</li></ul>`},
+  M("module5","Beginner",5,"Safety &amp; Strategy",[
+    {label:"Threats", html:`<ul><li>Phishing &amp; fake sites</li><li>Rugpulls</li><li>Malicious approvals</li></ul>`},
     {label:"Protection", html:`<ul><li>Bookmark official links</li><li>Hardware wallet</li><li>Revoke approvals monthly</li></ul>`}
   ]),
   /* Master 1–7 */
   M("mdf-1","Master",1,"Sovereign Mindset",[
     {label:"Objectives", html:`<ul><li>Owner-operator</li><li>Spot scarcity</li><li>Install review rituals</li></ul>`}
   ]),
-  M("mdf-2","Master",2,"Blockchain & Tokenomics",[
-    {label:"Objectives", html:`<ul><li>Consensus</li><li>Standards</li><li>Emissions & utility</li></ul>`}
+  M("mdf-2","Master",2,"Blockchain &amp; Tokenomics",[
+    {label:"Objectives", html:`<ul><li>Consensus</li><li>Standards</li><li>Emissions &amp; utility</li></ul>`}
   ]),
   M("mdf-3","Master",3,"Wealth via Ecosystems",[
-    {label:"Objectives", html:`<ul><li>Utility flywheel</li><li>Choose role</li><li>Plan & KPIs</li></ul>`}
+    {label:"Objectives", html:`<ul><li>Utility flywheel</li><li>Choose role</li><li>Plan &amp; KPIs</li></ul>`}
   ]),
   M("mdf-4","Master",4,"DeFi Mastery",[
     {label:"Objectives", html:`<ul><li>Yield map</li><li>IL math</li><li>Automation</li></ul>`}
@@ -548,7 +564,7 @@ const modules = [
     {label:"Objectives", html:`<ul><li>Collectible vs utility</li><li>Mint+royalty</li><li>Liquidity quality</li></ul>`}
   ]),
   M("mdf-6","Master",6,"Multiple Web3 Income Streams",[
-    {label:"Objectives", html:`<ul><li>3–5 lanes</li><li>Prospect & deliver</li><li>Track metrics</li></ul>`}
+    {label:"Objectives", html:`<ul><li>3–5 lanes</li><li>Prospect &amp; deliver</li><li>Track metrics</li></ul>`}
   ]),
   M("mdf-7","Master",7,"Sovereign Wealth Strategy",[
     {label:"Objectives", html:`<ul><li>5y plan</li><li>Protection</li><li>Cadences</li></ul>`}
@@ -561,7 +577,8 @@ const modules = [
 function menuBtn(m){
   const b = document.createElement("button");
   b.id = `menu-${m.id}`;
-  b.innerHTML = `<i class="fa-solid ${m.level==='Beginner'?'fa-book-open':'fa-crown'}"></i> ${m.title} <span class="badge">${m.level==='Beginner'?m.num:'M'+m.num}</span>`;
+  b.type = "button";
+  b.innerHTML = `<i class="fa-solid ${m.level==='Beginner'?'fa-book-open':'fa-crown'}" aria-hidden="true"></i> ${m.title} <span class="badge">${m.level==='Beginner'?m.num:'M'+m.num}</span>`;
   b.onclick = ()=>openModule(m.id, true);
   return b;
 }
@@ -581,28 +598,28 @@ function renderAccordion(){
     const done = completed.includes(m.id);
     const sectionsHTML = (m.sections||[]).map(s=>`
       <section style="margin-top:12px">
-        <h4 style="margin:6px 0 8px;color:#a7c3ff"><i class="fa-solid fa-sparkles" style="color:var(--cyn)"></i> ${s.label}</h4>
+        <h4 style="margin:6px 0 8px;color:#a7c3ff"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--cyn)" aria-hidden="true"></i> ${s.label}</h4>
         ${s.html||""}
       </section>
     `).join("");
     acc.innerHTML = `
-      <div class="acc-sum" role="button" aria-expanded="false">
+      <div class="acc-sum" role="button" aria-expanded="false" aria-controls="panel-${m.id}">
         <div class="left">
-          <div class="num">${m.level==='Beginner'?m.num:'M'+m.num}</div>
+          <div class="num" aria-hidden="true">${m.level==='Beginner'?m.num:'M'+m.num}</div>
           <div>
             <div style="font-weight:800">${m.title}</div>
             <small class="muted">${m.level}</small>
           </div>
-          ${done?`<span class="pill" style="border-color:rgba(0,255,149,.35);color:#a5ffcf"><i class="fa-solid fa-circle-check"></i> Completed</span>`:""}
+          ${done?`<span class="pill" style="border-color:rgba(0,255,149,.35);color:#a5ffcf"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Completed</span>`:""}
         </div>
-        <div><button class="btn btn-ghost"><i class="fa-solid fa-chevron-down"></i></button></div>
+        <div><button class="btn btn-ghost" type="button" aria-label="Toggle ${m.title}"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button></div>
       </div>
-      <div class="acc-body">
+      <div class="acc-body" id="panel-${m.id}">
         ${sectionsHTML}
         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn-mark" onclick="markComplete('${m.id}')"><i class="fa-solid fa-check"></i> Mark Complete</button>
-          <span class="pill"><i class="fa-solid fa-clock"></i> ~12–20 min</span>
-          <span class="pill"><i class="fa-solid fa-signal"></i> ${m.level}</span>
+          <button class="btn-mark" type="button" onclick="markComplete('${m.id}')"><i class="fa-solid fa-check" aria-hidden="true"></i> Mark Complete</button>
+          <span class="pill"><i class="fa-solid fa-clock" aria-hidden="true"></i> ~12–20 min</span>
+          <span class="pill"><i class="fa-solid fa-signal" aria-hidden="true"></i> ${m.level}</span>
         </div>
       </div>
     `;
@@ -614,8 +631,16 @@ function openModule(id, fromMenu){
   const acc = document.getElementById(`acc-${id}`);
   if(!acc) return;
   const isOpen = acc.classList.contains("open");
-  document.querySelectorAll(".acc").forEach(a=>{ a.classList.remove("open"); a.querySelector(".acc-sum").setAttribute("aria-expanded","false"); });
-  if(!isOpen){ acc.classList.add("open"); acc.querySelector(".acc-sum").setAttribute("aria-expanded","true"); opened = id; }
+  document.querySelectorAll(".acc").forEach(a=>{
+    a.classList.remove("open");
+    const sum = a.querySelector(".acc-sum");
+    sum && sum.setAttribute("aria-expanded","false");
+  });
+  if(!isOpen){
+    acc.classList.add("open");
+    acc.querySelector(".acc-sum").setAttribute("aria-expanded","true");
+    opened = id;
+  }
   document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
   const btn = document.getElementById(`menu-${id}`); if(btn) btn.classList.add("active");
   if(fromMenu) acc.scrollIntoView({behavior:"smooth", block:"start"});
@@ -625,7 +650,10 @@ function openModule(id, fromMenu){
    PROGRESS
 ============================== */
 function markComplete(id){
-  if(!completed.includes(id)){ completed.push(id); localStorage.setItem("kly_completed_neon", JSON.stringify(completed)); }
+  if(!completed.includes(id)){
+    completed.push(id);
+    localStorage.setItem("kly_completed_neon", JSON.stringify(completed));
+  }
   notify("Saved","Module marked complete","good","fa-circle-check");
   renderAccordion(); updateProgress();
   if(typeof confetti==="function"){ confetti({particleCount:90, spread:60, origin:{y:.8}, colors:["#00eaff","#ff3bff","#9333ff"]}); }
@@ -637,7 +665,13 @@ function updateProgress(){
   chipText.textContent = `${done}/${TOTAL_MODULES} Complete`;
   certProgress.textContent = `${done} / ${TOTAL_MODULES}`;
   ring.style.setProperty("--p", pct + "%"); ring.setAttribute("data-label", pct + "%");
-  if(done >= TOTAL_MODULES){ certStatus.textContent = "Ready to Mint"; btnMint.disabled = false; } else { certStatus.textContent = "Locked"; btnMint.disabled = true; }
+  if(done >= TOTAL_MODULES){
+    certStatus.textContent = "Ready to Mint";
+    btnMint.disabled = false;
+  } else {
+    certStatus.textContent = "Locked";
+    btnMint.disabled = true;
+  }
 }
 
 /* ==============================
@@ -651,21 +685,16 @@ function notify(title, msg, kind="info", icon="fa-circle-info"){
   else if(kind==="bad") toast.classList.add("bad");
   else if(kind==="warn") toast.classList.add("warn");
 
-  toast.hidden = false;
-  if(notify._timer) clearTimeout(notify._timer);
-  notify._timer = setTimeout(hideToast, 4200);
+  toast.setAttribute("aria-hidden","false");
 
-  if(notify._raf) cancelAnimationFrame(notify._raf);
-  const start = performance.now();
-  (function loop(t){
-    if(t - start > 4500) { hideToast(); return; }
-    notify._raf = requestAnimationFrame(loop);
-  })(start);
-}
-function hideToast(){ 
-  toast.hidden = true; 
   if(notify._timer) clearTimeout(notify._timer);
-  if(notify._raf) cancelAnimationFrame(notify._raf);
+  toast.style.display = "flex";
+  notify._timer = setTimeout(hideToast, 4200);
+}
+function hideToast(){
+  toast.setAttribute("aria-hidden","true");
+  toast.style.display = "none";
+  if(notify._timer) clearTimeout(notify._timer);
 }
 
 /* ==============================
@@ -686,10 +715,10 @@ function setConnectUI(state){
   if(state === 'connecting'){
     btnConnect.disabled = true;
     btnConnect.hidden = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
+    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Connecting…';
   }else if(state === 'connected'){
     btnConnect.disabled = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet" aria-hidden="true"></i> Connect Wallet';
     btnConnect.hidden = true;
     btnDisconnect.hidden = false;
     pillAddr.hidden = false;
@@ -698,7 +727,7 @@ function setConnectUI(state){
     btnConnect.hidden = false;
     btnDisconnect.hidden = true;
     pillAddr.hidden = true;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet" aria-hidden="true"></i> Connect Wallet';
   }
 }
 
@@ -730,7 +759,9 @@ async function connect(){
             nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
             rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
           }] });
-        }else{ throw e; }
+        }else{
+          throw e;
+        }
       }
       provider = new ethers.providers.Web3Provider(walletInstance, "any");
       signer = provider.getSigner();
@@ -770,14 +801,16 @@ async function afterConnect(){
 
     const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
     const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals().catch(()=>18)]);
-    const bal = Number(ethers.utils.formatUnits(raw, dec));
-    klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
+    // Avoid floating precision for big balances; format to 4 dp safely
+    const balStr = ethers.utils.formatUnits(raw, dec);
+    const balNum = Number(balStr);
+    klyBalanceEl.textContent = `${Number.isFinite(balNum)? balNum.toLocaleString(undefined,{ maximumFractionDigits: 4 }) : balStr} KLY`;
 
-    const p = Math.min(100, Math.round((Math.min(bal, 100) / 100) * 100));
+    const p = Math.min(100, Math.round((Math.min(balNum, 100) / 100) * 100));
     ring.style.setProperty("--p", p + "%");
     ring.setAttribute("data-label", p + "%");
 
-    updateAccessState(bal);
+    updateAccessState(balNum);
     updateProgress();
   }catch(e){
     console.error('[afterConnect] error:', e);
@@ -814,8 +847,6 @@ function updateAccessState(balanceNum){
   curriculumWrap.classList.toggle('locked', !access);
   if(access){
     notifyAuto("Welcome","Access granted. Enjoy the course.","good","fa-unlock");
-  }else{
-    // show a gentle note but don't spam
   }
 }
 
@@ -840,22 +871,59 @@ async function mint(){
   const unique = [...new Set(completed)].filter(id => modules.some(m => m.id === id));
   if(unique.length < TOTAL_MODULES) return notify("Finish Modules","Complete all modules first.","warn","fa-list-check");
   try{
-    btnMint.disabled=true; btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Minting…';
+    btnMint.disabled=true; btnMint.setAttribute('aria-busy','true');
+    btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Minting…';
     const to = await signer.getAddress();
     const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
     const tokenURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
-    let gas = await nft.estimateGas.mintTo(to, tokenURI).catch(()=>null);
-    if(!gas){ notify("Gas Estimation Failed","Are you authorized to mint?","bad","fa-engine-warning"); btnMint.disabled=false; btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate'; return; }
+
+    let gas;
+    try{
+      gas = await nft.estimateGas.mintTo(to, tokenURI);
+    }catch(estErr){
+      notify("Gas Estimate Failed","You might not be authorized to mint yet.","warn","fa-triangle-exclamation");
+      btnMint.disabled=false; btnMint.setAttribute('aria-busy','false');
+      btnMint.innerHTML='<i class="fa-solid fa-certificate" aria-hidden="true"></i> Mint Certificate';
+      return;
+    }
+
     const tx = await nft.mintTo(to, tokenURI, { gasLimit: gas.mul(120).div(100) });
     mintStatus.innerHTML = `Tx submitted: <a target="_blank" rel="noopener" href="https://bscscan.com/tx/${tx.hash}">view on BscScan</a>`;
     await tx.wait();
     notify("Minted","Certificate minted successfully!","good","fa-certificate");
-    btnMint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Minted';
-    if(typeof confetti==="function"){ confetti({particleCount:160, spread:70, origin:{y:.7}, colors:["#00eaff","#ff3bff","#9333ff"]}); }
+    btnMint.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Minted';
   }catch(e){
     notify("Mint Failed", e?.message || "Unknown error", "bad", "fa-circle-xmark");
-    btnMint.disabled=false; btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate';
+    btnMint.disabled=false;
+    btnMint.innerHTML='<i class="fa-solid fa-certificate" aria-hidden="true"></i> Mint Certificate';
+  }finally{
+    btnMint.setAttribute('aria-busy','false');
   }
+}
+
+/* ==============================
+   MODAL (focus trap & ESC close)
+============================== */
+function openModal(){
+  modal.style.display="block";
+  modal.setAttribute("aria-hidden","false");
+  const focusable = modal.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])');
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  function trap(e){
+    if(e.key === "Tab"){
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }else if(e.key === "Escape"){ closeModal(); }
+  }
+  modal._trap = trap;
+  document.addEventListener("keydown", trap);
+  (first||modal).focus();
+}
+function closeModal(){
+  modal.style.display="none";
+  modal.setAttribute("aria-hidden","true");
+  document.removeEventListener("keydown", modal._trap);
+  btnAbout.focus();
 }
 
 /* ==============================
@@ -873,10 +941,12 @@ document.getElementById("btn-overlay-connect").addEventListener("click", connect
 
 btnRedeem.addEventListener("click", ()=> redeemInvite(inviteInput.value));
 btnRedeem2.addEventListener("click", ()=> redeemInvite(inviteInput2.value));
+inviteInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter") redeemInvite(inviteInput.value); });
+inviteInput2.addEventListener("keydown", (e)=>{ if(e.key==="Enter") redeemInvite(inviteInput2.value); });
 
-btnAbout.addEventListener("click", ()=> modal.style.display="block");
-modalClose.addEventListener("click", ()=> modal.style.display="none");
-btnModalConn.addEventListener("click", ()=> connect());
+btnAbout.addEventListener("click", openModal);
+modalClose.addEventListener("click", closeModal);
+btnModalConn.addEventListener("click", connect);
 
 window.addEventListener("beforeunload", ()=>{ if(opened) localStorage.setItem("kly_open_neon", opened); });
 
