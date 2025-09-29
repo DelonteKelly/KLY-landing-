@@ -909,130 +909,90 @@ function hideToast(){
 }
 // Close on click/tap anywhere on the toast (in case timers get throttled)
 toast.addEventListener("click", hideToast);
-/* ==============================
-   WEB3
-============================== */
-async function initWeb3Modal(){
-  const providerOptions = {
-    walletconnect: {
-      package: window.WalletConnectProvider.default,
-      options: { rpc: { [BSC.idDec]: BSC.rpc }, chainId: BSC.idDec }
-    }
-  };
-  web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions, theme:"dark" });
+// ---- MetaMask-only helpers ----
+function getMetaMask(){
+  if (window.ethereum?.providers?.length){
+    const mm = window.ethereum.providers.find(p => p.isMetaMask);
+    if (mm) return mm;
+  }
+  return (window.ethereum && window.ethereum.isMetaMask) ? window.ethereum : null;
 }
 
-function setConnectUI(state){
-  // state: 'idle' | 'connecting' | 'connected'
-  if(state === 'connecting'){
-    btnConnect.disabled = true;
-    btnConnect.hidden = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
-  }else if(state === 'connected'){
-    btnConnect.disabled = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-    btnConnect.hidden = true;
-    btnDisconnect.hidden = false;
-    pillAddr.hidden = false;
-  }else{
-    btnConnect.disabled = false;
-    btnConnect.hidden = false;
-    btnDisconnect.hidden = true;
-    pillAddr.hidden = true;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+async function ensureBSC(eip1193){
+  const current = await eip1193.request({ method:'eth_chainId' });
+  if (String(current).toLowerCase() === BSC.idHex) return;
+  try{
+    await eip1193.request({ method:'wallet_switchEthereumChain', params:[{ chainId:BSC.idHex }] });
+  }catch(e){
+    if(e?.code === 4902){
+      await eip1193.request({
+        method:'wallet_addEthereumChain',
+        params:[{
+          chainId:BSC.idHex, chainName:BSC.name,
+          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+          rpcUrls:[BSC.rpc], blockExplorerUrls:['https://bscscan.com']
+        }]
+      });
+    } else { throw e; }
   }
 }
 
-function notifyAuto(title, msg, kind="info", icon="fa-circle-info"){
-  notify(title, msg, kind, icon);
-  clearTimeout(notifyAuto._t);
-  notifyAuto._t = setTimeout(()=>hideToast(), 4200);
-}
-
+// Replace your connect() with this version:
 async function connect(){
   setConnectUI('connecting');
   try{
-    walletInstance = await web3Modal.connect();
-    walletInstance.removeAllListeners?.();
-
-    provider = new ethers.providers.Web3Provider(walletInstance, "any");
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    account = await signer.getAddress();
-
-    const net = await provider.getNetwork().catch(()=>({ chainId: 0 }));
-    if(net.chainId !== BSC.idDec){
-      try{
-        await walletInstance.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BSC.idHex }] });
-      }catch(e){
-        if(e?.code === 4902){
-          await walletInstance.request({ method:"wallet_addEthereumChain", params:[{
-            chainId:BSC.idHex, chainName:BSC.name,
-            nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-            rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
-          }] });
-        }else{ throw e; }
-      }
-      provider = new ethers.providers.Web3Provider(walletInstance, "any");
-      signer = provider.getSigner();
-      account = await signer.getAddress();
+    const mm = getMetaMask();
+    if(!mm){
+      setConnectUI('idle');
+      return notifyAuto('MetaMask not found','Install the MetaMask browser extension to continue.','warn','fa-plug-circle-xmark');
     }
 
-    walletInstance.on?.("accountsChanged", async (accs)=>{
-      if(!accs?.length) return disconnect();
-      account = accs[0];
-      await afterConnect();
-    });
-    walletInstance.on?.("chainChanged", async ()=>{
-      provider = new ethers.providers.Web3Provider(walletInstance, "any");
-      signer   = provider.getSigner();
-      account  = await signer.getAddress().catch(()=>account);
-      await afterConnect();
-    });
-    walletInstance.on?.("disconnect", ()=> disconnect());
+    await ensureBSC(mm);
+
+    provider = new ethers.providers.Web3Provider(mm, 'any');
+    await provider.send('eth_requestAccounts', []);
+    signer  = provider.getSigner();
+    account = await signer.getAddress();
+
+    // events
+    mm.removeListener?.('accountsChanged', onAccountsChanged);
+    mm.removeListener?.('chainChanged', onChainChanged);
+    mm.removeListener?.('disconnect', onDisconnect);
+    mm.on?.('accountsChanged', onAccountsChanged);
+    mm.on?.('chainChanged',  onChainChanged);
+    mm.on?.('disconnect',    onDisconnect);
 
     await afterConnect();
     setConnectUI('connected');
   }catch(err){
-    console.error('[connect] failed:', err);
-    notifyAuto("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
+    console.error('[connect:mm]', err);
+    const msg = err?.code === 4001 ? 'User rejected the request.' : (err?.message || 'Connection failed.');
+    notifyAuto('Connection Failed', msg, 'bad', 'fa-circle-xmark');
     setConnectUI('idle');
   }
 }
 
-async function afterConnect(){
-  try{
-    if(!provider || !signer || !account) throw new Error('Missing provider/signer/account');
-    const short = `${account.slice(0,6)}…${account.slice(-4)}`;
-    addrShort.textContent = short;
-    addrFull.textContent  = account;
-    avatar.textContent    = account.slice(2,4).toUpperCase();
-    netNameEl.textContent = BSC.name;
-
-    const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals().catch(()=>18)]);
-    const bal = Number(ethers.utils.formatUnits(raw, dec));
-    klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
-
-    const p = Math.min(100, Math.round((Math.min(bal, 100) / 100) * 100));
-    ring.style.setProperty("--p", p + "%");
-    ring.setAttribute("data-label", p + "%");
-
-    updateAccessState(bal);
-    updateProgress();
-  }catch(e){
-    console.error('[afterConnect] error:', e);
-    notifyAuto("Read Error","Could not read KLY balance.","bad","fa-bug");
-  }
+async function onAccountsChanged(accs){
+  if(!accs?.length) return disconnect();
+  account = accs[0];
+  await afterConnect();
 }
 
+async function onChainChanged(hexId){
+  if (String(hexId).toLowerCase() !== BSC.idHex){
+    try { await ensureBSC(getMetaMask()); } catch(_) {}
+  }
+  provider = new ethers.providers.Web3Provider(getMetaMask(), 'any');
+  signer   = provider.getSigner();
+  try{ account = await signer.getAddress(); }catch{}
+  await afterConnect();
+}
+
+function onDisconnect(){ disconnect(); }
+
+// Replace your disconnect() with this version (MetaMask can't be force-disconnected)
 async function disconnect(){
-  try{ await walletInstance?.disconnect?.(); }catch{}
-  try{ await web3Modal?.clearCachedProvider?.(); }catch{}
-
-  walletInstance = null;
   provider = signer = account = null;
-
   addrFull.textContent = "Not connected";
   avatar.textContent   = "KA";
   netNameEl.textContent= "Not connected";
@@ -1040,7 +1000,7 @@ async function disconnect(){
   ring.style.setProperty("--p", "0%");
   ring.setAttribute("data-label", "0%");
   setConnectUI('idle');
-  updateAccessState(0); // re-lock UI
+  updateAccessState(0);
   notifyAuto("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
 }
 
@@ -1100,35 +1060,7 @@ async function mint(){
   }
 }
 
-/* ==============================
-   INIT
-============================== */
-function initUI(){
-  renderMenus(); renderAccordion(); updateProgress();
-  if(modules[0]) openModule(modules[0].id, false);
-  const year = new Date().getFullYear(); el("year").textContent = year;
-}
-btnConnect.addEventListener("click", connect);
-btnDisconnect.addEventListener("click", disconnect);
-btnMint.addEventListener("click", mint);
-document.getElementById("btn-overlay-connect").addEventListener("click", connect);
 
-btnRedeem.addEventListener("click", ()=> redeemInvite(inviteInput.value));
-btnRedeem2.addEventListener("click", ()=> redeemInvite(inviteInput2.value));
-
-btnAbout.addEventListener("click", ()=> modal.style.display="block");
-modalClose.addEventListener("click", ()=> modal.style.display="none");
-btnModalConn.addEventListener("click", ()=> connect());
-
-window.addEventListener("beforeunload", ()=>{ if(opened) localStorage.setItem("kly_open_neon", opened); });
-
-window.addEventListener("load", async ()=>{
-  initUI();
-  await initWeb3Modal();
-  // restore invite access on load
-  if(inviteUnlocked){ curriculumWrap.classList.remove('locked'); }
-  if(window.Web3Modal && web3Modal.cachedProvider){ try{ await connect(); }catch{} }
-});
 </script>
 </body>
 </html>
