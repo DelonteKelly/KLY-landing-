@@ -239,102 +239,93 @@ const ERC721_MIN_ABI = [ "function tokenURI(uint256) view returns (string)" ];
 const ERC1155_MIN_ABI = [ "function uri(uint256) view returns (string)" ];
 
 /* ===================== IPFS HELPERS (encoded + rotating, data: support) ===================== */
-const DEBUG_META = true; // turn off after verifying
 
-// multiple gateways incl. thirdweb's ipfscdn
-const IPFS_GWS = [
+const CANDIDATE_GWS = [
   "https://ipfscdn.io/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
   "https://cloudflare-ipfs.com/ipfs/",
   "https://ipfs.io/ipfs/"
 ];
 
-// encode safely (spaces/unicode)
-function encodeIpfsPath(path){
+// cache key for localStorage
+const GW_CACHE_KEY = "tamaquah.ipfs.preferred";
+
+// return the currently preferred gateway (from cache) if any
+function getPreferredGw() {
+  const s = localStorage.getItem(GW_CACHE_KEY);
+  return s && CANDIDATE_GWS.includes(s) ? s : null;
+}
+function setPreferredGw(gw) {
+  if (CANDIDATE_GWS.includes(gw)) localStorage.setItem(GW_CACHE_KEY, gw);
+}
+
+// Encode each path segment (spaces/unicode)
+function encodeIpfsPath(path) {
   const [pure, tail=""] = path.split(/([?#].*)/);
   return pure.split("/").map(p=>encodeURIComponent(p)).join("/") + tail;
 }
 
-// normalize any ipfs-ish / relative / bare CID into ipfs://...
-function toIpfsUrl(maybe){
-  if (!maybe) return "";
-  if (/^data:|^https?:|^ipfs:/i.test(maybe)) return maybe;
-  if (maybe.startsWith("/ipfs/")) return "ipfs://" + maybe.slice(1);
-  if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(maybe)) return "ipfs://" + maybe; // bare CID
-  return maybe; // leave (rare cases)
+// Normalize bare CIDs or /ipfs/... to ipfs://...
+function normalizeIpfsish(s) {
+  if (!s) return "";
+  if (/^(https?:|ipfs:|data:)/i.test(s)) return s;
+  if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1);
+  return "ipfs://" + s; // bare CID or relative path
 }
 
-// turn ipfs:// or /ipfs/… into a list of HTTP URLs (encoded)
-function asHttpGateways(urlOrIpfs){
+// Turn any ipfs-ish URL into an ordered list of HTTPS URLs
+function resolveIPFS(urlOrIpfs){
   if (!urlOrIpfs) return [];
   if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs];
-  let path = null;
-  const u = toIpfsUrl(urlOrIpfs);
-  if (u.startsWith("ipfs://")) path = u.slice(7);
-  else {
-    const m = u.split("/ipfs/");
-    if (m.length > 1) path = m[1];
-  }
-  if (!path) return [u];
+
+  // convert to ipfs://<path> first
+  const ipfsish = normalizeIpfsish(urlOrIpfs);
+  const path = ipfsish.startsWith("ipfs://")
+    ? ipfsish.slice(7)
+    : (ipfsish.split("/ipfs/")[1] || "");
+
+  if (!path) return [urlOrIpfs];
+
   const enc = encodeIpfsPath(path);
-  const list = IPFS_GWS.map(gw => gw + enc);
-  if (DEBUG_META) console.log("[IPFS->HTTP]", { input:urlOrIpfs, normalized:u, enc, list });
-  return list;
+  const pref = getPreferredGw();
+  const rest = CANDIDATE_GWS.filter(g=>g!==pref);
+  return (pref ? [pref] : []).concat(rest).map(gw => gw + enc);
 }
 
-// fetch JSON from data:, https, or gateways
-async function fetchJsonWithGateways(urlOrIpfs){
-  const u = toIpfsUrl(urlOrIpfs);
-  if (!u) return null;
-
-  // data:application/json
-  if (/^data:application\/json/i.test(u)){
+// Probe gateways with a CID (image or json) and remember the first that works
+async function probeBestGateway(testCidOrPath){
+  const path = (testCidOrPath||"").replace(/^ipfs:\/\//,"").replace(/^\/?ipfs\//,"");
+  if (!path) return;
+  const enc = encodeIpfsPath(path);
+  for (const gw of CANDIDATE_GWS){
     try{
-      const [, payload] = u.split(",", 2);
-      const decoded = /;base64/i.test(u) ? atob(payload) : decodeURIComponent(payload);
-      const json = JSON.parse(decoded);
-      if (DEBUG_META) console.log("[META data: OK]", json);
-      return json;
-    }catch(e){ if(DEBUG_META) console.warn("[META data: fail]", e); return null; }
+      const r = await fetch(gw + enc, { method:"HEAD", cache:"no-cache" });
+      if (r.ok) { setPreferredGw(gw); break; }
+    }catch(_){}
   }
+}
 
-  // direct https
-  if (/^https?:\/\//i.test(u)){
-    try{ const r = await fetch(u, { cache:"no-cache" }); if (r.ok) return await r.json(); }catch(_) {}
-    return null;
-  }
-
-  // ipfs-ish -> rotate
-  for (const url of asHttpGateways(u)){
+// Try all gateways for JSON
+async function fetchJsonWithGateways(urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  for (const url of urls){
     try{
       const r = await fetch(url, { cache:"no-cache" });
-      if (r.ok){
-        const j = await r.json();
-        if (DEBUG_META) console.log("[META OK]", url, j);
-        return j;
-      } else if (DEBUG_META) console.warn("[META not ok]", url, r.status);
-    }catch(e){ if (DEBUG_META) console.warn("[META fetch err]", url, e?.message||e); }
+      if (r.ok) return await r.json();
+    }catch(_){}
   }
   return null;
 }
 
-// <img> loader with rotating gateways & final placeholder
-function setImgWithFallback(imgEl, urlOrIpfs, placeholder){
-  const u = toIpfsUrl(urlOrIpfs);
-  const list = asHttpGateways(u);
-  if (!list.length){ if(placeholder) imgEl.src = placeholder; else imgEl.removeAttribute("src"); return; }
+// Rotate <img> src across gateways on error
+function setImgWithFallback(imgEl, urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  if (urls.length === 0){ imgEl.removeAttribute("src"); return; }
   let i = 0;
-  const tryNext = ()=> {
-    if (i < list.length){
-      const src = list[i++];
-      if (DEBUG_META) console.log("[IMG try]", src, imgEl.alt || "");
-      imgEl.src = src;
-    } else if (placeholder){ imgEl.src = placeholder; }
-  };
-  imgEl.onerror = tryNext;
-  tryNext();
+  const trySet = ()=> { imgEl.src = urls[i]; i++; };
+  imgEl.onerror = ()=> { if (i < urls.length) trySet(); };
+  trySet();
 }
-
 
 /* ===================== HELPERS ===================== */
 const $=(id)=>document.getElementById(id);
