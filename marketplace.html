@@ -264,12 +264,27 @@ async function fetchJsonWithGateways(urlOrIpfs){
   return null;
 }
 
-function setImgWithFallback(imgEl, urlOrIpfs){
+function setImgWithFallback(imgEl, urlOrIpfs, placeholder){
   const urls = resolveIPFS(urlOrIpfs);
-  if (urls.length === 0){ imgEl.removeAttribute("src"); return; }
+  if (urls.length === 0){
+    if (placeholder) imgEl.src = placeholder;
+    else imgEl.removeAttribute("src");
+    return;
+  }
   let i = 0;
-  const trySet = ()=> { imgEl.src = urls[i]; if (DEBUG_META) console.log("[IMG] try", imgEl.alt, urls[i]); i++; };
-  imgEl.onerror = ()=> { if (i < urls.length) trySet(); };
+  const trySet = ()=>{
+    if (i < urls.length){
+      imgEl.src = urls[i];
+      if (typeof DEBUG_META !== "undefined" && DEBUG_META) {
+        console.log("[IMG] try", imgEl.alt, urls[i]);
+      }
+      i++;
+    } else {
+      // all gateways failed → final fallback
+      if (placeholder) imgEl.src = placeholder;
+    }
+  };
+  imgEl.onerror = trySet;
   trySet();
 }
 
@@ -531,13 +546,11 @@ async function render(rows){
       `;
 
       const imgEl = card.querySelector(`#img-${r.id}`);
-      if (md.image) {
-        setImgWithFallback(imgEl, md.image);
-        const placeholderOnce = ()=>{ imgEl.onerror = null; imgEl.src = placeholder; };
-        imgEl.addEventListener('error', placeholderOnce, { once:true });
-      } else {
-        imgEl.src = placeholder;
-      }
+    if (md.image) {
+  setImgWithFallback(imgEl, md.image, placeholder);
+} else {
+  imgEl.src = placeholder;
+}
 
       return card;
     })));
