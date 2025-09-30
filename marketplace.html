@@ -226,33 +226,43 @@ const ERC1155_MIN_ABI = [
   "function uri(uint256 id) view returns (string)"
 ];
 
-// ---------- IPFS helpers with gateway rotation ----------
+/* ===================== IPFS HELPERS (multi-gateway) ===================== */
 const IPFS_GWS = [
   "https://blush-worthy-ape-39.mypinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://cloudflare-ipfs.com/ipfs/"
 ];
-function ipfsToHttp(u){
-  if(!u) return "";
-  if (u.startsWith("ipfs://")) {
-    const path = u.replace("ipfs://", "");
-    return IPFS_GWS[0] + path;
-  }
-  return u;
-}
-async function fetchJsonWithGateways(urlOrIpfs){
+
+// Turn any ipfs-ish URL into an ordered list of HTTP URLs
+function resolveIPFS(urlOrIpfs){
+  if (!urlOrIpfs) return [];
   let path = null;
   if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice(7);
   else if (urlOrIpfs.includes("/ipfs/")) path = urlOrIpfs.split("/ipfs/")[1];
-  const tryUrls = path ? IPFS_GWS.map(gw => gw + path) : [urlOrIpfs];
-  for (const url of tryUrls){
+  if (!path) return [urlOrIpfs]; // already http(s)
+  return IPFS_GWS.map(gw => gw + path);
+}
+
+// For JSON fetches (metadata), try all gateways
+async function fetchJsonWithGateways(urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  for (const url of urls){
     try{
-      const r = await fetch(url, { cache: "no-cache" });
-      if (!r.ok) continue;
-      return await r.json();
+      const r = await fetch(url, { cache:"no-cache", referrerPolicy:"no-referrer" });
+      if (r.ok) return await r.json();
     }catch(_){}
   }
   return null;
+}
+
+// For <img>, set src with fallback rotation
+function setImgWithFallback(imgEl, urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  if (urls.length === 0){ imgEl.removeAttribute("src"); return; }
+  let i = 0;
+  const trySet = ()=> { imgEl.src = urls[i]; i++; };
+  imgEl.onerror = ()=> { if (i < urls.length) trySet(); };
+  trySet();
 }
 
 /* ===================== HELPERS ===================== */
@@ -263,8 +273,12 @@ $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function resolve1155Uri(tpl, tokenId){
   if(!tpl) return "";
-  const hex = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32).slice(2);
-  return tpl.startsWith("ipfs://") ? `ipfs://${tpl.slice(7).replace("{id}", hex)}` : tpl.replace("{id}", hex);
+  const hex32 = ethers.utils.hexZeroPad(
+    ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
+  ).slice(2).toLowerCase();
+  const filled = tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
+  // keep ipfs:// so our fetchers can rotate gateways
+  return filled;
 }
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
@@ -383,17 +397,17 @@ async function getNFTMeta(asset, tokenId, tokenType){
       const json = await fetchJsonWithGateways(uri);
       return {
         name: json?.name || `Token #${tokenId}`,
-        image: ipfsToHttp(json?.image || json?.image_url || ""),
+        image: (json?.image || json?.image_url || json?.imageUri || ""),
         description: json?.description || ""
       };
     } else { // ERC1155
       const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
-      const tpl = await c1155.uri(tokenId);
-      const ipfsMeta = resolve1155Uri(tpl, tokenId);
-      const json = await fetchJsonWithGateways(ipfsMeta);
+      const tpl  = await c1155.uri(tokenId);
+      const meta = resolve1155Uri(tpl, tokenId);
+      const json = await fetchJsonWithGateways(meta);
       return {
         name: json?.name || `Token #${tokenId}`,
-        image: ipfsToHttp(json?.image || json?.image_url || ""),
+        image: (json?.image || json?.image_url || json?.imageUri || ""),
         description: json?.description || ""
       };
     }
@@ -470,10 +484,7 @@ async function render(rows){
 
     card.innerHTML = `
       <div class="thumb-container">
-        <img class="thumb" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-             src="${md.image || placeholder}"
-             onerror="this.onerror=null; this.src='${placeholder}';"
-             alt="NFT preview for ${escapeHtml(md.name)}">
+        <img class="thumb" id="img-${r.id}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="NFT preview for ${escapeHtml(md.name)}">
         <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
       </div>
       <div class="row" style="margin-top:.5rem">
@@ -499,6 +510,16 @@ async function render(rows){
       </div>
       <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
     `;
+
+    // mount image with fallback gateways
+    const imgEl = card.querySelector(`#img-${r.id}`);
+    if (md.image) {
+      setImgWithFallback(imgEl, md.image);
+      imgEl.onerror = ()=>{ imgEl.onerror=null; imgEl.src = placeholder; };
+    } else {
+      imgEl.src = placeholder;
+    }
+
     return card;
   })));
 
