@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Right Knowledge: The Path of Nuwaubu</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12;           /* deep temple night */
+    --panel:#121522;        /* UI surface */
+    --panel-2:#0f1220;      /* darker panel */
+    --text:#e8f0ff;
+    --muted:#a6b0c9;
+    --gold:#ffd36e;
+    --gold-2:#b68c2d;
+    --teal:#00ffa3;
+    --violet:#7c5cff;
+    --danger:#ff5c74;
+    --ok:#3ad29f;
+    --ring: 0 0 0 2px rgba(255,211,110,.15);
+  }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; height:100%; background:radial-gradient(1200px 900px at 70% -10%, rgba(124,92,255,.09), transparent 60%), radial-gradient(900px 700px at -10% 110%, rgba(0,255,163,.08), transparent 60%), var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .app{ display:grid; grid-template-rows:auto 1fr; min-height:100vh }
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:14px 18px; background:linear-gradient(180deg, rgba(10,12,18,.8), rgba(10,12,18,.55));
+    backdrop-filter: blur(8px); border-bottom:1px solid rgba(255,255,255,.06)
+  }
+  .brand{ display:flex; align-items:center; gap:.8rem }
+  .glyph{
+    width:36px; height:36px; border-radius:8px;
+    background:conic-gradient(from 120deg, rgba(255,211,110,.9), rgba(0,255,163,.9), rgba(124,92,255,.9), rgba(255,211,110,.9));
+    position:relative; filter:blur(.2px) saturate(110%);
+  }
+  .glyph:after{
+    content:""; position:absolute; inset:3px; border-radius:6px; background:var(--panel-2);
+  }
+  .title{ font-family:Orbitron, sans-serif; letter-spacing:.5px }
+  .subtitle{ color:var(--muted); font-size:.9rem }
+  .right{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap }
+
+  .chip{
+    font:600 .78rem/1 Orbitron, sans-serif; letter-spacing:.4px;
+    color:#0a0c12; background:linear-gradient(180deg, var(--gold), #ffb43a);
+    padding:6px 10px; border-radius:999px; border:1px solid rgba(0,0,0,.2)
+  }
+  button{
+    appearance:none; border:1px solid rgba(255,255,255,.08); background:var(--panel);
+    color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer;
+    transition:.15s transform, .15s background, .15s border-color; font-weight:600
+  }
+  button:hover{ transform:translateY(-1px); border-color:rgba(255,255,255,.18) }
+  .btn-primary{ background:linear-gradient(180deg, #1b2337, #131a2c); border-color:rgba(124,92,255,.35) }
+  .btn-primary .dot{ width:8px; height:8px; border-radius:50%; margin-right:8px; background:var(--danger); display:inline-block; vertical-align:middle }
+  .btn-primary.connected .dot{ background:var(--ok) }
+  .addr{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--muted); font-size:.85rem }
+
+  .shell{ display:grid; grid-template-columns: 300px 1fr; gap:16px; padding:16px; }
+  @media (max-width: 900px){
+    .shell{ grid-template-columns:1fr }
+  }
+
+  aside{
+    background:linear-gradient(180deg, rgba(255,211,110,.04), rgba(124,92,255,.04)), linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden;
+  }
+  .aside-top{ padding:16px 16px 10px; border-bottom:1px solid rgba(255,255,255,.06) }
+  .progress-wrap{ display:flex; align-items:center; gap:10px }
+  .bar{ flex:1; height:8px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden }
+  .fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--gold), var(--teal)); transition:width .4s ease }
+  .percent{ font-weight:700; min-width:44px; text-align:right; font-family:Orbitron }
+
+  .nav{ max-height:calc(100vh - 220px); overflow:auto; }
+  .nav button{
+    width:100%; background:transparent; text-align:left; padding:14px 16px; border-radius:0; border:none; border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex; align-items:center; gap:10px; font-weight:600; color:var(--text)
+  }
+  .nav button .index{ width:28px; height:28px; border-radius:8px; background:#1a2033; display:grid; place-items:center; font-family:Orbitron; font-size:.8rem; color:var(--gold) }
+  .nav button.locked{ opacity:.55; cursor:not-allowed }
+  .nav button.active{ background:rgba(124,92,255,.08) }
+
+  main{
+    background:linear-gradient(180deg, rgba(0,255,163,.04), rgba(124,92,255,.03)), linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden; min-height:60vh;
+    display:flex; flex-direction:column;
+  }
+  .hero{
+    padding:18px 18px 8px; border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .hero h2{ margin:0; font-family:Orbitron; letter-spacing:.4px }
+  .tagline{ color:var(--muted); margin:5px 0 0; font-size:.95rem }
+
+  .tabs{ display:flex; gap:8px; padding:12px 12px 0 12px; border-bottom:1px solid rgba(255,255,255,.06) }
+  .tab{
+    padding:10px 12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    border-bottom:none; border-radius:10px 10px 0 0; cursor:pointer; font-weight:700; font-size:.92rem
+  }
+  .tab.active{ background:linear-gradient(180deg, #1b2337, #131a2c); border-color:rgba(124,92,255,.35) }
+
+  .content{ padding:18px; display:grid; gap:14px; line-height:1.75 }
+  .scroll{
+    background:linear-gradient(180deg, rgba(255,211,110,.05), rgba(255,211,110,.02));
+    border:1px dashed rgba(255,211,110,.35); border-radius:14px; padding:18px; position:relative; overflow:hidden;
+  }
+  .scroll:before, .scroll:after{
+    content:""; position:absolute; inset:-2px; border-radius:16px; pointer-events:none; border:1px solid rgba(255,211,110,.15)
+  }
+  .practice{
+    background:linear-gradient(180deg, rgba(0,255,163,.06), rgba(0,255,163,.02));
+    border:1px dashed rgba(0,255,163,.35); border-radius:14px; padding:16px;
+  }
+  .objective-list li{ margin:.35rem 0 }
+
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; padding:0 18px 18px; border-top:1px solid rgba(255,255,255,.06); margin-top:auto }
+  .pill{ border-radius:999px; padding:10px 14px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03); font-weight:700 }
+  .cta{ background:linear-gradient(180deg, #213058, #1a2445); border-color:rgba(0,255,163,.35) }
+  .note{ color:var(--muted); font-size:.9rem }
+
+  /* small helper for subtle separators */
+  hr.sep{ border:none; border-top:1px dashed rgba(255,255,255,.08); margin:8px 0 }
+
+  /* scrollbar */
+  ::-webkit-scrollbar{ width:10px; height:10px }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:20px }
+  ::-webkit-scrollbar-track{ background:rgba(255,255,255,.04) }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="glyph" aria-hidden="true"></div>
+      <div>
+        <div class="title">Right Knowledge: The Path of Nuwaubu</div>
+        <div class="subtitle">Awaken the 9 Ether Mind • Dissolve Illusion • Stand in Truth</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="chip" id="gateChip" title="Gate status">GATE: OFF</div>
+      <span class="addr" id="addr">Not connected</span>
+      <button id="connectBtn" class="btn-primary"><span class="dot"></span><span id="connectLabel">Connect Wallet</span></button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside>
+      <div class="aside-top">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px">
+          <strong>Progress</strong>
+          <span class="percent" id="percent">0%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="bar"><div class="fill" id="fill"></div></div>
+        </div>
+      </div>
+      <div class="nav" id="nav"></div>
+    </aside>
+
+    <main>
+      <div class="hero">
+        <div>
+          <h2 id="moduleTitle">Loading…</h2>
+          <p class="tagline" id="moduleTagline">Select a module on the left to begin.</p>
+        </div>
+        <div class="note" id="lockNote" style="display:none">🔒 Complete prior modules to unlock this one.</div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="objectives">Objectives</div>
+        <div class="tab" data-tab="lesson">Lesson</div>
+        <div class="tab" data-tab="practice">Practice</div>
+      </div>
+
+      <section class="content">
+        <div id="panel-objectives" class="scroll">
+          <ul class="objective-list" id="objectives"></ul>
+        </div>
+
+        <div id="panel-lesson" class="scroll" style="display:none">
+          <div id="lessonHtml"></div>
+        </div>
+
+        <div id="panel-practice" class="practice" style="display:none">
+          <div id="practiceHtml"></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="pill" id="downloadBtn" title="Download this module as PDF (placeholder)">Download (PDF)</button>
+        <button class="pill cta" id="completeBtn">Mark Module Complete</button>
+        <span class="note" id="gateStatusNote">Gate is currently OFF. Anyone can view.</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ========= CONFIG ========= */
+const BSC = { idDec: 56, idHex:'0x38', name:'BNB Smart Chain', rpc:'https://bsc-dataseed.binance.org' };
+
+// Toggle these if/when you want to gate:
+const ENABLE_GATE = false;                 // << set true to enable gating
+const GATE_MODE   = 'TOKEN';               // 'TOKEN' or 'NFT'
+const TOKEN_ADDRESS = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52'; // KLY (per your stack)
+const REQUIRED_TOKENS = '500';             // required minimum (as string to avoid float issues)
+const NFT_ADDRESS   = '0xDA76d35742190283E340dbeE2038ecc978a56950'; // Course Cert / Scroll collection
+const REQUIRED_NFT_BALANCE = '1';          // must own >= 1
+
+/* ========= DATA ========= */
+const MODULES = [
+  {
+    id:'m1', title:'What is Right Knowledge?', subtitle:'The science of knowing over believing.',
+    objectives:[
+      'Differentiate belief vs Right Knowledge.',
+      'Adopt the triad: Right Knowledge, Right Wisdom, Right Overstanding.',
+      'Install the daily Right Reasoning drill.'
+    ],
+    lesson: `
+      <p><strong>Right Knowledge is not belief.</strong> Belief requires no proof—only faith in another’s word.
+      Right Knowledge demands confirmation, research, and application. It is the discipline of thinking for yourself.</p>
+      <p><em>The Triad:</em> Right Knowledge (verified truth), Right Wisdom (correct application), Right Overstanding (lived clarity).
+      This triad keeps you from deception.</p>
+      <hr class="sep" />
+      <p>The world you see is layered in illusion—distorted history, reprogrammed religion, hypnotic media, and schooling built to conform, not enlighten.
+      Right Knowledge is the blade that cuts through the fog.</p>
+    `,
+    practice: `
+      <ol>
+        <li>Pick one “fact” you were taught (history, religion, or self).</li>
+        <li>Run the drill: Who told me this? How do I know? Can it be proven in nature? Who benefits if I believe it?</li>
+        <li>Journal what remains after the illusions fall.</li>
+      </ol>
+    `
+  },
+  {
+    id:'m2', title:'The Science of 9 Ether', subtitle:'Blueprint of the living intelligence.',
+    objectives:[
+      'Understand 9 Ether vs 6 Ether as frameworks.',
+      'Relate breath, sound, and awareness to etheric activation.',
+      'Establish a simple daily etheric practice.'
+    ],
+    lesson: `<p>9 Ether is a code for living intelligence manifesting through you—mind, breath, hair, and frequency.
+    Treat it as a working hypothesis you confirm through results, not a slogan to repeat.</p>`,
+    practice:`<p>Try a 7-minute breath + tone session: in 4, hold 4, out 4; hum on the exhale and feel the cranial resonance.</p>`
+  },
+  {
+    id:'m3', title:'Time & the Illusion of History', subtitle:'Decode the timeline traps.',
+    objectives:['Map false timelines vs lived memory','Identify where your personal story was edited','Rebuild your sovereign timeline'],
+    lesson:`<p>Calendars program consciousness. Reclaim your time and you reclaim your mind.</p>`,
+    practice:`<p>Sketch your life as a timeline and mark where labels were imposed that never fit your spirit.</p>`
+  },
+  {
+    id:'m4', title:'Language & Codes of Creation', subtitle:'Words build worlds.',
+    objectives:['See language as vibration','Reclaim lost tones & sacred names','Use speech as creative command'],
+    lesson:`<p>Every tongue carries a current. Speak to build, not to bind.</p>`,
+    practice:`<p>Choose one mantra/phrase to repeat with breath, morning and night, for 9 days. Track changes.</p>`
+  },
+  {
+    id:'m5', title:'The Astral Sciences', subtitle:'Multi-dimensional human 101.',
+    objectives:['Understand layered bodies','Relate cycles & planets to mood/choice','Recall nocturnal awareness'],
+    lesson:`<p>Attention after dark is a classroom. Memory is the homework.</p>`,
+    practice:`<p>Keep a bedside recorder. Capture first 90 seconds on waking—keys live there.</p>`
+  },
+  {
+    id:'m6', title:'Enemy Tools: Religion, Media, School', subtitle:'Spot and disarm the nets.',
+    objectives:['Identify capture-mechanisms','Install discernment rituals','Practice media fasting'],
+    lesson:`<p>Every program seeks your attention. You choose which ones get fed.</p>`,
+    practice:`<p>48-hour media fast. Replace with breath, reading, and nature. Note clarity shifts.</p>`
+  },
+  {
+    id:'m7', title:'Becoming the Living Scroll', subtitle:'Embodiment over performance.',
+    objectives:['Integrate the triad daily','Design your sovereign rituals','Commit to service & legacy'],
+    lesson:`<p>When knowledge becomes nature, the scroll is you.</p>`,
+    practice:`<p>Write your “Scroll of Self-Truth”—nine lines you live by. Place it where you’ll see it daily.</p>`
+  },
+  {
+    id:'bonus', title:'⚡ The Return of the Ancient Ones', subtitle:'Your role in this cycle.',
+    objectives:['Place self in the greater arc','Choose a mission channel','Make it measurable'],
+    lesson:`<p>Right Knowledge returns in cycles to those who will carry it. Answer the call.</p>`,
+    practice:`<p>Define a 30-day mission. Share, measure, adjust.</p>`
+  }
+];
+
+/* ========= STATE ========= */
+const els = {
+  nav: document.getElementById('nav'),
+  title: document.getElementById('moduleTitle'),
+  tagline: document.getElementById('moduleTagline'),
+  objectives: document.getElementById('objectives'),
+  lesson: document.getElementById('lessonHtml'),
+  practice: document.getElementById('practiceHtml'),
+  percent: document.getElementById('percent'),
+  fill: document.getElementById('fill'),
+  connectBtn: document.getElementById('connectBtn'),
+  connectLabel: document.getElementById('connectLabel'),
+  addr: document.getElementById('addr'),
+  lockNote: document.getElementById('lockNote'),
+  completeBtn: document.getElementById('completeBtn'),
+  gateChip: document.getElementById('gateChip'),
+  gateStatusNote: document.getElementById('gateStatusNote'),
+  tabs: document.getElementById('tabs'),
+  panelObjectives: document.getElementById('panel-objectives'),
+  panelLesson: document.getElementById('panel-lesson'),
+  panelPractice: document.getElementById('panel-practice'),
+  downloadBtn: document.getElementById('downloadBtn')
+};
+
+let currentModuleIndex = 0;
+let account = null;
+let completed = loadCompleted();
+
+function loadCompleted(){
+  try{
+    const saved = localStorage.getItem('rk-completed');
+    if(!saved) return {};
+    return JSON.parse(saved) || {};
+  }catch(e){ return {}; }
+}
+function saveCompleted(){
+  localStorage.setItem('rk-completed', JSON.stringify(completed));
+}
+
+function shortAddr(addr){ return addr ? addr.slice(0,6)+'…'+addr.slice(-4) : '' }
+
+function renderNav(){
+  els.nav.innerHTML = '';
+  MODULES.forEach((m, i)=>{
+    const btn = document.createElement('button');
+    btn.dataset.index = i;
+    btn.innerHTML = `<span class="index">${i+1 <= 8 ? i+1 : '∞'}</span><span>${m.title}</span>`;
+    // locking: simple linear unlock
+    const locked = isLocked(i);
+    if(locked){ btn.classList.add('locked'); }
+    if(i === currentModuleIndex){ btn.classList.add('active'); }
+    btn.addEventListener('click', ()=>{
+      if(isLocked(i)) return;
+      currentModuleIndex = i;
+      renderNav();
+      renderModule();
+    });
+    els.nav.appendChild(btn);
+  });
+  updateProgress();
+}
+function isLocked(i){
+  if(i === 0) return false;
+  // bonus unlocks after 7
+  if(MODULES[i].id === 'bonus') return !completed['m7'];
+  // require previous completed
+  const prev = MODULES[i-1].id;
+  return !completed[prev];
+}
+function renderModule(){
+  const m = MODULES[currentModuleIndex];
+  els.title.textContent = m.title;
+  els.tagline.textContent = m.subtitle || '';
+  els.lockNote.style.display = isLocked(currentModuleIndex) ? '' : 'none';
+
+  els.objectives.innerHTML = (m.objectives||[]).map(o=>`<li>${o}</li>`).join('');
+  els.lesson.innerHTML = m.lesson || '';
+  els.practice.innerHTML = m.practice || '';
+
+  // reset tab to Objectives
+  setActiveTab('objectives');
+}
+function updateProgress(){
+  const total = MODULES.length;
+  const done = Object.keys(completed).filter(k=>completed[k]).length;
+  const pct = Math.round((done/total)*100);
+  els.percent.textContent = pct + '%';
+  els.fill.style.width = pct + '%';
+  // refresh nav active/locked states indicators
+  [...els.nav.children].forEach((btn, i)=>{
+    btn.classList.toggle('active', i===currentModuleIndex);
+    btn.classList.toggle('locked', isLocked(i));
+  });
+}
+
+/* ========= TABS ========= */
+function setActiveTab(name){
+  [...els.tabs.children].forEach(tab=>{
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle('active', active);
+  });
+  els.panelObjectives.style.display = name==='objectives' ? '' : 'none';
+  els.panelLesson.style.display     = name==='lesson' ? '' : 'none';
+  els.panelPractice.style.display   = name==='practice' ? '' : 'none';
+}
+els.tabs.addEventListener('click', (e)=>{
+  const t = e.target.closest('.tab');
+  if(!t) return;
+  setActiveTab(t.dataset.tab);
+});
+
+/* ========= COMPLETE ========= */
+els.completeBtn.addEventListener('click', ()=>{
+  const m = MODULES[currentModuleIndex];
+  completed[m.id] = true;
+  saveCompleted();
+  updateProgress();
+  renderNav();
+  // auto move forward if possible
+  const next = Math.min(currentModuleIndex+1, MODULES.length-1);
+  if(!isLocked(next)){ currentModuleIndex = next; renderModule(); }
+});
+
+/* ========= GATE INDICATORS ========= */
+function initGateBadge(){
+  els.gateChip.textContent = `GATE: ${ENABLE_GATE ? (GATE_MODE==='TOKEN'?'TOKEN':'NFT') : 'OFF'}`;
+  els.gateStatusNote.textContent = ENABLE_GATE
+    ? `Gate is ON • Mode: ${GATE_MODE} • ${GATE_MODE==='TOKEN' ? `Requires ${REQUIRED_TOKENS} KLY` : `Requires ${REQUIRED_NFT_BALANCE} NFT`}`
+    : 'Gate is currently OFF. Anyone can view.';
+}
+
+/* ========= WEB3 / METAMASK ========= */
+function getMetaMask(){
+  if (window.ethereum?.providers?.length){
+    const mm = window.ethereum.providers.find(p => p.isMetaMask);
+    if(mm) return mm;
+  }
+  return (window.ethereum && window.ethereum.isMetaMask) ? window.ethereum : null;
+}
+async function ensureBSC(eip1193){
+  const current = await eip1193.request({ method:'eth_chainId' });
+  if(String(current).toLowerCase() === BSC.idHex) return;
+  try{
+    await eip1193.request({ method:'wallet_switchEthereumChain', params:[{ chainId:BSC.idHex }] });
+  }catch(e){
+    if(e?.code === 4902){
+      await eip1193.request({
+        method:'wallet_addEthereumChain',
+        params:[{
+          chainId:BSC.idHex, chainName:BSC.name,
+          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+          rpcUrls:[BSC.rpc], blockExplorerUrls:['https://bscscan.com']
+        }]
+      });
+    } else { throw e; }
+  }
+}
+async function connect(){
+  const mm = getMetaMask();
+  if(!mm){ alert('MetaMask not detected. Please install MetaMask.'); return; }
+  try{
+    await ensureBSC(mm);
+    const accts = await mm.request({ method:'eth_requestAccounts' });
+    account = accts?.[0] || null;
+    els.addr.textContent = account ? shortAddr(account) : 'Not connected';
+    els.connectBtn.classList.add('connected');
+    els.connectLabel.textContent = 'Connected';
+    await applyGateIfNeeded(mm, account);
+    mm.on?.('accountsChanged', (accs)=>{
+      account = accs?.[0] || null;
+      els.addr.textContent = account ? shortAddr(account) : 'Not connected';
+      applyGateIfNeeded(mm, account);
+    });
+    mm.on?.('chainChanged', ()=>location.reload());
+  }catch(err){
+    console.error(err);
+    alert(err?.message || 'Connection failed');
+  }
+}
+els.connectBtn.addEventListener('click', connect);
+
+/* ========= GATE LOGIC (optional) ========= */
+async function applyGateIfNeeded(eip1193, acct){
+  if(!ENABLE_GATE){ unlockUI(); return; }
+  if(!acct){ lockUI('Connect wallet to check access.'); return; }
+  try{
+    // very light ethers-less call via eth_call (min ABI)
+    if(GATE_MODE === 'TOKEN'){
+      // balanceOf(address)
+      const data = '0x70a08231' + acct.replace('0x','').padStart(64, '0');
+      const balanceHex = await eip1193.request({
+        method:'eth_call',
+        params:[{ to:TOKEN_ADDRESS, data }, 'latest']
+      });
+      const bal = BigInt(balanceHex);
+      const req = BigInt(REQUIRED_TOKENS) * (10n ** 18n);
+      if(bal >= req) unlockUI(); else lockUI(`Requires ≥ ${REQUIRED_TOKENS} KLY (you have ${(Number(bal)/1e18).toFixed(2)})`);
+    } else {
+      // ERC721 balanceOf(address)
+      const sig = '0x70a08231'; // same selector for balanceOf(address)
+      const data = sig + acct.replace('0x','').padStart(64, '0');
+      const balanceHex = await eip1193.request({
+        method:'eth_call',
+        params:[{ to:NFT_ADDRESS, data }, 'latest']
+      });
+      const bal = BigInt(balanceHex);
+      if(bal >= BigInt(REQUIRED_NFT_BALANCE)) unlockUI(); else lockUI(`Requires NFT ownership (you have ${bal})`);
+    }
+  }catch(e){
+    console.error('Gate check failed', e);
+    lockUI('Access check failed. Try again.');
+  }
+}
+function lockUI(msg){
+  document.querySelector('main').style.filter = 'grayscale(0.3)';
+  document.querySelector('main').style.opacity = '0.65';
+  els.lockNote.style.display = '';
+  els.lockNote.textContent = '🔒 ' + msg;
+  // disable interactions
+  [...document.querySelectorAll('button')].forEach(b=>{
+    if(b.id!=='connectBtn') b.disabled = true;
+  });
+}
+function unlockUI(){
+  document.querySelector('main').style.filter = '';
+  document.querySelector('main').style.opacity = '1';
+  els.lockNote.style.display = 'none';
+  [...document.querySelectorAll('button')].forEach(b=> b.disabled = false);
+}
+
+/* ========= DOWNLOAD (placeholder) ========= */
+els.downloadBtn.addEventListener('click', ()=>{
+  alert('PDF export placeholder. We can wire this to a real client-side PDF (html2pdf) or server export when ready.');
+});
+
+/* ========= INIT ========= */
+(function init(){
+  initGateBadge();
+  renderNav();
+  renderModule();
+})();
+</script>
+</body>
+</html>
