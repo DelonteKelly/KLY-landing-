@@ -15,6 +15,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
+  <!-- Web3 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
   <style>
     :root{
       /* Neon + Gold palette (exclusive) */
@@ -23,7 +28,7 @@
       --border:rgba(132,255,255,.18);
       --txt:#E9EEFF; --muted:#B9C3E5;
       --cyn:#00eaff; --pnk:#ff3bff; --vio:#9333ff; --sun:#ffb300; --lime:#00ff95;
-      --gold:#FFD98A; --gold2:#FFB74A; --line: rgba(255,255,255,.15);
+      --gold:#FFD98A; --gold2:#FFB74A;
       --danger:#ff3d3d;
 
       --glow-cyn:0 0 24px rgba(0,234,255,.35);
@@ -164,39 +169,13 @@
     .btn-mark{background:linear-gradient(90deg,var(--cyn),var(--pnk));border:0;color:#06101a;border-radius:10px;padding:10px 14px;font-weight:800}
 
     /* Certificate */
-    .cert-img{
-      position: relative;
-      border:1px solid var(--line);
-      border-radius:14px;
-      overflow:hidden;                 /* prevent the seal from making it overflow */
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      padding:10px;                    /* gives a frame around the image */
-      display:grid; place-items:center;
-    }
-
-    /* Image scales down, keeps aspect ratio, never exceeds container */
-    .cert-img img{
-      width:100%;
-      height:auto;
-      max-height:min(60vh, 520px);     /* important on mobile (in-wallet browsers) */
-      object-fit:contain;              /* show the whole image */
-      display:block;
-    }
-
-    /* “Founder’s Seal” ribbon stays inside and scales on small screens */
-    .cert-img .seal{
-      position:absolute;
-      top:10px; right:10px;
-      font-weight:800; letter-spacing:.04em;
-      background:rgba(0,0,0,.45);
-      color:#f7e3b1;
-      border:1px dashed rgba(255,255,255,.25);
-      padding:6px 10px; border-radius:8px;
-      transform:rotate(10deg);
-      backdrop-filter:blur(4px);
-    }
-    @media (max-width:480px){
-      .cert-img .seal{ transform:rotate(8deg) scale(.9); top:8px; right:8px; }
+    .cert-img{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--glow-vio); position:relative}
+    .seal{
+      position:absolute; top:10px; right:-6px; transform:rotate(8deg);
+      background: radial-gradient(60% 60% at 40% 40%, rgba(255,217,138,.45), rgba(255,183,74,.35) 60%, rgba(255,255,255,.05));
+      color:#201709; border:1px dashed rgba(255,217,138,.5);
+      padding:6px 10px; border-radius:10px; font-weight:800; font-size:12px; letter-spacing:.6px;
+      text-transform:uppercase; box-shadow:0 8px 30px rgba(0,0,0,.45);
     }
 
     /* Members-only blur overlay */
@@ -233,12 +212,6 @@
     .toast.good{border-left-color:var(--lime)}
     .toast.bad{border-left-color:var(--danger)}
     .toast.warn{border-left-color:var(--sun)}
-    /* Toast motion (add near the existing .toast rules) */
-    .toast{
-      opacity:0; transform:translateY(8px); transition:opacity .28s ease, transform .28s ease;
-    }
-    .toast.toast--show{ opacity:1; transform:translateY(0) }
-    .toast.toast--hide{ opacity:0; transform:translateY(8px) }
 
     /* Mobile polish + safe-area */
     .topbar{ padding-top: env(safe-area-inset-top); }
@@ -266,16 +239,6 @@
       .acc-sum{ padding:12px; }
       .acc-body{ padding:0 12px 12px; }
       .two{ grid-template-columns:1fr; }
-    }
-
-    /* =========================
-       Accessibility enhancements
-    ========================== */
-    :focus-visible{ outline:2px solid #00eaff; outline-offset:2px }
-    .acc-sum:focus-visible{ box-shadow:0 0 0 2px rgba(0,234,255,.45) inset; border-radius:12px }
-
-    @media (prefers-reduced-motion: reduce){
-      *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition:none !important; scroll-behavior:auto !important }
     }
   </style>
 </head>
@@ -305,7 +268,7 @@
         <p>Invitation-only, action-first curriculum for sovereign builders. Complete the track and mint your on-chain credential.</p>
         <div class="mini">
           <div class="stat"><i class="fa-solid fa-shield-halved"></i><div><strong>Self-Custody</strong><br><small>Keys stay with you</small></div></div>
-          <div class="stat"><i class="fa-solid fa-bolt"></i><div><strong>Action-based</strong><br><small>Do not just read</small></div></div>
+          <div class="stat"><i class="fa-solid fa-bolt"></i><div><strong>Action-based</strong><br><small>Do, not just read</small></div></div>
           <div class="stat"><i class="fa-solid fa-certificate"></i><div><strong>Proof</strong><br><small>NFT certificate</small></div></div>
         </div>
       </div>
@@ -429,15 +392,12 @@
     <button class="x" onclick="hideToast()"><i class="fa-solid fa-xmark"></i></button>
   </div>
 
-  <!-- Ethers (single include) -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-  <script>
+<script>
 /* ==============================
    CONFIG
 ============================== */
-const KLY_TOKEN_ADDRESS   = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const NFT_CONTRACT_ADDRESS= "0xDA76d35742190283E340dbeE2038ecc978a56950"; // fixed
+const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const NFT_CONTRACT_ADDRESS = "0xc1a2E9A475779EfD04247EA473638717E26cd5C5";
 const KLY_TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function decimals() view returns (uint8)"
@@ -446,15 +406,17 @@ const NFT_CONTRACT_ABI = [
   "function mintTo(address to, string uri) public"
 ];
 const TOTAL_MODULES = 12;
-const BSC = { idDec:56, idHex:"0x38", name:"BNB Smart Chain", rpc:"https://bsc-dataseed.binance.org" };
+const BSC = { idDec:56, idHex:"0x38", name:"BNB Smart Chain", rpc:"https://bsc-dataseed.binance.org/" };
 
-/* Invite codes (client-side demo). Replace with real backend when ready. */
-const INVITES = new Set(["AURORA-777","AURORA-888","KLY-ALPHA","NEON-PRIME"]);
+/* Invite codes (client-side demo). Replace with your backend/allowlist when ready. */
+const INVITES = new Set([
+  "AURORA-777", "AURORA-888", "KLY-ALPHA", "NEON-PRIME"
+]);
 
 /* ==============================
    STATE
 ============================== */
-let provider = null, signer = null, account = null;
+let web3Modal, provider, signer, account = null, walletInstance=null;
 let completed = JSON.parse(localStorage.getItem("kly_completed_neon") || "[]");
 let opened = null;
 let inviteUnlocked = localStorage.getItem("kly_invite_unlocked")==="1";
@@ -485,608 +447,92 @@ const mintStatus= el("mint-status");
 
 const toast = el("toast"), toastIcon = el("toast-icon"), toastTitle = el("toast-title"), toastMsg = el("toast-msg");
 
-const inviteInput   = el("invite-code");
-const inviteInput2  = el("invite-code-2");
-const btnRedeem     = el("btn-redeem");
-const btnRedeem2    = el("btn-redeem-2");
+const inviteInput  = el("invite-code");
+const inviteInput2 = el("invite-code-2");
+const btnRedeem    = el("btn-redeem");
+const btnRedeem2   = el("btn-redeem-2");
 const btnOverlayConnect = el("btn-overlay-connect");
 
 const curriculumWrap = el("curriculum-wrap");
 
 /* ==============================
-   TOASTS
-============================== */
-function notify(title, msg, kind="info", icon="fa-circle-info"){
-  if(!toast) return alert(`${title}\n${msg}`);
-  toastTitle && (toastTitle.textContent = title);
-  toastMsg && (toastMsg.textContent = msg);
-  if(toastIcon) toastIcon.className = `fa-solid ${icon}`;
-  toast.classList.remove("good","bad","warn","toast--hide");
-  if(kind==="good") toast.classList.add("good");
-  else if(kind==="bad") toast.classList.add("bad");
-  else if(kind==="warn") toast.classList.add("warn");
-  toast.style.display = "flex"; toast.setAttribute("aria-hidden","false");
-  void toast.offsetWidth; toast.classList.add("toast--show");
-  if (notify._t) clearTimeout(notify._t);
-  if (notify._t2) clearTimeout(notify._t2);
-  notify._t = setTimeout(()=> hideToast(), 4200);
-}
-function notifyAuto(title, msg, kind="info", icon="fa-circle-info"){ notify(title,msg,kind,icon); }
-function hideToast(){
-  if(!toast) return;
-  toast.classList.remove("toast--show"); toast.classList.add("toast--hide"); toast.setAttribute("aria-hidden","true");
-  if (notify._t) clearTimeout(notify._t);
-  if (notify._t2) clearTimeout(notify._t2);
-  const done = ()=>{ toast.style.display="none"; toast.removeEventListener("transitionend", done); };
-  toast.addEventListener("transitionend", done, { once:true });
-  notify._t2 = setTimeout(done, 400);
-}
-toast && toast.addEventListener("click", hideToast);
-
-/* ==============================
-   ACCESS helpers
-============================== */
-function hasTokenAccess(rawBalBN, decimals){
-  try{
-    const threshold = ethers.utils.parseUnits("100", decimals ?? 18);
-    return rawBalBN.gte(threshold);
-  }catch{ return false; }
-}
-function hasInviteAccess(){ return inviteUnlocked === true; }
-function updateAccessState(accessBool){
-  const access = !!accessBool || hasInviteAccess();
-  curriculumWrap && curriculumWrap.classList.toggle('locked', !access);
-  if (access && !sessionStorage.getItem("kly_welcome_shown")) {
-    notify("Welcome","Access granted. Enjoy the course.","good","fa-unlock");
-    sessionStorage.setItem("kly_welcome_shown","1");
-  }
-}
-
-/* ==============================
-   CONFETTI guard (reduced motion aware)
-============================== */
-function confettiSafe(opts){
-  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if(typeof confetti==="function") confetti(opts);
-}
-
-/* ==============================
-   Invite redeem (client demo) + rate limit
-============================== */
-function redeemInvite(codeRaw){
-  const code = (codeRaw||"").trim().toUpperCase();
-  if(!code){ return notify("Missing Code","Enter your invite code.","warn","fa-key"); }
-  if(!INVITES.has(code)){ return notify("Invalid Code","Please check your invite.","bad","fa-circle-xmark"); }
-  inviteUnlocked = true;
-  localStorage.setItem("kly_invite_unlocked","1");
-  INVITES.delete(code);
-  notify("Invite Accepted","Your membership has been activated.","good","fa-gem");
-  curriculumWrap && curriculumWrap.classList.remove('locked');
-  confettiSafe({particleCount:120, spread:70, origin:{y:.7}, colors:["#FFD98A","#00eaff","#ff3bff"]});
-}
-
-// naive, per-tab rate limit
-let _inviteAttempts = 0, _inviteCooldown = 0;
-setInterval(()=>{ if(_inviteCooldown>0) _inviteCooldown--; }, 1000);
-function guardInvite(fn){
-  return (...args)=>{
-    if(_inviteCooldown>0) return notify("Slow down",`Try again in ${_inviteCooldown}s`,"warn","fa-hourglass-half");
-    _inviteAttempts++;
-    if(_inviteAttempts > 5){
-      _inviteCooldown = 30;
-      _inviteAttempts = 0;
-      return notify("Too many attempts","Cooldown: 30s","bad","fa-ban");
-    }
-    return fn(...args);
-  };
-}
-
-/* ==============================
-   PROGRESS
-============================== */
-function updateProgress(){
-  try{
-    const unique = [...new Set(completed)].filter(id => (window.modules||[]).some(m => m.id === id));
-    const done = unique.length;
-    const pct = Math.min(100, Math.round(done/TOTAL_MODULES*100));
-    chipText && (chipText.textContent = `${done}/${TOTAL_MODULES} Complete`);
-    certProgress && (certProgress.textContent = `${done} / ${TOTAL_MODULES}`);
-    if(ring){ ring.style.setProperty("--p", pct + "%"); ring.setAttribute("data-label", pct + "%"); }
-    if(certStatus) certStatus.textContent = done >= TOTAL_MODULES ? "Ready to Mint" : "Locked";
-    if(btnMint) btnMint.disabled = !(done >= TOTAL_MODULES);
-  }catch(e){ /* ignore */ }
-}
-function markComplete(id){
-  if(!completed.includes(id)){ completed.push(id); localStorage.setItem("kly_completed_neon", JSON.stringify(completed)); }
-  notify("Saved","Module marked complete","good","fa-circle-check");
-  if(typeof renderAccordion==="function") renderAccordion();
-  updateProgress();
-  confettiSafe({particleCount:90, spread:60, origin:{y:.8}, colors:["#00eaff","#ff3bff","#9333ff"]});
-}
-
-/* ==============================
-   MINT (precision-safe, chain guard, gas fallback)
-============================== */
-async function mint(){
-  if(!signer) return notify("Connect Wallet","Please connect your wallet first.","warn","fa-wallet");
-
-  // enforce chain 56
-  const net = await signer.provider.getNetwork().catch(()=>null);
-  if(!net || net.chainId !== 56){
-    try{ await ensureBSC(getMetaMask()); }catch(_){}
-    const net2 = await signer.provider.getNetwork().catch(()=>null);
-    if(!net2 || net2.chainId !== 56){
-      return notify("Wrong Network","Switch to BNB Chain to mint.","warn","fa-network-wired");
-    }
-  }
-
-  const unique = [...new Set(completed)].filter(id => (window.modules||[]).some(m => m.id === id));
-  if(unique.length < TOTAL_MODULES) return notify("Finish Modules","Complete all modules first.","warn","fa-list-check");
-  try{
-    btnMint && (btnMint.disabled=true, btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Minting…');
-    const to  = await signer.getAddress();
-    const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
-    const tokenURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
-
-    let overrides = {};
-    try{
-      const gas = await nft.estimateGas.mintTo(to, tokenURI);
-      overrides.gasLimit = gas.mul(120).div(100);
-    }catch{ /* fallback */ }
-
-    const tx = await nft.mintTo(to, tokenURI, overrides);
-    if(mintStatus) mintStatus.innerHTML = `Tx submitted: <a target="_blank" rel="noopener" href="https://bscscan.com/tx/${tx.hash}">view on BscScan</a>`;
-    await tx.wait(1);
-    notify("Minted","Certificate minted successfully!","good","fa-certificate");
-    btnMint && (btnMint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Minted');
-    confettiSafe({particleCount:160, spread:70, origin:{y:.7}, colors:["#00eaff","#ff3bff","#9333ff"]});
-  }catch(e){
-    notify("Mint Failed", e?.data?.message || e?.message || "Unknown error", "bad", "fa-circle-xmark");
-    btnMint && (btnMint.disabled=false, btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate');
-  }
-}
-
-/* ==============================
-   CONNECT (MetaMask-only, network switch)
-============================== */
-function setConnectUI(state){
-  if(!btnConnect) return;
-  if(state === 'connecting'){
-    btnConnect.disabled = true; btnConnect.hidden = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
-  }else if(state === 'connected'){
-    btnConnect.disabled = false; btnConnect.hidden = true;
-    btnDisconnect && (btnDisconnect.hidden = false);
-    pillAddr && (pillAddr.hidden = false);
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-  }else{
-    btnConnect.disabled = false; btnConnect.hidden = false;
-    btnDisconnect && (btnDisconnect.hidden = true);
-    pillAddr && (pillAddr.hidden = true);
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-  }
-}
-
-function getMetaMask(){
-  if (window.ethereum?.providers?.length){
-    const mm = window.ethereum.providers.find(p => p.isMetaMask);
-    if (mm) return mm;
-  }
-  return (window.ethereum && window.ethereum.isMetaMask) ? window.ethereum : null;
-}
-
-async function ensureBSC(mm){
-  const current = (await mm.request({ method:'eth_chainId' }))?.toLowerCase();
-  if (current === BSC.idHex) return true;
-  try{
-    await mm.request({ method:'wallet_switchEthereumChain', params:[{ chainId:BSC.idHex }] });
-    return true;
-  }catch(e){
-    if(e?.code === 4902){
-      await mm.request({
-        method:'wallet_addEthereumChain',
-        params:[{
-          chainId:BSC.idHex, chainName:BSC.name,
-          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
-          rpcUrls:[BSC.rpc], blockExplorerUrls:['https://bscscan.com']
-        }]
-      });
-      return true;
-    }
-    return false;
-  }
-}
-
-async function connect(){
-  setConnectUI('connecting');
-  try{
-    const mm = getMetaMask();
-    if(!mm){
-      setConnectUI('idle');
-      const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-      const link = isMobile
-        ? "https://metamask.app.link/dapp/" + location.host + location.pathname
-        : "https://metamask.io/download/";
-      return notify("MetaMask not found", `Install MetaMask first: ${link}`, "warn", "fa-plug-circle-xmark");
-    }
-
-    const switched = await ensureBSC(mm);
-    if(!switched){
-      setConnectUI('idle');
-      return notify("Wrong Network","Please approve the network switch to BNB Chain.","warn","fa-network-wired");
-    }
-
-    provider = new ethers.providers.Web3Provider(mm, 'any');
-    await provider.send('eth_requestAccounts', []);
-    signer  = provider.getSigner();
-    account = await signer.getAddress();
-
-    // Bind events
-    mm.removeListener?.('accountsChanged', onAccountsChanged);
-    mm.removeListener?.('chainChanged',   onChainChanged);
-    mm.removeListener?.('disconnect',     onDisconnect);
-    mm.on?.('accountsChanged', onAccountsChanged);
-    mm.on?.('chainChanged',    onChainChanged);
-    mm.on?.('disconnect',      onDisconnect);
-
-    await afterConnect();
-    setConnectUI('connected');
-  }catch(err){
-    console.error('[connect:mm]', err);
-    const msg = err?.code === 4001 ? 'User rejected the request.' : (err?.message || 'Connection failed.');
-    notify("Connection Failed", msg, "bad", "fa-circle-xmark");
-    setConnectUI('idle');
-  }
-}
-
-async function onAccountsChanged(accs){
-  if(!accs?.length) return disconnect();
-  account = accs[0];
-  await afterConnect();
-}
-
-async function onChainChanged(hexId){
-  if (String(hexId).toLowerCase() !== BSC.idHex){
-    try { await ensureBSC(getMetaMask()); } catch(_) {}
-  }
-  provider = new ethers.providers.Web3Provider(getMetaMask(), 'any');
-  signer   = provider.getSigner();
-  try{ account = await signer.getAddress(); }catch{}
-  await afterConnect();
-}
-
-function onDisconnect(){ disconnect(); }
-
-async function afterConnect(){
-  if(!provider || !signer || !account) throw new Error('Missing provider/signer/account');
-
-  const net = await provider.getNetwork().catch(()=>null);
-  netNameEl && (netNameEl.textContent = (net && net.chainId === 56) ? BSC.name : (net ? `Chain ${net.chainId}` : "Unknown"));
-
-  const short = `${account.slice(0,6)}…${account.slice(-4)}`;
-  addrShort && (addrShort.textContent = short);
-  addrFull  && (addrFull.textContent  = account);
-  avatar    && (avatar.textContent    = account.slice(2,4).toUpperCase());
-
-  // KLY balance + ring + gate — with full precision
-  try{
-    const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec=18] = await Promise.all([
-      kly.balanceOf(account),
-      kly.decimals().catch(()=>18),
-    ]);
-
-    const human = ethers.utils.formatUnits(raw, dec);
-    const numForDisplay = (()=> {
-      const [i,f=""] = human.split(".");
-      return f ? `${i}.${f.slice(0,4)}` : i;
-    })();
-    klyBalanceEl && (klyBalanceEl.textContent = `${numForDisplay} KLY`);
-
-    const hundred = ethers.utils.parseUnits("100", dec);
-    let percent = 0;
-    try{
-      const capped = raw.gt(hundred) ? hundred : raw;
-      const ratio = Number(ethers.utils.formatUnits(capped, dec)) / 100;
-      percent = Math.min(100, Math.round(ratio * 100));
-    }catch{ percent = 0; }
-    if(ring){ ring.style.setProperty("--p", percent + "%"); ring.setAttribute("data-label", percent + "%"); }
-
-    updateAccessState(hasTokenAccess(raw, dec));
-    updateProgress();
-  }catch(e){
-    console.error('[afterConnect] balance error', e);
-    notify("Read Error","Could not read KLY balance.","bad","fa-bug");
-  }
-}
-
-async function disconnect(){
-  provider = signer = account = null;
-  addrFull   && (addrFull.textContent   = "Not connected");
-  avatar     && (avatar.textContent     = "KA");
-  netNameEl  && (netNameEl.textContent  = "Not connected");
-  klyBalanceEl && (klyBalanceEl.textContent = "—");
-  if(ring){ ring.style.setProperty("--p","0%"); ring.setAttribute("data-label","0%"); }
-  setConnectUI('idle');
-  updateAccessState(false);
-  notify("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
-}
-
-/* ==============================
-   ACCESSIBLE ACCORDION + RENDER
+   LESSON CONTENT
 ============================== */
 const M = (id, level, num, title, sections) => ({id, level, num, title, sections});
 
 const modules = [
   M("module1","Beginner",1,"DeFi Basics",[
     {label:"Objectives", html:`<ul>
-      <li>Understand DeFi as a shift in the <em>control layer</em> of money (from institutions to code)</li>
-      <li>Identify core primitives (chains, smart contracts, DAOs, dApps) and how they compose</li>
-      <li>Explain why self-custody redistributes power, access, and incentives</li>
-    </ul>`},
-    {label:"Paradigm Shift", html:`<p><strong>TradFi</strong> runs on gatekeepers who grant accounts, loans, and market access.
-    <strong>DeFi</strong> encodes those rules into <em>open-source smart contracts</em> on public ledgers.
-    If rules live in code, participation becomes permissionless, borderless, and 24/7.</p>
-    <ul>
-      <li><strong>Open access:</strong> anyone with internet + wallet can use, build, or fork.</li>
-      <li><strong>Transparency:</strong> balances and rules are auditable on-chain.</li>
-      <li><strong>Composability:</strong> protocols snap together like money-Legos; innovation compounds.</li>
-    </ul>`},
+      <li>Understand what DeFi is and why it matters</li>
+      <li>Identify core building blocks (chains, contracts, DAOs, dApps)</li>
+      <li>See how self-custody changes incentives</li></ul>`},
     {label:"Key Concepts", html:`<div class="two">
-      <div><div class="callout"><strong>Blockchain</strong><br/>A public, append-only accounting system secured by consensus (e.g., PoS). Finality = settlement.</div></div>
-      <div><div class="callout"><strong>Smart Contracts</strong><br/>Programs that self-execute on-chain. They hold funds, enforce terms, and remove intermediaries.</div></div>
-      <div><div class="callout"><strong>DAOs</strong><br/>On-chain governance: token holders propose/vote to steer treasuries and parameters.</div></div>
-      <div><div class="callout"><strong>dApps</strong><br/>Interfaces that route your wallet’s signed actions to contracts. UI ≠ custody.</div></div>
+      <div><div class="callout"><strong>DeFi = Open Finance</strong><br/>Protocols are permissionless and composable; anyone can build on top.</div></div>
+      <div><div class="callout"><strong>Self-Custody</strong><br/>“Not your keys, not your coins.” You own assets directly via private keys.</div></div>
     </div>`},
-    {label:"Self-Custody = Sovereignty", html:`<p>Your private key is the <em>vault combination</em>. If you hold the key, you own the asset.
-    Custodial services can add convenience but reintroduce counterparty risk.</p>
-    <ul>
-      <li>With keys: direct ownership, instant settlement, no censorship switch.</li>
-      <li>Without keys: IOUs, potential freezes, withdrawal queues, rehypothecation risk.</li>
-    </ul>`},
-    {label:"Example", html:`<p>Swapping 10 USDT for BUSD on a DEX = a single signed transaction from your address to a pool.
-    No account approvals, no banker, settlement on-chain.</p>`},
+    {label:"Example", html:`<p>Sending 10 USDT on a DEX involves signing a transaction that moves funds from <em>your</em> address to a pool. No bank holds them for you.</p>`},
+    {label:"Quick Exercise", html:`<ol>
+      <li>Write <em>one sentence</em> defining DeFi for a friend.</li>
+      <li>List 3 differences between a bank transfer and a DEX swap.</li></ol>`},
     {label:"Resources", html:`<ul>
       <li><a target="_blank" rel="noopener" href="https://ethereum.org/en/defi/">ethereum.org/defi</a></li>
-      <li><a target="_blank" rel="noopener" href="https://defillama.com/">DeFiLlama (TVL & protocol data)</a></li>
-    </ul>`}
+      <li><a target="_blank" rel="noopener" href="https://defillama.com/">DeFiLlama TVL dashboards</a></li></ul>`}
   ]),
-
   M("module2","Beginner",2,"Wallet Setup",[
-    {label:"Objectives", html:`<ul>
-      <li>See wallets as identity + vault + remote control for DeFi</li>
-      <li>Distinguish hot vs hardware storage and their trade-offs</li>
-      <li>Know why gas (BNB) is required and how KLY unlocks access</li>
-      <li>Build a seed-phrase protection routine</li>
-    </ul>`},
-    {label:"Your Wallet, Your Bank", html:`<p>A wallet doesn’t “hold” coins; it holds <em>keys</em> that authorize movements on-chain.
-    The chain holds the coins. Lose the key = lose control.</p>`},
-    {label:"Types of Wallets", html:`<ul>
-      <li><strong>Hot wallets</strong> (MetaMask/Trust): connected, convenient, best for daily use; higher attack surface.</li>
-      <li><strong>Hardware wallets</strong> (Ledger/Trezor): keys stay offline; sign transactions on-device; ideal for treasury storage.</li>
-      <li><strong>Multi-wallet practice:</strong> treasury (cold), operations (hot), experimental “burner” (hot).</li>
-    </ul>`},
-    {label:"Gas & Tokens", html:`<ul>
-      <li><strong>Gas (BNB):</strong> pays miners/validators to include your transaction; required for every on-chain action.</li>
-      <li><strong>KLY:</strong> ecosystem utility/governance/access token. May gate content, voting, or features.</li>
-    </ul>`},
-    {label:"Seed Security (Non-Negotiable)", html:`<div class="callout"><strong>Rule:</strong> Seed phrase never touches cloud, camera roll, email, or chat apps.</div>
-    <ul>
-      <li>Handwrite 2–3 copies. Store separately (fire/water resistant if possible).</li>
-      <li>Consider a steel backup plate for long-term resilience.</li>
-      <li>Practice recovery on a spare device <em>offline</em> so you’re calm if disaster strikes.</li>
-    </ul>`},
-    {label:"Setup Steps", html:`<ol>
-      <li>Install wallet from verified source (URL/app publisher).</li>
-      <li>Create wallet → write 12–24 words <em>offline</em>.</li>
-      <li>Add BNB Chain RPC → fund a small amount of BNB for gas.</li>
-      <li>Acquire KLY for access; verify contract addresses from official docs.</li>
-    </ol>`},
-    {label:"Tip", html:`<p>Use a separate “approval wallet” for new dApps. Keep primary holdings in hardware storage.</p>`}
+    {label:"Objectives", html:`<ul><li>Choose a wallet (hot vs hardware)</li><li>Secure your recovery phrase</li><li>Fund with BNB (gas) + KLY (access)</li></ul>`},
+    {label:"Security First", html:`<div class="callout"><strong>Never</strong> store your seed phrase online or in screenshots.</div>`},
+    {label:"Steps", html:`<ol>
+      <li>Install MetaMask/Trust from official site/app store</li>
+      <li>Create wallet → write 12–24 words (offline)</li>
+      <li>Add BNB Chain → fund with small BNB for gas</li>
+      <li>Acquire KLY for course access</li></ol>`},
+    {label:"Tip", html:`<p>Use a second “approval wallet” for dApps to limit exposure.</p>`}
   ]),
-
   M("module3","Beginner",3,"Using DEXs",[
-    {label:"Objectives", html:`<ul>
-      <li>Understand AMMs and constant-product pricing</li>
-      <li>Execute swaps with proper slippage, gas, and route awareness</li>
-      <li>Verify tokens and avoid fake contracts</li>
-    </ul>`},
-    {label:"AMM Mechanics", html:`<p>Liquidity pools hold two assets; price emerges from pool ratios.
-    In a constant-product AMM, <code class="code">x * y = k</code> stays (approximately) constant, so large trades move price (price impact).
-    Arbitrage keeps pool prices aligned with the broader market.</p>`},
-    {label:"Why It Matters", html:`<ul>
-      <li><strong>Permissionless market-making:</strong> anyone can supply liquidity and earn fees.</li>
-      <li><strong>Atomic settlement:</strong> swaps execute entirely or revert; no custodial escrow.</li>
-      <li><strong>Transparency:</strong> routes, fees, and pool depths are inspectable on-chain.</li>
-    </ul>`},
-    {label:"Swap Safety Checklist", html:`<ul>
-      <li>Verify token contract from the project’s official site or docs.</li>
-      <li>Set reasonable slippage (1–3% typical; lower for deep pools).</li>
-      <li>Check price impact and minimum received before confirming.</li>
-      <li>Confirm network + gas settings; avoid signing blind prompts.</li>
-    </ul>`},
-    {label:"Fees & Routing", html:`<p>Routers may split a swap across multiple pools for best execution.
-    You pay: <em>LP fee</em> (to liquidity providers) + <em>network gas</em> (to validators).</p>`}
+    {label:"Objectives", html:`<ul><li>Understand AMMs</li><li>Execute a swap safely</li><li>Configure slippage & gas</li></ul>`},
+    {label:"How AMMs Work", html:`<p>AMMs keep a pool of two tokens; the product <code class="code">x * y = k</code> stays constant.</p>`},
+    {label:"Swap Checklist", html:`<ul>
+      <li>Verify token contract (official link)</li>
+      <li>Set slippage (1–3% typical)</li>
+      <li>Check price impact and route</li></ul>`}
   ]),
-
   M("module4","Beginner",4,"Earning with DeFi",[
-    {label:"Objectives", html:`<ul>
-      <li>Map core yield sources: staking, lending, LP fees</li>
-      <li>Understand impermanent loss and when LPing makes sense</li>
-      <li>Design a position-sizing and diversification approach</li>
-    </ul>`},
-    {label:"Yield Sources", html:`<div class="two">
-      <div>
-        <ul>
-          <li><strong>Staking:</strong> lock tokens to secure a network; earn inflation/fees; usually single-asset risk.</li>
-          <li><strong>Lending:</strong> supply assets to money markets; earn interest; watch utilization/oracle risk.</li>
-          <li><strong>LP Fees:</strong> deposit a token pair; earn trade fees; exposed to <em>price divergence</em>.</li>
-        </ul>
-      </div>
-      <div class="callout"><strong>Principle:</strong> Yield ≈ compensation for risk you take (volatility, smart-contract, oracle, liquidity).</div>
-    </div>`},
-    {label:"Impermanent Loss (IL)", html:`<p>When paired tokens move in price relative to each other, your pool share rebalances into more of the underperformer and less of the outperformer.
-    The “loss” is versus simply holding. High fees/volume or stable-stable pairs can offset IL.</p>`},
-    {label:"Risk Lens", html:`<ul>
-      <li><strong>Smart-contract risk:</strong> bugs/exploits; prefer audited, battle-tested protocols.</li>
-      <li><strong>Oracle risk:</strong> bad price feeds can liquidate borrowers or misprice swaps.</li>
-      <li><strong>Liquidity risk:</strong> shallow pools = higher slippage/exit risk.</li>
-      <li><strong>Counterparty/design risk:</strong> admin keys, upgradeability, paused contracts.</li>
-    </ul>`},
-    {label:"Positioning", html:`<ul>
-      <li>Size positions so one failure can’t sink the portfolio.</li>
-      <li>Diversify across protocols, chains, and risk buckets.</li>
-      <li>Prefer simple, single-asset staking when learning; layer complexity slowly.</li>
-    </ul>`}
+    {label:"Objectives", html:`<ul><li>Compare staking, lending, LP fees</li><li>Understand impermanent loss</li><li>Size positions prudently</li></ul>`},
+    {label:"Yield Menu", html:`<div class="two"><div>
+      <ul><li>Staking</li><li>Lending</li><li>LP (IL risk)</li></ul>
+    </div><div class="callout"><strong>Thumb Rule:</strong> Higher APY → higher risk.</div></div>`}
   ]),
-
-  /* Master 1–7 (with Exercises + Case Studies) */
+  M("module5","Beginner",5,"Safety & Strategy",[
+    {label:"Threats", html:`<ul><li>Phishing & fake sites</li><li>Rugpulls</li><li>Malicious approvals</li></ul>`},
+    {label:"Protection", html:`<ul><li>Bookmark official links</li><li>Hardware wallet</li><li>Revoke approvals monthly</li></ul>`}
+  ]),
+  /* Master 1–7 */
   M("mdf-1","Master",1,"Sovereign Mindset",[
-    {label:"Objectives", html:`<ul>
-      <li>Shift from consumer to owner-operator</li>
-      <li>Spot scarcity programming and replace with abundance frameworks</li>
-      <li>Install review rituals to refine decision-making</li>
-    </ul>`},
-    {label:"Core Wisdom", html:`<p>The sovereign mindset is intentionality + discipline.
-    You move from reacting to markets to designing your life’s systems:
-    energy, time, capital, relationships, and reputation.</p>`},
-    {label:"Practices", html:`<ul>
-      <li><strong>Daily audits:</strong> time, energy, spend → 1-line journal.</li>
-      <li><strong>Scarcity check:</strong> notice fear-language (FOMO, panic). Reframe to value-language (thesis, risk, edge).</li>
-      <li><strong>Review cadence:</strong> weekly scorecard, monthly recalibration.</li>
-    </ul>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Owner-Operator Map:</strong> List your top 5 decisions this week. For each, write: “What was my <em>intentional thesis</em>?” If none, rewrite one.</li>
-      <li><strong>Energy P&L:</strong> 3 columns—People, Platforms, Protocols. Tag each as +, 0, − (energy). Prune one “−” this week.</li>
-      <li><strong>Scarcity Recode:</strong> Write 3 common fear-thoughts → convert to sovereign scripts (e.g., “I’m late” → “I only enter with edge”).</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Creator to Owner:</strong> A content creator stops chasing trends and installs a weekly system:
-    research (Mon), build (Tue–Thu), publish (Fri), review (Sun). Income steadies, stress drops, output compounds.
-    <em>Lesson:</em> sovereignty scales with systems, not hustle.</p>`}
+    {label:"Objectives", html:`<ul><li>Owner-operator</li><li>Spot scarcity</li><li>Install review rituals</li></ul>`}
   ]),
-
   M("mdf-2","Master",2,"Blockchain & Tokenomics",[
-    {label:"Objectives", html:`<ul>
-      <li>Understand consensus (PoW vs PoS and variants)</li>
-      <li>Know token standards (ERC-20/721/1155) + why they matter</li>
-      <li>Model emissions, utility loops, and distribution credibility</li>
-    </ul>`},
-    {label:"Knowledge", html:`<p><strong>Consensus:</strong> PoW secures with energy; PoS secures with stake.
-    Trade-offs: decentralization, finality speed, hardware needs, attack surface.</p>
-    <p><strong>Standards:</strong> ERC-20=fungible; ERC-721=unique; ERC-1155=multi-asset/batch efficiency.</p>
-    <p><strong>Tokenomics:</strong> Supply (hard cap? emission decay?), Demand (utility, fees, governance),
-    Distribution (fair launch vs insiders), Sinks (burns, locks), Sources (rewards, sales).</p>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Emission Sketch:</strong> Draft a 4-year schedule: community 40%, team 15% (36m vest), treasury 20%, liquidity 10%, partners 15%. Add cliffs/linear vesting.</li>
-      <li><strong>Utility Loop:</strong> Write a 3-step flywheel: token used for access → drives demand → fees buy/burn → supply pressure ↓ → value accrues.</li>
-      <li><strong>Standards Fit:</strong> Choose ERC-20/721/1155 for 3 use-cases (governance, ticketing, game items) and justify each.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Hypothetical L2 Gas Token:</strong> Fees paid in native token; sequencer shares revenue to stakers;
-    periodic buy-backs on open market. Transparent emissions with halving every 2 years. Result: clear value path (fees→stakers), aligned holders, reduced sell pressure over time.</p>`}
+    {label:"Objectives", html:`<ul><li>Consensus</li><li>Standards</li><li>Emissions & utility</li></ul>`}
   ]),
-
   M("mdf-3","Master",3,"Wealth via Ecosystems",[
-    {label:"Objectives", html:`<ul>
-      <li>Map a utility flywheel</li>
-      <li>Choose your value-creating role(s)</li>
-      <li>Plan with measurable KPIs</li>
-    </ul>`},
-    {label:"Ecosystem Wealth", html:`<p>Wealth concentrates where value loops close:
-    token utility → users → devs → partners → treasury → reinvestment → stronger utility.
-    Pick lanes you can compound: builder, LP, creator, governor, educator.</p>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Flywheel Canvas:</strong> Draw your target ecosystem. Mark: user entry, core utility, revenue source, value accrual to token, reinvestment path.</li>
-      <li><strong>Role Fit Test:</strong> Rate yourself (1–5) on build/design/story/ops/capital. Choose <em>two</em> lanes to go deep for 90 days.</li>
-      <li><strong>KPI Board:</strong> Define 5 metrics (e.g., TVL, DAU, vol, proposals, revenue). Set weekly targets and thresholds for pivot.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Educator-Operator:</strong> A teacher builds tools + tutorials around one DEX.
-    KPIs: YouTube subs, course mints, affiliate flow, governance wins. Over 6 months, partnerships form, revenue diversifies, and influence → paid consults.</p>`}
+    {label:"Objectives", html:`<ul><li>Utility flywheel</li><li>Choose role</li><li>Plan & KPIs</li></ul>`}
   ]),
-
   M("mdf-4","Master",4,"DeFi Mastery",[
-    {label:"Objectives", html:`<ul>
-      <li>Design a diversified yield map</li>
-      <li>Quantify impermanent loss (IL) before LPing</li>
-      <li>Automate compounding + risk controls</li>
-    </ul>`},
-    {label:"Knowledge", html:`<p>Stack yields by risk tiers: </p>
-    <ul>
-      <li><strong>Base:</strong> single-asset staking, blue-chip lending.</li>
-      <li><strong>Mid:</strong> stable-stable LPs, delta-neutral vaults.</li>
-      <li><strong>Advanced:</strong> perps funding capture, options selling, structured products.</li>
-    </ul>
-    <p><strong>IL intuition:</strong> Bigger price divergence between pair tokens → larger IL; fees can offset.</p>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Yield Map:</strong> Allocate a sample portfolio across Base/Mid/Advanced (percentages + protocols). Write the risk/edge for each.</li>
-      <li><strong>IL Scenario:</strong> Pair Token A with Token B. If A doubles and B stays flat, estimate IL directionally and list 2 mitigation tactics (e.g., use stable-stable, add range orders).</li>
-      <li><strong>Automation Plan:</strong> Choose tools (e.g., vaults/keepers). Define rules: harvest threshold, rebalance cadence, stop-loss/exit signals.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Delta-Moderate Stack:</strong> 50% staked LST, 25% stable lending, 15% stable LP, 10% options covered calls.
-    Outcome: steady base yield + modest premium income; capped downside via position sizing; ops automated weekly.</p>`}
+    {label:"Objectives", html:`<ul><li>Yield map</li><li>IL math</li><li>Automation</li></ul>`}
   ]),
-
   M("mdf-5","Master",5,"NFTs as Wealth Vehicles",[
-    {label:"Objectives", html:`<ul>
-      <li>Distinguish collectible vs utility NFTs</li>
-      <li>Model mint + royalty economics</li>
-      <li>Assess liquidity depth and community health</li>
-    </ul>`},
-    {label:"Knowledge", html:`<p>NFTs = programmable rights. Think beyond art: access, proof-of-completion, credentials, in-game items, revenue shares (where legal), governance.</p>
-    <ul>
-      <li><strong>Economics:</strong> Mint price × supply → primary; royalties × volume → secondary.</li>
-      <li><strong>Quality signals:</strong> active dev roadmap, holder retention, meaningful utility, marketplace depth, real partnerships.</li>
-    </ul>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Utility Design:</strong> Draft a utility NFT with 3 concrete benefits (access tier, discount, airdrop eligibility). Define verification flow.</li>
-      <li><strong>P&L Model:</strong> Choose supply 2,000 @ 0.05, royalty 5%. Estimate break-even monthly volume target to match ops costs you set.</li>
-      <li><strong>Liquidity Scan:</strong> Pick a live collection. Record: floor depth (5–10 listings), 30d volume, unique holders %, announcements cadence.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Access Pass Done Right:</strong> A 1,000-supply pass grants gated course + quarterly calls + allowlist spots. Royalties fund a treasury that buys learning tools for holders. Result: sticky community, recurring value, sustained volume.</p>`}
+    {label:"Objectives", html:`<ul><li>Collectible vs utility</li><li>Mint+royalty</li><li>Liquidity quality</li></ul>`}
   ]),
-
   M("mdf-6","Master",6,"Multiple Web3 Income Streams",[
-    {label:"Objectives", html:`<ul>
-      <li>Build 3–5 resilient income lanes</li>
-      <li>Prospect, package, and deliver clearly</li>
-      <li>Track metrics and iterate</li>
-    </ul>`},
-    {label:"Knowledge", html:`<p>Diversify across skills, assets, and time horizons:</p>
-    <ul>
-      <li><strong>Active:</strong> consulting, dev/design bounties, content + courses.</li>
-      <li><strong>Semi-passive:</strong> curated newsletters/affiliates, tool subscriptions.</li>
-      <li><strong>Asset-based:</strong> DeFi yields, royalties, revenue-share NFTs (jurisdiction-aware).</li>
-    </ul>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>Offer Matrix:</strong> Create 3 offers (Problem → Promise → Package → Price → Proof). Time-box delivery windows.</li>
-      <li><strong>Prospect Map:</strong> List 10 DAOs/protocols/communities with gaps you can fill. Draft 3 outreach messages tailored to each.</li>
-      <li><strong>Metrics Sheet:</strong> Track leads, close rate, avg ticket, CAC (time/$, if any), LTV. Set weekly targets.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Creator-Operator Stack:</strong> Weekly threads (lead gen) → mini-course NFT (tripwire) → cohort course (core) → advisory retainer (premium).
-    Over 90 days, conversion improves via testimonials + better onboarding. Revenue stabilizes across 4 lanes.</p>`}
+    {label:"Objectives", html:`<ul><li>3–5 lanes</li><li>Prospect & deliver</li><li>Track metrics</li></ul>`}
   ]),
-
   M("mdf-7","Master",7,"Sovereign Wealth Strategy",[
-    {label:"Objectives", html:`<ul>
-      <li>Create a 5-year wealth blueprint</li>
-      <li>Implement protection (trusts, multisigs, jurisdictional planning)</li>
-      <li>Run cadences that enforce discipline</li>
-    </ul>`},
-    {label:"Knowledge", html:`<p>Treat your finances as a system: allocations, risk budgets, operating rules, legal wrappers, tax-aware flows, and review rhythms.</p>
-    <ul>
-      <li><strong>Allocations:</strong> core (BTC/ETH/LSTs), ecosystem bets, stables (runway), off-chain (cash/land/business).</li>
-      <li><strong>Protection:</strong> multisig for ops, hardware for treasury, trusts/entities for IP & assets, documented heirs plan.</li>
-      <li><strong>Cadence:</strong> quarterly rebalance, yearly thesis renewal, trigger-based de-risking (drawdowns/vol spikes).</li>
-    </ul>`},
-    {label:"Exercises", html:`<ol>
-      <li><strong>5Y Targets:</strong> Define net-worth goal and % mix (on-chain/off-chain). Write the <em>why</em> behind each bucket.</li>
-      <li><strong>Risk Budget:</strong> Set max loss per position (e.g., 1–2% of portfolio) and per strategy. Document exit rules.</li>
-      <li><strong>Protection Setup:</strong> List your current wallets/entities. Assign roles (signers), backup procedures, beneficiary instructions.</li>
-    </ol>`},
-    {label:"Case Study", html:`<p><strong>Calm Compounder:</strong> A builder sets 50% core crypto (staked), 20% stables (12 months runway + yield), 20% ecosystem bets, 10% off-chain business.
-    Uses multisig + trust. Reviews quarterly; trims winners, cuts losers. After 3 years, drawdowns shrink and wealth trajectory smooths.</p>`}
+    {label:"Objectives", html:`<ul><li>5y plan</li><li>Protection</li><li>Cadences</li></ul>`}
   ])
 ];
 
+/* ==============================
+   RENDER
+============================== */
 function menuBtn(m){
   const b = document.createElement("button");
   b.id = `menu-${m.id}`;
@@ -1110,12 +556,12 @@ function renderAccordion(){
     const done = completed.includes(m.id);
     const sectionsHTML = (m.sections||[]).map(s=>`
       <section style="margin-top:12px">
-        <h4 id="h-${m.id}-${s.label.replace(/\\s+/g,'-').toLowerCase()}" style="margin:6px 0 8px;color:#a7c3ff"><i class="fa-solid fa-sparkles" style="color:var(--cyn)"></i> ${s.label}</h4>
+        <h4 style="margin:6px 0 8px;color:#a7c3ff"><i class="fa-solid fa-sparkles" style="color:var(--cyn)"></i> ${s.label}</h4>
         ${s.html||""}
       </section>
     `).join("");
     acc.innerHTML = `
-      <div class="acc-sum" role="button" aria-expanded="false" aria-controls="panel-${m.id}" tabindex="0">
+      <div class="acc-sum" role="button" aria-expanded="false">
         <div class="left">
           <div class="num">${m.level==='Beginner'?m.num:'M'+m.num}</div>
           <div>
@@ -1124,35 +570,18 @@ function renderAccordion(){
           </div>
           ${done?`<span class="pill" style="border-color:rgba(0,255,149,.35);color:#a5ffcf"><i class="fa-solid fa-circle-check"></i> Completed</span>`:""}
         </div>
-        <div><button class="btn btn-ghost" aria-label="Toggle section"><i class="fa-solid fa-chevron-down"></i></button></div>
+        <div><button class="btn btn-ghost"><i class="fa-solid fa-chevron-down"></i></button></div>
       </div>
-      <div class="acc-body" id="panel-${m.id}" role="region" aria-labelledby="summary-${m.id}">
+      <div class="acc-body">
         ${sectionsHTML}
         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn-mark"><i class="fa-solid fa-check"></i> Mark Complete</button>
+          <button class="btn-mark" onclick="markComplete('${m.id}')"><i class="fa-solid fa-check"></i> Mark Complete</button>
           <span class="pill"><i class="fa-solid fa-clock"></i> ~12–20 min</span>
           <span class="pill"><i class="fa-solid fa-signal"></i> ${m.level}</span>
         </div>
       </div>
     `;
-    const sum = acc.querySelector(".acc-sum");
-    sum.id = `summary-${m.id}`;
-    sum.onclick = ()=>openModule(m.id, false);
-    sum.addEventListener("keydown", (e)=>{
-      if(e.key === "Enter" || e.key === " ") { e.preventDefault(); sum.click(); }
-      if(e.key === "ArrowDown"){
-        e.preventDefault();
-        const next = acc.nextElementSibling?.querySelector(".acc-sum");
-        next?.focus();
-      }
-      if(e.key === "ArrowUp"){
-        e.preventDefault();
-        const prev = acc.previousElementSibling?.querySelector(".acc-sum");
-        prev?.focus();
-      }
-      if(e.key === "Home"){ e.preventDefault(); document.querySelector(".acc .acc-sum")?.focus(); }
-      if(e.key === "End" ){ e.preventDefault(); const list = document.querySelectorAll(".acc .acc-sum"); list[list.length-1]?.focus(); }
-    });
+    acc.querySelector(".acc-sum").onclick = ()=>openModule(m.id, false);
     elA.appendChild(acc);
   });
 }
@@ -1168,80 +597,271 @@ function openModule(id, fromMenu){
 }
 
 /* ==============================
-   INIT + BINDINGS
+   PROGRESS
 ============================== */
-function initUI(){
-  if(typeof renderMenus==="function") renderMenus();
-  if(typeof renderAccordion==="function") renderAccordion();
-  updateProgress();
-  if(window.modules && window.modules[0] && typeof openModule==="function"){ openModule(window.modules[0].id, false); }
-  const yearEl = el("year"); if(yearEl) yearEl.textContent = new Date().getFullYear();
+function markComplete(id){
+  if(!completed.includes(id)){ completed.push(id); localStorage.setItem("kly_completed_neon", JSON.stringify(completed)); }
+  notify("Saved","Module marked complete","good","fa-circle-check");
+  renderAccordion(); updateProgress();
+  if(typeof confetti==="function"){ confetti({particleCount:90, spread:60, origin:{y:.8}, colors:["#00eaff","#ff3bff","#9333ff"]}); }
+}
+function updateProgress(){
+  const unique = [...new Set(completed)].filter(id => modules.some(m => m.id === id));
+  const done = unique.length;
+  const pct = Math.min(100, Math.round(done/TOTAL_MODULES*100));
+  chipText.textContent = `${done}/${TOTAL_MODULES} Complete`;
+  certProgress.textContent = `${done} / ${TOTAL_MODULES}`;
+  ring.style.setProperty("--p", pct + "%"); ring.setAttribute("data-label", pct + "%");
+  if(done >= TOTAL_MODULES){ certStatus.textContent = "Ready to Mint"; btnMint.disabled = false; } else { certStatus.textContent = "Locked"; btnMint.disabled = true; }
 }
 
-btnConnect      && btnConnect.addEventListener("click", connect);
-btnDisconnect   && btnDisconnect.addEventListener("click", disconnect);
-btnMint         && btnMint.addEventListener("click", mint);
-btnOverlayConnect && btnOverlayConnect.addEventListener("click", connect);
+/* ==============================
+   TOAST
+============================== */
+function notify(title, msg, kind="info", icon="fa-circle-info"){
+  toastTitle.textContent = title; toastMsg.textContent = msg;
+  toastIcon.className = `fa-solid ${icon}`;
+  toast.classList.remove("good","bad","warn");
+  if(kind==="good") toast.classList.add("good");
+  else if(kind==="bad") toast.classList.add("bad");
+  else if(kind==="warn") toast.classList.add("warn");
 
-btnRedeem && btnRedeem.addEventListener("click", guardInvite(()=> redeemInvite(inviteInput.value)));
-btnRedeem2&& btnRedeem2.addEventListener("click", guardInvite(()=> redeemInvite(inviteInput2.value)));
-btnAbout  && btnAbout.addEventListener("click", ()=> modal && (modal.style.display="block"));
-btnModalConn && btnModalConn.addEventListener("click", ()=> connect());
+  toast.hidden = false;
+  if(notify._timer) clearTimeout(notify._timer);
+  notify._timer = setTimeout(hideToast, 4200);
 
-// Modal focus trap, Esc, backdrop close
-(function modalFocusTrap(){
-  let lastFocused = null;
-  function openModal(){
-    if(!modal) return;
-    lastFocused = document.activeElement;
-    modal.style.display = "block";
-    const focusables = modal.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])');
-    focusables[0]?.focus();
-    function onKey(e){
-      if(e.key === "Escape"){ closeModal(); }
-      if(e.key === "Tab"){
-        const list = Array.from(focusables).filter(el=>!el.hasAttribute('disabled'));
-        if(list.length===0) return;
-        const first = list[0], last = list[list.length-1];
-        if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
-        else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
-      }
+  if(notify._raf) cancelAnimationFrame(notify._raf);
+  const start = performance.now();
+  (function loop(t){
+    if(t - start > 4500) { hideToast(); return; }
+    notify._raf = requestAnimationFrame(loop);
+  })(start);
+}
+function hideToast(){ 
+  toast.hidden = true; 
+  if(notify._timer) clearTimeout(notify._timer);
+  if(notify._raf) cancelAnimationFrame(notify._raf);
+}
+
+/* ==============================
+   WEB3
+============================== */
+async function initWeb3Modal(){
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: { rpc: { [BSC.idDec]: BSC.rpc }, chainId: BSC.idDec }
     }
-    modal._trap = onKey;
-    document.addEventListener("keydown", onKey);
-  }
-  function closeModal(){
-    if(!modal) return;
-    modal.style.display = "none";
-    document.removeEventListener("keydown", modal._trap || (()=>{}));
-    modal._trap = null;
-    lastFocused?.focus?.();
-  }
-  window.openMembershipModal = openModal;
-  window.closeMembershipModal = closeModal;
-  btnAbout    && btnAbout.addEventListener("click", openModal);
-  modalClose  && modalClose.addEventListener("click", closeModal);
-  modal       && modal.addEventListener("click", (e)=>{ if(e.target === modal) closeModal(); });
-})();
+  };
+  web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions, theme:"dark" });
+}
 
-// Delegated handler for "Mark Complete" (no inline onclick)
-document.addEventListener("click", (e)=>{
-  const markBtn = e.target.closest(".btn-mark");
-  if(markBtn){
-    const acc = markBtn.closest(".acc");
-    const id = acc?.id?.replace(/^acc-/, "");
-    if(id) markComplete(id);
+function setConnectUI(state){
+  // state: 'idle' | 'connecting' | 'connected'
+  if(state === 'connecting'){
+    btnConnect.disabled = true;
+    btnConnect.hidden = false;
+    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
+  }else if(state === 'connected'){
+    btnConnect.disabled = false;
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+    btnConnect.hidden = true;
+    btnDisconnect.hidden = false;
+    pillAddr.hidden = false;
+  }else{
+    btnConnect.disabled = false;
+    btnConnect.hidden = false;
+    btnDisconnect.hidden = true;
+    pillAddr.hidden = true;
+    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
   }
-});
+}
 
-// Save opened module id on unload
+function notifyAuto(title, msg, kind="info", icon="fa-circle-info"){
+  notify(title, msg, kind, icon);
+  clearTimeout(notifyAuto._t);
+  notifyAuto._t = setTimeout(()=>hideToast(), 4200);
+}
+
+async function connect(){
+  setConnectUI('connecting');
+  try{
+    walletInstance = await web3Modal.connect();
+    walletInstance.removeAllListeners?.();
+
+    provider = new ethers.providers.Web3Provider(walletInstance, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+
+    const net = await provider.getNetwork().catch(()=>({ chainId: 0 }));
+    if(net.chainId !== BSC.idDec){
+      try{
+        await walletInstance.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BSC.idHex }] });
+      }catch(e){
+        if(e?.code === 4902){
+          await walletInstance.request({ method:"wallet_addEthereumChain", params:[{
+            chainId:BSC.idHex, chainName:BSC.name,
+            nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+            rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
+          }] });
+        }else{ throw e; }
+      }
+      provider = new ethers.providers.Web3Provider(walletInstance, "any");
+      signer = provider.getSigner();
+      account = await signer.getAddress();
+    }
+
+    walletInstance.on?.("accountsChanged", async (accs)=>{
+      if(!accs?.length) return disconnect();
+      account = accs[0];
+      await afterConnect();
+    });
+    walletInstance.on?.("chainChanged", async ()=>{
+      provider = new ethers.providers.Web3Provider(walletInstance, "any");
+      signer   = provider.getSigner();
+      account  = await signer.getAddress().catch(()=>account);
+      await afterConnect();
+    });
+    walletInstance.on?.("disconnect", ()=> disconnect());
+
+    await afterConnect();
+    setConnectUI('connected');
+  }catch(err){
+    console.error('[connect] failed:', err);
+    notifyAuto("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
+    setConnectUI('idle');
+  }
+}
+
+async function afterConnect(){
+  try{
+    if(!provider || !signer || !account) throw new Error('Missing provider/signer/account');
+    const short = `${account.slice(0,6)}…${account.slice(-4)}`;
+    addrShort.textContent = short;
+    addrFull.textContent  = account;
+    avatar.textContent    = account.slice(2,4).toUpperCase();
+    netNameEl.textContent = BSC.name;
+
+    const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+    const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals().catch(()=>18)]);
+    const bal = Number(ethers.utils.formatUnits(raw, dec));
+    klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
+
+    const p = Math.min(100, Math.round((Math.min(bal, 100) / 100) * 100));
+    ring.style.setProperty("--p", p + "%");
+    ring.setAttribute("data-label", p + "%");
+
+    updateAccessState(bal);
+    updateProgress();
+  }catch(e){
+    console.error('[afterConnect] error:', e);
+    notifyAuto("Read Error","Could not read KLY balance.","bad","fa-bug");
+  }
+}
+
+async function disconnect(){
+  try{ await walletInstance?.disconnect?.(); }catch{}
+  try{ await web3Modal?.clearCachedProvider?.(); }catch{}
+
+  walletInstance = null;
+  provider = signer = account = null;
+
+  addrFull.textContent = "Not connected";
+  avatar.textContent   = "KA";
+  netNameEl.textContent= "Not connected";
+  klyBalanceEl.textContent = "—";
+  ring.style.setProperty("--p", "0%");
+  ring.setAttribute("data-label", "0%");
+  setConnectUI('idle');
+  updateAccessState(0); // re-lock UI
+  notifyAuto("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
+}
+
+/* ==============================
+   ACCESS: Token OR Invite
+============================== */
+function hasTokenAccess(bal){ return bal >= 100; }
+function hasInviteAccess(){ return inviteUnlocked === true; }
+
+function updateAccessState(balanceNum){
+  const access = hasTokenAccess(balanceNum) || hasInviteAccess();
+  curriculumWrap.classList.toggle('locked', !access);
+  if(access){
+    notifyAuto("Welcome","Access granted. Enjoy the course.","good","fa-unlock");
+  }else{
+    // show a gentle note but don't spam
+  }
+}
+
+/* Redeem invite (client-side demo) */
+function redeemInvite(codeRaw){
+  const code = (codeRaw||"").trim().toUpperCase();
+  if(!code){ notify("Missing Code","Enter your invite code.","warn","fa-key"); return; }
+  if(!INVITES.has(code)){ notify("Invalid Code","Please check your invite.","bad","fa-circle-xmark"); return; }
+  inviteUnlocked = true;
+  localStorage.setItem("kly_invite_unlocked","1");
+  INVITES.delete(code); // one-time (client-side simulation)
+  notify("Invite Accepted","Your membership has been activated.","good","fa-gem");
+  curriculumWrap.classList.remove('locked');
+  if(typeof confetti==="function"){ confetti({particleCount:120, spread:70, origin:{y:.7}, colors:["#FFD98A","#00eaff","#ff3bff"]}); }
+}
+
+/* ==============================
+   MINT
+============================== */
+async function mint(){
+  if(!signer) return notify("Connect Wallet","Please connect your wallet first.","warn","fa-wallet");
+  const unique = [...new Set(completed)].filter(id => modules.some(m => m.id === id));
+  if(unique.length < TOTAL_MODULES) return notify("Finish Modules","Complete all modules first.","warn","fa-list-check");
+  try{
+    btnMint.disabled=true; btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Minting…';
+    const to = await signer.getAddress();
+    const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+    const tokenURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
+    let gas = await nft.estimateGas.mintTo(to, tokenURI).catch(()=>null);
+    if(!gas){ notify("Gas Estimation Failed","Are you authorized to mint?","bad","fa-engine-warning"); btnMint.disabled=false; btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate'; return; }
+    const tx = await nft.mintTo(to, tokenURI, { gasLimit: gas.mul(120).div(100) });
+    mintStatus.innerHTML = `Tx submitted: <a target="_blank" rel="noopener" href="https://bscscan.com/tx/${tx.hash}">view on BscScan</a>`;
+    await tx.wait();
+    notify("Minted","Certificate minted successfully!","good","fa-certificate");
+    btnMint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Minted';
+    if(typeof confetti==="function"){ confetti({particleCount:160, spread:70, origin:{y:.7}, colors:["#00eaff","#ff3bff","#9333ff"]}); }
+  }catch(e){
+    notify("Mint Failed", e?.message || "Unknown error", "bad", "fa-circle-xmark");
+    btnMint.disabled=false; btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate';
+  }
+}
+
+/* ==============================
+   INIT
+============================== */
+function initUI(){
+  renderMenus(); renderAccordion(); updateProgress();
+  if(modules[0]) openModule(modules[0].id, false);
+  const year = new Date().getFullYear(); el("year").textContent = year;
+}
+btnConnect.addEventListener("click", connect);
+btnDisconnect.addEventListener("click", disconnect);
+btnMint.addEventListener("click", mint);
+document.getElementById("btn-overlay-connect").addEventListener("click", connect);
+
+btnRedeem.addEventListener("click", ()=> redeemInvite(inviteInput.value));
+btnRedeem2.addEventListener("click", ()=> redeemInvite(inviteInput2.value));
+
+btnAbout.addEventListener("click", ()=> modal.style.display="block");
+modalClose.addEventListener("click", ()=> modal.style.display="none");
+btnModalConn.addEventListener("click", ()=> connect());
+
 window.addEventListener("beforeunload", ()=>{ if(opened) localStorage.setItem("kly_open_neon", opened); });
 
-// Restore access state and render
-window.addEventListener("load", ()=>{
+window.addEventListener("load", async ()=>{
   initUI();
-  if(inviteUnlocked && curriculumWrap){ curriculumWrap.classList.remove('locked'); }
+  await initWeb3Modal();
+  // restore invite access on load
+  if(inviteUnlocked){ curriculumWrap.classList.remove('locked'); }
+  if(window.Web3Modal && web3Modal.cachedProvider){ try{ await connect(); }catch{} }
 });
-  </script>
+</script>
 </body>
 </html>
