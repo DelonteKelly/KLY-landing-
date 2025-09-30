@@ -265,24 +265,80 @@ function setImgWithFallback(imgEl, urlOrIpfs){
   trySet();
 }
 
-/* ===================== HELPERS ===================== */
-const $ = (id)=>document.getElementById(id);
-const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
-$("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
+/* ===== IPFS helpers (encoded, multi-gateway, with logs) ===== */
+const DEBUG_META = true; // set false after verifying
 
-function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+const IPFS_GWS = [
+  "https://blush-worthy-ape-39.mypinata.cloud/ipfs/",
+  "https://ipfs.io/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/"
+];
+
+// encode each path segment safely (spaces, unicode, etc.)
+function encodeIpfsPath(path) {
+  // keep any query/hash intact
+  const [pure, tail=""] = path.split(/([?#].*)/); // splits into path + ?... or #...
+  const parts = pure.split("/").map(p => encodeURIComponent(p));
+  return parts.join("/") + (tail || "");
+}
+
+// Turn any ipfs-ish URL into an ordered list of HTTP URLs (encoded)
+function resolveIPFS(urlOrIpfs){
+  if (!urlOrIpfs) return [];
+  // already http(s)
+  if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs];
+
+  // extract /ipfs/<CID>/... or ipfs://<CID>/...
+  let path = null;
+  if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice(7);
+  else {
+    const m = urlOrIpfs.split("/ipfs/");
+    if (m.length > 1) path = m[1];
+  }
+  if (!path) return [urlOrIpfs];
+
+  const enc = encodeIpfsPath(path);
+  const urls = IPFS_GWS.map(gw => gw + enc);
+  if (DEBUG_META) console.log("[IPFS] resolved", { input:urlOrIpfs, encPath:enc, urls });
+  return urls;
+}
+
+async function fetchJsonWithGateways(urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  for (const url of urls){
+    try{
+      const r = await fetch(url, { cache:"no-cache", referrerPolicy:"no-referrer" });
+      if (r.ok) {
+        const j = await r.json();
+        if (DEBUG_META) console.log("[META] OK", url, j);
+        return j;
+      }
+      if (DEBUG_META) console.warn("[META] HTTP not ok", url, r.status);
+    }catch(e){
+      if (DEBUG_META) console.warn("[META] fetch error", url, e?.message||e);
+    }
+  }
+  return null;
+}
+
+function setImgWithFallback(imgEl, urlOrIpfs){
+  const urls = resolveIPFS(urlOrIpfs);
+  if (urls.length === 0){ imgEl.removeAttribute("src"); return; }
+  let i = 0;
+  const trySet = ()=> { imgEl.src = urls[i]; i++; if (DEBUG_META) console.log("[IMG] try", imgEl.alt, urls[i-1]); };
+  imgEl.onerror = ()=> { if (i < urls.length) trySet(); };
+  trySet();
+}
+
+/* Replace your resolve1155Uri with this (keeps ipfs://, encodes later) */
 function resolve1155Uri(tpl, tokenId){
   if(!tpl) return "";
   const hex32 = ethers.utils.hexZeroPad(
     ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
   ).slice(2).toLowerCase();
-  const filled = tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
-  // keep ipfs:// so our fetchers can rotate gateways
-  return filled;
+  // don’t convert to http here — keep ipfs:// so our resolver can encode properly
+  return tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
 }
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
-
 /* ===================== PROVIDERS / STATE ===================== */
 const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
 const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
@@ -390,29 +446,32 @@ async function getCurrencyMeta(addr){
 }
 
 async function getNFTMeta(asset, tokenId, tokenType){
+  const pickImage = (j)=> j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
   try{
     if (tokenType === 1){ // ERC721
-      const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
+      const c721 = new ethers.Contract(asset, ["function tokenURI(uint256) view returns (string)"], rpcProvider);
       const uri = await c721.tokenURI(tokenId);
+      if (DEBUG_META) console.log("[721] tokenURI", { asset, tokenId:String(tokenId), uri });
       const json = await fetchJsonWithGateways(uri);
       return {
         name: json?.name || `Token #${tokenId}`,
-        image: (json?.image || json?.image_url || json?.imageUri || ""),
+        image: pickImage(json),
         description: json?.description || ""
       };
     } else { // ERC1155
-      const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
+      const c1155 = new ethers.Contract(asset, ["function uri(uint256) view returns (string)"], rpcProvider);
       const tpl  = await c1155.uri(tokenId);
-      const meta = resolve1155Uri(tpl, tokenId);
-      const json = await fetchJsonWithGateways(meta);
+      const filled = resolve1155Uri(tpl, tokenId);
+      if (DEBUG_META) console.log("[1155] uri", { asset, tokenId:String(tokenId), tpl, filled });
+      const json = await fetchJsonWithGateways(filled);
       return {
         name: json?.name || `Token #${tokenId}`,
-        image: (json?.image || json?.image_url || json?.imageUri || ""),
+        image: pickImage(json),
         description: json?.description || ""
       };
     }
   }catch(e){
-    console.error("getNFTMeta error:", { asset, tokenId: String(tokenId), tokenType, error: e });
+    console.error("[META] fail", { asset, tokenId:String(tokenId), tokenType, error:e });
     return { name: `Token #${tokenId}`, image: "", description: "" };
   }
 }
