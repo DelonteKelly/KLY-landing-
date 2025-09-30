@@ -52,7 +52,7 @@
   .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px}
   .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.search-box{max-width:100%}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
+  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
   @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
   .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 
@@ -222,17 +222,15 @@ const IPFS_GWS = [
   "https://cloudflare-ipfs.com/ipfs/"
 ];
 
-// Encode each path segment (handles spaces, unicode, etc.)
 function encodeIpfsPath(path) {
-  const [pure, tail=""] = path.split(/([?#].*)/); // keep ?query / #hash intact
+  const [pure, tail=""] = path.split(/([?#].*)/);
   const parts = pure.split("/").map(p => encodeURIComponent(p));
   return parts.join("/") + tail;
 }
 
-// Turn any ipfs-ish URL into an ordered list of HTTP URLs (encoded)
 function resolveIPFS(urlOrIpfs){
   if (!urlOrIpfs) return [];
-  if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs]; // already HTTP(S)
+  if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs];
 
   let path = null;
   if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice(7);
@@ -248,7 +246,6 @@ function resolveIPFS(urlOrIpfs){
   return urls;
 }
 
-// Try all gateways for JSON
 async function fetchJsonWithGateways(urlOrIpfs){
   const urls = resolveIPFS(urlOrIpfs);
   for (const url of urls){
@@ -267,7 +264,6 @@ async function fetchJsonWithGateways(urlOrIpfs){
   return null;
 }
 
-// Rotate <img> src across gateways on error
 function setImgWithFallback(imgEl, urlOrIpfs){
   const urls = resolveIPFS(urlOrIpfs);
   if (urls.length === 0){ imgEl.removeAttribute("src"); return; }
@@ -289,8 +285,7 @@ function resolve1155Uri(tpl, tokenId){
     ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
   ).slice(2).toLowerCase();
   const filled = tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
-  // keep ipfs:// so our fetchers can rotate gateways & encode path segments
-  return filled;
+  return filled; // keep ipfs:// for resolver
 }
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
@@ -319,21 +314,6 @@ $("connect").addEventListener("click", async ()=>{
   }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
 });
 
-/* ===================== SKELETON (optional, unused now) ===================== */
-function skeletonCards(n=6){
-  const one = `
-    <div class="card">
-      <div class="skeleton skeleton-thumb"></div>
-      <div class="skeleton skeleton-text"></div>
-      <div class="skeleton skeleton-text short"></div>
-      <div class="card-actions">
-        <div class="skeleton skeleton-btn"></div>
-        <div class="skeleton skeleton-btn"></div>
-      </div>
-    </div>`;
-  return new Array(n).fill(one).join('');
-}
-
 /* ===================== LOAD LISTINGS ===================== */
 let loading=false, refreshTimer=null;
 
@@ -348,13 +328,12 @@ async function loadListings(){
     if (total === 0){ document.getElementById("collections").innerHTML=""; $("empty").style.display="block"; loading=false; return; }
     const listings = await marketRead.getAllListings(0, total-1);
 
-    // Normalize
     const rows = listings.map(L => ({
       id: Number(L.listingId),
       asset: L.assetContract,
       tokenId: L.tokenId.toString(),
       quantity: Number(L.quantity),
-      pricePerToken: L.pricePerToken, // BigNumber
+      pricePerToken: L.pricePerToken,
       start: L.startTimestamp.toString(),
       end: L.endTimestamp.toString(),
       creator: L.listingCreator,
@@ -402,19 +381,17 @@ async function getCurrencyMeta(addr){
 }
 
 async function getNFTMeta(asset, tokenId, tokenType){
-  // --- helpers ---
   const isBareCid = (s)=> typeof s==="string" && /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(s);
   const normalizeIpfsish = (s)=>{
     if (!s) return "";
     if (/^https?:\/\//i.test(s) || /^ipfs:\/\//i.test(s) || /^data:/i.test(s)) return s;
-    if (isBareCid(s)) return "ipfs://" + s;               // bare CID
-    if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1); // "/ipfs/<cid>..."
-    return s; // leave as-is; resolveIPFS will still try its best if it's ipfs-ish
+    if (isBareCid(s)) return "ipfs://" + s;
+    if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1);
+    return s;
   };
   const pickImage = (j)=>{
     let img = j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
-    img = normalizeIpfsish(img);
-    return img;
+    return normalizeIpfsish(img);
   };
 
   try{
@@ -432,7 +409,7 @@ async function getNFTMeta(asset, tokenId, tokenType){
     } else { // ERC1155
       const c1155 = new ethers.Contract(asset, ["function uri(uint256) view returns (string)"], rpcProvider);
       const tpl  = await c1155.uri(tokenId);
-      const filled = resolve1155Uri(tpl, tokenId); // keeps ipfs://..., we encode later
+      const filled = resolve1155Uri(tpl, tokenId);
       const json = await fetchJsonWithGateways(filled);
       const md = {
         name: json?.name || `Token #${tokenId}`,
@@ -471,7 +448,6 @@ async function render(rows){
   const wrap = document.getElementById("collections");
   wrap.innerHTML = "";
 
-  // concurrency limiter
   const limit = (n)=>{ const q=[]; let a=0;
     const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();});
     return run;
@@ -481,31 +457,26 @@ async function render(rows){
   const groups = groupByCollection(rows);
 
   for (const grp of groups){
-    // section
     const section = document.createElement("section");
     section.className = "collection";
     section.setAttribute("data-collection", grp.key);
 
-    // header
     const header = document.createElement("div");
     header.className = "coll-header";
     header.innerHTML = `<h2>${escapeHtml(grp.name)}</h2><span class="count">${grp.items.length} listing${grp.items.length===1?"":"s"}</span>`;
     section.appendChild(header);
 
-    // grid
     const grid = document.createElement("div");
     grid.className = "coll-grid";
     section.appendChild(grid);
 
-    // build cards concurrently
     const cards = await Promise.all(grp.items.map(r=>run(async ()=>{
       const [curMeta, md] = await Promise.all([
         getCurrencyMeta(r.currency),
         getNFTMeta(r.asset, r.tokenId, r.tokenType)
       ]);
 
-      // 👇 debug log: see exactly what image we’re using per listing
-      if (typeof DEBUG_META !== "undefined" && DEBUG_META) {
+      if (DEBUG_META) {
         console.log("[CARD]", {
           listingId: r.id,
           asset: r.asset,
@@ -559,7 +530,6 @@ async function render(rows){
         <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
       `;
 
-      // 👇 mount image with rotating IPFS gateways + one-time placeholder fallback
       const imgEl = card.querySelector(`#img-${r.id}`);
       if (md.image) {
         setImgWithFallback(imgEl, md.image);
@@ -576,26 +546,7 @@ async function render(rows){
     wrap.appendChild(section);
   }
 
-  setupSearchAndFilter(); // re-bind search/filter on fresh DOM
-}
-      // image with fallback gateways
-      const imgEl = card.querySelector(`#img-${r.id}`);
-      if (md.image) {
-        setImgWithFallback(imgEl, md.image);
-        const placeholderOnce = ()=>{ imgEl.onerror=null; imgEl.src = placeholder; };
-        imgEl.addEventListener('error', placeholderOnce, { once:true });
-      } else {
-        imgEl.src = placeholder;
-      }
-
-      return card;
-    })));
-
-    for (const c of cards) if (c) grid.appendChild(c);
-    wrap.appendChild(section);
-  }
-
-  setupSearchAndFilter(); // re-bind search/filter on fresh DOM
+  setupSearchAndFilter();
 }
 
 /* ===================== SEARCH / FILTERS ===================== */
@@ -669,7 +620,6 @@ document.getElementById("collections").addEventListener("click", async (e)=>{
     const qty = ethers.BigNumber.from(1);
     const total = L.pricePerToken.mul(qty);
 
-    // client-side checks
     const row = {
       quantity: Number(L.quantity),
       status: Number(L.status),
@@ -680,7 +630,6 @@ document.getElementById("collections").addEventListener("click", async (e)=>{
     const s = deriveStatus(row);
     if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
 
-    // If ERC20 -> ensure allowance
     if (currency !== ZERO && currency !== NATIVE_SENTINEL){
       const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
       const owner = await signer.getAddress();
