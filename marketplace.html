@@ -190,6 +190,22 @@ const COLLECTION_ORDER = [
   "0xf98796f28c40b2d0a238b951e72c14cdf2c4da11"
 ];
 
+/* ===================== MINIMAL UTILS (needed by this file) ===================== */
+const $ = (id)=>document.getElementById(id);
+const debounce = (fn, ms=200)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+const escapeHtml = (s="") => s.replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const short = (addr="") => addr.length>10 ? addr.slice(0,6)+"…"+addr.slice(-4) : addr;
+const prettyUnits = (bn, decimals=18) => {
+  try{
+    const s = ethers.utils.formatUnits(bn, decimals);
+    // Trim trailing zeros but keep at least 2 dp for clarity
+    const [i,d=""] = s.split(".");
+    if (!d) return i;
+    const d2 = d.replace(/0+$/,"");
+    return d2 ? `${i}.${d2}` : i;
+  }catch{ return String(bn); }
+};
+
 /* ===================== ABIs ===================== */
 const MARKET_ABI = [
   {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
@@ -238,7 +254,7 @@ const ERC20_MIN_ABI = [
 const ERC721_MIN_ABI = [ "function tokenURI(uint256) view returns (string)" ];
 const ERC1155_MIN_ABI = [ "function uri(uint256) view returns (string)" ];
 
-/* ===================== IPFS HELPERS (probe best gateway + fallbacks) ===================== */
+/* ===================== IPFS HELPERS ===================== */
 const CANDIDATE_GWS = [
   "https://ipfscdn.io/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
@@ -307,7 +323,10 @@ async function probeAny(paths){
 
 async function fetchJsonWithGateways(urlOrIpfs){
   for (const url of resolveIPFS(urlOrIpfs)){
-    try { const r = await fetch(url, { cache:"no-cache" }); if (r.ok) return await r.json(); } catch(_){}
+    try {
+      const r = await fetch(url, { cache:"no-cache", headers:{ "accept":"application/json" } });
+      if (r.ok) return await r.json();
+    } catch(_){}
   }
   return null;
 }
@@ -320,12 +339,14 @@ function setImgWithFallback(imgEl, urlOrIpfs, placeholder){
   imgEl.onerror = tryNext;
   tryNext();
 }
+
 /* ===================== PROVIDERS / STATE ===================== */
 const rpcProvider = new ethers.providers.JsonRpcProvider(RPC,{name:"bsc",chainId:CHAIN_ID});
 const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
 let web3prov=null, signer=null, me=null;
+let refreshTimer=null; // ✅ define the interval handle
 
-$("connect").addEventListener("click", async ()=>{
+$("connect")?.addEventListener("click", async ()=>{
   $("err").textContent="";
   try{
     if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
@@ -333,10 +354,27 @@ $("connect").addEventListener("click", async ()=>{
     await web3prov.send("eth_requestAccounts",[]);
     const net=await web3prov.getNetwork();
     if (Number(net.chainId)!==CHAIN_ID){
-      await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+CHAIN_ID.toString(16)}]});
+      try{
+        await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+CHAIN_ID.toString(16)}]});
+      }catch(e){
+        if (e?.code===4902){
+          await window.ethereum.request({
+            method:'wallet_addEthereumChain',
+            params:[{
+              chainId:"0x"+CHAIN_ID.toString(16),
+              chainName:"BNB Smart Chain",
+              nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+              rpcUrls:[RPC],
+              blockExplorerUrls:['https://bscscan.com']
+            }]
+          });
+        } else { throw e; }
+      }
     }
     signer=web3prov.getSigner(); me=await signer.getAddress();
-    $("whoAddr").textContent=short(me); $("who").style.display="inline-block"; $("connect").style.display="none";
+    $("whoAddr") && ($("whoAddr").textContent=short(me));
+    $("who") && ($("who").style.display="inline-block");
+    $("connect") && ($("connect").style.display="none");
   }catch(e){ $("err").textContent=e?.message||"Failed to connect wallet."; }
 });
 
@@ -370,7 +408,7 @@ async function getCurrencyMeta(addr){
 async function getNFTMeta(asset, tokenId, tokenType){
   // helpers
   const isBareCid = (s)=> typeof s==="string" && /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(s);
-  const normalizeIpfsish = (s)=>{
+  const _normalize = (s)=>{
     if (!s) return "";
     if (/^(https?:|ipfs:|data:)/i.test(s)) return s;
     if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1);
@@ -379,7 +417,7 @@ async function getNFTMeta(asset, tokenId, tokenType){
   };
   const pickImage = (j)=>{
     let img = j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
-    return normalizeIpfsish(img);
+    return _normalize(img);
   };
 
   try{
@@ -400,7 +438,6 @@ async function getNFTMeta(asset, tokenId, tokenType){
         ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
       ).slice(2).toLowerCase();
 
-      // candidates in preferred order
       const candidates = [];
       if (tpl && tpl.includes("{id}")) candidates.push(tpl.replace("{id}", hex32));
       if (tpl) candidates.push(tpl);
@@ -430,12 +467,16 @@ async function getNFTMeta(asset, tokenId, tokenType){
     return { name: `Token #${tokenId}`, image: "", description: "" };
   }
 }
+
 /* ===================== LOAD & GROUP ===================== */
 async function loadListings(){
   $("err").textContent=""; $("empty").style.display="none";
-  document.getElementById("collections").innerHTML="";
+  const wrap = document.getElementById("collections");
+  if (!wrap) return;
+  wrap.innerHTML="";
   try{
-    const total=(await marketRead.totalListings()).toNumber();
+    const totalBN = await marketRead.totalListings();
+    const total = totalBN.toNumber();
     if (total===0){ $("empty").style.display="block"; return; }
     const listings=await marketRead.getAllListings(0,total-1);
     const rows=listings.map(L=>({
@@ -498,7 +539,7 @@ async function render(rows){
       const placeholder=`https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
       card.innerHTML=`
         <div class="thumb-container">
-          <img class="thumb" id="img-${r.id}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="NFT preview for ${escapeHtml(md.name)}">
+          <img class="thumb" id="img-${r.id}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="NFT preview">
           <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
         </div>
         <div class="row" style="margin-top:.5rem">
@@ -511,7 +552,8 @@ async function render(rows){
         </div>
         ${md.description ? `<div class="sub" style="margin-top:8px;font-size:.85rem;line-height:1.4">${escapeHtml(md.description.length>140?md.description.slice(0,140)+'…':md.description)}</div>` : ''}
         <div class="card-actions">
-         <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/direct-listings/${r.id}" target="_blank" rel="noopener">
+          <a class="btn details-link"
+             href="#"
              data-details="1"
              data-listing="${r.id}"
              data-asset="${r.asset}"
@@ -522,6 +564,9 @@ async function render(rows){
              data-meta="${md.metaUrl||''}"
              data-image="${md.image||''}">
             <i class="fas fa-circle-info"></i> Details
+          </a>
+          <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/direct-listings/${r.id}" target="_blank" rel="noopener">
+            <i class="fas fa-up-right-from-square"></i> View on thirdweb
           </a>
           ${st.actionable ? `
             <button class="btn btn-primary" data-buy="${r.id}">
@@ -550,8 +595,9 @@ async function render(rows){
 /* ===================== SEARCH / FILTERS ===================== */
 function setupSearchAndFilter(){
   const searchInput=$('search');
+  if (!searchInput) return;
   const filterButtons=document.querySelectorAll('.filter-btn');
-  const apply=()=>filterListings(searchInput.value.toLowerCase(), getActiveFilter());
+  const apply=()=>filterListings((searchInput.value||"").toLowerCase(), getActiveFilter());
   const debouncedApply=debounce(apply,200);
   searchInput.oninput=debouncedApply;
   filterButtons.forEach(btn=>{
@@ -587,17 +633,17 @@ function filterListings(searchTerm, filter){
     sec.style.display = visibleHere ? '' : 'none';
     anyVisible += visibleHere;
   });
-  $('empty').style.display = anyVisible===0 ? 'block' : 'none';
+  $('empty') && ($('empty').style.display = anyVisible===0 ? 'block' : 'none');
 }
 
 /* ===================== BUY ===================== */
-document.getElementById("collections").addEventListener("click", async (e)=>{
+document.getElementById("collections")?.addEventListener("click", async (e)=>{
   const btn=e.target.closest("button[data-buy]"); if(!btn) return;
   const id=Number(btn.getAttribute("data-buy"));
   const st=$("st-"+id); $("err").textContent="";
   try{
     if (!window.ethereum) throw new Error("MetaMask not detected.");
-    if (!signer) await $("connect").click(); if (!signer) return;
+    if (!signer) await $("connect")?.click(); if (!signer) return;
     const marketWrite=new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
     const L=await marketRead.getListing(id);
     const currency=(L.currency||ZERO).toLowerCase();
@@ -609,7 +655,10 @@ document.getElementById("collections").addEventListener("click", async (e)=>{
     if (currency!==ZERO && currency!==NATIVE_SENTINEL){
       const erc=new ethers.Contract(currency, ERC20_MIN_ABI, signer);
       const owner=await signer.getAddress(); const allowance=await erc.allowance(owner, MARKETPLACE_ADDR);
-      if (allowance.lt(total)){ st.className="status"; st.innerHTML="<i class='fas fa-spinner fa-spin'></i> Approving..."; const txa=await erc.approve(MARKETPLACE_ADDR,total); await txa.wait(); }
+      if (allowance.lt(total)){
+        st.className="status"; st.innerHTML="<i class='fas fa-spinner fa-spin'></i> Approving...";
+        const txa=await erc.approve(MARKETPLACE_ADDR,total); await txa.wait();
+      }
     }
 
     st.className="status"; st.innerHTML="<i class='fas fa-spinner fa-spin'></i> Buying...";
@@ -626,11 +675,13 @@ document.getElementById("collections").addEventListener("click", async (e)=>{
 
 /* ===================== DETAILS MODAL ===================== */
 const modal=$("detailsModal"); const dClose=$("dClose");
-dClose.onclick=()=>modal.classList.remove("open");
-modal.addEventListener("click",(e)=>{ if(e.target===modal) modal.classList.remove("open"); });
+dClose && (dClose.onclick=()=>modal.classList.remove("open"));
+modal?.addEventListener("click",(e)=>{ if(e.target===modal) modal.classList.remove("open"); });
 
-document.getElementById("collections").addEventListener("click",(e)=>{
-  const a=e.target.closest('[data-details]'); if(!a) return;
+document.getElementById("collections")?.addEventListener("click",(e)=>{
+  const a=e.target.closest('a[data-details]'); if(!a) return;
+  e.preventDefault(); // ✅ ensure we open modal instead of navigating
+
   const name=a.getAttribute('data-name')||'Token';
   const asset=a.getAttribute('data-asset'); const tokenId=a.getAttribute('data-tokenid');
   const type=a.getAttribute('data-type'); const price=a.getAttribute('data-price');
@@ -642,12 +693,18 @@ document.getElementById("collections").addEventListener("click",(e)=>{
   $("dTokenId").textContent=tokenId;
   $("dType").textContent=type;
   $("dPrice").textContent=price;
-  const descEl = a.closest('.card').querySelector('.sub:nth-of-type(2)');
-  $("dDesc").textContent = descEl ? descEl.textContent : '';
+
+  // Try to pull the description from the card (safe fallback)
+  const card = a.closest('.card');
+  let desc = "";
+  if (card){
+    const paras = card.querySelectorAll('.sub');
+    desc = paras?.[2]?.textContent || "";
+  }
+  $("dDesc").textContent = desc;
 
   const dImg=$("dImg");
-  if (img) setImgWithFallback(dImg, img);
-  else dImg.removeAttribute('src');
+  if (img) setImgWithFallback(dImg, img); else dImg.removeAttribute('src');
 
   const firstMeta=(meta && resolveIPFS(meta)[0]) || '#';
   const firstImg =(img  && resolveIPFS(img)[0])  || '#';
@@ -657,7 +714,7 @@ document.getElementById("collections").addEventListener("click",(e)=>{
   $("dTw").href=`https://thirdweb.com/bsc/${asset}`;
 
   $("dBuy").onclick=()=>{
-    const buyBtn=a.closest('.card').querySelector(`[data-buy="${listingId}"]`);
+    const buyBtn=card?.querySelector(`[data-buy="${listingId}"]`);
     if (buyBtn) buyBtn.click();
   };
 
@@ -665,9 +722,7 @@ document.getElementById("collections").addEventListener("click",(e)=>{
 });
 
 /* ===================== BOOT ===================== */
-/* ===================== BOOT ===================== */
 async function start(){
-  // Probe using known metadata paths (any one that works sets the preferred gateway)
   await probeAny([
     // Ancestral Mechs (1155)
     "QmXZaUkWziGrd2ooyXdQavJmPXCtWFjZrGL9239n4Nu7yU/0",
