@@ -6,7 +6,6 @@
 <title>Tamaquah Sovereign Market — Live Listings</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- Ethers v5 -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
@@ -34,6 +33,7 @@
   .filters{display:flex;gap:12px;flex-wrap:wrap}
   .filter-btn{padding:8px 16px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:var(--transition)}
   .filter-btn.active,.filter-btn[aria-pressed="true"]{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;margin-top:24px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:var(--transition);display:flex;flex-direction:column;height:100%}
   .card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,.4);border-color:rgba(115,225,255,.3)}
@@ -49,14 +49,8 @@
   .card-actions{display:flex;gap:10px;margin-top:auto;padding-top:12px}
   .card-actions .btn{flex:1;justify-content:center}
   footer{margin:40px 0 0;text-align:center;color:var(--sub);font-size:.9rem;padding-top:20px;border-top:1px solid var(--line)}
-  .loading{display:flex;justify-content:center;align-items:center;padding:40px;flex-direction:column;gap:16px}
-  .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-left:4px solid var(--acc);border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-  @media (max-width:768px){.wrap{padding:16px}header{flex-direction:column;text-align:center}.controls{flex-direction:column;align-items:stretch}.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
-  @media (max-width:480px){.grid{grid-template-columns:1fr}.brand{font-size:1.2rem}.hero h1{font-size:1.6rem}}
-  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
 
-  /* === Skeleton styles === */
+  /* Skeletons (optional) */
   @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
   .skeleton{border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.12) 37%,rgba(255,255,255,.06) 63%);background-size:400% 100%;animation:shimmer 1.4s ease-in-out infinite}
   .skeleton-thumb{width:100%;aspect-ratio:1/1;margin-bottom:12px}
@@ -64,13 +58,26 @@
   .skeleton-text.short{width:60%}
   .skeleton-btn{height:42px;flex:1}
 
-  /* === Collection grouping === */
+  /* Collections */
   .collection{margin-top:28px}
   .coll-header{display:flex;align-items:baseline;gap:10px;margin:8px 0 12px}
   .coll-header h2{font-size:1.1rem;letter-spacing:.04em;color:var(--acc);text-transform:uppercase}
   .coll-header .count{color:var(--sub);font-size:.9rem}
   .coll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
   @media (max-width:768px){.coll-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}}
+
+  /* Details modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
+  .modal.open{display:flex}
+  .modal-card{width:min(820px,95vw);background:var(--bg2);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .modal-body{padding:16px;display:grid;gap:16px}
+  .modal-grid{display:grid;grid-template-columns:180px 1fr;gap:16px}
+  .modal-body img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center}
+  .kv code{font-size:.9rem;word-break:break-all}
+  .modal-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  .badge{padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:.8rem;color:var(--sub)}
 </style>
 </head>
 <body>
@@ -115,7 +122,6 @@
 
   <section>
     <p id="err" class="status err" style="text-align:center"></p>
-    <!-- grouped collections will render here -->
     <div id="collections" aria-live="polite"></div>
     <p id="empty" class="sub" style="display:none;text-align:center;padding:40px">
       <i class="fas fa-box-open" style="font-size:3rem;margin-bottom:16px;opacity:.5"></i><br>
@@ -129,37 +135,62 @@
   </footer>
 </div>
 
+<!-- Details Modal -->
+<div id="detailsModal" class="modal" role="dialog" aria-modal="true" aria-label="Listing details">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong id="dTitle">Details</strong>
+      <button id="dClose" class="btn">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <img id="dImg" alt="NFT image" crossorigin="anonymous">
+        <div class="kv">
+          <span class="badge">Contract</span><code id="dContract"></code>
+          <span class="badge">Token ID</span><code id="dTokenId"></code>
+          <span class="badge">Type</span><code id="dType"></code>
+          <span class="badge">Price</span><code id="dPrice"></code>
+          <span class="badge">Metadata</span><a id="dMeta" class="btn" target="_blank" rel="noopener">Open</a>
+          <span class="badge">Image (GW)</span><a id="dImgLink" class="btn" target="_blank" rel="noopener">Open</a>
+          <span class="badge">BscScan</span><a id="dScan" class="btn" target="_blank" rel="noopener">Open</a>
+          <span class="badge">Thirdweb</span><a id="dTw" class="btn" target="_blank" rel="noopener">Open</a>
+        </div>
+      </div>
+      <div class="sub" id="dDesc"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="dBuy" class="btn btn-primary"><i class="fas fa-shopping-cart"></i> Buy Now</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 /* ===================== CONFIG ===================== */
 const RPC = "https://bsc-dataseed.binance.org/";
-const CHAIN_ID = 56; // BNB Chain
+const CHAIN_ID = 56;
 const MARKETPLACE_ADDR = "0x43159d07010ec59acc8b7df16eb9657667AD243A";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase(); // Thirdweb's native marker
+const NATIVE_SENTINEL = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".toLowerCase();
 
-// Known currencies
 const KNOWN = {
   [ZERO]: { symbol: "BNB", decimals: 18, isNative: true },
   [NATIVE_SENTINEL]: { symbol: "BNB", decimals: 18, isNative: true },
   "0x2e4feb2fe668c8ebe84f19e6c8fe8cf8131b4e52": { symbol: "KLY", decimals: 18, isNative: false },
 };
 
-// Collection names (lowercased keys)
 const COLLECTIONS = {
   "0xdc5aa33c45aa3777d3ccf51521ce329b03d39ea7": "9 Genesis Mythic Avatars",
   "0x2eb40e1dcaa7fafc14040352d7aa37c6d6fba989": "Ancestral Mechs: Bloodline Codex",
   "0xf98796f28c40b2d0a238b951e72c14cdf2c4da11": "Tribal Punk Cryptids"
 };
-
-/* Optional: fixed order for known collections */
 const COLLECTION_ORDER = [
   "0xdc5aa33c45aa3777d3ccf51521ce329b03d39ea7",
   "0x2eb40e1dcaa7fafc14040352d7aa37c6d6fba989",
   "0xf98796f28c40b2d0a238b951e72c14cdf2c4da11"
 ];
 
-/* ===================== ABIs (trimmed) ===================== */
+/* ===================== ABIs ===================== */
 const MARKET_ABI = [
   {"inputs":[],"name":"totalListings","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"uint256","name":"_startId","type":"uint256"},{"internalType":"uint256","name":"_endId","type":"uint256"}],"name":"getAllListings","outputs":[{"components":[
@@ -198,325 +229,218 @@ const MARKET_ABI = [
     {"internalType":"uint256","name":"_expectedTotalPrice","type":"uint256"}
   ],"name":"buyFromListing","outputs":[],"stateMutability":"payable","type":"function"}
 ];
-
 const ERC20_MIN_ABI = [
-  "function allowance(address owner,address spender) view returns (uint256)",
-  "function approve(address spender,uint256 amount) returns (bool)",
+  "function allowance(address, address) view returns (uint256)",
+  "function approve(address, uint256) returns (bool)",
   "function decimals() view returns (uint8)",
   "function symbol() view returns (string)"
 ];
-const ERC721_MIN_ABI = [
-  "function tokenURI(uint256 tokenId) view returns (string)",
-  "function name() view returns (string)"
-];
-const ERC1155_MIN_ABI = [
-  "function uri(uint256 id) view returns (string)"
-];
+const ERC721_MIN_ABI = [ "function tokenURI(uint256) view returns (string)" ];
+const ERC1155_MIN_ABI = [ "function uri(uint256) view returns (string)" ];
 
-/* ===================== IPFS HELPERS (encoded + rotating) ===================== */
-const DEBUG_META = true; // set to false after verifying in console
-
+/* ===================== IPFS HELPERS (encoded + rotating, data: support) ===================== */
 const IPFS_GWS = [
   "https://blush-worthy-ape-39.mypinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://cloudflare-ipfs.com/ipfs/"
 ];
-
-function encodeIpfsPath(path) {
-  const [pure, tail=""] = path.split(/([?#].*)/);
-  const parts = pure.split("/").map(p => encodeURIComponent(p));
-  return parts.join("/") + tail;
-}
-
+function encodeIpfsPath(path){ const [pure,tail=""]=path.split(/([?#].*)/); return pure.split("/").map(p=>encodeURIComponent(p)).join("/") + tail; }
 function resolveIPFS(urlOrIpfs){
   if (!urlOrIpfs) return [];
   if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs];
-
-  let path = null;
-  if (urlOrIpfs.startsWith("ipfs://")) path = urlOrIpfs.slice(7);
-  else {
-    const m = urlOrIpfs.split("/ipfs/");
-    if (m.length > 1) path = m[1];
-  }
+  let path=null;
+  if (urlOrIpfs.startsWith("ipfs://")) path=urlOrIpfs.slice(7);
+  else { const m=urlOrIpfs.split("/ipfs/"); if (m.length>1) path=m[1]; }
   if (!path) return [urlOrIpfs];
-
-  const enc = encodeIpfsPath(path);
-  const urls = IPFS_GWS.map(gw => gw + enc);
-  if (DEBUG_META) console.log("[IPFS] resolved", { input:urlOrIpfs, encPath:enc, urls });
-  return urls;
+  const enc=encodeIpfsPath(path);
+  return IPFS_GWS.map(g=>g+enc);
 }
-
 async function fetchJsonWithGateways(urlOrIpfs){
-  const urls = resolveIPFS(urlOrIpfs);
-  for (const url of urls){
-    try{
-      const r = await fetch(url, { cache:"no-cache", referrerPolicy:"no-referrer" });
-      if (r.ok) {
-        const j = await r.json();
-        if (DEBUG_META) console.log("[META] OK", url, j);
-        return j;
-      }
-      if (DEBUG_META) console.warn("[META] HTTP not ok", url, r.status);
-    }catch(e){
-      if (DEBUG_META) console.warn("[META] fetch error", url, e?.message||e);
-    }
+  if (!urlOrIpfs) return null;
+  if (/^data:application\/json[,;]/i.test(urlOrIpfs)){
+    try{ const [,payload]=urlOrIpfs.split(","); const isB64=/;base64/i.test(urlOrIpfs);
+      const jsonStr=isB64?atob(payload):decodeURIComponent(payload); return JSON.parse(jsonStr);
+    }catch{ return null; }
   }
+  if (/^https?:\/\//i.test(urlOrIpfs)){
+    try{ const r=await fetch(urlOrIpfs,{cache:"no-cache",referrerPolicy:"no-referrer"}); if(r.ok) return await r.json(); }catch(_){}
+    return null;
+  }
+  const urls=resolveIPFS(urlOrIpfs);
+  for(const u of urls){ try{ const r=await fetch(u,{cache:"no-cache",referrerPolicy:"no-referrer"}); if(r.ok) return await r.json(); }catch(_){ } }
   return null;
 }
-
 function setImgWithFallback(imgEl, urlOrIpfs, placeholder){
-  const urls = resolveIPFS(urlOrIpfs);
-  if (urls.length === 0){
-    if (placeholder) imgEl.src = placeholder;
-    else imgEl.removeAttribute("src");
-    return;
-  }
-  let i = 0;
-  const trySet = ()=>{
-    if (i < urls.length){
-      imgEl.src = urls[i];
-      if (typeof DEBUG_META !== "undefined" && DEBUG_META) {
-        console.log("[IMG] try", imgEl.alt, urls[i]);
-      }
-      i++;
-    } else {
-      // all gateways failed → final fallback
-      if (placeholder) imgEl.src = placeholder;
-    }
-  };
-  imgEl.onerror = trySet;
-  trySet();
+  const urls=resolveIPFS(urlOrIpfs);
+  if (!urls.length){ if(placeholder) imgEl.src=placeholder; else imgEl.removeAttribute("src"); return; }
+  let i=0;
+  const trySet=()=>{ if(i<urls.length){ imgEl.src=urls[i++]; } else if(placeholder){ imgEl.src=placeholder; } };
+  imgEl.onerror=trySet; trySet();
+}
+function resolve1155Uri(tpl, tokenId){
+  if(!tpl) return "";
+  const hex32=ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)),32).slice(2).toLowerCase();
+  return tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
 }
 
 /* ===================== HELPERS ===================== */
-const $ = (id)=>document.getElementById(id);
-const short = (a)=> a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
+const $=(id)=>document.getElementById(id);
+const short=(a)=>a?`${a.slice(0,6)}…${a.slice(-4)}`:"—";
 $("mpAddrShort").textContent = short(MARKETPLACE_ADDR);
-
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function resolve1155Uri(tpl, tokenId){
-  if(!tpl) return "";
-  const hex32 = ethers.utils.hexZeroPad(
-    ethers.utils.hexlify(ethers.BigNumber.from(tokenId)), 32
-  ).slice(2).toLowerCase();
-  const filled = tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
-  return filled; // keep ipfs:// for resolver
-}
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-function prettyUnits(bn,dec){ const v = ethers.BigNumber.from(bn); const s = ethers.utils.formatUnits(v, dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
+function prettyUnits(bn,dec){ const v=ethers.BigNumber.from(bn); const s=ethers.utils.formatUnits(v,dec); const [a,b=""]=s.split("."); const bb=b.slice(0,6).replace(/0+$/,""); return bb?`${a}.${bb}`:a; }
 
 /* ===================== PROVIDERS / STATE ===================== */
-const rpcProvider = new ethers.providers.JsonRpcProvider(RPC, { name:"bsc", chainId: CHAIN_ID });
+const rpcProvider = new ethers.providers.JsonRpcProvider(RPC,{name:"bsc",chainId:CHAIN_ID});
 const marketRead = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, rpcProvider);
-
-let web3prov = null, signer = null, me = null;
+let web3prov=null, signer=null, me=null;
 
 $("connect").addEventListener("click", async ()=>{
-  $("err").textContent = "";
+  $("err").textContent="";
   try{
     if(!window.ethereum) throw new Error("MetaMask not detected in this browser.");
-    web3prov = new ethers.providers.Web3Provider(window.ethereum, "any");
-    await web3prov.send("eth_requestAccounts", []);
-    const net = await web3prov.getNetwork();
-    if (Number(net.chainId) !== CHAIN_ID){
-      await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId: "0x"+CHAIN_ID.toString(16)}] });
+    web3prov=new ethers.providers.Web3Provider(window.ethereum,"any");
+    await web3prov.send("eth_requestAccounts",[]);
+    const net=await web3prov.getNetwork();
+    if (Number(net.chainId)!==CHAIN_ID){
+      await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+CHAIN_ID.toString(16)}]});
     }
-    signer = web3prov.getSigner();
-    me = await signer.getAddress();
-    $("whoAddr").textContent = short(me);
-    $("who").style.display = "inline-block";
-    $("connect").style.display = "none";
-  }catch(e){ $("err").textContent = e?.message || "Failed to connect wallet."; }
+    signer=web3prov.getSigner(); me=await signer.getAddress();
+    $("whoAddr").textContent=short(me); $("who").style.display="inline-block"; $("connect").style.display="none";
+  }catch(e){ $("err").textContent=e?.message||"Failed to connect wallet."; }
 });
-
-/* ===================== LOAD LISTINGS ===================== */
-let loading=false, refreshTimer=null;
-
-async function loadListings(){
-  if (loading) return; loading = true;
-  $("err").textContent = "";
-  $("empty").style.display = "none";
-  document.getElementById("collections").innerHTML = "";
-
-  try{
-    const total = (await marketRead.totalListings()).toNumber();
-    if (total === 0){ document.getElementById("collections").innerHTML=""; $("empty").style.display="block"; loading=false; return; }
-    const listings = await marketRead.getAllListings(0, total-1);
-
-    const rows = listings.map(L => ({
-      id: Number(L.listingId),
-      asset: L.assetContract,
-      tokenId: L.tokenId.toString(),
-      quantity: Number(L.quantity),
-      pricePerToken: L.pricePerToken,
-      start: L.startTimestamp.toString(),
-      end: L.endTimestamp.toString(),
-      creator: L.listingCreator,
-      currency: (L.currency || ZERO).toLowerCase(),
-      tokenType: Number(L.tokenType), // 1=ERC721, 0=ERC1155
-      status: Number(L.status),
-      reserved: Boolean(L.reserved),
-    }));
-
-    await render(rows);
-  }catch(e){
-    console.error(e);
-    document.getElementById("collections").innerHTML="";
-    $("err").textContent = e?.message || "Couldn't load listings.";
-    $("empty").style.display="block";
-  } finally { loading=false; }
-}
 
 /* ===================== STATUS ===================== */
 function deriveStatus(row){
-  const now = Math.floor(Date.now()/1000);
-  if (typeof row.status === "number" && row.status !== 1) return {label:"Inactive", cls:"warn", actionable:false};
-  if (row.quantity === 0) return {label:"Completed", cls:"warn", actionable:false};
-  if (row.reserved) return {label:"Reserved", cls:"warn", actionable:false};
-  if (row.end && Number(row.end) !== 0 && Number(row.end) < now) return {label:"Expired", cls:"warn", actionable:false};
-  if (row.start && Number(row.start) !== 0 && Number(row.start) > now) return {label:"Scheduled", cls:"warn", actionable:false};
-  return {label:"Active", cls:"ok", actionable:true};
+  const now=Math.floor(Date.now()/1000);
+  if (typeof row.status==="number" && row.status!==1) return {label:"Inactive",cls:"warn",actionable:false};
+  if (row.quantity===0) return {label:"Completed",cls:"warn",actionable:false};
+  if (row.reserved) return {label:"Reserved",cls:"warn",actionable:false};
+  if (row.end && Number(row.end)!==0 && Number(row.end)<now) return {label:"Expired",cls:"warn",actionable:false};
+  if (row.start && Number(row.start)!==0 && Number(row.start)>now) return {label:"Scheduled",cls:"warn",actionable:false};
+  return {label:"Active",cls:"ok",actionable:true};
 }
 
 /* ===================== META HELPERS ===================== */
-const erc20Cache = new Map();
+const erc20Cache=new Map();
 async function getCurrencyMeta(addr){
-  const a = (addr||ZERO).toLowerCase();
+  const a=(addr||ZERO).toLowerCase();
   if (KNOWN[a]) return KNOWN[a];
   if (erc20Cache.has(a)) return erc20Cache.get(a);
   try{
-    const erc = new ethers.Contract(a, ERC20_MIN_ABI, rpcProvider);
-    const [dec, sym] = await Promise.all([erc.decimals(), erc.symbol()]);
-    const meta = { decimals: Number(dec), symbol: String(sym||"ERC20"), isNative:false };
-    erc20Cache.set(a, meta); return meta;
+    const erc=new ethers.Contract(a,ERC20_MIN_ABI,rpcProvider);
+    const [dec,sym]=await Promise.all([erc.decimals(),erc.symbol()]);
+    const meta={decimals:Number(dec),symbol:String(sym||"ERC20"),isNative:false};
+    erc20Cache.set(a,meta); return meta;
   }catch{
-    const meta = { decimals: 18, symbol: "ERC20", isNative:false };
-    erc20Cache.set(a, meta); return meta;
+    const meta={decimals:18,symbol:"ERC20",isNative:false};
+    erc20Cache.set(a,meta); return meta;
   }
 }
-
 async function getNFTMeta(asset, tokenId, tokenType){
-  const isBareCid = (s)=> typeof s==="string" && /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(s);
-  const normalizeIpfsish = (s)=>{
-    if (!s) return "";
-    if (/^https?:\/\//i.test(s) || /^ipfs:\/\//i.test(s) || /^data:/i.test(s)) return s;
-    if (isBareCid(s)) return "ipfs://" + s;
-    if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1);
+  const isBareCid=(s)=> typeof s==="string" && /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(s);
+  const normalize=(s)=>{
+    if(!s) return "";
+    if (/^data:|^https?:|^ipfs:/i.test(s)) return s;
+    if (s.startsWith("/ipfs/")) return "ipfs://"+s.slice(1);
+    if (isBareCid(s)) return "ipfs://"+s;
     return s;
   };
-  const pickImage = (j)=>{
-    let img = j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
-    return normalizeIpfsish(img);
-  };
-
   try{
-    if (tokenType === 1){ // ERC721
-      const c721 = new ethers.Contract(asset, ["function tokenURI(uint256) view returns (string)"], rpcProvider);
-      const uri = await c721.tokenURI(tokenId);
-      const json = await fetchJsonWithGateways(uri);
-      const md = {
-        name: json?.name || `Token #${tokenId}`,
-        image: pickImage(json),
-        description: json?.description || ""
-      };
-      if (DEBUG_META) console.log("[721] tokenURI", { asset, tokenId:String(tokenId), uri, meta: md, raw: json });
-      return md;
-    } else { // ERC1155
-      const c1155 = new ethers.Contract(asset, ["function uri(uint256) view returns (string)"], rpcProvider);
-      const tpl  = await c1155.uri(tokenId);
-      const filled = resolve1155Uri(tpl, tokenId);
-      const json = await fetchJsonWithGateways(filled);
-      const md = {
-        name: json?.name || `Token #${tokenId}`,
-        image: pickImage(json),
-        description: json?.description || ""
-      };
-      if (DEBUG_META) console.log("[1155] uri", { asset, tokenId:String(tokenId), tpl, filled, meta: md, raw: json });
-      return md;
+    if (tokenType===1){
+      const c721=new ethers.Contract(asset,ERC721_MIN_ABI,rpcProvider);
+      const uri=await c721.tokenURI(tokenId);
+      const j=await fetchJsonWithGateways(uri);
+      let img=j?.image||j?.image_url||j?.imageUri||j?.animation_url||"";
+      if (img && !/^data:|^https?:|^ipfs:/i.test(img) && /ipfs:\/\//i.test(uri)){
+        const base=uri.replace(/[^/]+$/,""); img=base+img.replace(/^\.?\//,"");
+      }
+      return { name:j?.name||`Token #${tokenId}`, image: normalize(img), description:j?.description||"", metaUrl: uri };
+    }else{
+      const c1155=new ethers.Contract(asset,ERC1155_MIN_ABI,rpcProvider);
+      const tpl=await c1155.uri(tokenId);
+      const filled=resolve1155Uri(tpl, tokenId);
+      const j=await fetchJsonWithGateways(filled);
+      let img=j?.image||j?.image_url||j?.imageUri||j?.animation_url||"";
+      if (img && !/^data:|^https?:|^ipfs:/i.test(img) && /ipfs:\/\//i.test(filled)){
+        const base=filled.replace(/[^/]+$/,""); img=base+img.replace(/^\.?\//,"");
+      }
+      return { name:j?.name||`Token #${tokenId}`, image: normalize(img), description:j?.description||"", metaUrl: filled };
     }
   }catch(e){
-    console.error("[META] fail", { asset, tokenId:String(tokenId), tokenType, error: e });
-    return { name: `Token #${tokenId}`, image: "", description: "" };
+    console.error("[META] fail",{asset,tokenId:String(tokenId),tokenType,error:e});
+    return { name:`Token #${tokenId}`, image:"", description:"", metaUrl:"" };
   }
-} 
-
-/* ===================== GROUPING ===================== */
-function groupByCollection(rows){
-  const g = new Map();
-  for (const r of rows){
-    const key = r.asset.toLowerCase();
-    if (!g.has(key)) g.set(key, []);
-    g.get(key).push(r);
-  }
-  const keys = Array.from(g.keys()).sort((a,b)=>{
-    const ia = COLLECTION_ORDER.indexOf(a), ib = COLLECTION_ORDER.indexOf(b);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return  1;
-    return a.localeCompare(b);
-  });
-  return keys.map(k => ({ key:k, name: (COLLECTIONS[k] || short(k)), items: g.get(k) }));
 }
 
-/* ===================== RENDER (grouped) ===================== */
+/* ===================== LOAD & GROUP ===================== */
+async function loadListings(){
+  $("err").textContent=""; $("empty").style.display="none";
+  document.getElementById("collections").innerHTML="";
+  try{
+    const total=(await marketRead.totalListings()).toNumber();
+    if (total===0){ $("empty").style.display="block"; return; }
+    const listings=await marketRead.getAllListings(0,total-1);
+    const rows=listings.map(L=>({
+      id:Number(L.listingId),
+      asset:L.assetContract,
+      tokenId:L.tokenId.toString(),
+      quantity:Number(L.quantity),
+      pricePerToken:L.pricePerToken,
+      start:L.startTimestamp.toString(),
+      end:L.endTimestamp.toString(),
+      creator:L.listingCreator,
+      currency:(L.currency||ZERO).toLowerCase(),
+      tokenType:Number(L.tokenType),
+      status:Number(L.status),
+      reserved:Boolean(L.reserved),
+    }));
+    await render(rows);
+  }catch(e){
+    console.error(e); $("err").textContent=e?.message||"Couldn't load listings."; $("empty").style.display="block";
+  }
+}
+function groupByCollection(rows){
+  const g=new Map();
+  for (const r of rows){ const key=r.asset.toLowerCase(); if(!g.has(key)) g.set(key,[]); g.get(key).push(r); }
+  const keys=Array.from(g.keys()).sort((a,b)=>{
+    const ia=COLLECTION_ORDER.indexOf(a), ib=COLLECTION_ORDER.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    if(ia!==-1) return -1; if(ib!==-1) return 1;
+    return a.localeCompare(b);
+  });
+  return keys.map(k=>({ key:k, name:(COLLECTIONS[k]||short(k)), items:g.get(k) }));
+}
+
+/* ===================== RENDER ===================== */
 async function render(rows){
-  const wrap = document.getElementById("collections");
-  wrap.innerHTML = "";
-
-  const limit = (n)=>{ const q=[]; let a=0;
-    const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();});
-    return run;
-  };
-  const run = limit(6);
-
-  const groups = groupByCollection(rows);
+  const wrap=document.getElementById("collections"); wrap.innerHTML="";
+  const limit=(n)=>{ const q=[]; let a=0; const run=fn=>new Promise((res,rej)=>{ const step=()=>{ if(a>=n) return q.push(step); a++; fn().then(res,rej).finally(()=>{ a--; (q.shift()||(()=>{}))();});}; step();}); return run; };
+  const run=limit(6);
+  const groups=groupByCollection(rows);
 
   for (const grp of groups){
-    const section = document.createElement("section");
-    section.className = "collection";
-    section.setAttribute("data-collection", grp.key);
-
-    const header = document.createElement("div");
-    header.className = "coll-header";
-    header.innerHTML = `<h2>${escapeHtml(grp.name)}</h2><span class="count">${grp.items.length} listing${grp.items.length===1?"":"s"}</span>`;
+    const section=document.createElement("section"); section.className="collection"; section.setAttribute("data-collection",grp.key);
+    const header=document.createElement("div"); header.className="coll-header";
+    header.innerHTML=`<h2>${escapeHtml(grp.name)}</h2><span class="count">${grp.items.length} listing${grp.items.length===1?"":"s"}</span>`;
     section.appendChild(header);
+    const grid=document.createElement("div"); grid.className="coll-grid"; section.appendChild(grid);
 
-    const grid = document.createElement("div");
-    grid.className = "coll-grid";
-    section.appendChild(grid);
-
-    const cards = await Promise.all(grp.items.map(r=>run(async ()=>{
-      const [curMeta, md] = await Promise.all([
-        getCurrencyMeta(r.currency),
-        getNFTMeta(r.asset, r.tokenId, r.tokenType)
-      ]);
-
-      if (DEBUG_META) {
-        console.log("[CARD]", {
-          listingId: r.id,
-          asset: r.asset,
-          tokenId: r.tokenId,
-          tokenType: r.tokenType === 1 ? "ERC721" : "ERC1155",
-          currency: r.currency,
-          name: md?.name,
-          image: md?.image
-        });
-      }
-
-      const st = deriveStatus(r);
-      const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
-
-      const card = document.createElement("div");
-      card.className = "card";
-      card.setAttribute("data-token-type", r.tokenType === 1 ? "erc721" : "erc1155");
-      card.setAttribute("data-currency", (curMeta.symbol||"").toLowerCase());
-      card.setAttribute("data-name", (md.name||"").toLowerCase());
+    const cards=await Promise.all(grp.items.map(r=>run(async ()=>{
+      const [curMeta, md]=await Promise.all([getCurrencyMeta(r.currency), getNFTMeta(r.asset,r.tokenId,r.tokenType)]);
+      const st=deriveStatus(r);
+      const priceStr=`${prettyUnits(r.pricePerToken,curMeta.decimals)} ${curMeta.symbol}`;
+      const card=document.createElement("div");
+      card.className="card";
+      card.setAttribute("data-token-type", r.tokenType===1?"erc721":"erc1155");
+      card.setAttribute("data-currency",(curMeta.symbol||"").toLowerCase());
+      card.setAttribute("data-name",(md.name||"").toLowerCase());
       card.setAttribute("data-token-id", r.tokenId);
       card.setAttribute("data-contract", r.asset.toLowerCase());
 
-      const placeholder = `https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
-
-      card.innerHTML = `
+      const placeholder=`https://via.placeholder.com/600/0c1d27/73E1FF?text=${encodeURIComponent(r.tokenId)}`;
+      card.innerHTML=`
         <div class="thumb-container">
           <img class="thumb" id="img-${r.id}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="NFT preview for ${escapeHtml(md.name)}">
           <div class="token-badge">${st.label} • ${r.tokenType===1?"ERC-721":"ERC-1155"}</div>
@@ -531,8 +455,17 @@ async function render(rows){
         </div>
         ${md.description ? `<div class="sub" style="margin-top:8px;font-size:.85rem;line-height:1.4">${escapeHtml(md.description.length>140?md.description.slice(0,140)+'…':md.description)}</div>` : ''}
         <div class="card-actions">
-          <a class="btn" href="https://thirdweb.com/binance/${MARKETPLACE_ADDR}/listings/${r.id}" target="_blank" rel="noopener">
-            <i class="fas fa-external-link-alt"></i> Details
+          <a class="btn" role="button"
+             data-details="1"
+             data-listing="${r.id}"
+             data-asset="${r.asset}"
+             data-tokenid="${r.tokenId}"
+             data-type="${r.tokenType===1?'ERC-721':'ERC-1155'}"
+             data-price="${priceStr}"
+             data-name="${escapeHtml(md.name)}"
+             data-meta="${md.metaUrl||''}"
+             data-image="${md.image||''}">
+            <i class="fas fa-circle-info"></i> Details
           </a>
           ${st.actionable ? `
             <button class="btn btn-primary" data-buy="${r.id}">
@@ -545,12 +478,9 @@ async function render(rows){
         <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
       `;
 
-      const imgEl = card.querySelector(`#img-${r.id}`);
-    if (md.image) {
-  setImgWithFallback(imgEl, md.image, placeholder);
-} else {
-  imgEl.src = placeholder;
-}
+      const imgEl=card.querySelector(`#img-${r.id}`);
+      if (md.image) setImgWithFallback(imgEl, md.image, placeholder);
+      else imgEl.src=placeholder;
 
       return card;
     })));
@@ -558,132 +488,129 @@ async function render(rows){
     for (const c of cards) if (c) grid.appendChild(c);
     wrap.appendChild(section);
   }
-
   setupSearchAndFilter();
 }
 
 /* ===================== SEARCH / FILTERS ===================== */
 function setupSearchAndFilter(){
-  const searchInput = $('search');
-  const filterButtons = document.querySelectorAll('.filter-btn');
-  const apply = ()=> filterListings(searchInput.value.toLowerCase(), getActiveFilter());
-  const debouncedApply = debounce(apply, 200);
-  searchInput.oninput = debouncedApply;
+  const searchInput=$('search');
+  const filterButtons=document.querySelectorAll('.filter-btn');
+  const apply=()=>filterListings(searchInput.value.toLowerCase(), getActiveFilter());
+  const debouncedApply=debounce(apply,200);
+  searchInput.oninput=debouncedApply;
   filterButtons.forEach(btn=>{
-    btn.onclick = function(){
+    btn.onclick=function(){
       filterButtons.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
-      this.classList.add('active'); this.setAttribute('aria-pressed','true');
-      apply();
+      this.classList.add('active'); this.setAttribute('aria-pressed','true'); apply();
     };
   });
 }
 function getActiveFilter(){ const a=document.querySelector('.filter-btn.active'); return a ? a.getAttribute('data-filter') : 'all'; }
-
 function filterListings(searchTerm, filter){
-  const sections = document.querySelectorAll('.collection');
-  let anyVisible = 0;
-
+  const sections=document.querySelectorAll('.collection'); let anyVisible=0;
   sections.forEach(sec=>{
-    const cards = sec.querySelectorAll('.card[data-contract]');
-    let visibleHere = 0;
-
+    const cards=sec.querySelectorAll('.card[data-contract]'); let visibleHere=0;
     cards.forEach(card=>{
-      const tokenType = card.getAttribute('data-token-type');
-      const currency  = card.getAttribute('data-currency');
-      const name      = (card.getAttribute('data-name')||"").toLowerCase();
-      const tokenId   = (card.getAttribute('data-token-id')||"").toLowerCase();
-      const contract  = (card.getAttribute('data-contract')||"").toLowerCase();
-
-      let ok = true;
-      if (filter !== 'all') {
-        if (filter === 'erc721') ok = tokenType === 'erc721';
-        else if (filter === 'erc1155') ok = tokenType === 'erc1155';
-        else if (filter === 'native') ok = currency === 'bnb';
-        else if (filter === 'kly') ok = currency === 'kly';
-        else if (filter.startsWith('coll:')) ok = contract === filter.slice(5).toLowerCase();
+      const tokenType=card.getAttribute('data-token-type');
+      const currency=card.getAttribute('data-currency');
+      const name=(card.getAttribute('data-name')||"").toLowerCase();
+      const tokenId=(card.getAttribute('data-token-id')||"").toLowerCase();
+      const contract=(card.getAttribute('data-contract')||"").toLowerCase();
+      let ok=true;
+      if (filter!=='all'){
+        if (filter==='erc721') ok = tokenType==='erc721';
+        else if (filter==='erc1155') ok = tokenType==='erc1155';
+        else if (filter==='native') ok = currency==='bnb';
+        else if (filter==='kly') ok = currency==='kly';
+        else if (filter.startsWith('coll:')) ok = contract===filter.slice(5).toLowerCase();
       }
-      let sOK = true;
-      if (searchTerm) sOK = name.includes(searchTerm) || tokenId.includes(searchTerm) || contract.includes(searchTerm);
-
-      if (ok && sOK){ card.style.display='flex'; visibleHere++; } else card.style.display='none';
+      let sOK=true;
+      if (searchTerm) sOK = name.includes(searchTerm)||tokenId.includes(searchTerm)||contract.includes(searchTerm);
+      if (ok&&sOK){ card.style.display='flex'; visibleHere++; } else card.style.display='none';
     });
-
     sec.style.display = visibleHere ? '' : 'none';
     anyVisible += visibleHere;
   });
-
-  $('empty').style.display = anyVisible === 0 ? 'block' : 'none';
+  $('empty').style.display = anyVisible===0 ? 'block' : 'none';
 }
 
 /* ===================== BUY ===================== */
 document.getElementById("collections").addEventListener("click", async (e)=>{
-  const btn = e.target.closest("button[data-buy]"); if(!btn) return;
-  const id = Number(btn.getAttribute("data-buy"));
-  const st = $("st-"+id);
-  $("err").textContent = "";
-
+  const btn=e.target.closest("button[data-buy]"); if(!btn) return;
+  const id=Number(btn.getAttribute("data-buy"));
+  const st=$("st-"+id); $("err").textContent="";
   try{
     if (!window.ethereum) throw new Error("MetaMask not detected.");
-    if (!signer) await $("connect").click();
-    if (!signer) return;
+    if (!signer) await $("connect").click(); if (!signer) return;
+    const marketWrite=new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
+    const L=await marketRead.getListing(id);
+    const currency=(L.currency||ZERO).toLowerCase();
+    const qty=ethers.BigNumber.from(1);
+    const total=L.pricePerToken.mul(qty);
+    const row={quantity:Number(L.quantity),status:Number(L.status),reserved:Boolean(L.reserved),start:L.startTimestamp.toString(),end:L.endTimestamp.toString()};
+    const s=deriveStatus(row); if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
 
-    const marketWrite = new ethers.Contract(MARKETPLACE_ADDR, MARKET_ABI, signer);
-    const L = await marketRead.getListing(id); // fresh read
-    const currency = (L.currency || ZERO).toLowerCase();
-    const qty = ethers.BigNumber.from(1);
-    const total = L.pricePerToken.mul(qty);
-
-    const row = {
-      quantity: Number(L.quantity),
-      status: Number(L.status),
-      reserved: Boolean(L.reserved),
-      start: L.startTimestamp.toString(),
-      end: L.endTimestamp.toString()
-    };
-    const s = deriveStatus(row);
-    if (!s.actionable) throw new Error(`Listing is ${s.label.toLowerCase()}`);
-
-    if (currency !== ZERO && currency !== NATIVE_SENTINEL){
-      const erc = new ethers.Contract(currency, ERC20_MIN_ABI, signer);
-      const owner = await signer.getAddress();
-      const allowance = await erc.allowance(owner, MARKETPLACE_ADDR);
-      if (allowance.lt(total)){
-        st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Approving...";
-        const txa = await erc.approve(MARKETPLACE_ADDR, total);
-        await txa.wait();
-      }
+    if (currency!==ZERO && currency!==NATIVE_SENTINEL){
+      const erc=new ethers.Contract(currency, ERC20_MIN_ABI, signer);
+      const owner=await signer.getAddress(); const allowance=await erc.allowance(owner, MARKETPLACE_ADDR);
+      if (allowance.lt(total)){ st.className="status"; st.innerHTML="<i class='fas fa-spinner fa-spin'></i> Approving..."; const txa=await erc.approve(MARKETPLACE_ADDR,total); await txa.wait(); }
     }
 
-    st.className="status"; st.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Buying...";
-
-    const overrides = {};
-    if (currency === ZERO || currency === NATIVE_SENTINEL){ overrides.value = total; }
-
-    const tx = await marketWrite.buyFromListing(
-      id,
-      await signer.getAddress(),
-      qty,
-      currency,
-      total,
-      overrides
-    );
+    st.className="status"; st.innerHTML="<i class='fas fa-spinner fa-spin'></i> Buying...";
+    const overrides={}; if (currency===ZERO || currency===NATIVE_SENTINEL) overrides.value=total;
+    const tx=await marketWrite.buyFromListing(id, await signer.getAddress(), qty, currency, total, overrides);
     await tx.wait();
-
-    st.className="status ok"; st.innerHTML = `<i class="fas fa-check"></i> Purchase confirmed`;
+    st.className="status ok"; st.innerHTML="<i class='fas fa-check'></i> Purchase confirmed";
     loadListings();
   }catch(err){
-    console.error(err);
-    st.className="status err";
-    st.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.error?.message || err?.message || "Transaction failed")}`;
+    console.error(err); st.className="status err";
+    st.innerHTML=`<i class="fas fa-exclamation-triangle"></i> ${escapeHtml(err?.error?.message || err?.message || "Transaction failed")}`;
   }
 });
 
+/* ===================== DETAILS MODAL ===================== */
+const modal=$("detailsModal"); const dClose=$("dClose");
+dClose.onclick=()=>modal.classList.remove("open");
+modal.addEventListener("click",(e)=>{ if(e.target===modal) modal.classList.remove("open"); });
+
+document.getElementById("collections").addEventListener("click",(e)=>{
+  const a=e.target.closest('[data-details]'); if(!a) return;
+  const name=a.getAttribute('data-name')||'Token';
+  const asset=a.getAttribute('data-asset'); const tokenId=a.getAttribute('data-tokenid');
+  const type=a.getAttribute('data-type'); const price=a.getAttribute('data-price');
+  const meta=a.getAttribute('data-meta')||""; const img=a.getAttribute('data-image')||"";
+  const listingId=a.getAttribute('data-listing');
+
+  $("dTitle").textContent=name;
+  $("dContract").textContent=asset;
+  $("dTokenId").textContent=tokenId;
+  $("dType").textContent=type;
+  $("dPrice").textContent=price;
+  const descEl = a.closest('.card').querySelector('.sub:nth-of-type(2)');
+  $("dDesc").textContent = descEl ? descEl.textContent : '';
+
+  const dImg=$("dImg");
+  if (img) setImgWithFallback(dImg, img);
+  else dImg.removeAttribute('src');
+
+  const firstMeta=(meta && resolveIPFS(meta)[0]) || '#';
+  const firstImg =(img  && resolveIPFS(img)[0])  || '#';
+  $("dMeta").href=firstMeta;
+  $("dImgLink").href=firstImg;
+  $("dScan").href=`https://bscscan.com/address/${asset}`;
+  $("dTw").href=`https://thirdweb.com/bsc/${asset}`;
+
+  $("dBuy").onclick=()=>{
+    const buyBtn=a.closest('.card').querySelector(`[data-buy="${listingId}"]`);
+    if (buyBtn) buyBtn.click();
+  };
+
+  modal.classList.add("open");
+});
+
 /* ===================== BOOT ===================== */
-async function start(){
-  await loadListings();
-  clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadListings, 30000);
-}
+let refreshTimer=null;
+async function start(){ await loadListings(); clearInterval(refreshTimer); refreshTimer=setInterval(loadListings,30000); }
 start();
 </script>
 </body>
