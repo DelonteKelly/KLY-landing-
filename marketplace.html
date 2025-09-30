@@ -402,33 +402,51 @@ async function getCurrencyMeta(addr){
 }
 
 async function getNFTMeta(asset, tokenId, tokenType){
-  const pickImage = (j)=> j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
+  // --- helpers ---
+  const isBareCid = (s)=> typeof s==="string" && /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(s);
+  const normalizeIpfsish = (s)=>{
+    if (!s) return "";
+    if (/^https?:\/\//i.test(s) || /^ipfs:\/\//i.test(s) || /^data:/i.test(s)) return s;
+    if (isBareCid(s)) return "ipfs://" + s;               // bare CID
+    if (s.startsWith("/ipfs/")) return "ipfs://" + s.slice(1); // "/ipfs/<cid>..."
+    return s; // leave as-is; resolveIPFS will still try its best if it's ipfs-ish
+  };
+  const pickImage = (j)=>{
+    let img = j?.image || j?.image_url || j?.imageUri || j?.animation_url || "";
+    img = normalizeIpfsish(img);
+    return img;
+  };
+
   try{
     if (tokenType === 1){ // ERC721
-      const c721 = new ethers.Contract(asset, ERC721_MIN_ABI, rpcProvider);
+      const c721 = new ethers.Contract(asset, ["function tokenURI(uint256) view returns (string)"], rpcProvider);
       const uri = await c721.tokenURI(tokenId);
       const json = await fetchJsonWithGateways(uri);
-      return {
+      const md = {
         name: json?.name || `Token #${tokenId}`,
         image: pickImage(json),
         description: json?.description || ""
       };
+      if (DEBUG_META) console.log("[721] tokenURI", { asset, tokenId:String(tokenId), uri, meta: md, raw: json });
+      return md;
     } else { // ERC1155
-      const c1155 = new ethers.Contract(asset, ERC1155_MIN_ABI, rpcProvider);
+      const c1155 = new ethers.Contract(asset, ["function uri(uint256) view returns (string)"], rpcProvider);
       const tpl  = await c1155.uri(tokenId);
-      const meta = resolve1155Uri(tpl, tokenId);
-      const json = await fetchJsonWithGateways(meta);
-      return {
+      const filled = resolve1155Uri(tpl, tokenId); // keeps ipfs://..., we encode later
+      const json = await fetchJsonWithGateways(filled);
+      const md = {
         name: json?.name || `Token #${tokenId}`,
         image: pickImage(json),
         description: json?.description || ""
       };
+      if (DEBUG_META) console.log("[1155] uri", { asset, tokenId:String(tokenId), tpl, filled, meta: md, raw: json });
+      return md;
     }
   }catch(e){
-    console.error("getNFTMeta error:", { asset, tokenId: String(tokenId), tokenType, error: e });
+    console.error("[META] fail", { asset, tokenId:String(tokenId), tokenType, error: e });
     return { name: `Token #${tokenId}`, image: "", description: "" };
   }
-}
+} 
 
 /* ===================== GROUPING ===================== */
 function groupByCollection(rows){
@@ -485,6 +503,20 @@ async function render(rows){
         getCurrencyMeta(r.currency),
         getNFTMeta(r.asset, r.tokenId, r.tokenType)
       ]);
+
+      // 👇 debug log: see exactly what image we’re using per listing
+      if (typeof DEBUG_META !== "undefined" && DEBUG_META) {
+        console.log("[CARD]", {
+          listingId: r.id,
+          asset: r.asset,
+          tokenId: r.tokenId,
+          tokenType: r.tokenType === 1 ? "ERC721" : "ERC1155",
+          currency: r.currency,
+          name: md?.name,
+          image: md?.image
+        });
+      }
+
       const st = deriveStatus(r);
       const priceStr = `${prettyUnits(r.pricePerToken, curMeta.decimals)} ${curMeta.symbol}`;
 
@@ -527,6 +559,25 @@ async function render(rows){
         <div id="st-${r.id}" class="status ${st.cls}" role="status" aria-live="polite">${st.label}</div>
       `;
 
+      // 👇 mount image with rotating IPFS gateways + one-time placeholder fallback
+      const imgEl = card.querySelector(`#img-${r.id}`);
+      if (md.image) {
+        setImgWithFallback(imgEl, md.image);
+        const placeholderOnce = ()=>{ imgEl.onerror = null; imgEl.src = placeholder; };
+        imgEl.addEventListener('error', placeholderOnce, { once:true });
+      } else {
+        imgEl.src = placeholder;
+      }
+
+      return card;
+    })));
+
+    for (const c of cards) if (c) grid.appendChild(c);
+    wrap.appendChild(section);
+  }
+
+  setupSearchAndFilter(); // re-bind search/filter on fresh DOM
+}
       // image with fallback gateways
       const imgEl = card.querySelector(`#img-${r.id}`);
       if (md.image) {
