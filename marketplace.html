@@ -239,49 +239,102 @@ const ERC721_MIN_ABI = [ "function tokenURI(uint256) view returns (string)" ];
 const ERC1155_MIN_ABI = [ "function uri(uint256) view returns (string)" ];
 
 /* ===================== IPFS HELPERS (encoded + rotating, data: support) ===================== */
+const DEBUG_META = true; // turn off after verifying
+
+// multiple gateways incl. thirdweb's ipfscdn
 const IPFS_GWS = [
-  "https://blush-worthy-ape-39.mypinata.cloud/ipfs/",
-  "https://ipfs.io/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/"
+  "https://ipfscdn.io/ipfs/",
+  "https://gateway.pinata.cloud/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
+  "https://ipfs.io/ipfs/"
 ];
-function encodeIpfsPath(path){ const [pure,tail=""]=path.split(/([?#].*)/); return pure.split("/").map(p=>encodeURIComponent(p)).join("/") + tail; }
-function resolveIPFS(urlOrIpfs){
+
+// encode safely (spaces/unicode)
+function encodeIpfsPath(path){
+  const [pure, tail=""] = path.split(/([?#].*)/);
+  return pure.split("/").map(p=>encodeURIComponent(p)).join("/") + tail;
+}
+
+// normalize any ipfs-ish / relative / bare CID into ipfs://...
+function toIpfsUrl(maybe){
+  if (!maybe) return "";
+  if (/^data:|^https?:|^ipfs:/i.test(maybe)) return maybe;
+  if (maybe.startsWith("/ipfs/")) return "ipfs://" + maybe.slice(1);
+  if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,})$/i.test(maybe)) return "ipfs://" + maybe; // bare CID
+  return maybe; // leave (rare cases)
+}
+
+// turn ipfs:// or /ipfs/… into a list of HTTP URLs (encoded)
+function asHttpGateways(urlOrIpfs){
   if (!urlOrIpfs) return [];
   if (/^https?:\/\//i.test(urlOrIpfs)) return [urlOrIpfs];
-  let path=null;
-  if (urlOrIpfs.startsWith("ipfs://")) path=urlOrIpfs.slice(7);
-  else { const m=urlOrIpfs.split("/ipfs/"); if (m.length>1) path=m[1]; }
-  if (!path) return [urlOrIpfs];
-  const enc=encodeIpfsPath(path);
-  return IPFS_GWS.map(g=>g+enc);
-}
-async function fetchJsonWithGateways(urlOrIpfs){
-  if (!urlOrIpfs) return null;
-  if (/^data:application\/json[,;]/i.test(urlOrIpfs)){
-    try{ const [,payload]=urlOrIpfs.split(","); const isB64=/;base64/i.test(urlOrIpfs);
-      const jsonStr=isB64?atob(payload):decodeURIComponent(payload); return JSON.parse(jsonStr);
-    }catch{ return null; }
+  let path = null;
+  const u = toIpfsUrl(urlOrIpfs);
+  if (u.startsWith("ipfs://")) path = u.slice(7);
+  else {
+    const m = u.split("/ipfs/");
+    if (m.length > 1) path = m[1];
   }
-  if (/^https?:\/\//i.test(urlOrIpfs)){
-    try{ const r=await fetch(urlOrIpfs,{cache:"no-cache",referrerPolicy:"no-referrer"}); if(r.ok) return await r.json(); }catch(_){}
+  if (!path) return [u];
+  const enc = encodeIpfsPath(path);
+  const list = IPFS_GWS.map(gw => gw + enc);
+  if (DEBUG_META) console.log("[IPFS->HTTP]", { input:urlOrIpfs, normalized:u, enc, list });
+  return list;
+}
+
+// fetch JSON from data:, https, or gateways
+async function fetchJsonWithGateways(urlOrIpfs){
+  const u = toIpfsUrl(urlOrIpfs);
+  if (!u) return null;
+
+  // data:application/json
+  if (/^data:application\/json/i.test(u)){
+    try{
+      const [, payload] = u.split(",", 2);
+      const decoded = /;base64/i.test(u) ? atob(payload) : decodeURIComponent(payload);
+      const json = JSON.parse(decoded);
+      if (DEBUG_META) console.log("[META data: OK]", json);
+      return json;
+    }catch(e){ if(DEBUG_META) console.warn("[META data: fail]", e); return null; }
+  }
+
+  // direct https
+  if (/^https?:\/\//i.test(u)){
+    try{ const r = await fetch(u, { cache:"no-cache" }); if (r.ok) return await r.json(); }catch(_) {}
     return null;
   }
-  const urls=resolveIPFS(urlOrIpfs);
-  for(const u of urls){ try{ const r=await fetch(u,{cache:"no-cache",referrerPolicy:"no-referrer"}); if(r.ok) return await r.json(); }catch(_){ } }
+
+  // ipfs-ish -> rotate
+  for (const url of asHttpGateways(u)){
+    try{
+      const r = await fetch(url, { cache:"no-cache" });
+      if (r.ok){
+        const j = await r.json();
+        if (DEBUG_META) console.log("[META OK]", url, j);
+        return j;
+      } else if (DEBUG_META) console.warn("[META not ok]", url, r.status);
+    }catch(e){ if (DEBUG_META) console.warn("[META fetch err]", url, e?.message||e); }
+  }
   return null;
 }
+
+// <img> loader with rotating gateways & final placeholder
 function setImgWithFallback(imgEl, urlOrIpfs, placeholder){
-  const urls=resolveIPFS(urlOrIpfs);
-  if (!urls.length){ if(placeholder) imgEl.src=placeholder; else imgEl.removeAttribute("src"); return; }
-  let i=0;
-  const trySet=()=>{ if(i<urls.length){ imgEl.src=urls[i++]; } else if(placeholder){ imgEl.src=placeholder; } };
-  imgEl.onerror=trySet; trySet();
+  const u = toIpfsUrl(urlOrIpfs);
+  const list = asHttpGateways(u);
+  if (!list.length){ if(placeholder) imgEl.src = placeholder; else imgEl.removeAttribute("src"); return; }
+  let i = 0;
+  const tryNext = ()=> {
+    if (i < list.length){
+      const src = list[i++];
+      if (DEBUG_META) console.log("[IMG try]", src, imgEl.alt || "");
+      imgEl.src = src;
+    } else if (placeholder){ imgEl.src = placeholder; }
+  };
+  imgEl.onerror = tryNext;
+  tryNext();
 }
-function resolve1155Uri(tpl, tokenId){
-  if(!tpl) return "";
-  const hex32=ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.BigNumber.from(tokenId)),32).slice(2).toLowerCase();
-  return tpl.includes("{id}") ? tpl.replace("{id}", hex32) : tpl;
-}
+
 
 /* ===================== HELPERS ===================== */
 const $=(id)=>document.getElementById(id);
