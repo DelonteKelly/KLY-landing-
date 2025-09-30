@@ -168,15 +168,39 @@
     .pill{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
     .btn-mark{background:linear-gradient(90deg,var(--cyn),var(--pnk));border:0;color:#06101a;border-radius:10px;padding:10px 14px;font-weight:800}
 
-    /* Certificate */
-    .cert-img{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--glow-vio); position:relative}
-    .seal{
-      position:absolute; top:10px; right:-6px; transform:rotate(8deg);
-      background: radial-gradient(60% 60% at 40% 40%, rgba(255,217,138,.45), rgba(255,183,74,.35) 60%, rgba(255,255,255,.05));
-      color:#201709; border:1px dashed rgba(255,217,138,.5);
-      padding:6px 10px; border-radius:10px; font-weight:800; font-size:12px; letter-spacing:.6px;
-      text-transform:uppercase; box-shadow:0 8px 30px rgba(0,0,0,.45);
-    }
+/* --- Certificate sizing: make the NFT fit cleanly --- */
+.cert-img{
+  position:relative;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:var(--glow-vio);
+
+  /* choose ONE of the two approaches below */
+
+  /* A) Fixed visual height (good for sidebars) */
+  max-height: 320px;         /* tweak to your taste */
+  height: 320px;
+  background: #0b0f1c;       /* subtle frame behind transparent PNGs */
+
+  /* B) Or: aspect-ratio based (comment A out, uncomment below) */
+  /* aspect-ratio: 4 / 3;   */
+}
+
+.cert-img img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit: contain;        /* show the whole artwork, no crop */
+  object-position: center;
+  background: transparent;    /* PNG edges look clean */
+}
+
+/* optional: keep the "Founder’s Seal" above the image always */
+.cert-img .seal{ z-index:2; }
+
+/* make the HTML hidden attribute actually hide elements */
+[hidden]{ display:none !important; }
 
     /* Members-only blur overlay */
     .lock-wrap{ position:relative }
@@ -619,28 +643,50 @@ function updateProgress(){
    TOAST
 ============================== */
 function notify(title, msg, kind="info", icon="fa-circle-info"){
-  toastTitle.textContent = title; toastMsg.textContent = msg;
-  toastIcon.className = `fa-solid ${icon}`;
+  // 1) sane fallbacks so it's never empty
+  const safeTitle = (title && String(title).trim()) || "Notice";
+  const safeMsg   = (msg   && String(msg).trim())   || "All set.";
+
+  toastTitle.textContent = safeTitle;
+  toastMsg.textContent   = safeMsg;
+
+  // 2) icon + tone
+  toastIcon.className = `fa-solid ${icon || "fa-circle-info"}`;
   toast.classList.remove("good","bad","warn");
   if(kind==="good") toast.classList.add("good");
   else if(kind==="bad") toast.classList.add("bad");
   else if(kind==="warn") toast.classList.add("warn");
 
+  // 3) show
   toast.hidden = false;
-  if(notify._timer) clearTimeout(notify._timer);
+
+  // 4) clear previous timers/loops (prevents “sticky” toasts)
+  if(notify._timer){ clearTimeout(notify._timer); notify._timer=null; }
+  if(notify._raf){ cancelAnimationFrame(notify._raf); notify._raf=null; }
+
+  // 5) auto-hide
   notify._timer = setTimeout(hideToast, 4200);
 
-  if(notify._raf) cancelAnimationFrame(notify._raf);
+  // (optional) RAF backup for throttled timers on some mobiles
   const start = performance.now();
-  (function loop(t){
-    if(t - start > 4500) { hideToast(); return; }
+  function loop(t){
+    if(t - start > 4500){ hideToast(); return; }
     notify._raf = requestAnimationFrame(loop);
-  })(start);
+  }
+  notify._raf = requestAnimationFrame(loop);
 }
-function hideToast(){ 
-  toast.hidden = true; 
-  if(notify._timer) clearTimeout(notify._timer);
-  if(notify._raf) cancelAnimationFrame(notify._raf);
+
+function hideToast(){
+  // kill timers first
+  if(notify._timer){ clearTimeout(notify._timer); notify._timer=null; }
+  if(notify._raf){ cancelAnimationFrame(notify._raf); notify._raf=null; }
+
+  // actually hide (CSS [hidden] rule enforces display:none)
+  toast.hidden = true;
+
+  // optional: clear text so it never “looks empty” if shown mid-update
+  // toastTitle.textContent = "Info";
+  // toastMsg.textContent = "Message";
 }
 
 /* ==============================
