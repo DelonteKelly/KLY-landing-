@@ -493,45 +493,48 @@
   }
 
   /********** NFT gate — adaptive (ERC-1155 -> ERC-721) **********/
-  async function checkNFTAccess(){
-    showStatus('Verifying NFT ownership...', 'info');
-    try{
-      const provider = await connectWalletAndVerifyNetwork();
-      const user = await provider.getSigner().getAddress();
+async function checkNFTAccess(){
+  showStatus('Verifying NFT ownership...', 'info');
+  try {
+    const provider = await connectWalletAndVerifyNetwork();
+    const user = await provider.getSigner().getAddress();
 
-      // Try ERC-1155 first
-      let holds = false;
-      try{
-        const abi1155 = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
-        const c1155 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi1155, provider);
-        const bal1155 = await c1155.balanceOf(user, NFT_TOKEN_ID);
-        holds = (ethers.BigNumber.isBigNumber(bal1155) ? bal1155.gt(0) : Number(bal1155) > 0);
-      }catch(_){ /* ignore and try 721 */ }
+    let holds = false;
 
-      // If not 1155, try ERC-721
-      if (!holds){
-        try{
-          const abi721 = [
-            "function balanceOf(address owner) view returns (uint256)",
-            "function ownerOf(uint256 tokenId) view returns (address)"
-          ];
-          const c721 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi721, provider);
+    // Try ERC-1155 first
+    try {
+      const abi1155 = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+      const c1155 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi1155, provider);
+      const bal1155 = await c1155.balanceOf(user, NFT_TOKEN_ID);
+      holds = (ethers.BigNumber.isBigNumber(bal1155) ? bal1155.gt(0) : Number(bal1155) > 0);
+    } catch(_) {}
 
-          // If gate is “any of this collection”
-          let bal = ethers.BigNumber.from(0);
-          try { bal = await c721.balanceOf(user); } catch(_){}
-          if (bal.gt(0)) holds = true;
+    // Then ERC-721 (collection-wide)
+    if (!holds) {
+      try {
+        const abi721 = ["function balanceOf(address owner) view returns (uint256)"];
+        const c721 = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi721, provider);
+        const bal721 = await c721.balanceOf(user);
+        holds = (ethers.BigNumber.isBigNumber(bal721) ? bal721.gt(0) : Number(bal721) > 0);
+      } catch(_) {}
+    }
 
-          // Or if gate is “must own a specific tokenId”
-          if (!holds){
-            try{
-              const owner = await c721.ownerOf(NFT_TOKEN_ID);
-              if (owner && owner.toLowerCase() === user.toLowerCase()) holds = true;
-            }catch(_){}
-          }
-        }catch(_){}
-      }
-
+    if (holds){
+      showStatus('NFT verified. Unlocking Vault...', 'success');
+      setTimeout(()=>{ window.location.href = '/KLY-vault.html'; }, 900); // ✅ corrected
+    } else {
+      showStatus('No Key detected. Taking you to mint…', 'warning');
+      setTimeout(()=>{ window.location.href = '/launchpad.html'; }, 900);
+    }
+  } catch (e) {
+    console.error(e);
+    if (!window.ethereum) {
+      showStatus('No wallet detected. Open this page in MetaMask/Trust Wallet.', 'error');
+      return;
+    }
+    showStatus('NFT verification failed', 'error');
+  }
+}
       // inside checkNFTAccess()
 if (holds){
   showStatus('NFT verified. Unlocking Vault...', 'success');
