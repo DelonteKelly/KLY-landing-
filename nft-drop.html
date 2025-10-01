@@ -1,707 +1,396 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Web3 Libraries -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js" defer></script>
-    <title>Frequency Key | Web3 NFT Drop</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #6e45e2;
-            --secondary: #88d3ce;
-            --dark: #1a1a2e;
-            --light: #f1f1f1;
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --glow: 0 0 10px rgba(110, 69, 226, 0.7);
-            --glow-success: 0 0 10px rgba(76, 175, 80, 0.7);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Courier New', monospace;
-        }
-        
-        body {
-            background-color: var(--dark);
-            color: var(--light);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(110, 69, 226, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(136, 211, 206, 0.1) 0%, transparent 20%);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .connect-btn {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 25px;
-            color: var(--light);
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: var(--glow);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .connect-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 20px rgba(110, 69, 226, 0.9);
-        }
-        
-        .connect-btn.connected {
-            background: linear-gradient(45deg, var(--success), #8BC34A);
-            box-shadow: var(--glow-success);
-        }
-        
-        .hero {
-            text-align: center;
-            margin: 3rem 0;
-        }
-        
-        .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        
-        .hero p {
-            font-size: 1.2rem;
-            max-width: 700px;
-            margin: 0 auto 2rem;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .countdown {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .countdown-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 10px;
-            min-width: 80px;
-            text-align: center;
-            backdrop-filter: blur(5px);
-        }
-        
-        .countdown-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--secondary);
-        }
-        
-        .countdown-label {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.6);
-            text-transform: uppercase;
-        }
-        
-        .nft-display {
-            display: flex;
-            justify-content: center;
-            margin: 3rem 0;
-            perspective: 1000px;
-        }
-        
-        .nft-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: var(--glow);
-            transition: all 0.5s ease;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .nft-card:hover {
-            transform: translateY(-10px) rotateX(5deg);
-            box-shadow: 0 15px 30px rgba(110, 69, 226, 0.4);
-        }
-        
-        .nft-image {
-            width: 100%;
-            border-radius: 15px;
-            margin-bottom: 1.5rem;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .nft-image:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .nft-title {
-            font-size: 1.8rem;
-            margin-bottom: 1rem;
-            color: var(--light);
-        }
-        
-        .nft-description {
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 1.5rem;
-            line-height: 1.6;
-        }
-        
-        .mint-btn {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 30px;
-            color: var(--light);
-            font-weight: bold;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: var(--glow);
-            width: 100%;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .mint-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(110, 69, 226, 0.5);
-        }
-        
-        .mint-btn:disabled {
-            background: rgba(255, 255, 255, 0.1);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .mint-btn.connected {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-        }
-        
-        .mint-btn.minted {
-            background: linear-gradient(45deg, var(--success), #8BC34A);
-            box-shadow: var(--glow-success);
-        }
-        
-        .info-section {
-            margin: 4rem 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-        
-        .info-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 1.5rem;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--glow);
-        }
-        
-        .info-card h3 {
-            color: var(--secondary);
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .info-card p {
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.6;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 2rem 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 2rem;
-            color: rgba(255, 255, 255, 0.5);
-        }
-        
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-        }
-        
-        .mint-status {
-            margin-top: 1rem;
-            font-size: 0.9rem;
-            color: var(--secondary);
-        }
-        
-        .network-info {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            display: none;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        
-        .modal-content {
-            background: var(--dark);
-            padding: 2rem;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid var(--primary);
-            box-shadow: var(--glow);
-            text-align: center;
-        }
-        
-        .modal h2 {
-            margin-bottom: 1rem;
-            color: var(--secondary);
-        }
-        
-        .modal p {
-            margin-bottom: 1.5rem;
-            line-height: 1.6;
-        }
-        
-        .modal-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        
-        .modal-btn:hover {
-            background: var(--secondary);
-        }
-        
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2rem;
-            }
-            
-            .countdown {
-                flex-wrap: wrap;
-            }
-            
-            .nft-card {
-                padding: 1.5rem;
-            }
-            
-            .logo {
-                font-size: 1.2rem;
-            }
-            
-            .connect-btn {
-                padding: 0.5rem 1rem;
-                font-size: 0.9rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Web3 Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js" defer></script>
+  <title>Frequency Key | Exclusive Holder Drop</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary:#6e45e2; --secondary:#88d3ce; --dark:#0d0f1a; --light:#f1f1f1;
+      --success:#4CAF50; --warning:#FF9800;
+      --glow:0 0 10px rgba(110,69,226,.7); --glow-success:0 0 10px rgba(76,175,80,.7);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
+    body{
+      background:radial-gradient(1200px 800px at 10% 20%,rgba(110,69,226,.12),transparent 60%),
+                 radial-gradient(900px 600px at 90% 80%,rgba(136,211,206,.12),transparent 60%), var(--dark);
+      color:var(--light);min-height:100vh;overflow-x:hidden
+    }
+    .container{max-width:1200px;margin:0 auto;padding:2rem}
+    header{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;
+      border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2rem}
+    .logo{font-size:1.5rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+      background:linear-gradient(90deg,var(--primary),var(--secondary));
+      -webkit-background-clip:text;background-clip:text;color:transparent;display:flex;gap:10px;align-items:center}
+    .badge{font-size:.75rem;color:#fff;background:linear-gradient(90deg,#d97706,#ef4444);padding:.25rem .5rem;border-radius:6px;margin-left:.5rem}
+    .connect-btn{background:linear-gradient(45deg,var(--primary),var(--secondary));border:none;padding:.6rem 1.1rem;border-radius:25px;
+      color:var(--light);font-weight:700;cursor:pointer;transition:.25s;box-shadow:var(--glow);display:flex;align-items:center;gap:8px}
+    .connect-btn:hover{transform:translateY(-2px)}
+    .connect-btn.connected{background:linear-gradient(45deg,var(--success),#8BC34A);box-shadow:var(--glow-success)}
+    .hero{text-align:center;margin:2.5rem 0}
+    .hero h1{font-size:2.8rem;margin-bottom:1rem;background:linear-gradient(90deg,var(--primary),var(--secondary));
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero p{font-size:1.1rem;max-width:760px;margin:0 auto 1rem;line-height:1.6;color:rgba(255,255,255,.78)}
+    .req{display:inline-flex;gap:.5rem;align-items:center;justify-content:center;color:#c7f9ff;font-size:.95rem;margin-bottom:1rem}
+    .countdown{display:flex;justify-content:center;gap:1rem;margin-top:.5rem}
+    .countdown-item{background:rgba(255,255,255,.06);padding:1rem;border-radius:12px;min-width:80px;text-align:center;backdrop-filter:blur(6px)}
+    .countdown-number{font-size:1.8rem;font-weight:800;color:var(--secondary)}
+    .countdown-label{font-size:.75rem;color:rgba(255,255,255,.6);text-transform:uppercase}
+    .nft-display{display:flex;justify-content:center;margin:2.5rem 0;perspective:1000px}
+    .nft-card{background:rgba(255,255,255,.05);border-radius:20px;padding:1.8rem;backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.08);box-shadow:var(--glow);transition:.45s;max-width:520px;width:100%;text-align:center}
+    .nft-card:hover{transform:translateY(-10px) rotateX(4deg);box-shadow:0 15px 30px rgba(110,69,226,.35)}
+    .nft-image{width:100%;border-radius:14px;margin-bottom:1.1rem;border:2px solid rgba(255,255,255,.08);transition:.25s}
+    .nft-image:hover{transform:scale(1.02)}
+    .nft-title{font-size:1.6rem;margin-bottom:.6rem}
+    .nft-description{color:rgba(255,255,255,.77);margin-bottom:1rem;line-height:1.6}
+    .pill{display:inline-block;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.15);border-radius:999px;font-size:.75rem;color:#bde3ff;margin:.25rem}
+    .mint-btn{background:linear-gradient(45deg,var(--primary),var(--secondary));border:none;padding:1rem 1.4rem;border-radius:30px;color:var(--light);
+      font-weight:800;font-size:1.05rem;cursor:pointer;transition:.25s;box-shadow:var(--glow);width:100%;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:10px}
+    .mint-btn:disabled{background:rgba(255,255,255,.08);cursor:not-allowed;box-shadow:none}
+    .mint-btn.minted{background:linear-gradient(45deg,var(--success),#8BC34A);box-shadow:var(--glow-success)}
+    .mint-status{margin-top:.9rem;font-size:.92rem;color:var(--secondary);min-height:20px}
+    .info-section{margin:3.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.4rem}
+    .info-card{background:rgba(255,255,255,.05);border-radius:15px;padding:1.2rem;backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);transition:.25s}
+    .info-card:hover{transform:translateY(-4px);box-shadow:var(--glow)}
+    .info-card h3{color:var(--secondary);margin-bottom:.7rem;font-size:1.15rem;display:flex;align-items:center;gap:10px}
+    .info-card p{color:rgba(255,255,255,.78);line-height:1.6}
+    footer{text-align:center;padding:2rem 0;border-top:1px solid rgba(255,255,255,.08);margin-top:2rem;color:rgba(255,255,255,.55)}
+    .particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
+    .network-info{position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,.7);padding:.5rem 1rem;border-radius:20px;font-size:.8rem;display:none}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;justify-content:center;align-items:center;backdrop-filter:blur(5px)}
+    .modal-content{background:var(--dark);padding:1.6rem;border-radius:15px;max-width:520px;width:92%;border:1px solid var(--primary);box-shadow:var(--glow);text-align:center}
+    .modal h2{margin-bottom:.7rem;color:var(--secondary)}
+    .modal p{margin-bottom:1.2rem;line-height:1.6}
+    .modal-btn{background:var(--primary);color:#fff;border:none;padding:.7rem 1.2rem;border-radius:25px;cursor:pointer;font-weight:800;transition:.2s}
+    .modal-btn:hover{background:var(--secondary)}
+    @media (max-width:768px){.hero h1{font-size:2.1rem}.logo{font-size:1.2rem}.connect-btn{padding:.5rem 1rem;font-size:.9rem}}
+  </style>
 </head>
 <body>
-    <div class="particles" id="particles-js"></div>
-    
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i class="fas fa-key"></i> Frequency Key
-            </div>
-            <button class="connect-btn" id="connectWallet">
-                <i class="fas fa-wallet"></i> Connect Wallet
-            </button>
-        </header>
-        
-        <section class="hero">
-            <h1>FREQUENCY KEY NFT DROP</h1>
-            <p>Unlock the next dimension of digital ownership with this exclusive Web3 collectible. Each Frequency Key is a unique artifact in the blockchain universe.</p>
-            
-            <div class="countdown">
-                <div class="countdown-item">
-                    <div class="countdown-number" id="days">00</div>
-                    <div class="countdown-label">Days</div>
-                </div>
-                <div class="countdown-item">
-                    <div class="countdown-number" id="hours">00</div>
-                    <div class="countdown-label">Hours</div>
-                </div>
-                <div class="countdown-item">
-                    <div class="countdown-number" id="minutes">00</div>
-                    <div class="countdown-label">Minutes</div>
-                </div>
-                <div class="countdown-item">
-                    <div class="countdown-number" id="seconds">00</div>
-                    <div class="countdown-label">Seconds</div>
-                </div>
-            </div>
-        </section>
-        
-        <section class="nft-display">
-            <div class="nft-card">
-                <img src="https://gateway.pinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by" alt="Frequency Key" class="nft-image">
-                <h2 class="nft-title">Frequency Key #001</h2>
-                <p class="nft-description">This unique digital artifact represents access to higher vibrational states in the metaverse. Holders gain exclusive benefits across multiple Web3 platforms.</p>
-                <button class="mint-btn" id="mintButton" disabled>
-                    <i class="fas fa-lock"></i> CONNECT TO MINT
-                </button>
-                <div class="mint-status" id="mintStatus"></div>
-            </div>
-        </section>
-        
-        <section class="info-section">
-            <div class="info-card">
-                <h3><i class="fas fa-info-circle"></i> About Frequency Keys</h3>
-                <p>Frequency Keys are algorithmically generated digital artifacts that exist on the Ethereum blockchain. Each key has unique properties that may unlock special features in future metaverse applications.</p>
-            </div>
-            <div class="info-card">
-                <h3><i class="fas fa-gem"></i> Utility & Benefits</h3>
-                <p>Key holders will receive airdrops, whitelist spots for future drops, and access to exclusive content. The keys may also function as access tokens in upcoming virtual worlds.</p>
-            </div>
-            <div class="info-card">
-                <h3><i class="fas fa-cog"></i> Technical Details</h3>
-                <p>ERC-721A standard. Minted on Ethereum. Stored on IPFS. 10,000 unique keys with varying rarity traits. 0.08 ETH mint price (plus gas).</p>
-            </div>
-        </section>
-        
-        <footer>
-            <p>© 2025 Frequency Key Project. All rights reserved.</p>
-        </footer>
-    </div>
-    
-    <div class="network-info" id="networkInfo"></div>
-    
-    <div class="modal" id="successModal">
-        <div class="modal-content">
-            <h2><i class="fas fa-check-circle"></i> Mint Successful!</h2>
-            <p>Your Frequency Key NFT has been minted successfully. It may take a few minutes to appear in your wallet.</p>
-            <p>You can view your transaction on <a href="#" id="txLink" target="_blank" style="color: var(--secondary);">Etherscan</a>.</p>
-            <button class="modal-btn" id="closeModal">Close</button>
-        </div>
-    </div>
-    
-    <div class="modal" id="errorModal">
-        <div class="modal-content">
-            <h2><i class="fas fa-exclamation-triangle"></i> Error Occurred</h2>
-            <p id="errorMessage">There was an issue with your transaction. Please try again.</p>
-            <button class="modal-btn" id="closeErrorModal">Close</button>
-        </div>
-    </div>
+  <div class="particles" id="particles-js"></div>
 
-<!-- ✅ Wallet Connect + Mint Script -->
+  <div class="container">
+    <header>
+      <div class="logo">
+        <i class="fas fa-key"></i> Frequency Key
+        <span class="badge">EXCLUSIVE HOLDER DROP</span>
+      </div>
+      <button class="connect-btn" id="connectWallet"><i class="fas fa-wallet"></i> Connect Wallet</button>
+    </header>
+
+    <section class="hero">
+      <h1>FREQUENCY KEY — LIMITED ACCESS</h1>
+      <p>Private mint for the tribe. This key unlocks higher-tier access across the KLY ecosystem. Supply is limited. One per wallet.</p>
+      <div class="req">
+        <i class="fas fa-shield-alt"></i> Requires <strong>&nbsp;≥ 500 KLY</strong> on <strong>&nbsp;BNB Smart Chain (Chain ID 56)</strong>
+      </div>
+
+      <div class="countdown" id="countdownRow">
+        <div class="countdown-item"><div class="countdown-number" id="days">00</div><div class="countdown-label">Days</div></div>
+        <div class="countdown-item"><div class="countdown-number" id="hours">00</div><div class="countdown-label">Hours</div></div>
+        <div class="countdown-item"><div class="countdown-number" id="minutes">00</div><div class="countdown-label">Minutes</div></div>
+        <div class="countdown-item"><div class="countdown-number" id="seconds">00</div><div class="countdown-label">Seconds</div></div>
+      </div>
+    </section>
+
+    <section class="nft-display">
+      <div class="nft-card">
+        <img src="https://gateway.pinata.cloud/ipfs/bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by" alt="Frequency Key" class="nft-image">
+        <h2 class="nft-title">Frequency Key #001</h2>
+        <p class="nft-description">A cryptic artifact from the vault. Holder utility: vault access upgrades, allowlists, and Sovereign course perks.</p>
+        <div>
+          <span class="pill">BNB Chain</span>
+          <span class="pill">KLY ≥ 500 Required</span>
+          <span class="pill">1 / wallet</span>
+        </div>
+        <button class="mint-btn" id="mintButton" disabled>
+          <i class="fas fa-lock"></i> CONNECT TO VERIFY
+        </button>
+        <div class="mint-status" id="mintStatus"></div>
+      </div>
+    </section>
+
+    <section class="info-section">
+      <div class="info-card">
+        <h3><i class="fas fa-info-circle"></i> What You’re Minting</h3>
+        <p>Frequency Keys are on-chain passes that sync with the KLY Ascension Portal. Expect evolving utility tied to staking, course gates, and future drops.</p>
+      </div>
+      <div class="info-card">
+        <h3><i class="fas fa-gem"></i> Utility</h3>
+        <p>Priority access, vault boosts, token-gated lessons, and early allowlists. Your key is your signature.</p>
+      </div>
+      <div class="info-card">
+        <h3><i class="fas fa-cog"></i> Technical</h3>
+        <p>ERC-721 on <strong>BNB Smart Chain</strong>. Metadata on IPFS. Contract: <code>0xDA76...6950</code>. Gated by KLY balance: <code>0x2e4f...4E52</code>.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>© 2025 Frequency Key Project. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <div class="network-info" id="networkInfo"></div>
+
+  <!-- Success -->
+  <div class="modal" id="successModal">
+    <div class="modal-content">
+      <h2><i class="fas fa-check-circle"></i> Mint Successful!</h2>
+      <p>Your Frequency Key has been minted. It may take a minute to appear in your wallet.</p>
+      <p>View on <a href="#" id="txLink" target="_blank" style="color:var(--secondary)">BscScan</a>.</p>
+      <button class="modal-btn" id="closeModal">Close</button>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="modal" id="errorModal">
+    <div class="modal-content">
+      <h2><i class="fas fa-exclamation-triangle"></i> Error</h2>
+      <p id="errorMessage">There was an issue with your transaction. Please try again.</p>
+      <button class="modal-btn" id="closeErrorModal">Close</button>
+    </div>
+  </div>
+
 <script>
-  let web3Modal, provider, externalProvider, signer, contract;
-
-  document.addEventListener("DOMContentLoaded", () => {
-    if (!checkDependencies()) return;
-    initializeApp();
-  });
-
-  function checkDependencies() {
-    if (typeof ethers === "undefined") {
-      alert("Ethers.js failed to load. Please refresh.");
-      return false;
-    }
-    return true;
-  }
-
-  async function initializeApp() {
-    try {
-      initializeParticles();
-      setupCountdown();
-      setupWeb3Modal();
-      await initializeWeb3();
-    } catch (error) {
-      console.error("Initialization error:", error);
-      showError("Initialization failed: " + error.message);
-    }
-  }
-
-  function setupWeb3Modal() {
-    const providerOptions = {
-  walletconnect: {
-    package: window.WalletConnectProvider.default,
-    options: {
-      rpc: {
-        56: "https://bsc-dataseed.binance.org/" // ✅ Use BNB RPC
-      }
-    }
-  }
+/** ================= CONFIG ================= **/
+const BSC_PARAMS = {
+  chainId: '0x38',
+  chainName: 'BNB Smart Chain',
+  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+  rpcUrls: ['https://bsc-dataseed.binance.org/'],
+  blockExplorerUrls: ['https://bscscan.com']
 };
 
-    web3Modal = new window.Web3Modal.default({
-      cacheProvider: true,
-      providerOptions,
-      theme: "dark"
-    });
-  }
+// Contracts
+const NFT_ADDR = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Thirdweb ERC-721 (Course Cert / Keys)
+const KLY_ADDR = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";  // KLY ERC-20
 
-  async function initializeWeb3() {
-    const connectBtn = document.getElementById("connectWallet");
-    const mintBtn = document.getElementById("mintButton");
+// ABIs (minimal)
+const NFT_ABI = [
+  { "constant": true, "inputs":[{"name":"owner","type":"address"}], "name":"balanceOf", "outputs":[{"name":"balance","type":"uint256"}], "type":"function" },
+  { "inputs":[{"name":"to","type":"address"},{"name":"uri","type":"string"}], "name":"mintTo", "outputs":[], "stateMutability":"nonpayable", "type":"function" }
+];
+const ERC20_ABI = [
+  { "constant": true, "inputs":[{"name":"account","type":"address"}], "name":"balanceOf", "outputs":[{"name":"","type":"uint256"}], "type":"function" },
+  { "constant": true, "inputs":[], "name":"decimals", "outputs":[{"name":"","type":"uint8"}], "type":"function" }
+];
 
-    connectBtn?.addEventListener("click", connectWallet);
-    mintBtn?.addEventListener("click", mintNFT);
+// Mint settings
+const METADATA_URI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
+const REQUIRED_KLY = ethers.utils.parseUnits("500", 18); // ≥ 500 KLY
 
-    if (web3Modal.cachedProvider) {
-      await connectWallet();
-    }
-  }
+let web3Modal, externalProvider, provider, signer, nft, kly;
 
-  async function connectWallet() {
-    const contractAddress = "0xDA76d35742190283E340dbeE2038ecc978a56950";
-    const contractABI = [
-      {
-        "constant": true,
-        "inputs": [{"name": "owner", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "balance", "type": "uint256"}],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "to", "type": "address"}, {"name": "uri", "type": "string"}],
-        "name": "mintTo",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
-    ];
+document.addEventListener("DOMContentLoaded", () => {
+  if (!checkDependencies()) return;
+  initializeParticles();
+  setupCountdown();      // optional teaser
+  setupModals();
+  setupWeb3Modal();
+  initializeWeb3();      // attach listeners + auto-connect if cached
+});
 
-    try {
-      externalProvider = await web3Modal.connect();
-      provider = new ethers.providers.Web3Provider(externalProvider);
-      signer = provider.getSigner();
-      const address = await signer.getAddress();
-
-      contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      document.getElementById("connectWallet").innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0, 6)}...${address.slice(-4)}`;
-      document.getElementById("connectWallet").classList.add("connected");
-
-      const network = await provider.getNetwork();
-if (network.chainId !== 56) {
-  document.getElementById("networkInfo").textContent = `Switch to BNB Smart Chain (Currently ${network.name})`;
-  document.getElementById("networkInfo").style.display = "block";
-  document.getElementById("mintButton").disabled = true;
-  return;
+function checkDependencies() {
+  if (typeof ethers === "undefined") { alert("Ethers.js failed to load."); return false; }
+  return true;
 }
 
-      const balance = await contract.balanceOf(address);
-      if (balance.gt(0)) {
-        const mintBtn = document.getElementById("mintButton");
-        mintBtn.innerHTML = '<i class="fas fa-check"></i> ALREADY MINTED';
-        mintBtn.disabled = true;
-        mintBtn.classList.add("minted");
-        updateMintStatus("You already own a Frequency Key!");
-      } else {
-        document.getElementById("mintButton").innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-        document.getElementById("mintButton").disabled = false;
-        document.getElementById("mintButton").classList.add("connected");
-        updateMintStatus("Wallet connected. You can now mint your Frequency Key.");
-      }
+function setupWeb3Modal() {
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: { rpc: { 56: BSC_PARAMS.rpcUrls[0] } }
+    }
+  };
+  web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions, theme: "dark" });
+}
 
-      // Events
-      if (externalProvider.on) {
-        externalProvider.on("accountsChanged", () => window.location.reload());
-        externalProvider.on("chainChanged", () => window.location.reload());
-      }
+async function initializeWeb3() {
+  const connectBtn = document.getElementById("connectWallet");
+  const mintBtn = document.getElementById("mintButton");
+  connectBtn?.addEventListener("click", connectWallet);
+  mintBtn?.addEventListener("click", mintNFT);
+  if (web3Modal.cachedProvider) await connectWallet();
+}
 
-    } catch (err) {
-      console.error("Wallet connection failed:", err);
-      showError("Failed to connect wallet: " + err.message);
-      updateMintStatus("Connection failed.");
+async function ensureBscChain(ethProvider) {
+  try {
+    await ethProvider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BSC_PARAMS.chainId }] });
+  } catch (switchErr) {
+    // If the chain hasn't been added to MetaMask, add it
+    if (switchErr.code === 4902 || (switchErr.message||"").toLowerCase().includes("unrecognized")) {
+      await ethProvider.request({ method: "wallet_addEthereumChain", params: [BSC_PARAMS] });
+    } else {
+      throw switchErr;
     }
   }
+}
 
-  async function mintNFT() {
-    const metadataURI = "ipfs://bafybeifssvwf74gv25c3r76cxfdqraerll7l4kgruqaox6cskrqsu2e2by";
-    const mintBtn = document.getElementById("mintButton");
+async function connectWallet() {
+  try {
+    externalProvider = await web3Modal.connect();
+    // Force/ensure BSC
+    await ensureBscChain(externalProvider);
 
-    if (!signer || !contract) {
-      return updateMintStatus("Please connect your wallet first.");
+    provider = new ethers.providers.Web3Provider(externalProvider);
+    signer = provider.getSigner();
+    const address = await signer.getAddress();
+
+    // Contracts
+    nft = new ethers.Contract(NFT_ADDR, NFT_ABI, signer);
+    kly = new ethers.Contract(KLY_ADDR, ERC20_ABI, signer);
+
+    // UI: wallet button
+    const btn = document.getElementById("connectWallet");
+    btn.innerHTML = `<i class="fas fa-check-circle"></i> ${address.slice(0,6)}...${address.slice(-4)}`;
+    btn.classList.add("connected");
+
+    // Network info
+    const network = await provider.getNetwork();
+    if (network.chainId !== 56) {
+      showNetworkInfo(`Switch to BNB Smart Chain (currently ${network.name || network.chainId})`);
+      lockMint("Please switch to BNB Smart Chain.");
+      return;
+    } else hideNetworkInfo();
+
+    // Enforce one-per-wallet
+    const already = await nft.balanceOf(address);
+    if (already && already.gt(0)) {
+      setMintButtonState("ALREADY MINTED", true, ["minted"]);
+      setStatus("You already own a Frequency Key.");
+      return;
     }
 
-    try {
-      mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MINTING...';
-      mintBtn.disabled = true;
-
-      updateMintStatus("Processing your transaction...");
-      const userAddress = await signer.getAddress();
-      const tx = await contract.mintTo(userAddress, metadataURI);
-
-      updateMintStatus("Waiting for confirmation...");
-      await tx.wait();
-
-      mintBtn.innerHTML = '<i class="fas fa-check"></i> MINTED!';
-      mintBtn.disabled = true;
-      mintBtn.classList.add("minted");
-      updateMintStatus("Success! Your Frequency Key has been minted.");
-
-      const txLink = document.getElementById("txLink");
-      const successModal = document.getElementById("successModal");
-      if (txLink && successModal) {
-        txLink.href = `https://etherscan.io/tx/${tx.hash}`;
-        successModal.style.display = "flex";
-      }
-
-    } catch (err) {
-      console.error("Mint error:", err);
-      let errorMsg = "Mint failed";
-      if (err.message.includes("user rejected")) errorMsg = "Transaction rejected by user";
-      else if (err.message.includes("insufficient funds")) errorMsg = "Insufficient funds";
-      else if (err.message.includes("already minted")) errorMsg = "You've already minted";
-      else errorMsg = err.message;
-
-      mintBtn.innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-      mintBtn.disabled = false;
-      updateMintStatus(errorMsg);
-      showError(errorMsg);
+    // Holder gate: require ≥ 500 KLY
+    const bal = await kly.balanceOf(address);
+    if (bal.lt(REQUIRED_KLY)) {
+      const short = Intl.NumberFormat().format(Number(ethers.utils.formatUnits(REQUIRED_KLY.sub(bal), 18)));
+      setMintButtonState("INSUFFICIENT KLY — 500 REQUIRED", true);
+      setStatus(`Gate locked. Add ${short} more KLY to mint.`);
+      return;
     }
-  }
 
-  function updateMintStatus(msg) {
-    const mintStatus = document.getElementById("mintStatus");
-    if (mintStatus) mintStatus.textContent = msg;
-  }
+    // Passed all checks
+    setMintButtonState("MINT NOW", false, ["connected"]);
+    setStatus("Gate verified. You can mint your Frequency Key.");
 
-  function showError(msg) {
-    const errorMessage = document.getElementById("errorMessage");
-    const errorModal = document.getElementById("errorModal");
-    if (errorMessage && errorModal) {
-      errorMessage.textContent = msg;
-      errorModal.style.display = "flex";
+    // Event listeners
+    if (externalProvider.on) {
+      externalProvider.on("accountsChanged", () => location.reload());
+      externalProvider.on("chainChanged", () => location.reload());
+      externalProvider.on("disconnect", () => location.reload());
     }
-  }
 
-  function initializeParticles() {
-    if (typeof particlesJS !== 'undefined') {
-      particlesJS('particles-js', {
-        particles: {
-          number: { value: 80, density: { enable: true, value_area: 800 } },
-          color: { value: "#6e45e2" },
-          shape: { type: "circle" },
-          opacity: { value: 0.5, random: true },
-          size: { value: 3, random: true },
-          line_linked: { enable: true, distance: 150, color: "#88d3ce", opacity: 0.4, width: 1 },
-          move: { enable: true, speed: 2, random: true, out_mode: "out" }
-        },
-        interactivity: {
-          detect_on: "canvas",
-          events: {
-            onhover: { enable: true, mode: "repulse" },
-            onclick: { enable: true, mode: "push" }
-          }
-        }
-      });
+  } catch (err) {
+    console.error("Wallet connection failed:", err);
+    showError(parseProviderError(err, "Failed to connect wallet."));
+    setStatus("Connection failed.");
+  }
+}
+
+async function mintNFT() {
+  if (!signer || !nft) { return setStatus("Connect your wallet first."); }
+  const mintBtn = document.getElementById("mintButton");
+  try {
+    setMintButtonState("MINTING...", true);
+    setStatus("Processing your transaction...");
+
+    const user = await signer.getAddress();
+    const tx = await nft.mintTo(user, METADATA_URI);
+
+    setStatus("Waiting for confirmation...");
+    const receipt = await tx.wait();
+
+    setMintButtonState("MINTED!", true, ["minted"]);
+    setStatus("Success! Your Frequency Key has been minted.");
+
+    const txLink = document.getElementById("txLink");
+    const successModal = document.getElementById("successModal");
+    if (txLink && successModal) {
+      txLink.href = `https://bscscan.com/tx/${tx.hash}`;
+      successModal.style.display = "flex";
     }
+  } catch (err) {
+    console.error("Mint error:", err);
+    const msg = parseProviderError(err, "Mint failed.");
+    setMintButtonState("MINT NOW", false);
+    setStatus(msg);
+    showError(msg);
   }
+}
 
-  function setupCountdown() {
-    const countdownDate = new Date();
-    countdownDate.setDate(countdownDate.getDate() + 7);
+/** ================= UI HELPERS ================= **/
+function setMintButtonState(text, disabled, extraClasses=[]) {
+  const btn = document.getElementById("mintButton");
+  btn.innerHTML = disabled ? `<i class="fas fa-spinner fa-spin"></i> ${text}` : `<i class="fas fa-bolt"></i> ${text}`;
+  btn.disabled = disabled;
+  btn.className = `mint-btn ${extraClasses.join(" ")}`.trim();
+}
+function setStatus(msg){ const n = document.getElementById("mintStatus"); if (n) n.textContent = msg; }
+function showNetworkInfo(text){ const n = document.getElementById("networkInfo"); n.textContent = text; n.style.display = "block"; }
+function hideNetworkInfo(){ const n = document.getElementById("networkInfo"); n.style.display = "none"; }
 
-    const updateCountdown = () => {
-      const now = new Date().getTime();
-      const distance = countdownDate - now;
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+function parseProviderError(err, fallback){
+  const m = (err && (err.data && err.data.message || err.message || String(err))) || fallback;
+  const lower = m.toLowerCase();
+  if (lower.includes("user rejected")) return "Transaction rejected by user.";
+  if (lower.includes("insufficient funds")) return "Insufficient funds for gas.";
+  if (lower.includes("already minted")) return "You’ve already minted this drop.";
+  if (lower.includes("denied")) return "Request denied in wallet.";
+  return m;
+}
 
-      document.getElementById("days").textContent = String(days).padStart(2, "0");
-      document.getElementById("hours").textContent = String(hours).padStart(2, "0");
-      document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
-      document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+function setupModals(){
+  document.getElementById("closeModal")?.addEventListener("click",()=>document.getElementById("successModal").style.display="none");
+  document.getElementById("closeErrorModal")?.addEventListener("click",()=>document.getElementById("errorModal").style.display="none");
+}
+function showError(msg){
+  const e = document.getElementById("errorMessage");
+  const modal = document.getElementById("errorModal");
+  if (e && modal){ e.textContent = msg; modal.style.display="flex"; }
+}
 
-      if (distance < 0) {
-        clearInterval(countdownInterval);
-        document.getElementById("mintButton").innerHTML = '<i class="fas fa-bolt"></i> MINT NOW';
-        document.getElementById("mintButton").disabled = false;
-        updateMintStatus("Minting is now live!");
-      }
-    };
-
-    const countdownInterval = setInterval(updateCountdown, 1000);
-    updateCountdown();
+/** ================= FX / COUNTDOWN ================= **/
+function initializeParticles(){
+  if (typeof particlesJS !== 'undefined') {
+    particlesJS('particles-js', {
+      particles:{
+        number:{ value:80, density:{ enable:true, value_area:800 }},
+        color:{ value:"#6e45e2" }, shape:{ type:"circle" },
+        opacity:{ value:.5, random:true },
+        size:{ value:3, random:true },
+        line_linked:{ enable:true, distance:150, color:"#88d3ce", opacity:.4, width:1 },
+        move:{ enable:true, speed:2, random:true, out_mode:"out" }
+      },
+      interactivity:{ detect_on:"canvas", events:{ onhover:{ enable:true, mode:"repulse" }, onclick:{ enable:true, mode:"push" } } }
+    });
   }
+}
+function setupCountdown(){
+  // Optional: set a real drop time or disable row entirely if you’re live
+  const row = document.getElementById("countdownRow");
+  const goLive = new Date(); goLive.setMinutes(goLive.getMinutes() + 1); // live in 1 min (demo)
+  const tick = ()=>{
+    const now = Date.now(), dist = goLive - now;
+    const d = Math.max(0, Math.floor(dist/86400000));
+    const h = Math.max(0, Math.floor((dist%86400000)/3600000));
+    const m = Math.max(0, Math.floor((dist%3600000)/60000));
+    const s = Math.max(0, Math.floor((dist%60000)/1000));
+    document.getElementById("days").textContent = String(d).padStart(2,"0");
+    document.getElementById("hours").textContent = String(h).padStart(2,"0");
+    document.getElementById("minutes").textContent = String(m).padStart(2,"0");
+    document.getElementById("seconds").textContent = String(s).padStart(2,"0");
+    if (dist <= 0) { clearInterval(interval); row.style.display = "none"; setStatus("Mint is live."); }
+  };
+  const interval = setInterval(tick, 1000); tick();
+}
 </script>
 </body>
 </html>
