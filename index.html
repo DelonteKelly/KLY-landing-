@@ -301,13 +301,22 @@
 <canvas id="confetti" class="confetti" width="1" height="1" aria-hidden="true"></canvas>
 
 <script>
-/* ========= Web3 + Gamification (ethers + Web3Modal v1) ========= */
+/* ========= KLY Web3 + Gamification (robust injected-first, optional Web3Modal v1) ========= */
 (function(){
+  // -------- Utils ----------
   const $ = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const short = a => a ? a.slice(0,6)+'…'+a.slice(-4) : 'Not connected';
+  const log  = (...x)=>console.log('[KLY]', ...x);
+  const warn = (...x)=>console.warn('[KLY]', ...x);
+  const err  = (...x)=>console.error('[KLY]', ...x);
 
-  // ------- Contracts / ABIs -------
+  // Early environment check (serving via http/https)
+  if(location.protocol === 'file:'){
+    console.warn('This dApp must be served over http/https. file:// will cause wallets to block requests.');
+  }
+
+  // -------- Contracts / ABIs --------
   const ADDR = {
     KLY:   "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
     STAKE: "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0",
@@ -321,18 +330,16 @@
       "function allowance(address,address) view returns (uint256)",
       "function approve(address,uint256) returns (bool)"
     ],
-    STAKE_VIEW_TRY: [
-      "function staked(address) view returns (uint256)",
-      "function userInfo(address) view returns (uint256)"
-    ],
     STAKE_TX: ["function stake(uint256 _amount)","function claim()","function withdraw()"],
     NFT: ["function mintTo(address to, string uri) public"]
   };
 
-  // ------- Web3 state -------
-  let web3Modal, wcInstance, provider, signer, userAddress, klyToken, stakeRead, nftContract, klyDecimals=18;
+  // -------- Web3 state --------
+  let web3Modal = null, wcInstance = null;
+  let provider = null, signer = null, userAddress = null;
+  let klyToken = null, stakeRead = null, nftContract = null, klyDecimals = 18;
 
-  // ------- UI -------
+  // -------- UI refs (guarded) --------
   const el = {
     connect: $('#connectBtn'), ctaJoin: $('#ctaJoin'), ctaBottom: $('#ctaBottom'),
     addrChip: $('#addrChip'), addrShort: $('#addrShort'),
@@ -343,7 +350,7 @@
     confetti: $('#confetti')
   };
 
-  // ------- Gamification model -------
+  // -------- Gamification model --------
   const STATE = { addr:null, xp:0, streak:0, lastCheck:0, completed:{}, lootClaimed:false, balance:0 };
   const XP = { connect:25, bscscan:10, daily:15, stake10:60, mintkey:50, referral:20 };
   const levelOf = xp => 1 + Math.floor(Math.sqrt(xp/100));
@@ -356,8 +363,9 @@
   }
   function save(){ if(!STATE.addr) return; localStorage.setItem(`kly_wire_onchain_${STATE.addr}`, JSON.stringify(STATE)); }
 
-  // ------- Identicon -------
+  // -------- Identicon --------
   function drawIdent(addr){
+    if(!el.ident) return;
     const c=el.ident, ctx=c.getContext('2d'), size=8, s=7;
     const seed = Array.from((addr||'anon')).reduce((a,ch)=>(a*33+ch.charCodeAt(0))>>>0,5381);
     const hue = seed%360;
@@ -372,8 +380,9 @@
     }
   }
 
-  // ------- Confetti -------
+  // -------- Confetti --------
   const Confetti = (()=>{
+    if(!el.confetti) return { burst:()=>{} };
     let parts=[], ctx, w=1,h=1, active=false;
     function init(){ const c=el.confetti; ctx=c.getContext('2d'); resize(); addEventListener('resize', resize, {passive:true}); }
     function resize(){ const c=el.confetti; w=c.width=innerWidth; h=c.height=Math.min(300, innerHeight*0.4); }
@@ -386,25 +395,26 @@
     init(); return { burst };
   })();
 
-  // ------- UI render -------
+  // -------- UI render --------
   function render(){
     const lvl = levelOf(STATE.xp);
-    el.hudLvl.textContent = lvl;
-    el.hudXP.textContent = STATE.xp;
-    el.hudNext.textContent = nextXP(lvl);
-    const p = Math.min(1, STATE.xp / nextXP(lvl)); el.bar.style.setProperty('--p', (p*100)+'%');
-    el.hudStreak.textContent = STATE.streak;
-    el.hudBal.textContent = Number(STATE.balance||0).toFixed(2);
-    el.hudAddr.textContent = short(STATE.addr);
+    el.hudLvl && (el.hudLvl.textContent = lvl);
+    el.hudXP && (el.hudXP.textContent = STATE.xp);
+    el.hudNext && (el.hudNext.textContent = nextXP(lvl));
+    const p = Math.min(1, STATE.xp / nextXP(lvl));
+    el.bar && el.bar.style.setProperty('--p', (p*100)+'%');
+    el.hudStreak && (el.hudStreak.textContent = STATE.streak);
+    el.hudBal && (el.hudBal.textContent = Number(STATE.balance||0).toFixed(2));
+    el.hudAddr && (el.hudAddr.textContent = short(STATE.addr));
     drawIdent(STATE.addr);
 
     if(STATE.addr){
-      el.addrChip.style.display='inline-flex';
-      el.addrShort.textContent = short(STATE.addr);
-      el.connect.textContent='Disconnect';
+      el.addrChip && (el.addrChip.style.display='inline-flex');
+      el.addrShort && (el.addrShort.textContent = short(STATE.addr));
+      el.connect && (el.connect.textContent='Disconnect');
     } else {
-      el.addrChip.style.display='none';
-      el.connect.textContent='Connect';
+      el.addrChip && (el.addrChip.style.display='none');
+      el.connect && (el.connect.textContent='Connect');
     }
 
     $$('.quest').forEach(q=>{
@@ -415,7 +425,9 @@
         btn.dataset.action==='bscscan' ? 'Open' : btn.dataset.action==='copy-ref' ? 'Copy' : 'Do it'; }
     });
 
-    el.lootBtn.disabled = !(lvl>=3 && !STATE.lootClaimed);
+    if(el.lootBtn){
+      el.lootBtn.disabled = !(lvl>=3 && !STATE.lootClaimed);
+    }
   }
 
   function addXP(amount, reason=''){
@@ -432,87 +444,110 @@
     setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),220); }, 2600);
   }
 
-  // ------- Web3Modal init / connect -------
-  async function initWeb3Modal(){
-    const providerOptions = {
-      walletconnect: { 
-        package: (window.WalletConnectProvider && window.WalletConnectProvider.default) || window.WalletConnectProvider, 
-        options: { rpc:{56:"https://bsc-dataseed.binance.org/"} } 
-      },
-      injected: {
-        package: null,
-        display: { name: "MetaMask", description: "Browser wallet" }
-      },
-      binancechainwallet: { package: true }
-    };
-    web3Modal = new window.Web3Modal({ cacheProvider:true, providerOptions, theme:'dark' });
+  // -------- Chain helpers --------
+  async function ensureInjected(){
+    if(!window.ethereum) throw new Error('No injected wallet detected (MetaMask/Binance).');
   }
-
-  async function ensureBSC(){
-    const eth = provider?.provider || window.ethereum;
-    if(!eth) return false;
-    const net = await provider.getNetwork().catch(()=>({chainId:0}));
+  async function ensureBSC(_provider){
+    const eth = _provider?.provider || window.ethereum;
+    if(!_provider || !eth) return false;
+    const net = await _provider.getNetwork().catch(()=>({chainId:0}));
     if(net.chainId === 56) return true;
     try{
       await eth.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x38' }]});
       return true;
     }catch(e){
       if(e.code===4902){
-        await eth.request({ method:'wallet_addEthereumChain', params:[{ chainId:'0x38', chainName:'BNB Smart Chain', nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18}, rpcUrls:['https://bsc-dataseed.binance.org/'], blockExplorerUrls:['https://bscscan.com'] }]});
+        await eth.request({ method:'wallet_addEthereumChain', params:[{
+          chainId:'0x38', chainName:'BNB Smart Chain',
+          nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},
+          rpcUrls:['https://bsc-dataseed.binance.org/'],
+          blockExplorerUrls:['https://bscscan.com']
+        }]});
         return true;
       }
+      warn('Switch chain error', e);
       return false;
     }
+  }
+
+  // -------- Connect strategies --------
+  async function connectInjected(){
+    await ensureInjected();
+    const injected = new ethers.providers.Web3Provider(window.ethereum, 'any');
+    await injected.send('eth_requestAccounts', []);
+    if(!(await ensureBSC(injected))) throw new Error('Please switch to BNB Smart Chain (56).');
+    return injected;
+  }
+
+  async function maybeInitWeb3ModalV1(){
+    // Use Web3Modal only if it’s actually available on window
+    if(!window.Web3Modal) return null;
+    // Avoid WalletConnect v1; keep modal for UX but injected will handle the job.
+    const providerOptions = {
+      injected: { package: null, display: { name: "MetaMask", description: "Browser wallet" } }
+      // You *can* add walletconnect v1 here, but it’s sunset and flaky in 2025.
+    };
+    const m = new window.Web3Modal({ cacheProvider:true, providerOptions, theme:'dark' });
+    return m;
   }
 
   async function connect(){
     // Toggle disconnect
     if(userAddress){
       try{ web3Modal?.clearCachedProvider?.(); wcInstance?.disconnect?.(); }catch{}
-      userAddress = null; load(null); render(); return;
+      if(provider?.provider?.removeAllListeners) provider.provider.removeAllListeners();
+      provider = signer = null; userAddress = null;
+      load(null); render();
+      toast('Disconnected');
+      return;
     }
 
+    // Strategy: injected first (reliable). If it fails and Web3Modal exists, try modal.
     try{
-      wcInstance = await web3Modal.connect();
-      provider = new ethers.providers.Web3Provider(wcInstance);
-      if(!(await ensureBSC())) throw new Error('Please switch to BNB Smart Chain (56).');
-      signer = provider.getSigner(); userAddress = await signer.getAddress();
-
-      // Contracts
-      klyToken = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
-      nftContract = new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
-
-      // stakeRead: try to detect a view
-      let viewSig = null;
-      if(await hasRead(ADDR.STAKE, "staked(address)")) viewSig = "function staked(address) view returns (uint256)";
-      else if(await hasRead(ADDR.STAKE, "userInfo(address)")) viewSig = "function userInfo(address) view returns (uint256)";
-
-      const viewAbi = viewSig ? [viewSig] : [];
-      stakeRead = new ethers.Contract(ADDR.STAKE, [...viewAbi, ...ABI.STAKE_TX], signer);
-
-      bindProviderEvents();
-      onConnected();
+      provider = await connectInjected();
+      log('Connected via injected');
     }catch(e){
-      if(e?.code===4001) return toast('User rejected');
-      console.error(e); toast('Wallet connection failed');
+      warn('Injected connect failed:', e.message);
+      web3Modal = await maybeInitWeb3ModalV1();
+      if(!web3Modal) { toast('No wallet detected. Install MetaMask or use a compatible browser.'); return; }
+      try{
+        wcInstance = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(wcInstance, 'any');
+        if(!(await ensureBSC(provider))) throw new Error('Please switch to BNB Smart Chain (56).');
+        log('Connected via Web3Modal');
+      }catch(e2){
+        err('Web3Modal connect failed:', e2);
+        toast('Wallet connection failed. See console.'); return;
+      }
     }
-  }
 
-  async function hasRead(addr, sig){
-    try{
-      const itf = new ethers.utils.Interface([`function ${sig}`]);
-      const data = itf.encodeFunctionData(sig.split('(')[0], [ethers.constants.AddressZero]);
-      await provider.call({ to: addr, data }).catch(()=>{ throw 0; });
-      return true;
-    }catch{ return false; }
+    // Bind signer + address
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    // Instantiate contracts
+    klyToken = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
+    nftContract = new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
+    stakeRead  = new ethers.Contract(ADDR.STAKE, ABI.STAKE_TX, signer); // tx-only ABI; verify stake uses fallback below
+
+    bindProviderEvents();
+    onConnected();
   }
 
   function bindProviderEvents(){
-    const base = provider.provider;
+    const base = provider?.provider;
     if(base?.on){
-      base.on('accountsChanged', async (acc)=>{ if(!acc?.length){ web3Modal.clearCachedProvider(); userAddress=null; load(null); render(); } else { userAddress=acc[0]; onConnected(); }});
+      base.on('accountsChanged', async (acc)=>{
+        if(!acc?.length){
+          web3Modal?.clearCachedProvider?.();
+          userAddress=null; load(null); render();
+        } else {
+          userAddress = acc[0]; onConnected();
+        }
+      });
       base.on('chainChanged', ()=> location.reload());
-      base.on('disconnect', ()=>{ web3Modal.clearCachedProvider(); userAddress=null; load(null); render(); });
+      base.on('disconnect', ()=>{ web3Modal?.clearCachedProvider?.(); userAddress=null; load(null); render(); });
     }
   }
 
@@ -521,10 +556,10 @@
     try{
       const [raw, dec] = await Promise.all([klyToken.balanceOf(userAddress), klyToken.decimals()]);
       klyDecimals = dec; STATE.balance = Number(ethers.utils.formatUnits(raw, dec)); save(); render();
-    }catch(e){ console.warn('balance read failed', e); }
+    }catch(e){ warn('balance read failed', e); }
   }
 
-  // ------- Quests -------
+  // -------- Quests & actions --------
   function complete(id){
     if(STATE.completed[id]) return;
     STATE.completed[id] = true; addXP(XP[id]||10, id); save(); render();
@@ -544,22 +579,31 @@
   async function verifyStake(){
     if(!userAddress) return toast('Connect first');
     const ten = ethers.utils.parseUnits('10', klyDecimals || 18);
-    try{
-      // Prefer on-contract read if available
-      let staked = ethers.constants.Zero;
-      if(stakeRead.functions?.staked){ staked = await stakeRead.staked(userAddress); }
-      else if(stakeRead.functions?.userInfo){ const ui = await stakeRead.userInfo(userAddress); staked = ui?.amount || ui?.[0] || ethers.constants.Zero; }
-      if(staked.gte(ten)) { complete('stake10'); return; }
-    }catch(e){ /* fall through */ }
 
-    // Fallback heuristic: allowance + balance
+    // Try common reads cautiously (many pools differ). We’ll probe via call; ignore errors.
+    async function tryCall(signature){
+      try{
+        const itf = new ethers.utils.Interface([`function ${signature}`]);
+        const data = itf.encodeFunctionData(signature.split('(')[0], [userAddress]);
+        const res  = await provider.call({ to: ADDR.STAKE, data });
+        const [v] = itf.decodeFunctionResult(signature.split('(')[0], res);
+        return ethers.BigNumber.from(v?.amount ?? v ?? 0);
+      }catch{ return ethers.constants.Zero; }
+    }
+
+    let staked = await tryCall("staked(address)");
+    if(staked.isZero()) staked = await tryCall("userInfo(address)");
+
+    if(staked.gte(ten)) { complete('stake10'); return; }
+
+    // Fallback heuristic: allowance or balance suggests user is ready
     try{
       const [allow, bal] = await Promise.all([
         klyToken.allowance(userAddress, ADDR.STAKE),
         klyToken.balanceOf(userAddress)
       ]);
       if(allow.gte(ten) || bal.gte(ten)) { complete('stake10'); return; }
-    }catch(e){ console.warn('fallback verify error', e); }
+    }catch(e){ warn('fallback verify error', e); }
 
     alert('Stake ≥ 10 KLY not detected yet.\nStake and try Verify again.');
   }
@@ -579,7 +623,7 @@
     navigator.clipboard.writeText(url).then(()=> toast('Referral link copied')); complete('referral');
   }
 
-  // ------- Loot -------
+  // -------- Loot --------
   const LOOT = [
     '🎟️ +5% APY promo (KLY-APY5)',
     '🪙 Airdrop allowlist (Wave 1)',
@@ -588,22 +632,23 @@
     '🎁 Mystery NFT allowlist'
   ];
   function openLoot(){
-    $('#chest').classList.remove('open'); el.lootText.textContent='Opening…';
-    setTimeout(()=> $('#chest').classList.add('open'), 200);
-    setTimeout(()=> { el.lootText.textContent = LOOT[Math.floor(Math.random()*LOOT.length)]; }, 700);
+    $('#chest')?.classList.remove('open');
+    el.lootText && (el.lootText.textContent='Opening…');
+    setTimeout(()=> $('#chest')?.classList.add('open'), 200);
+    setTimeout(()=> { el.lootText && (el.lootText.textContent = LOOT[Math.floor(Math.random()*LOOT.length)]); }, 700);
   }
   function claimLoot(){
-    STATE.lootClaimed = true; save(); render(); toast('Loot claimed!'); el.lootDlg.close();
+    STATE.lootClaimed = true; save(); render(); toast('Loot claimed!'); el.lootDlg?.close();
   }
 
-  // ------- UI events -------
-  el.connect.addEventListener('click', connect);
-  el.ctaJoin.addEventListener('click', connect);
-  el.ctaBottom.addEventListener('click', connect);
-  el.daily.addEventListener('click', dailyCheck);
-  el.lootBtn.addEventListener('click', ()=>{ el.lootDlg.showModal(); openLoot(); });
-  el.lootClose.addEventListener('click', ()=> el.lootDlg.close());
-  el.lootClaim.addEventListener('click', claimLoot);
+  // -------- Events (all guarded) --------
+  el.connect && el.connect.addEventListener('click', connect);
+  el.ctaJoin && el.ctaJoin.addEventListener('click', connect);
+  el.ctaBottom && el.ctaBottom.addEventListener('click', connect);
+  el.daily && el.daily.addEventListener('click', dailyCheck);
+  el.lootBtn && el.lootBtn.addEventListener('click', ()=>{ el.lootDlg?.showModal(); openLoot(); });
+  el.lootClose && el.lootClose.addEventListener('click', ()=> el.lootDlg?.close());
+  el.lootClaim && el.lootClaim.addEventListener('click', claimLoot);
 
   $$('.faq .q').forEach(btn=> btn.addEventListener('click',()=> btn.parentElement.classList.toggle('open')));
 
@@ -617,18 +662,23 @@
       if(act==='copy-ref') return copyRef();
     });
   });
+
   window.addEventListener('focus', ()=>{
     if(sessionStorage.getItem('kly_seen_bsc')==='1'){
       sessionStorage.removeItem('kly_seen_bsc'); complete('bscscan');
     }
   });
 
-  // ------- Boot -------
+  // -------- Boot --------
   (async function boot(){
-    await initWeb3Modal();
-    // auto-connect if cached
-    if(web3Modal.cachedProvider){ connect(); }
+    // ONLY requirement for this script: ethers must be loaded
+    if(typeof ethers === 'undefined'){
+      err('ethers not found. Include <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>');
+      return;
+    }
     load(null); render();
+    // If you want to attempt auto-reconnect with injected:
+    // if(window.ethereum && window.ethereum.selectedAddress) connect();
   })();
 })();
 </script>
