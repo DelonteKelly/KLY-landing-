@@ -158,17 +158,10 @@
   .actions{display:flex; gap:10px; flex-wrap:wrap}
   .callout{margin-top:12px; border-radius:16px; border:1px dashed var(--brd); padding:14px; color:#efe2c8; background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03)); display:none}
   
-  /* Card hover effects */
-  .card[data-tilt="1"]:hover{
-    transform:translateY(-6px) rotateX(2deg);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 30px 100px rgba(0,0,0,.6);
-  }
-  .card[data-tilt="1"]{transition: transform .15s ease}
-
   /* Scroll content reveal */
   .scroll-content {
     max-height: 0; overflow: hidden; transition: max-height 0.5s ease;
-    background: rgba(0,0,0,0.2); border-radius: 12px; margin-top: 16px;
+    background: rgba(0,0,0,0.2); border-radius: 12px; margin-top: 16px; padding: 0 20px;
   }
   .scroll-content.revealed {
     max-height: 500px; padding: 20px;
@@ -238,6 +231,27 @@
     .nav__links.active { display: flex; }
     .nav__link { padding: 12px 0; }
   }
+
+  /* ===== MICRO-POLISH / A11Y / TOASTS / REVEAL ===== */
+  :focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ring) !important; }
+  .btn[aria-busy="true"] { pointer-events: none; opacity: .8; }
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  .toast {
+    position: fixed; right: 16px; bottom: 16px; z-index: 120;
+    background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.05));
+    border: 1px solid var(--brd); color: var(--ink); padding: 12px 14px; border-radius: 12px;
+    box-shadow: 0 12px 50px rgba(0,0,0,.45);
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; min-width: 280px;
+  }
+  .toast__icon{font-size:18px}
+  .toast__msg{line-height:1.35}
+  .toast__close{background:none;border:none;color:var(--muted);cursor:pointer}
+  .audio-visual {
+    width: 100%; height: 6px; border-radius: 999px; background: rgba(255,255,255,.08);
+    overflow: hidden; margin-top: 10px; position: relative;
+  }
+  .audio-visual__bar { position:absolute; inset:0; transform-origin:left center; transform: scaleX(0); background: linear-gradient(90deg, var(--gold4), var(--gold2)); }
 
   /* ===== REDUCED MOTION ===== */
   @media (prefers-reduced-motion: reduce) {
@@ -346,6 +360,7 @@
           <h3 class="title">Invocation • "The Call Within"</h3>
           <p class="tease">A luminous preview to tune your field.</p>
           <div class="actions"><button class="btn" id="audioPreviewBtn">Play Preview</button></div>
+          <!-- Visualizer bar appears here dynamically -->
         </div>
       </article>
       <article class="card" data-tilt="1" style="margin-top:18px">
@@ -425,8 +440,8 @@
 <!-- ===== LIBS ===== -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
+<!-- ===================== AURORA FRAGMENT SHADER ===================== -->
 <script>
-/* ===================== AURORA FRAGMENT SHADER ===================== */
 const aurora = document.getElementById('aurora');
 const gl = aurora.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
 
@@ -437,8 +452,7 @@ function resizeAurora(){
   if(aurora.width!==w || aurora.height!==h){ aurora.width=w; aurora.height=h; }
   gl.viewport(0,0,aurora.width, aurora.height);
 }
-const vert = `
-attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
+const vert = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
 const frag = `
 precision highp float;
 uniform vec2 r; uniform float t;
@@ -498,112 +512,205 @@ if(gl){
 }
 </script>
 
+<!-- ===================== ENHANCED INTERACTIVITY (UPGRADED) ===================== -->
 <script>
-/* ===================== ENHANCED INTERACTIVITY ===================== */
+/* Helpers */
+const $ = (s, r=document)=>r.querySelector(s);
+const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+const on = (el, ev, fn, opts)=>el.addEventListener(ev, fn, opts);
+const setBusy = (btn, busy=true, labelBusy='Loading...')=>{
+  if(!btn) return;
+  if(busy){
+    btn.setAttribute('aria-busy','true');
+    btn._prev = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span>'+labelBusy;
+  }else{
+    btn.removeAttribute('aria-busy');
+    if(btn._prev) btn.innerHTML = btn._prev;
+  }
+};
+const toast = (msg, type='info')=>{
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `
+    <div class="toast__icon">${type==='ok'?'✅':type==='warn'?'⚠️':type==='err'?'❌':'✨'}</div>
+    <div class="toast__msg">${msg}</div>
+    <button class="toast__close" aria-label="Dismiss">✕</button>`;
+  document.body.appendChild(t);
+  const close = ()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),220); };
+  on($('.toast__close', t),'click', close);
+  setTimeout(close, 4200);
+};
 
-// Mobile menu toggle
-const mobileBtn = document.querySelector('.mobile-menu-btn');
-const navLinks = document.querySelector('.nav__links');
-mobileBtn.addEventListener('click', function() {
+/* Mobile menu toggle */
+const mobileBtn = $('.mobile-menu-btn');
+const navLinks = $('.nav__links');
+on(mobileBtn,'click',()=>{
   const active = navLinks.classList.toggle('active');
   mobileBtn.setAttribute('aria-expanded', active ? 'true' : 'false');
 });
-
-// Close mobile menu on nav link click (mobile UX nicety)
-navLinks.addEventListener('click', (e)=>{
+on(navLinks,'click',(e)=>{
   if(e.target.classList.contains('nav__link') && navLinks.classList.contains('active')){
     navLinks.classList.remove('active');
     mobileBtn.setAttribute('aria-expanded','false');
   }
 });
 
-// Nav scroll effect
-window.addEventListener('scroll', function() {
-  const nav = document.querySelector('.nav');
-  if (window.scrollY > 50) {
-    nav.classList.add('scrolled');
-  } else {
-    nav.classList.remove('scrolled');
+/* Nav scroll effect */
+on(window,'scroll',()=>{
+  const nav = $('.nav');
+  (window.scrollY>50) ? nav.classList.add('scrolled') : nav.classList.remove('scrolled');
+},{passive:true});
+
+/* Modal */
+const modal = $('#infoModal');
+const modalClose = $('.modal-close', modal);
+const openModal = ()=>{
+  modal.classList.add('active'); modal.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  // focus trap start
+  const focusables = $$('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])', modal)
+    .filter(el=>!el.hasAttribute('disabled'));
+  const first = focusables[0], last = focusables[focusables.length-1];
+  const trap = (e)=>{
+    if(e.key!=='Tab') return;
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  };
+  modal._trap = trap;
+  on(window,'keydown',trap);
+  (first||modal).focus();
+};
+const closeModal = ()=>{
+  modal.classList.remove('active'); modal.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+  if(modal._trap){ window.removeEventListener('keydown', modal._trap); modal._trap=null; }
+};
+on(modalClose,'click',closeModal);
+on(modal,'click',e=>{ if(e.target===modal) closeModal(); });
+on(window,'keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('active')) closeModal(); });
+
+/* Audio element (real player) */
+</script>
+<audio id="invocationAudio" preload="auto">
+  <!-- Replace with your actual audio path -->
+  <source src="audio/invocation.mp3" type="audio/mpeg">
+</audio>
+<script>
+const audio = $('#invocationAudio');
+const audioBtn = $('#audioPreviewBtn');
+let raf;
+const createVisual = ()=>{
+  let v = $('.audio-visual', audioBtn.parentElement);
+  if(!v){
+    v = document.createElement('div');
+    v.className='audio-visual';
+    v.innerHTML = '<div class="audio-visual__bar"></div>';
+    audioBtn.parentElement.appendChild(v);
   }
-}, { passive:true });
-
-// Modal functionality
-const modal = document.getElementById('infoModal');
-const modalClose = document.querySelector('.modal-close');
-
-function openModal() {
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden','false');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  modal.classList.remove('active');
-  modal.setAttribute('aria-hidden','true');
-  document.body.style.overflow = '';
-}
-
-modalClose.addEventListener('click', closeModal);
-modal.addEventListener('click', function(e) {
-  if (e.target === modal) closeModal();
+  return v.querySelector('.audio-visual__bar');
+};
+const animateBar = ()=>{
+  const bar = createVisual();
+  const update = ()=>{
+    const p = audio.duration ? (audio.currentTime / audio.duration) : 0;
+    bar.style.transform = `scaleX(${Math.max(0,Math.min(1,p))})`;
+    raf = requestAnimationFrame(update);
+  };
+  cancelAnimationFrame(raf); update();
+};
+on(audioBtn,'click', async ()=>{
+  if(audio.paused){
+    try{
+      setBusy(audioBtn,true,'Loading...');
+      await audio.play();
+      setBusy(audioBtn,false);
+      audioBtn.textContent = 'Pause Preview';
+      animateBar();
+      toast('Playing “The Call Within”', 'ok');
+    }catch(e){
+      setBusy(audioBtn,false);
+      toast('Could not play audio. Check your file path or user gesture policy.', 'warn');
+    }
+  }else{
+    audio.pause(); audioBtn.textContent = 'Play Preview';
+    cancelAnimationFrame(raf);
+  }
 });
-window.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape' && modal.classList.contains('active')) closeModal();
-});
+on(audio,'ended',()=>{ audioBtn.textContent = 'Play Preview'; cancelAnimationFrame(raf); });
 
-// Audio preview simulation
-document.getElementById('audioPreviewBtn').addEventListener('click', function() {
-  const btn = this;
-  const originalText = btn.textContent;
-  btn.innerHTML = '<span class="spinner"></span>Loading...';
-  
-  setTimeout(() => {
-    btn.textContent = 'Playing...';
-    // In a real implementation, you would play audio here
-    setTimeout(() => {
-      btn.textContent = originalText;
-    }, 3000);
-  }, 1000);
+/* Public scroll micro-feedback */
+const publicBtn = $('#publicScrollBtn');
+on(publicBtn,'click',()=>{
+  setBusy(publicBtn,true,'Opening...');
+  setTimeout(()=>{ setBusy(publicBtn,false); toast('Public scroll opened.','ok'); },800);
 });
 
-// Public scroll simulation
-document.getElementById('publicScrollBtn').addEventListener('click', function() {
-  const btn = this;
-  const originalText = btn.textContent;
-  btn.innerHTML = '<span class="spinner"></span>Opening...';
-  
-  setTimeout(() => {
-    btn.textContent = 'Opened';
-    // In a real implementation, you would show the scroll content here
-    setTimeout(() => {
-      btn.textContent = originalText;
-    }, 2000);
-  }, 1000);
+/* Parallax + tilt (debounced) */
+const sigL = $('.sigil--l'), sigR = $('.sigil--r');
+let moveRAF;
+on(window,'mousemove',(e)=>{
+  cancelAnimationFrame(moveRAF);
+  moveRAF = requestAnimationFrame(()=>{
+    const x = (e.clientX / innerWidth - .5), y = (e.clientY / innerHeight - .5);
+    sigL.style.transform = `translate(${x*-10}px, ${y*-6}px) rotate(-8deg)`;
+    sigR.style.transform = `translate(${x*12}px, ${y*8}px) rotate(12deg)`;
+  });
 });
-
-/* ===================== PARALLAX + CARD TILT ===================== */
-const sigL = document.querySelector('.sigil--l');
-const sigR = document.querySelector('.sigil--r');
-window.addEventListener('mousemove', (e)=>{
-  const x = (e.clientX / innerWidth - .5), y = (e.clientY / innerHeight - .5);
-  sigL.style.transform = `translate(${x*-10}px, ${y*-6}px) rotate(-8deg)`;
-  sigR.style.transform = `translate(${x*12}px, ${y*8}px) rotate(12deg)`;
-});
-document.querySelectorAll('.card[data-tilt="1"]').forEach(card=>{
+$$('.card[data-tilt="1"]').forEach(card=>{
   const r=12;
-  card.addEventListener('mousemove', e=>{
+  on(card,'mousemove', e=>{
     const b=card.getBoundingClientRect(), dx=(e.clientX-b.left)/b.width-.5, dy=(e.clientY-b.top)/b.height-.5;
     card.style.transform = `rotateX(${(-dy*r)}deg) rotateY(${(dx*r)}deg) translateY(-6px)`;
   });
-  card.addEventListener('mouseleave', ()=> card.style.transform = '');
+  on(card,'mouseleave', ()=> card.style.transform = '');
 });
 
-/* ===================== WEB3 GATING (BNB MAINNET) ===================== */
+/* On-scroll reveal */
+const revealables = $$('.card, .rule, .hero, .access').map(el=>{ el.classList.add('reveal'); return el; });
+const io = new IntersectionObserver((ents)=>{
+  ents.forEach(ent=>{
+    if(ent.isIntersecting){
+      ent.target.classList.add('in'); io.unobserve(ent.target);
+    }
+  });
+},{ threshold:.12 });
+revealables.forEach(el=> io.observe(el));
+
+/* Keyboard: Unseal quick access */
+on(window,'keydown',(e)=>{
+  if(e.key.toLowerCase()==='u' && !$('#infoModal').classList.contains('active')){
+    const btn = $('#unsealBtn');
+    if(btn && !btn.disabled){ btn.click(); }
+  }
+});
+
+/* Buttons that open modal / external */
+on($('#mintInfoBtn'),'click', ()=> openModal());
+on($('#viewContractBtn'),'click', ()=> window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract','_blank'));
+</script>
+
+<!-- ===================== WEB3 GATING + MINT (REFINED) ===================== -->
+<script>
+const els = {
+  walletBtn:$('#walletBtn'),
+  primaryCta:$('#primaryCta'),
+  accessBanner:$('#accessBanner'),
+  unsealBtn:$('#unsealBtn'),
+  mintInfoBtn:$('#mintInfoBtn'),
+  scrollContent:$('#scrollContent'),
+  mintDirectBtn:$('#mintDirectBtn')
+};
+
 const CONFIG = {
-  chainIdHex:'0x38', chainName:'BNB Smart Chain', rpcUrl:'https://bsc-dataseed.binance.org/', blockExplorer:'https://bscscan.com',
+  chainIdHex:'0x38',
+  chainName:'BNB Smart Chain',
+  rpcUrl:'https://bsc-dataseed.binance.org/',
+  blockExplorer:'https://bscscan.com',
   klyErc20:'0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52',
   diamondNft721:'0xDA76d35742190283E340dbeE2038ecc978a56950',
-  diamondTokenId:'3'
+  diamondTokenId:'3',
+  diamondUri:'ipfs://bafybeidq66s77zvhjdr3bwnmkgh5in4km56hals27xlidekblkpa25qzpq'
 };
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -614,101 +721,120 @@ const ERC721_ABI = [
   "function ownerOf(uint256) view returns (address)",
   "function balanceOf(address) view returns (uint256)"
 ];
-const els = {
-  walletBtn:document.getElementById('walletBtn'),
-  primaryCta:document.getElementById('primaryCta'),
-  accessBanner:document.getElementById('accessBanner'),
-  unsealBtn:document.getElementById('unsealBtn'),
-  mintInfoBtn:document.getElementById('mintInfoBtn'),
-  scrollContent: document.getElementById('scrollContent')
+const ERC721_MINT_ABI = [
+  "function mintTo(address to, string uri) public payable returns (uint256 tokenId)"
+];
+
+let state = {
+  connected:false, account:null, hasDiamondCore:false,
+  kly:{balance:null, symbol:'KLY', decimals:18}
 };
-let state = { connected:false, account:null, hasDiamondCore:false, kly:{balance:null, symbol:'KLY', decimals:18} };
-function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
-function setStatus(icon, html, cls){
+
+const short = (a)=> a ? a.slice(0,6)+'…'+a.slice(-4) : '';
+const setStatus = (icon, html, cls)=>{
   els.accessBanner.className = 'access wrap ' + (cls||'');
-  els.accessBanner.querySelector('.access__icon').textContent = icon;
-  els.accessBanner.querySelector('.access__text').innerHTML = html;
-  const iconEl = els.accessBanner.querySelector('.access__icon');
-  iconEl.style.transform = 'scale(1.2)';
-  setTimeout(() => { iconEl.style.transform = 'scale(1)'; }, 300);
-}
-function assertEth(){ if(!window.ethereum){ alert('No wallet found. Install MetaMask or use a Web3 browser.'); return false } return true }
+  $('.access__icon', els.accessBanner).textContent = icon;
+  $('.access__text', els.accessBanner).innerHTML = html;
+};
+
+const assertEth = ()=> {
+  if(!window.ethereum){ 
+    toast('No wallet found. Install MetaMask or a Web3 wallet.', 'warn'); 
+    return false;
+  }
+  return true;
+};
+
 async function ensureBsc(){
   const cur = await ethereum.request({ method:'eth_chainId' });
-  if(cur.toLowerCase() !== '0x38'){
+  if(cur.toLowerCase() !== CONFIG.chainIdHex){
     try{
-      await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x38' }] });
+      await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: CONFIG.chainIdHex }] });
     }catch(e){
       if(e.code===4902){
-        await ethereum.request({ method:'wallet_addEthereumChain', params:[{ chainId:'0x38', chainName:CONFIG.chainName,
-          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 }, rpcUrls:[CONFIG.rpcUrl], blockExplorerUrls:[CONFIG.blockExplorer] }] });
-      }else{ throw e; }
+        await ethereum.request({ method:'wallet_addEthereumChain', params:[{
+          chainId:CONFIG.chainIdHex, chainName:CONFIG.chainName,
+          nativeCurrency:{ name:'BNB', symbol:'BNB', decimals:18 },
+          rpcUrls:[CONFIG.rpcUrl], blockExplorerUrls:[CONFIG.blockExplorer]
+        }]});
+      } else { throw e; }
     }
   }
 }
-function provider(){ return new ethers.providers.Web3Provider(window.ethereum); }
+
+const provider = ()=> new ethers.providers.Web3Provider(window.ethereum);
+const signer = ()=> provider().getSigner();
 
 async function connect(){
   if(!assertEth()) return;
-  els.walletBtn.innerHTML = '<span class="spinner"></span>Connecting...';
-  try {
+  setBusy(els.walletBtn,true,'Connecting...');
+  try{
     await ensureBsc();
     const accs = await ethereum.request({ method:'eth_requestAccounts' });
     state.account = accs[0]; state.connected = true;
-    if(ethereum.removeAllListeners) ethereum.removeAllListeners('accountsChanged');
     if(ethereum.on){
+      ethereum.removeAllListeners?.('accountsChanged');
       ethereum.on('accountsChanged', a=>{ if(a.length===0){disconnect()} else {state.account=a[0]; refresh()}});
       ethereum.on('chainChanged', ()=> location.reload());
     }
     await refresh();
-  } catch (error) {
-    console.error('Connection error:', error);
-    setStatus('❌', '<strong>Connection Failed.</strong> Please try again.', 'access--error');
-    els.walletBtn.textContent = 'Connect Wallet';
+    toast('Wallet connected: '+short(state.account),'ok');
+  }catch(e){
+    console.error(e);
+    setStatus('❌','<strong>Connection Failed.</strong> Please try again.','access--error');
+  }finally{
+    setBusy(els.walletBtn,false);
   }
 }
-async function disconnect(){ 
-  state={connected:false,account:null,hasDiamondCore:false,kly:{balance:null,symbol:'KLY',decimals:18}}; 
-  render(); 
+async function disconnect(){
+  state={connected:false,account:null,hasDiamondCore:false,kly:{balance:null,symbol:'KLY',decimals:18}};
+  sessionStorage.removeItem('oracleAccess');
+  render();
 }
-async function refresh(){ 
-  try{ 
-    await Promise.all([checkNFT(), readKLY()]); 
-  } catch(e){ 
-    console.error(e);
-    setStatus('⚠️', `<strong>Error checking status.</strong> Please try again.`, 'access--warn');
-  } 
-  render(); 
+
+async function refresh(){
+  try{
+    await Promise.all([checkNFT(), readKLY()]);
+    sessionStorage.setItem('oracleAccess', JSON.stringify({t:Date.now(), hasDiamondCore:state.hasDiamondCore}));
+  }catch(e){
+    console.warn('Status check error:', e);
+    setStatus('⚠️','<strong>Error checking status.</strong> Try again.','access--warn');
+  }
+  render();
 }
 
 async function checkNFT(){
   try{
     const c = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider());
     const owner = await c.ownerOf(CONFIG.diamondTokenId);
-    state.hasDiamondCore = owner.toLowerCase() === state.account.toLowerCase();
+    state.hasDiamondCore = owner && state.account && owner.toLowerCase() === state.account.toLowerCase();
   }catch(e){
+    // ownerOf may revert if token not minted yet; fallback to balanceOf
     try{
       const c = new ethers.Contract(CONFIG.diamondNft721, ERC721_ABI, provider());
       const bal = await c.balanceOf(state.account);
       state.hasDiamondCore = bal && bal.gt(0);
-    }catch(err){ state.hasDiamondCore=false; }
+    }catch(_) { state.hasDiamondCore=false; }
   }
 }
+
 async function readKLY(){
   try{
     const c = new ethers.Contract(CONFIG.klyErc20, ERC20_ABI, provider());
-    const [raw,dec,sym] = await Promise.all([c.balanceOf(state.account), c.decimals(), c.symbol().catch(()=> 'KLY')]);
-    state.kly.decimals=dec; state.kly.symbol=sym||'KLY'; state.kly.balance = Number(ethers.utils.formatUnits(raw, dec));
+    const [raw,dec,sym] = await Promise.all([
+      c.balanceOf(state.account),
+      c.decimals(),
+      c.symbol().catch(()=> 'KLY')
+    ]);
+    state.kly.decimals=dec; state.kly.symbol=sym||'KLY';
+    state.kly.balance = Number(ethers.utils.formatUnits(raw, dec));
   }catch(e){ state.kly.balance=null; }
 }
-function render(){
-  // buttons
-  const wbtn = document.getElementById('walletBtn');
-  wbtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
-  const pcta = document.getElementById('primaryCta');
-  pcta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
 
-  // banner
+function render(){
+  els.walletBtn.textContent = state.connected ? `Disconnect (${short(state.account)})` : 'Connect Wallet';
+  els.primaryCta.textContent = state.connected ? 'Check Access' : 'Connect Wallet';
+
   if(!state.connected){
     setStatus('🔒','<strong>Access Locked.</strong> Connect wallet to check gate status.');
   } else if(!state.hasDiamondCore){
@@ -717,21 +843,19 @@ function render(){
     setStatus('✅', `<strong>Access Granted.</strong> Diamond Core verified for ${short(state.account)}.`, 'access--ok');
   }
 
-  // card
   const lock = document.querySelector('.lock');
   if(state.connected && state.hasDiamondCore){
-    if(lock) lock.style.display='none';
+    lock && (lock.style.display='none');
     els.unsealBtn.disabled=false; els.unsealBtn.removeAttribute('aria-disabled');
-    els.unsealBtn.textContent = 'Unseal the Scroll';
+    els.unsealBtn.textContent='Unseal the Scroll';
     els.scrollContent.classList.add('revealed');
   }else{
-    if(lock) lock.style.display='flex';
+    lock && (lock.style.display='flex');
     els.unsealBtn.disabled=true; els.unsealBtn.setAttribute('aria-disabled','true');
     els.unsealBtn.textContent = state.connected ? 'Locked (Need Diamond Core)' : 'Unseal the Scroll';
     els.scrollContent.classList.remove('revealed');
   }
 
-  // KLY badge
   const meta = document.querySelector('.access__meta');
   let badge = document.getElementById('klyBadge');
   if(state.connected){
@@ -740,33 +864,58 @@ function render(){
   }else if(badge){ badge.remove(); }
 }
 
-// Event listeners
-document.getElementById('walletBtn').addEventListener('click', async ()=> state.connected ? disconnect() : connect());
-document.getElementById('primaryCta').addEventListener('click', async ()=> !state.connected ? connect() : refresh());
-document.getElementById('mintInfoBtn').addEventListener('click', ()=> openModal());
-document.getElementById('viewContractBtn').addEventListener('click', ()=> window.open('https://bscscan.com/address/0xDA76d35742190283E340dbeE2038ecc978a56950#writeContract','_blank'));
-document.getElementById('mintDirectBtn').addEventListener('click', function() {
-  this.innerHTML = '<span class="spinner"></span>Minting...';
-  // In a real implementation, you would initiate the minting process here
-  setTimeout(() => {
-    this.textContent = 'Transaction Sent';
-    setTimeout(() => {
-      closeModal();
-      this.textContent = 'Mint Diamond Core';
-    }, 2000);
-  }, 2000);
-});
-document.getElementById('unsealBtn').addEventListener('click', function(){
-  if(this.disabled) return;
-  this.innerHTML = '<span class="spinner"></span>Unsealing...';
-  setTimeout(() => {
-    this.textContent = 'Unsealed ✨';
-    els.scrollContent.classList.add('revealed');
-  }, 1500);
-});
+/* Mint flow (Diamond Core) */
+async function mintDiamondCore(){
+  if(!state.connected){ toast('Connect your wallet first.', 'warn'); return; }
+  try{
+    await ensureBsc();
+    setBusy(els.mintDirectBtn,true,'Minting...');
+    const c = new ethers.Contract(CONFIG.diamondNft721, ERC721_MINT_ABI, signer());
+    // If your contract requires a platform fee, add { value: ethers.utils.parseEther("...") } as 2nd arg to mintTo.
+    const tx = await c.mintTo(state.account, CONFIG.diamondUri);
+    toast('Transaction sent. Confirming…','info');
+    const receipt = await tx.wait();
+    if(receipt && receipt.status===1){
+      toast('Diamond Core minted ✅','ok');
+    } else {
+      toast('Transaction did not succeed.', 'err');
+    }
+    closeModal();
+    await refresh();
+  }catch(e){
+    console.error(e);
+    const msg = e?.data?.message || e?.message || 'Mint failed.';
+    toast(msg.includes('MINTER_ROLE') ? 'Minting is restricted: contract requires MINTER_ROLE.' : msg, 'err');
+  }finally{
+    setBusy(els.mintDirectBtn,false);
+  }
+}
 
-// Initialize
-render();
+/* Button events */
+on(els.walletBtn,'click', ()=> state.connected ? disconnect() : connect());
+on(els.primaryCta,'click', ()=> !state.connected ? connect() : refresh());
+on($('#unsealBtn'),'click', function(){
+  if(this.disabled) return;
+  setBusy(this,true,'Unsealing...');
+  setTimeout(()=>{
+    setBusy(this,false); this.textContent='Unsealed ✨';
+    els.scrollContent.classList.add('revealed');
+    toast('Scroll unsealed. Receive what is yours.','ok');
+  }, 900);
+});
+on($('#mintDirectBtn'),'click', mintDiamondCore);
+
+/* Initialize from cache */
+(() =>{
+  const cache = sessionStorage.getItem('oracleAccess');
+  if(cache){
+    try{
+      const {hasDiamondCore} = JSON.parse(cache);
+      state.hasDiamondCore = !!hasDiamondCore;
+    }catch{}
+  }
+  render();
+})();
 </script>
 </body>
 </html>
