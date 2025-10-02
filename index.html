@@ -12,9 +12,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <!-- Web3 deps -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <!-- Removed WalletConnect v1 (sunset). Keep Web3Modal v1 only as an optional fallback to injected -->
   <script defer src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <!-- Use the UMD build (your code references ethers.umd APIs) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <style>
     :root{
@@ -36,7 +37,7 @@
     .nav-link{color:#e9e4d2;opacity:.9;padding:.5rem .8rem;border-radius:8px}
     .nav-link:hover{opacity:1;background:rgba(255,255,255,.06)}
 
-    /* Ecosystem dropdown (your original, adapted) */
+    /* Ecosystem dropdown */
     .nav-dropdown{position:relative;display:inline-block}
     .nav-button{background:transparent;border:0;color:#f6f5f2;font-family:Orbitron,system-ui;font-weight:700;letter-spacing:.06em;cursor:pointer;padding:.5rem 1rem;border-radius:8px;display:flex;align-items:center;gap:.5rem}
     .nav-button:hover{background:rgba(255,255,255,.06)}
@@ -107,11 +108,11 @@
     <strong class="logo">KLY</strong>
   </div>
 
-  <!-- YOUR ECOSYSTEM NAV (centered) -->
+  <!-- ECOSYSTEM NAV (centered) -->
   <div class="nav-center">
     <div class="nav-dropdown">
       <button class="nav-button" aria-haspopup="true" aria-expanded="false">
-        Ecosystem <span>▾</span>
+        Ecosystem <span aria-hidden="true">▾</span>
       </button>
       <div class="dropdown-content" role="menu">
         <a href="/jointhetribe.html" role="menuitem">Join the Tribe</a>
@@ -125,7 +126,7 @@
         <a href="/course.html" role="menuitem">Course</a>
         <a href="/launchpad.html" role="menuitem">Launchpad</a>
         <a href="/nft-drop.html" role="menuitem">NFT Drop</a>
-        <a href="/KLY-vault.html" role="menuitem">KLY Vault <span class="chip" style="margin-left:.4rem">NEW</span></a>
+        <a href="/vault.html" role="menuitem">KLY Vault <span class="chip" style="margin-left:.4rem">NEW</span></a>
       </div>
     </div>
     <nav class="nav-links" aria-label="Primary">
@@ -139,7 +140,7 @@
 
   <div>
     <span id="addrChip" class="chip mono" style="display:none;"><span id="addrShort">0x…</span></span>
-    <button id="connectBtn" class="btn" type="button">Connect</button>
+    <button id="connectBtn" class="btn" type="button" aria-live="polite">Connect</button>
   </div>
 </header>
 
@@ -234,7 +235,7 @@
     </div>
   </section>
 
-  <!-- Utility / Tokenomics / Roadmap / FAQ (wireframe cards) -->
+  <!-- Utility / Tokenomics / Roadmap / FAQ -->
   <section id="tokenomics">
     <div class="rule">Token Utility</div>
     <div class="grid">
@@ -265,11 +266,11 @@
     <div class="rule">FAQ</div>
     <div class="faq">
       <div class="item">
-        <button class="q" type="button">What is KLY?<span>▾</span></button>
+        <button class="q" type="button" aria-expanded="false">What is KLY?<span aria-hidden="true">▾</span></button>
         <div class="a"><p>KLY is the token powering the KLY Academy + DeFi + DAO ecosystem on BNB Chain.</p></div>
       </div>
       <div class="item">
-        <button class="q" type="button">How do I start?<span>▾</span></button>
+        <button class="q" type="button" aria-expanded="false">How do I start?<span aria-hidden="true">▾</span></button>
         <div class="a"><p>Connect wallet, complete quests, and stake KLY to level up.</p></div>
       </div>
     </div>
@@ -288,7 +289,7 @@
 </footer>
 
 <!-- Loot Modal + Confetti -->
-<dialog id="lootDlg" class="loot">
+<dialog id="lootDlg" class="loot" aria-labelledby="lootText">
   <div class="loot__box">
     <div class="chest" id="chest"><div class="chest__lid"></div><div class="chest__base"></div></div>
     <div id="lootText">Opening…</div>
@@ -301,7 +302,7 @@
 <canvas id="confetti" class="confetti" width="1" height="1" aria-hidden="true"></canvas>
 
 <script>
-/* ========= KLY Web3 + Gamification (prefers YOUR connectWallet, then injected, optional Web3Modal v1) ========= */
+/* ========= KLY Web3 + Gamification ========= */
 (function(){
   // -------- Utils ----------
   const $ = (s,r=document)=>r.querySelector(s);
@@ -318,7 +319,7 @@
   // -------- Contracts / ABIs --------
   const ADDR = {
     KLY:   "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    STAKE: "0xe9417Fbe4e1D1E70aaE00b76e9B54599707c49e0",
+    STAKE: "0x7bBa73C25cf5384b58DBA280eCB49c9749437823", // fixed
     NFT:   "0xDA76d35742190283E340dbeE2038ecc978a56950"
   };
   const ABI = {
@@ -338,7 +339,7 @@
   let provider = null, signer = null, userAddress = null;
   let klyToken = null, stakeRead = null, nftContract = null, klyDecimals = 18;
 
-  // -------- UI refs (guarded) --------
+  // -------- UI refs --------
   const el = {
     connect: $('#connectBtn'), ctaJoin: $('#ctaJoin'), ctaBottom: $('#ctaBottom'),
     addrChip: $('#addrChip'), addrShort: $('#addrShort'),
@@ -470,7 +471,7 @@
     }
   }
 
-  // -------- Provider normalizer (accepts anything your connector returns) --------
+  // -------- Provider normalizer --------
   function toEthersProvider(any){
     if (!any) return null;
     if (any._isProvider) return any;                           // ethers provider
@@ -507,7 +508,6 @@
     if(!window.Web3Modal) return null;
     const providerOptions = {
       injected: { package: null, display: { name: "MetaMask", description: "Browser wallet" } }
-      // Note: WalletConnect v1 is sunset; omit to avoid flakiness.
     };
     return new window.Web3Modal({ cacheProvider:true, providerOptions, theme:'dark' });
   }
@@ -581,8 +581,8 @@
     userAddress = session.address;
 
     // Instantiate contracts
-    klyToken = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
-    nftContract = new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
+    klyToken   = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
+    nftContract= new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
     stakeRead  = new ethers.Contract(ADDR.STAKE, ABI.STAKE_TX, signer); // tx-only ABI
 
     bindProviderEvents();
@@ -677,7 +677,7 @@
     STATE.lootClaimed = true; save(); render(); toast('Loot claimed!'); el.lootDlg?.close();
   }
 
-  // -------- Events (guarded) --------
+  // -------- Events --------
   el.connect && el.connect.addEventListener('click', connect);
   el.ctaJoin && el.ctaJoin.addEventListener('click', connect);
   el.ctaBottom && el.ctaBottom.addEventListener('click', connect);
@@ -686,7 +686,10 @@
   el.lootClose && el.lootClose.addEventListener('click', ()=> el.lootDlg?.close());
   el.lootClaim && el.lootClaim.addEventListener('click', claimLoot);
 
-  $$('.faq .q').forEach(btn=> btn.addEventListener('click',()=> btn.parentElement.classList.toggle('open')));
+  $$('.faq .q').forEach(btn=> btn.addEventListener('click',()=>{
+    btn.parentElement.classList.toggle('open');
+    btn.setAttribute('aria-expanded', btn.parentElement.classList.contains('open'));
+  }));
 
   $$('.qbtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -712,7 +715,7 @@
       return;
     }
     load(null); render();
-    // Optional auto-connect if your connector pre-authorizes
+    // Optional: auto-connect if pre-authorized
     // if (window.ethereum && window.ethereum.selectedAddress) connect();
   })();
 })();
