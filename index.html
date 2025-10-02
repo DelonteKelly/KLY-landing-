@@ -8,13 +8,14 @@
   <meta name="theme-color" content="#0b0b0f">
 
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <!-- Web3 deps -->
-  <!-- Removed WalletConnect v1 (sunset). Keep Web3Modal v1 only as an optional fallback to injected -->
+  <!-- Optional legacy Web3Modal v1 as fallback to injected; no WalletConnect used -->
   <script defer src="https://cdn.jsdelivr.net/npm/web3modal@1.9.7/dist/index.js"></script>
-  <!-- Use the UMD build (your code references ethers.umd APIs) -->
+  <!-- Ethers UMD build -->
   <script defer src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <style>
@@ -96,8 +97,43 @@
     .chest.open .chest__lid{transform:rotateX(65deg)}
     .confetti{position:fixed;inset:auto 0 0 0;pointer-events:none;z-index:30}
 
-    @media (max-width:980px){ .hero{grid-template-columns:1fr} .how{grid-template-columns:1fr 1fr} .col-6{grid-column:1/-1} }
-    @media (max-width:640px){ .nav-center{display:none} .how{grid-template-columns:1fr} }
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr}
+      .how{grid-template-columns:1fr 1fr}
+      .col-6{grid-column:1/-1}
+    }
+
+    /* === MOBILE FIXES (nav visible + dropdown works on tap) === */
+    @media (max-width:640px){
+      .nav-center{
+        display:block;         /* keep nav visible on phones */
+        position:relative;
+        flex:1;
+      }
+      .nav-links{
+        display:flex;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:.6rem;
+        padding:10px 0;
+      }
+      /* mobile dropdown becomes full-width sheet under sticky header */
+      .dropdown-content{
+        position:fixed;
+        top:56px;              /* under header */
+        left:0; right:0;
+        transform:none;
+        min-width:0;
+        border-top:1px solid var(--brd);
+        border-bottom:1px solid var(--brd);
+        padding:.4rem 0;
+        display:none;          /* opened via .open class in JS */
+        z-index:25;
+      }
+      .dropdown-content.open{ display:block; }
+      .how{grid-template-columns:1fr}
+    }
+
     :focus-visible{outline:3px solid var(--ring);outline-offset:2px}
   </style>
 </head>
@@ -126,9 +162,7 @@
         <a href="/course.html" role="menuitem">Course</a>
         <a href="/launchpad.html" role="menuitem">Launchpad</a>
         <a href="/nft-drop.html" role="menuitem">NFT Drop</a>
-      <a href="/KLY-vault.html" role="menuitem">
-  KLY Vault <span class="chip" style="margin-left:.4rem">NEW</span>
-</a>
+        <a href="/KLY-vault.html" role="menuitem">KLY Vault <span class="chip" style="margin-left:.4rem">NEW</span></a>
       </div>
     </div>
     <nav class="nav-links" aria-label="Primary">
@@ -321,7 +355,7 @@
   // -------- Contracts / ABIs --------
   const ADDR = {
     KLY:   "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52",
-    STAKE: "0x7bBa73C25cf5384b58DBA280eCB49c9749437823", // fixed
+    STAKE: "0x7bBa73C25cf5384b58DBA280eCB49c9749437823",
     NFT:   "0xDA76d35742190283E340dbeE2038ecc978a56950"
   };
   const ABI = {
@@ -476,10 +510,10 @@
   // -------- Provider normalizer --------
   function toEthersProvider(any){
     if (!any) return null;
-    if (any._isProvider) return any;                           // ethers provider
-    if (any.currentProvider) return new ethers.providers.Web3Provider(any.currentProvider, 'any'); // web3.js
-    if (any.request) return new ethers.providers.Web3Provider(any, 'any'); // raw EIP-1193
-    if (any.provider) return new ethers.providers.Web3Provider(any.provider, 'any'); // modal instance
+    if (any._isProvider) return any;
+    if (any.currentProvider) return new ethers.providers.Web3Provider(any.currentProvider, 'any');
+    if (any.request) return new ethers.providers.Web3Provider(any, 'any');
+    if (any.provider) return new ethers.providers.Web3Provider(any.provider, 'any');
     return null;
   }
 
@@ -487,7 +521,7 @@
   async function connectViaYourConnector(){
     if (typeof window.connectWallet !== 'function') return null;
     log('Using your window.connectWallet()');
-    const res = await window.connectWallet(); // can be provider OR {provider, signer, address}
+    const res = await window.connectWallet(); // may be provider OR {provider, signer, address}
     let provLike = res?.provider || res || window.ethereum;
     let p = toEthersProvider(provLike);
     if (!p) throw new Error('Your connector returned an unsupported provider');
@@ -538,25 +572,19 @@
     try{
       const sess = await connectViaYourConnector();
       if(sess){ return afterConnect(sess); }
-    }catch(e){
-      warn('Your connector failed:', e?.message || e);
-    }
+    }catch(e){ warn('Your connector failed:', e?.message || e); }
 
     // 2) Fallback to injected
     try{
       const sess = await connectInjected();
       return afterConnect(sess);
-    }catch(e){
-      warn('Injected connect failed:', e?.message || e);
-    }
+    }catch(e){ warn('Injected connect failed:', e?.message || e); }
 
     // 3) Optional Web3Modal v1 (only if loaded)
     try{
       const sess = await connectViaWeb3Modal();
       if(sess){ return afterConnect(sess); }
-    }catch(e){
-      err('Web3Modal connect failed:', e?.message || e);
-    }
+    }catch(e){ err('Web3Modal connect failed:', e?.message || e); }
 
     toast('No wallet connected. Install MetaMask or use a compatible browser.');
   }
@@ -709,6 +737,17 @@
       sessionStorage.removeItem('kly_seen_bsc'); complete('bscscan');
     }
   });
+
+  // Tap-to-toggle Ecosystem dropdown (mobile friendly)
+  const ecoBtn = document.querySelector('.nav-button');
+  const ecoMenu = document.querySelector('.dropdown-content');
+  if (ecoBtn && ecoMenu){
+    ecoBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const open = ecoMenu.classList.toggle('open');
+      ecoBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
 
   // -------- Boot --------
   (async function boot(){
