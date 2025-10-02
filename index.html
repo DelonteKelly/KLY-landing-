@@ -484,205 +484,217 @@
   <!-- Toasts -->
   <div class="toasts" id="toasts" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- Ethers v6 -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.1/dist/ethers.min.js" crossorigin="anonymous"></script>
+<!-- Ethers v5 (Web3Modal requires v5) -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<!-- Web3Modal -->
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
-  <!-- Site logic: dropdown + wallet + gating + contract + fallbacks -->
-  <script>
-  (function(){
-    /* =========================
-       CONFIG
-    ========================= */
-    const CONTRACT = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-    const BSC = { chainId:"0x38", chainName:"BNB Smart Chain", nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18}, rpcUrls:["https://bsc-dataseed.binance.org/"], blockExplorerUrls:["https://bscscan.com"] };
-    const ERC20_ABI = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function symbol() view returns (string)"];
-    const THRESHOLD = 500;
+<script>
+/* ================================
+   CONFIG
+================================ */
+const BSC_CHAIN_ID = 56;
+const RPC_URL = "https://bsc-dataseed.binance.org/";
+const EXPLORER = "https://bscscan.com";
+const CONTRACT_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const KLY_THRESHOLD_HUMAN = "500";
+const TOKEN_MIN_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
 
-    const $ = sel=>document.querySelector(sel);
-    const $$ = sel=>Array.from(document.querySelectorAll(sel));
+/* ================================
+   DOM HOOKS
+================================ */
+const connectBtn = document.getElementById("connectBtn");
+const connectText = connectBtn.querySelector("span");
+const walletChip = document.getElementById("walletChip");
+const walletLabel = document.getElementById("walletLabel");
+const statusMsg = document.getElementById("statusMsg");
+const statusEligibility = document.getElementById("statusEligibility");
 
-    const btnEcosys = $("#ecosysBtn");
-    const menuEcosys= $("#ecosysMenu");
+// Contract UI
+const klyAddr = document.getElementById("klyAddr");
+const klyAddrFull = document.getElementById("klyAddrFull");
+const solAddr = document.getElementById("solAddr");
+const solAddrFull = document.getElementById("solAddrFull");
+const threshTxt = document.getElementById("threshTxt");
+const gateMeter = document.getElementById("gateMeter");
+const gatePill = document.getElementById("gatePill");
 
-    const connectBtn  = $("#connectBtn");
-    const walletLabel = $("#walletLabel");
-    const statusWallet= $("#statusWallet");
-    const statusElig  = $("#statusEligibility");
-    const statusMsg   = $("#statusMsg");
-    const copyBtn     = $("#copyContract");
-    const shortEl     = $("#contractShort");
-    const toastsBox   = $("#toasts");
+// Toasts
+const toasts = document.getElementById("toasts");
+function showToast(msg, kind="info", timeout=3500){
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.innerHTML = `<span>${kind==="ok"?"✅":kind==="err"?"⚠️":"✨"}</span>
+                  <div>${msg}</div>
+                  <button class="close" aria-label="Close">&times;</button>`;
+  toasts.appendChild(el);
+  const remove=()=>el.remove();
+  el.querySelector(".close").addEventListener("click", remove);
+  setTimeout(remove, timeout);
+}
 
-    function toast(msg, type="neutral", timeout=3000){
-      const t=document.createElement("div");
-      t.className=`toast ${type==='success'?'success':type==='error'?'error':''}`;
-      t.innerHTML=`<span>${type==='success'?'✅':type==='error'?'⚠️':'✨'}</span><div>${msg}</div><button class="close" aria-label="Close">&times;</button>`;
-      toastsBox.appendChild(t); const remove=()=>t.remove(); t.querySelector(".close").addEventListener("click", remove); setTimeout(remove, timeout);
+/* ================================
+   STATE
+================================ */
+let web3Modal, extProvider, provider, signer, me, kly;
+let klyDec=18, klySym="KLY";
+
+/* ================================
+   SETUP
+================================ */
+function setupWeb3Modal(){
+  web3Modal = new window.Web3Modal.default({
+    cacheProvider: true,
+    theme:{
+      background:"var(--bg)",
+      main:"var(--text)",
+      secondary:"var(--muted)",
+      border:"rgba(255,255,255,0.1)",
+      hover:"rgba(255,255,255,0.05)"
     }
-    window.__KLY = Object.assign(window.__KLY||{}, { CONTRACT, toast });
+  });
+}
 
-    /* =========================
-       DROPDOWN (accessible)
-    ========================= */
-    (function(){
-      if(!btnEcosys || !menuEcosys) return;
-      function open(){ menuEcosys.hidden=false; btnEcosys.setAttribute("aria-expanded","true"); const r=menuEcosys.getBoundingClientRect(); if(r.right>innerWidth-8){menuEcosys.style.left="auto"; menuEcosys.style.right="0";} }
-      function close(){ menuEcosys.hidden=true; btnEcosys.setAttribute("aria-expanded","false"); menuEcosys.style.right=""; menuEcosys.style.left=""; }
-      function toggle(){ (menuEcosys.hidden?open:close)(); }
-      btnEcosys.addEventListener("click", e=>{ e.stopPropagation(); toggle(); });
-      document.addEventListener("click", e=>{ if(!menuEcosys.hidden && !menuEcosys.contains(e.target) && e.target!==btnEcosys) close(); });
-      document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !menuEcosys.hidden){ close(); btnEcosys.focus(); }});
-      menuEcosys.addEventListener("keydown", e=>{
-        if(!["ArrowDown","ArrowUp","Home","End"].includes(e.key)) return;
-        e.preventDefault();
-        const links=[...menuEcosys.querySelectorAll('a')]; if(!links.length) return;
-        const i=links.indexOf(document.activeElement); let n=0;
-        if(e.key==="ArrowDown") n=Math.min((i<0?0:i+1), links.length-1);
-        if(e.key==="ArrowUp")   n=Math.max((i<0?0:i-1), 0);
-        if(e.key==="Home")      n=0; if(e.key==="End") n=links.length-1;
-        links[n].focus();
-      });
-      btnEcosys.addEventListener("keydown", e=>{ if(e.key==="ArrowDown" && menuEcosys.hidden){ open(); const f=menuEcosys.querySelector('a'); f&&f.focus(); }});
-    })();
+/* ================================
+   CONNECT
+================================ */
+async function connect(){
+  try{
+    showToast("Connecting wallet…","warn");
+    connectBtn.disabled=true;
+    connectText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting`;
 
-    /* =========================
-       ACADEMY GATE (global)
-    ========================= */
-    function lockAcademy(){
-      $$('[data-academy]').forEach(a=>{
-        a.classList.add('is-disabled'); a.setAttribute('aria-disabled','true'); a.setAttribute('data-locked','true'); a.title=`Requires ${THRESHOLD}+ KLY`;
-      });
-      statusElig && (statusElig.textContent=`Academy: ${THRESHOLD}+ KLY required`);
-    }
-    function unlockAcademy(){
-      $$('[data-academy]').forEach(a=>{
-        a.classList.remove('is-disabled'); a.removeAttribute('aria-disabled'); a.removeAttribute('data-locked'); a.title='';
-      });
-      statusElig && (statusElig.textContent="Academy: Unlocked");
-    }
-    function wireAcademyIntercepts(){
-      $$('a[data-academy]').forEach(a=>{
-        const clone=a.cloneNode(true); a.replaceWith(clone);
-        clone.addEventListener('click', e=>{
-          const locked = clone.getAttribute('data-locked')==='true' || clone.classList.contains('is-disabled') || clone.getAttribute('aria-disabled')==='true';
-          if(locked){ e.preventDefault(); toast(`Insufficient KLY — you need ${THRESHOLD}+ to unlock the Academy.`,'error'); }
-        });
-        clone.addEventListener('keydown', e=>{
-          const locked = clone.getAttribute('data-locked')==='true' || clone.classList.contains('is-disabled') || clone.getAttribute('aria-disabled')==='true';
-          if((e.key===' '||e.key==='Enter') && locked){ e.preventDefault(); toast(`Insufficient KLY — you need ${THRESHOLD}+ to unlock the Academy.`,'error'); }
-        });
-      });
-    }
-    lockAcademy(); wireAcademyIntercepts();
-    window.__KLY.setEligibility = function(k){ (k>=THRESHOLD)?unlockAcademy():lockAcademy(); wireAcademyIntercepts(); };
+    extProvider = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(extProvider);
+    signer = provider.getSigner();
+    me = await signer.getAddress();
 
-    /* =========================
-       CONTRACT SHORT + COPY
-    ========================= */
-    if(shortEl) shortEl.textContent = CONTRACT.slice(0,6)+"..."+CONTRACT.slice(-4);
-    if(copyBtn){ copyBtn.addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText(CONTRACT); toast('Contract copied.','success'); } catch{ toast('Failed to copy contract.','error'); } }); }
-
-    /* =========================
-       WALLET CONNECT + BSC + BALANCE
-    ========================= */
-    const hasProvider = ()=> typeof window.ethereum !== "undefined";
-    let provider, signer, user, klyDecimals=18, klySymbol="KLY", currentBalance=0;
-
-    function setWallet(address){
-      if(!walletLabel) return;
-      if(!address){ walletLabel.textContent="Not connected"; statusWallet&&(statusWallet.textContent="Not connected"); statusMsg&&(statusMsg.textContent="Connect wallet to continue."); return; }
-      const short = address.slice(0,6)+"…"+address.slice(-4);
-      walletLabel.textContent=short; statusWallet&&(statusWallet.textContent=short); statusMsg&&(statusMsg.textContent="Connected on BNB Smart Chain.");
-    }
-    window.setWallet = setWallet;
-
-    async function ensureBSC(){
-      const cid = await window.ethereum.request({method:"eth_chainId"});
-      if(cid===BSC.chainId) return true;
-      try{
-        await window.ethereum.request({method:"wallet_switchEthereumChain", params:[{chainId:BSC.chainId}]}); return true;
-      }catch(err){
-        if(err && err.code===4902){ await window.ethereum.request({method:"wallet_addEthereumChain", params:[BSC]}); return true; }
-        throw err;
+    const net = await provider.getNetwork();
+    if(net.chainId !== BSC_CHAIN_ID){
+      const ok = await ensureBsc();
+      if(!ok){ 
+        showToast("Please switch to BNB Smart Chain (56)","err"); 
+        resetDisconnected(); 
+        return; 
       }
     }
 
-    async function updateBalance(){
-      if(!user) return;
-      try{
-        const prov = provider || new ethers.BrowserProvider(window.ethereum,"any");
-        const kly = new ethers.Contract(CONTRACT, ERC20_ABI, (await prov.getSigner()).provider);
-        try{ klyDecimals = await kly.decimals(); }catch{}
-        try{ klySymbol   = await kly.symbol(); }catch{}
-        const raw = await kly.balanceOf(user);
-        currentBalance = Number(ethers.formatUnits(raw, klyDecimals));
-        statusMsg && (statusMsg.textContent = `Balance: ${currentBalance.toLocaleString(undefined,{maximumFractionDigits:4})} ${klySymbol}`);
-        __KLY.setEligibility(currentBalance);
-        // quests reflect
-        const cards=document.querySelectorAll('.quest .state'); if(cards[0]){ cards[0].textContent="Completed"; cards[0].className="state done"; }
-        if(cards[2]){ if(currentBalance>=THRESHOLD){cards[2].textContent="Completed"; cards[2].className="state done";} else {cards[2].textContent="Locked"; cards[2].className="state lock";} }
-      }catch(e){ console.error(e); statusMsg && (statusMsg.textContent="Balance unavailable."); toast("Could not fetch KLY balance.","error"); }
-    }
+    // Contracts
+    kly = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_MIN_ABI, provider);
 
-    async function connect(){
-      if(!hasProvider()){ toast("No Web3 wallet detected. Open this site inside MetaMask or Trust Wallet.","error",6000); statusMsg&&(statusMsg.textContent="Wallet not found."); return; }
-      if(connectBtn){ connectBtn.disabled=true; const prev=connectBtn.innerHTML; connectBtn.dataset.prev=prev; connectBtn.innerHTML='<span class="spinner"></span><span>Connecting…</span>'; }
-      try{
-        await ensureBSC();
-        const accounts = await window.ethereum.request({method:"eth_requestAccounts"});
-        user = ethers.getAddress(accounts[0]);
-        provider = new ethers.BrowserProvider(window.ethereum,"any");
-        signer   = await provider.getSigner();
-        setWallet(user); toast("Wallet connected.","success");
-        await updateBalance();
-        // listeners
-        window.ethereum.removeListener?.("accountsChanged", onAccounts);
-        window.ethereum.removeListener?.("chainChanged", onChain);
-        window.ethereum.on("accountsChanged", onAccounts);
-        window.ethereum.on("chainChanged", onChain);
-      }catch(err){
-        if(err && err.code===4001){ toast("Connection cancelled.","error"); statusMsg&&(statusMsg.textContent="Connection cancelled."); }
-        else { console.error(err); toast("Connection failed. Check your wallet.","error"); statusMsg&&(statusMsg.textContent="Connection failed."); }
-      }finally{
-        if(connectBtn){ connectBtn.disabled=false; connectBtn.innerHTML=connectBtn.dataset.prev || '<span>Connect Wallet</span>'; }
-      }
-    }
-    async function onAccounts(accounts){ if(!accounts || !accounts.length){ user=undefined; setWallet(null); __KLY.setEligibility(0); return; } user=ethers.getAddress(accounts[0]); setWallet(user); await updateBalance(); }
-    async function onChain(chainId){ if(chainId!==BSC.chainId){ statusMsg&&(statusMsg.textContent="Wrong network — switch to BNB Smart Chain."); toast("Wrong network — switching to BNB…"); try{ await ensureBSC(); await updateBalance(); }catch{} } else { await updateBalance(); } }
-
-    connectBtn && connectBtn.addEventListener('click', connect);
-
-    // Env fallback for non-DApp browsers
-    (function(){ if(!hasProvider()){ if(connectBtn){ connectBtn.disabled=true; connectBtn.textContent='Wallet Not Found'; } statusMsg&&(statusMsg.textContent="Open in MetaMask/Trust Wallet in-app browser."); toast("No Web3 wallet detected. Please open in a wallet in-app browser.","error",6000); } })();
-
-    // Silent hydrate if already authorized
-    (async function hydrate(){
-      if(!hasProvider()) return;
-      try{
-        const acc = await window.ethereum.request({method:"eth_accounts"});
-        if(acc && acc[0]){ await ensureBSC(); user=ethers.getAddress(acc[0]); provider=new ethers.BrowserProvider(window.ethereum,"any"); signer=await provider.getSigner(); setWallet(user); await updateBalance(); window.ethereum.on("accountsChanged", onAccounts); window.ethereum.on("chainChanged", onChain); }
-      }catch(e){}
-    })();
-
-    /* =========================
-       FAQ (single open)
-    ========================= */
-    document.querySelectorAll('.acc-item .acc-btn').forEach((btn)=>{
-      btn.addEventListener('click', ()=>{
-        const item = btn.parentElement;
-        const open = item.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open?'true':'false');
-        // close others
-        document.querySelectorAll('.acc-item').forEach(i=>{ if(i!==item){ i.classList.remove('open'); i.querySelector('.acc-btn').setAttribute('aria-expanded','false'); }});
+    // Events
+    if(extProvider.on){
+      extProvider.on("accountsChanged", (acc)=>{
+        if(!acc?.length){ handleDisconnect(); return; }
+        me = acc[0];
+        loadAll();
+        showToast("Account switched","warn");
       });
-    });
+      extProvider.on("chainChanged", ()=>window.location.reload());
+      extProvider.on("disconnect", handleDisconnect);
+    }
 
-    // Make all .btn anchors keyboard-activatable (space/enter)
-    document.querySelectorAll('a.btn').forEach(a=>{
-      a.setAttribute('role','button');
-      a.addEventListener('keydown', e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); a.click(); }});
-    });
-  })();
-  </script>
+    walletLabel.textContent = short(me);
+    statusMsg.textContent = "Connected on BNB Smart Chain";
+    connectText.innerHTML = `<i class="fa-solid fa-check"></i> Connected`;
+
+    await loadAll();
+    showToast("Wallet connected","ok");
+  }catch(e){
+    console.error(e);
+    showToast("Connection failed","err");
+  }finally{
+    connectBtn.disabled=false;
+  }
+}
+
+/* ================================
+   DISCONNECT
+================================ */
+function handleDisconnect(){
+  web3Modal.clearCachedProvider?.();
+  resetDisconnected();
+  showToast("Wallet disconnected","err");
+}
+function resetDisconnected(){
+  walletLabel.textContent = "Not connected";
+  statusMsg.textContent = "Connect wallet to continue.";
+  connectText.innerHTML = `<i class="fa-solid fa-wallet"></i> Connect Wallet`;
+  if(gateMeter) gateMeter.style.width="0%";
+}
+
+/* ================================
+   BALANCES + GATE
+================================ */
+async function loadAll(){
+  try{
+    if(!me) return;
+    klyDec = await readDecimalsOr(kly,18);
+    klySym = await safeSymbol(kly,"KLY");
+
+    const balRaw = await kly.balanceOf(me);
+    const bal = ethers.utils.formatUnits(balRaw, klyDec);
+    const have = ethers.BigNumber.from(balRaw.toString());
+    const need = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDec);
+
+    statusMsg.textContent = `Balance: ${bal} ${klySym}`;
+
+    // Gate
+    const pct = need.isZero()?0:Math.min(100, have.mul(10000).div(need).toNumber()/100);
+    if(gateMeter) gateMeter.style.width = pct+"%";
+    if(threshTxt) threshTxt.textContent = `${KLY_THRESHOLD_HUMAN} ${klySym}`;
+    if(gatePill){
+      const passed = have.gte(need);
+      gatePill.style.borderColor = passed?"rgba(0,255,136,.7)":"rgba(255,56,96,.6)";
+      gatePill.style.color = passed?"var(--green)":"var(--red)";
+      statusEligibility.textContent = passed? "Academy: Unlocked" : `Academy: ${KLY_THRESHOLD_HUMAN}+ KLY required`;
+    }
+  }catch(e){
+    console.error(e);
+    showToast("Failed to load balance","err");
+  }
+}
+
+/* ================================
+   HELPERS
+================================ */
+async function ensureBsc(){
+  const hex = "0x"+BSC_CHAIN_ID.toString(16);
+  try{
+    await provider.send("wallet_switchEthereumChain", [{ chainId: hex }]);
+    return true;
+  }catch(e){
+    if(e?.code === 4902 || e?.data?.originalError?.code === 4902){
+      try{
+        await provider.send("wallet_addEthereumChain",[{
+          chainId: hex,
+          chainName:"BNB Smart Chain",
+          nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+          rpcUrls:[RPC_URL],
+          blockExplorerUrls:[EXPLORER]
+        }]);
+        return true;
+      }catch{return false;}
+    }
+    return false;
+  }
+}
+function short(a){ return a? `${a.slice(0,6)}…${a.slice(-4)}`:"—"; }
+async function safeSymbol(c,f="TOKEN"){ try{ return await c.symbol(); }catch{return f;} }
+async function readDecimalsOr(c,f=18){ try{ return await c.decimals(); }catch{return f;} }
+
+/* ================================
+   INIT
+================================ */
+(function init(){
+  setupWeb3Modal();
+  if(window.Web3Modal && web3Modal?.cachedProvider){ connect(); }
+})();
+connectBtn.addEventListener("click", connect);
+</script>
 </body>
 </html>
