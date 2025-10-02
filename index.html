@@ -301,7 +301,7 @@
 <canvas id="confetti" class="confetti" width="1" height="1" aria-hidden="true"></canvas>
 
 <script>
-/* ========= KLY Web3 + Gamification (robust injected-first, optional Web3Modal v1) ========= */
+/* ========= KLY Web3 + Gamification (prefers YOUR connectWallet, then injected, optional Web3Modal v1) ========= */
 (function(){
   // -------- Utils ----------
   const $ = (s,r=document)=>r.querySelector(s);
@@ -311,7 +311,6 @@
   const warn = (...x)=>console.warn('[KLY]', ...x);
   const err  = (...x)=>console.error('[KLY]', ...x);
 
-  // Early environment check (serving via http/https)
   if(location.protocol === 'file:'){
     console.warn('This dApp must be served over http/https. file:// will cause wallets to block requests.');
   }
@@ -471,25 +470,56 @@
     }
   }
 
+  // -------- Provider normalizer (accepts anything your connector returns) --------
+  function toEthersProvider(any){
+    if (!any) return null;
+    if (any._isProvider) return any;                           // ethers provider
+    if (any.currentProvider) return new ethers.providers.Web3Provider(any.currentProvider, 'any'); // web3.js
+    if (any.request) return new ethers.providers.Web3Provider(any, 'any'); // raw EIP-1193
+    if (any.provider) return new ethers.providers.Web3Provider(any.provider, 'any'); // modal instance
+    return null;
+  }
+
   // -------- Connect strategies --------
+  async function connectViaYourConnector(){
+    if (typeof window.connectWallet !== 'function') return null;
+    log('Using your window.connectWallet()');
+    const res = await window.connectWallet(); // can be provider OR {provider, signer, address}
+    let provLike = res?.provider || res || window.ethereum;
+    let p = toEthersProvider(provLike);
+    if (!p) throw new Error('Your connector returned an unsupported provider');
+    await p.send?.('eth_requestAccounts', []).catch(()=>{});
+    await ensureBSC(p);
+    const s = res?.signer || p.getSigner();
+    const addr = res?.address || await s.getAddress();
+    return { provider: p, signer: s, address: addr };
+  }
+
   async function connectInjected(){
     await ensureInjected();
     const injected = new ethers.providers.Web3Provider(window.ethereum, 'any');
     await injected.send('eth_requestAccounts', []);
     if(!(await ensureBSC(injected))) throw new Error('Please switch to BNB Smart Chain (56).');
-    return injected;
+    return { provider: injected, signer: injected.getSigner(), address: await injected.getSigner().getAddress() };
   }
 
   async function maybeInitWeb3ModalV1(){
-    // Use Web3Modal only if it’s actually available on window
     if(!window.Web3Modal) return null;
-    // Avoid WalletConnect v1; keep modal for UX but injected will handle the job.
     const providerOptions = {
       injected: { package: null, display: { name: "MetaMask", description: "Browser wallet" } }
-      // You *can* add walletconnect v1 here, but it’s sunset and flaky in 2025.
+      // Note: WalletConnect v1 is sunset; omit to avoid flakiness.
     };
-    const m = new window.Web3Modal({ cacheProvider:true, providerOptions, theme:'dark' });
-    return m;
+    return new window.Web3Modal({ cacheProvider:true, providerOptions, theme:'dark' });
+  }
+
+  async function connectViaWeb3Modal(){
+    web3Modal = await maybeInitWeb3ModalV1();
+    if(!web3Modal) return null;
+    wcInstance = await web3Modal.connect();
+    const p = new ethers.providers.Web3Provider(wcInstance, 'any');
+    if(!(await ensureBSC(p))) throw new Error('Please switch to BNB Smart Chain (56).');
+    const s = p.getSigner();
+    return { provider: p, signer: s, address: await s.getAddress() };
   }
 
   async function connect(){
@@ -498,41 +528,35 @@
       try{ web3Modal?.clearCachedProvider?.(); wcInstance?.disconnect?.(); }catch{}
       if(provider?.provider?.removeAllListeners) provider.provider.removeAllListeners();
       provider = signer = null; userAddress = null;
-      load(null); render();
-      toast('Disconnected');
+      load(null); render(); toast('Disconnected');
       return;
     }
 
-    // Strategy: injected first (reliable). If it fails and Web3Modal exists, try modal.
+    // 1) Prefer your connector
     try{
-      provider = await connectInjected();
-      log('Connected via injected');
+      const sess = await connectViaYourConnector();
+      if(sess){ return afterConnect(sess); }
     }catch(e){
-      warn('Injected connect failed:', e.message);
-      web3Modal = await maybeInitWeb3ModalV1();
-      if(!web3Modal) { toast('No wallet detected. Install MetaMask or use a compatible browser.'); return; }
-      try{
-        wcInstance = await web3Modal.connect();
-        provider = new ethers.providers.Web3Provider(wcInstance, 'any');
-        if(!(await ensureBSC(provider))) throw new Error('Please switch to BNB Smart Chain (56).');
-        log('Connected via Web3Modal');
-      }catch(e2){
-        err('Web3Modal connect failed:', e2);
-        toast('Wallet connection failed. See console.'); return;
-      }
+      warn('Your connector failed:', e?.message || e);
     }
 
-    // Bind signer + address
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
+    // 2) Fallback to injected
+    try{
+      const sess = await connectInjected();
+      return afterConnect(sess);
+    }catch(e){
+      warn('Injected connect failed:', e?.message || e);
+    }
 
-    // Instantiate contracts
-    klyToken = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
-    nftContract = new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
-    stakeRead  = new ethers.Contract(ADDR.STAKE, ABI.STAKE_TX, signer); // tx-only ABI; verify stake uses fallback below
+    // 3) Optional Web3Modal v1 (only if loaded)
+    try{
+      const sess = await connectViaWeb3Modal();
+      if(sess){ return afterConnect(sess); }
+    }catch(e){
+      err('Web3Modal connect failed:', e?.message || e);
+    }
 
-    bindProviderEvents();
-    onConnected();
+    toast('No wallet connected. Install MetaMask or use a compatible browser.');
   }
 
   function bindProviderEvents(){
@@ -549,6 +573,20 @@
       base.on('chainChanged', ()=> location.reload());
       base.on('disconnect', ()=>{ web3Modal?.clearCachedProvider?.(); userAddress=null; load(null); render(); });
     }
+  }
+
+  async function afterConnect(session){
+    provider = session.provider;
+    signer   = session.signer;
+    userAddress = session.address;
+
+    // Instantiate contracts
+    klyToken = new ethers.Contract(ADDR.KLY, ABI.TOKEN, signer);
+    nftContract = new ethers.Contract(ADDR.NFT, ABI.NFT, signer);
+    stakeRead  = new ethers.Contract(ADDR.STAKE, ABI.STAKE_TX, signer); // tx-only ABI
+
+    bindProviderEvents();
+    await onConnected();
   }
 
   async function onConnected(){
@@ -580,7 +618,6 @@
     if(!userAddress) return toast('Connect first');
     const ten = ethers.utils.parseUnits('10', klyDecimals || 18);
 
-    // Try common reads cautiously (many pools differ). We’ll probe via call; ignore errors.
     async function tryCall(signature){
       try{
         const itf = new ethers.utils.Interface([`function ${signature}`]);
@@ -596,7 +633,6 @@
 
     if(staked.gte(ten)) { complete('stake10'); return; }
 
-    // Fallback heuristic: allowance or balance suggests user is ready
     try{
       const [allow, bal] = await Promise.all([
         klyToken.allowance(userAddress, ADDR.STAKE),
@@ -641,7 +677,7 @@
     STATE.lootClaimed = true; save(); render(); toast('Loot claimed!'); el.lootDlg?.close();
   }
 
-  // -------- Events (all guarded) --------
+  // -------- Events (guarded) --------
   el.connect && el.connect.addEventListener('click', connect);
   el.ctaJoin && el.ctaJoin.addEventListener('click', connect);
   el.ctaBottom && el.ctaBottom.addEventListener('click', connect);
@@ -671,14 +707,13 @@
 
   // -------- Boot --------
   (async function boot(){
-    // ONLY requirement for this script: ethers must be loaded
     if(typeof ethers === 'undefined'){
       err('ethers not found. Include <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>');
       return;
     }
     load(null); render();
-    // If you want to attempt auto-reconnect with injected:
-    // if(window.ethereum && window.ethereum.selectedAddress) connect();
+    // Optional auto-connect if your connector pre-authorizes
+    // if (window.ethereum && window.ethereum.selectedAddress) connect();
   })();
 })();
 </script>
