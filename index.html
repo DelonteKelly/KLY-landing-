@@ -833,6 +833,76 @@
         width: 100%;
       }
     }
+
+    /* Tokenomics Donut */
+.tokenomics-wrap{
+  display:grid; grid-template-columns: 1.1fr 1fr; gap: var(--s-12, 48px); align-items:center;
+}
+.tokenomics-figure{
+  position:relative; display:grid; place-items:center; padding: var(--s-8, 32px);
+  background: var(--panelHigh,#171A1F);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-xl, 28px);
+  box-shadow: var(--shadow-md, 0 6px 18px rgba(0,0,0,.35));
+}
+.donut{ width:100%; max-width:520px; filter:url(#softGlow); }
+.center text{
+  font-family: var(--type-base, Inter, system-ui);
+  fill: var(--text-dim,#B8BFCC);
+  font-weight:700; letter-spacing:.04em;
+}
+.center .center-top{ font-size:12px; opacity:.8; }
+.center .center-val{ font-size:24px; fill:#fff; }
+
+/* Arcs */
+.segment { cursor:pointer; transition: filter var(--anim-base,220ms) var(--anim-ease, cubic-bezier(.2,.8,.2,1)); }
+.segment:is(:hover,:focus){ filter: drop-shadow(0 0 12px rgba(212,175,55,.35)); }
+.segment.gold { stroke: url(#goldGrad); }
+.segment.teal { stroke: url(#tealGrad); }
+
+/* Legend */
+.tokenomics-legend{ display:grid; gap: var(--s-6,24px); }
+.t-legend-item{
+  display:grid; grid-template-columns: auto 1fr auto; align-items:center; gap:12px;
+  padding:14px 16px;
+  border-radius:16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
+  border:1px solid rgba(255,255,255,.08);
+}
+.t-legend-swatch{
+  width:14px; height:14px; border-radius:3px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.t-legend-item h3{ margin:0; font-size:16px; }
+.t-legend-desc{ color: var(--text-dim,#B8BFCC); font-size:14px; margin-top:4px; }
+.t-legend-pct{ font-weight:800; letter-spacing:.02em; }
+
+/* Tooltip */
+.tk-tip{
+  position:absolute; pointer-events:none;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: rgba(20,22,27,.9);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:10px; padding:8px 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+.tk-tip::after{
+  content:""; position:absolute; left:50%; transform:translateX(-50%);
+  bottom:-6px; border:6px solid transparent; border-top-color: rgba(20,22,27,.9);
+}
+.tk-tip__label{ font-weight:700; font-size:12px; color:#fff; }
+.tk-tip__pct{ font-weight:800; color: var(--gold,#D4AF37); font-size:14px; }
+
+/* Motion preferences */
+@media (prefers-reduced-motion: reduce){
+  .segment{ transition:none !important; }
+}
+
+/* Responsive */
+@media (max-width: 1024px){
+  .tokenomics-wrap{ grid-template-columns: 1fr; }
+  .tokenomics-legend{ order:2; }
+}
   </style>
 </head>
 <body>
@@ -953,35 +1023,81 @@
     </section>
 
     <!-- Tokenomics Section -->
-    <section class="tokenomics-section">
-      <h2 class="section-title">TOKEN DISTRIBUTION</h2>
-      <div class="tokenomics-grid">
-        <div class="tokenomics-card">
-          <h3>Staking Rewards</h3>
-          <p>30% of total supply allocated to reward long-term holders and participants in the ecosystem.</p>
-        </div>
-        <div class="tokenomics-card">
-          <h3>Liquidity</h3>
-          <p>25% locked in PancakeSwap with keys held by multi-sig wallet for price stability.</p>
-        </div>
-        <div class="tokenomics-card">
-          <h3>Team & Development</h3>
-          <p>15% vested over 3 years to ensure long-term commitment to the project.</p>
-        </div>
-        <div class="tokenomics-card">
-          <h3>Ecosystem Fund</h3>
-          <p>20% reserved for partnerships, marketing, and future development initiatives.</p>
-        </div>
-        <div class="tokenomics-card">
-          <h3>Community Airdrops</h3>
-          <p>5% distributed to early supporters and active community members.</p>
-        </div>
-        <div class="tokenomics-card">
-          <h3>Advisors</h3>
-          <p>5% allocated to strategic advisors with vesting periods aligned to milestones.</p>
-        </div>
+<section class="tokenomics-section container" aria-labelledby="tokenomics-title">
+  <div class="section-title" style="align-items:center;gap:12px;">
+    <svg class="divider-glyph" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="var(--gold)" fill="none"/>
+      <path d="M12 4v16M4 12h16" stroke="var(--teal)"/>
+    </svg>
+    <h2 id="tokenomics-title">Token Distribution</h2>
+  </div>
+
+  <div class="tokenomics-wrap">
+    <!-- Donut Graph -->
+    <figure class="tokenomics-figure">
+      <figcaption class="visually-hidden">Distribution donut showing percentages by category</figcaption>
+
+      <svg class="donut" viewBox="0 0 240 240" role="img" aria-labelledby="tokenomics-title">
+        <defs>
+          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(212,175,55,0.35)"/>
+          </filter>
+          <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"  stop-color="#F1D07A"/>
+            <stop offset="55%" stop-color="#D4AF37"/>
+            <stop offset="100%" stop-color="#8A6B1E"/>
+          </linearGradient>
+          <linearGradient id="tealGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"  stop-color="#36F1D0"/>
+            <stop offset="100%" stop-color="#1EE8C2"/>
+          </linearGradient>
+        </defs>
+
+        <!-- base track -->
+        <circle cx="120" cy="120" r="90" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="28"/>
+        <!-- dynamic segments -->
+        <g class="segments" aria-hidden="true"></g>
+
+        <!-- center badge -->
+        <g class="center">
+          <circle cx="120" cy="120" r="60" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.06)" />
+          <text x="120" y="112" text-anchor="middle" class="center-top">TOTAL</text>
+          <text x="120" y="138" text-anchor="middle" class="center-val">100%</text>
+        </g>
+      </svg>
+
+      <!-- Tooltip -->
+      <div class="tk-tip" id="tkTip" role="tooltip" hidden>
+        <div class="tk-tip__label">Label</div>
+        <div class="tk-tip__pct">00%</div>
       </div>
-    </section>
+    </figure>
+
+    <!-- Legend (auto-filled) -->
+    <div class="tokenomics-legend" id="tokenomicsLegend" role="list"></div>
+  </div>
+
+  <!-- SR-only fallback -->
+  <div class="visually-hidden" aria-live="polite">
+    <table>
+      <caption>Token distribution table</caption>
+      <thead><tr><th>Category</th><th>Percent</th><th>Description</th></tr></thead>
+      <tbody id="tokenomicsSR"></tbody>
+    </table>
+  </div>
+
+  <!-- Data (edit as needed) -->
+  <script type="application/json" id="tokenomicsData">
+  [
+    {"label":"Staking Rewards","pct":30,"desc":"30% of total supply allocated to reward long-term holders and participants in the ecosystem.","hue":"gold"},
+    {"label":"Liquidity","pct":25,"desc":"25% locked in PancakeSwap with keys held by multi-sig wallet for price stability.","hue":"teal"},
+    {"label":"Team & Development","pct":15,"desc":"15% vested over 3 years to ensure long-term commitment to the project.","hue":"gold"},
+    {"label":"Ecosystem Fund","pct":20,"desc":"20% reserved for partnerships, marketing, and future development initiatives.","hue":"teal"},
+    {"label":"Community Airdrops","pct":5,"desc":"5% distributed to early supporters and active community members.","hue":"gold"},
+    {"label":"Advisors","pct":5,"desc":"5% allocated to strategic advisors with vesting periods aligned to milestones.","hue":"teal"}
+  ]
+  </script>
+</section>
 
     <!-- Roadmap Section -->
     <section class="roadmap-section">
@@ -1579,6 +1695,118 @@ function updateConnectionState(connected) {
       await connectWallet();
     }
   });
+
+/* ===== Tokenomics Donut Renderer (Vanilla SVG) ===== */
+(function(){
+  const dataEl = document.getElementById('tokenomicsData');
+  const data = JSON.parse((dataEl && dataEl.textContent) || '[]');
+
+  const svg = document.querySelector('.tokenomics-section .donut');
+  if(!svg || !data.length) return;
+
+  const gSeg = svg.querySelector('.segments');
+  const tip = document.getElementById('tkTip');
+  const legend = document.getElementById('tokenomicsLegend');
+  const srBody = document.getElementById('tokenomicsSR');
+
+  // geometry
+  const cx=120, cy=120, r=90, stroke=28;
+  const CIRC = 2 * Math.PI * r;
+  const total = data.reduce((a,b)=>a + (b.pct||0), 0) || 100;
+
+  let offset = 0;
+  data.forEach(d => {
+    const pct = Number(d.pct) || 0;
+    const frac = pct / total;
+    const len = Math.max(0.001, frac * CIRC);
+
+    // background arc (soft)
+    const arcBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    arcBg.setAttribute('cx', cx); arcBg.setAttribute('cy', cy); arcBg.setAttribute('r', r);
+    arcBg.setAttribute('fill','none');
+    arcBg.setAttribute('stroke','rgba(255,255,255,0.04)');
+    arcBg.setAttribute('stroke-width', stroke);
+    arcBg.setAttribute('stroke-dasharray', `${len} ${CIRC - len}`);
+    arcBg.setAttribute('stroke-dashoffset', (-offset) );
+    arcBg.setAttribute('transform','rotate(-90 120 120)');
+    arcBg.setAttribute('opacity','0.5');
+
+    // colored arc
+    const arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    arc.setAttribute('cx', cx); arc.setAttribute('cy', cy); arc.setAttribute('r', r);
+    arc.setAttribute('class', `segment ${d.hue === 'teal' ? 'teal' : 'gold'}`);
+    arc.setAttribute('fill','none');
+    arc.setAttribute('stroke-width', stroke);
+    arc.setAttribute('stroke-linecap','butt');
+    arc.setAttribute('stroke-dasharray', `${len} ${CIRC - len}`);
+    arc.setAttribute('stroke-dashoffset', (-offset) );
+    arc.setAttribute('transform','rotate(-90 120 120)');
+    arc.setAttribute('tabindex','0');
+    arc.setAttribute('role','listitem');
+    arc.setAttribute('aria-label', `${d.label}: ${pct}%`);
+
+    function showTip(evt){
+      const bb = svg.getBoundingClientRect();
+      const x = (evt && evt.clientX) ? evt.clientX : (bb.left + bb.width/2);
+      const y = (evt && evt.clientY) ? evt.clientY : (bb.top + 24);
+      tip.querySelector('.tk-tip__label').textContent = d.label || '';
+      tip.querySelector('.tk-tip__pct').textContent = `${pct}%`;
+      tip.style.left = `${x}px`;
+      tip.style.top  = `${y}px`;
+      tip.hidden = false;
+    }
+    function hideTip(){ tip.hidden = true; }
+
+    arc.addEventListener('mousemove', showTip);
+    arc.addEventListener('mouseenter', showTip);
+    arc.addEventListener('mouseleave', hideTip);
+    arc.addEventListener('focus', (e)=> showTip(null));
+    arc.addEventListener('blur', hideTip);
+    arc.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideTip(); });
+
+    gSeg.appendChild(arcBg);
+    gSeg.appendChild(arc);
+
+    // Legend item
+    const item = document.createElement('div');
+    item.className = 't-legend-item';
+    item.setAttribute('role','listitem');
+    const swatchBG = d.hue==='teal'
+      ? 'linear-gradient(90deg,#36F1D0,#1EE8C2)'
+      : 'linear-gradient(90deg,#F1D07A,#D4AF37)';
+    item.innerHTML = `
+      <span class="t-legend-swatch" style="background:${swatchBG};"></span>
+      <div>
+        <h3>${d.label || ''}</h3>
+        <div class="t-legend-desc">${d.desc || ''}</div>
+      </div>
+      <div class="t-legend-pct">${pct}%</div>
+    `;
+    item.addEventListener('mouseenter', ()=> arc.dispatchEvent(new Event('mouseenter')));
+    item.addEventListener('mouseleave', ()=> arc.dispatchEvent(new Event('mouseleave')));
+    item.addEventListener('focusin',   ()=> arc.focus());
+    legend.appendChild(item);
+
+    // SR table
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.label || ''}</td><td>${pct}%</td><td>${d.desc || ''}</td>`;
+    srBody.appendChild(tr);
+
+    offset += len;
+  });
+
+  // Intro animation
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!prefersReduced){
+    requestAnimationFrame(()=>{
+      document.querySelectorAll('.tokenomics-section .segment').forEach(seg=>{
+        seg.style.transition = 'stroke-dashoffset 1200ms cubic-bezier(.2,.8,.2,1)';
+        const curr = parseFloat(seg.getAttribute('stroke-dashoffset'));
+        seg.setAttribute('stroke-dashoffset', curr - 0.0001); // nudge for paint
+      });
+    });
+  }
+})();
 </script>
 </body>
 </html>
