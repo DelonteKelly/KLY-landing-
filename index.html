@@ -617,20 +617,13 @@ let klyDec = 18, klySym = "KLY";
 
 /* Helpers */
 function hasEthereum(){ return typeof window !== "undefined" && window.ethereum; }
-function pickInjected(){
-  const eth = window.ethereum;
-  if(!eth) return null;
-  if(eth.providers?.length){
-    const mm = eth.providers.find(p => p.isMetaMask);
-    return mm || eth.providers[0];
-  }
-  return eth;
-}
+function isMobileUA(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
 
-/* Robust UMD globals */
+// Robust UMD globals (unchanged)
 const W3MGlobal   = (window.Web3Modal && (window.Web3Modal.default || window.Web3Modal)) || null;
 const WCEProvider = (window.WalletConnectEthereumProvider && (window.WalletConnectEthereumProvider.default || window.WalletConnectEthereumProvider)) || null;
 
+// Ensure BSC (unchanged)
 async function ensureBsc(){
   const hex = "0x"+BSC_CHAIN_ID.toString(16);
   try{
@@ -652,6 +645,7 @@ async function ensureBsc(){
     return false;
   }
 }
+
 async function loadAll(){
   if(!me || !kly) return;
   try{
@@ -661,11 +655,12 @@ async function loadAll(){
     const bal    = ethers.utils.formatUnits(balRaw, klyDec);
     setStatus("message", `Balance: ${bal} ${klySym}`);
     const need = ethers.utils.parseUnits(KLY_THRESHOLD_HUMAN, klyDec);
-    if(ethers.BigNumber.from(balRaw).gte(need)) unlockAcademy(); else lockAcademy();
+    ethers.BigNumber.from(balRaw).gte(need) ? unlockAcademy() : lockAcademy();
   }catch(e){
     console.error(e); toast("Failed to load balance","err");
   }
 }
+
 function resetDisconnected(){
   if(walletLabel) walletLabel.textContent = "Not connected";
   setStatus("message","Connect wallet to continue.");
@@ -674,20 +669,13 @@ function resetDisconnected(){
   lockAcademy();
 }
 
-/* Web3Modal (with WalletConnect v2 option) */
+// ---- Web3Modal set up (keep, but slightly hardened)
 function setupWeb3Modal(){
-  if(!W3MGlobal){
-    console.warn("[KLY] Web3Modal global missing — will use injected fallback.");
-    return null;
-  }
+  if(!W3MGlobal) return null;
 
-  // WalletConnect v2 option for Web3Modal v1
   const walletconnectV2 = {
-    display: {
-      name: "WalletConnect",
-      description: "Scan with Trust, MetaMask, Rainbow, etc."
-    },
-    package: WCEProvider, // robust UMD
+    display: { name: "WalletConnect", description: "Scan with Trust, MetaMask, Rainbow, etc." },
+    package: WCEProvider,
     options: {
       projectId: WC_PROJECT_ID,
       chains: [BSC_CHAIN_ID],
@@ -704,15 +692,15 @@ function setupWeb3Modal(){
         icons: ["https://kellylegacyestates.com/favicon.ico"]
       }
     },
-    // init v2 for W3M v1
     connector: async (ProviderPackage, opts) => {
-      const provider = await ProviderPackage.init(opts);
-      await provider.enable();
-      return provider;
+      if(!ProviderPackage?.init) throw new Error("WalletConnect v2 not available");
+      const wcProv = await ProviderPackage.init(opts);
+      // enable() may throw if user cancels — let it bubble up
+      await wcProv.enable();
+      return wcProv;
     }
   };
 
-  // Use standard key 'walletconnect' (v1 quirk)
   web3Modal = new W3MGlobal({
     cacheProvider: true,
     theme: "dark",
@@ -721,31 +709,24 @@ function setupWeb3Modal(){
   return web3Modal;
 }
 
-/* Connect flows */
+// ---- Connect flows (UPDATED) ----
 async function connectViaWeb3Modal(){
   extProvider = await web3Modal.connect();
-  provider = new ethers.providers.Web3Provider(extProvider);
+  provider = new ethers.providers.Web3Provider(extProvider, 'any'); // <-- important
   signer   = provider.getSigner();
   me       = await signer.getAddress();
 
   const net = await provider.getNetwork();
   if(net.chainId !== BSC_CHAIN_ID){
     const ok = await ensureBsc();
-    if(!ok){
-      toast("Please switch to **BNB Smart Chain (Chain ID 56)** in your wallet","err");
-      resetDisconnected(); 
-      return false;
-    }
+    if(!ok){ toast("Switch to **BNB Smart Chain (56)** in your wallet.","err"); resetDisconnected(); return false; }
   }
 
   kly = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI_MIN, provider);
 
   if(extProvider.on){
-    extProvider.on("accountsChanged", (acc)=>{
-      if(!acc?.length){ handleDisconnect(); return; }
-      me = acc[0]; loadAll(); toast("Account switched","warn");
-    });
-    extProvider.on("chainChanged", ()=>window.location.reload());
+    extProvider.on("accountsChanged", (acc)=>{ if(!acc?.length){ handleDisconnect(); } else { me = acc[0]; walletLabel.textContent = short(me); loadAll(); toast("Account switched","warn"); }});
+    extProvider.on("chainChanged", ()=>location.reload());
     extProvider.on("disconnect", handleDisconnect);
   }
   return true;
@@ -753,20 +734,17 @@ async function connectViaWeb3Modal(){
 
 async function connectFallbackInjected(){
   const injected = pickInjected();
-  if(!injected) throw new Error("No injected provider");
+  if(!injected) throw new Error("No injected provider found");
   await injected.request?.({ method: "eth_requestAccounts" });
-  provider = new ethers.providers.Web3Provider(injected);
+
+  provider = new ethers.providers.Web3Provider(injected, 'any'); // <-- important
   signer   = provider.getSigner();
   me       = await signer.getAddress();
 
   const net = await provider.getNetwork();
   if(net.chainId !== BSC_CHAIN_ID){
     const ok = await ensureBsc();
-    if(!ok){
-      toast("Please switch to **BNB Smart Chain (Chain ID 56)** in your wallet","err");
-      resetDisconnected(); 
-      return false;
-    }
+    if(!ok){ toast("Switch to **BNB Smart Chain (56)** in your wallet.","err"); resetDisconnected(); return false; }
   }
 
   kly = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI_MIN, provider);
@@ -780,17 +758,14 @@ async function connectFallbackInjected(){
   async function onAccounts(acc){
     if(!acc?.length){ handleDisconnect(); return; }
     me = ethers.utils.getAddress(acc[0]);
-    if(walletLabel) walletLabel.textContent = short(me);
+    walletLabel && (walletLabel.textContent = short(me));
     await loadAll();
   }
-  async function onChain(){ window.location.reload(); }
+  async function onChain(){ location.reload(); }
 }
 
-/* Direct WalletConnect v2 (for mobile Safari/Chrome) */
 async function connectViaWalletConnectV2Direct(){
-  if(!WCEProvider){
-    throw new Error("WalletConnect v2 script missing");
-  }
+  if(!WCEProvider) throw new Error("WalletConnect v2 script missing");
   const wc = await WCEProvider.init({
     projectId: WC_PROJECT_ID,
     chains: [BSC_CHAIN_ID],
@@ -807,90 +782,85 @@ async function connectViaWalletConnectV2Direct(){
   await wc.enable();
 
   extProvider = wc;
-  provider = new ethers.providers.Web3Provider(wc);
+  provider = new ethers.providers.Web3Provider(wc, 'any'); // <-- important
   signer   = provider.getSigner();
   me       = await signer.getAddress();
 
   const net = await provider.getNetwork();
-  if(net.chainId !== BSC_CHAIN_ID){
-    toast("Please switch to **BNB Smart Chain (Chain ID 56)** in your wallet","err");
-    return false;
-  }
+  if(net.chainId !== BSC_CHAIN_ID){ toast("Switch to **BNB Smart Chain (56)** in your wallet.","err"); return false; }
+
   kly = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI_MIN, provider);
 
-  wc.on?.("accountsChanged", (acc)=>{
-    if(!acc?.length){ handleDisconnect(); return; }
-    me = acc[0]; loadAll(); toast("Account switched","warn");
-  });
-  wc.on?.("chainChanged", ()=>window.location.reload());
+  wc.on?.("accountsChanged", (acc)=>{ if(!acc?.length){ handleDisconnect(); } else { me=acc[0]; walletLabel.textContent = short(me); loadAll(); toast("Account switched","warn"); }});
+  wc.on?.("chainChanged", ()=>location.reload());
   wc.on?.("disconnect", handleDisconnect);
 
   return true;
 }
 
-/* Public connect handler (mobile-first) */
+// Public connect (safer, mobile-first)
 async function connect(){
   try{
-    if(!connectBtn || !connectText){
-      console.warn("[KLY] Connect button elements missing");
-    }
-    if(location.protocol !== "https:" && location.hostname !== "localhost"){
-      toast("Open this site over HTTPS for wallet connect.","warn",5000);
-    }
-
     if(connectBtn) connectBtn.disabled = true;
     if(connectText) connectText.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Connecting…</span>';
     toast("Connecting wallet…","warn");
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    let ok = false;
-
-    if(isMobile){
-      if(hasEthereum()){
-        // In-app wallet browsers (Trust, MetaMask, SafePal, Brave)
-        ok = await connectFallbackInjected();
-      }else{
-        // Mobile Safari/Chrome → deep-link via WalletConnect v2
-        ok = await connectViaWalletConnectV2Direct();
-      }
-    } else {
-      // Desktop → Web3Modal (with WC v2 option), then injected fallback
-      const modalReady = setupWeb3Modal();
-      if(modalReady){
-        try{ ok = await connectViaWeb3Modal(); }
-        catch(e){ console.warn("[KLY] Web3Modal failed, trying injected fallback", e); }
-      }
-      if(!ok && hasEthereum()) ok = await connectFallbackInjected();
+    if(location.protocol !== "https:" && location.hostname !== "localhost"){
+      toast("Open this site over HTTPS for wallet connect.","warn",5000);
     }
 
-    if(!ok) return;
+    let ok = false;
+    if(isMobileUA()){
+      // In-app wallets first (Trust/MetaMask/OKX/Brave)
+      if(hasEthereum()){
+        try{ ok = await connectFallbackInjected(); }catch(e){ console.warn("Injected failed on mobile", e); }
+      }
+      if(!ok){ ok = await connectViaWalletConnectV2Direct(); }
+    } else {
+      const modalReady = setupWeb3Modal();
+      if(modalReady){
+        try{ ok = await connectViaWeb3Modal(); }catch(e){ console.warn("Web3Modal failed", e); }
+      }
+      if(!ok && hasEthereum()){ ok = await connectFallbackInjected(); }
+    }
 
-    if(walletLabel) walletLabel.textContent = short(me);
+    if(!ok){
+      // user canceled or actual failure — message already shown in sub-flows
+      if(connectText) connectText.textContent = "Connect Wallet";
+      return;
+    }
+
+    walletLabel && (walletLabel.textContent = short(me));
     setStatus("message","Connected on BNB Smart Chain");
     if(connectText) connectText.textContent = "Connected";
     await loadAll();
     toast("Wallet connected","ok");
 
   }catch(err){
-    console.error(err);
-    toast("Connection failed","err");
+    // Only show a toast if it wasn't a user-cancel
+    if(err?.message?.toLowerCase?.().includes("user") && err?.message?.toLowerCase?.().includes("cancel")) {
+      toast("Request cancelled.","warn");
+    } else {
+      console.error(err);
+      toast("Connection failed","err");
+    }
     resetDisconnected();
   }finally{
     if(connectBtn) connectBtn.disabled = false;
   }
 }
+
 function handleDisconnect(){
   try{ web3Modal?.clearCachedProvider?.(); }catch{}
   resetDisconnected();
   toast("Wallet disconnected","err");
 }
 
-/* Wire button */
 connectBtn?.addEventListener("click", connect);
 
-/* Auto-connect using SAME modal instance/options */
+// Auto-connect (unchanged, but uses same setup)
 (function autoConnect(){
-  const modalReady = setupWeb3Modal(); // ensures providerOptions (WC v2) are present
+  const modalReady = setupWeb3Modal();
   if(modalReady && web3Modal.cachedProvider){
     connect();
   } else if(hasEthereum()){
@@ -898,17 +868,6 @@ connectBtn?.addEventListener("click", connect);
       .then(acc => { if(acc && acc[0]) connect(); })
       .catch(()=>{});
   }
-})();
-
-/* Contract bar utilities */
-(function contractBar(){
-  const shortEl = document.getElementById("contractShort");
-  const copyBtn = document.getElementById("copyContract");
-  if(shortEl) shortEl.textContent = short(CONTRACT_ADDRESS);
-  copyBtn?.addEventListener("click", async ()=>{
-    try{ await navigator.clipboard.writeText(CONTRACT_ADDRESS); toast("Contract copied","ok"); }
-    catch{ toast("Failed to copy","err"); }
-  });
 })();
 
 /* ================================
