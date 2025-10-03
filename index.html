@@ -73,6 +73,7 @@
     .hero-card i{font-size:2rem;color:var(--primary);margin-bottom:1rem}
     .hero-card h3{font-family:Orbitron,sans-serif;font-size:1.05rem;margin-bottom:.6rem}
     .hero-card p{color:var(--text-dim);font-size:.95rem}
+    .hero-card--link{display:block;text-decoration:none;color:inherit}
 
     /* Two-column section */
     .section-content{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center}
@@ -143,6 +144,9 @@
     .ring.modern{width:80%;height:80%;top:10%;left:10%;border-color:rgba(230,193,90,.32);animation-direction:reverse}
     @keyframes spin{to{transform:rotate(360deg)}}
 
+    /* Utilities */
+    .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap;border:0;padding:0;margin:-1px}
+
     /* Footer */
     .footer{background:rgba(10,10,10,.9);padding:3rem 5% 2rem;border-top:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
     .footer-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2rem;margin-bottom:2rem}
@@ -176,112 +180,98 @@
     @media (prefers-reduced-motion:reduce){
       .ring,.dna-strand{animation:none}
     }
+
     /* --- MOBILE DROPDOWN FIX & SAFE AREAS --- */
-.cyber-header{ overflow: visible; }              /* ensure menu isn't clipped */
-.nav-dropdown{ position: relative; z-index: 20; }
-.dropdown-content{ 
-  z-index: 9999; 
-  max-height: calc(100vh - var(--hdr,72px) - 16px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  transform-origin: top left;
-}
+    .cyber-header{ overflow: visible; }
+    .nav-dropdown{ position: relative; z-index: 20; }
+    .dropdown-content{
+      z-index: 9999;
+      max-height: calc(100vh - var(--hdr,72px) - 16px);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      transform-origin: top left;
+    }
+    body.menu-open{ overflow: hidden; }
+    @media (max-width: 768px){
+      .nav-dropdown{ position: static; }
+      .dropdown-content{
+        position: fixed;
+        left: 5%;
+        right: 5%;
+        top: calc(var(--hdr,72px) + 8px);
+        border-radius: 14px;
+        padding: 8px;
+      }
+      .dropdown-content a{
+        padding: 12px 14px;
+        font-size: 1rem;
+      }
+    }
+    :root{ scroll-padding-top: var(--hdr,72px); }
+    @supports (padding: max(0px)){
+      .footer{ padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+    }
 
-/* lock background scroll when menu is open on mobile */
-body.menu-open{ overflow: hidden; }
-
-/* make the dropdown a full-width floating sheet on small screens */
-@media (max-width: 768px){
-  .nav-dropdown{ position: static; } /* so the fixed sheet aligns with viewport */
-  .dropdown-content{
-    position: fixed;
-    left: 5%;
-    right: 5%;
-    top: calc(var(--hdr,72px) + 8px);
-    border-radius: 14px;
-    padding: 8px;
-  }
-  .dropdown-content a{
-    padding: 12px 14px;
-    font-size: 1rem;
-  }
-}
-
-/* --- CONTENT CUT-OFF / STICKY-HEADER OFFSET --- */
-/* when you jump to #anchors (or load kly-vault.html), keep content out from under header */
-:root{ scroll-padding-top: var(--hdr,72px); }
-
-/* iOS safe-area niceties */
-@supports (padding: max(0px)){
-  .footer{ padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
-}
-    /* Ecosystem dropdown: make EVERY item a gold pill with dark text */
-.nav-dropdown .dropdown-content{
-  padding: 10px;
-  background: rgba(10,10,10,.96);
-  border: 1px solid rgba(230,193,90,.25);
-  border-radius: 16px;
-  box-shadow: 0 14px 44px rgba(0,0,0,.55);
-}
-
-.nav-dropdown .dropdown-content a{
-  display:block;
-  margin: 8px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  font-weight: 800;
-  letter-spacing:.2px;
-  text-decoration:none;
-  color:#121212;                                /* dark text */
-  background: linear-gradient(180deg,#F1D07A,#D4AF37 60%, #B99221);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 16px rgba(212,175,55,.18);
-  border:1px solid rgba(185,146,33,.55);
-  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-  min-height:48px;                              /* big tap target */
-}
-
-.nav-dropdown .dropdown-content a:hover,
-.nav-dropdown .dropdown-content a:focus-visible{
-  transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 26px rgba(212,175,55,.30);
-  filter: brightness(1.03);
-  outline: 2px solid rgba(94,234,212,.0);       /* rely on focus-visible below */
-}
-
-.nav-dropdown .dropdown-content a:focus-visible{
-  outline:2px solid var(--focus,#5EEAD4);
-  outline-offset:2px;
-}
-
-/* “NEW” badge on pills */
-.nav-dropdown .dropdown-content .new-badge{
-  background:#121212;
-  color:#F9E5A8;
-  border:1px solid rgba(255,255,255,.18);
-  padding:.2rem .45rem;
-  border-radius:8px;
-  margin-left:.5rem;
-  font-size:.72rem;
-}
-
-/* Mobile dropdown sheet improvements (works with earlier JS) */
-@media (max-width:768px){
-  .nav-dropdown .dropdown-content{
-    position: fixed !important;
-    left: 5%;
-    right: 5%;
-    top: calc(var(--hdr,72px) + 8px);
-    max-height: calc(100vh - var(--hdr,72px) - 24px);
-    overflow:auto;
-    -webkit-overflow-scrolling:touch;
-    backdrop-filter: blur(10px);
-  }
-  .nav-dropdown .dropdown-content a{
-    margin: 10px 8px;
-    font-size: 1.05rem;
-  }
-}
+    /* Ecosystem dropdown: gold pills */
+    .nav-dropdown .dropdown-content{
+      padding: 10px;
+      background: rgba(10,10,10,.96);
+      border: 1px solid rgba(230,193,90,.25);
+      border-radius: 16px;
+      box-shadow: 0 14px 44px rgba(0,0,0,.55);
+    }
+    .nav-dropdown .dropdown-content a{
+      display:block;
+      margin: 8px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-weight: 800;
+      letter-spacing:.2px;
+      text-decoration:none;
+      color:#121212;
+      background: linear-gradient(180deg,#F1D07A,#D4AF37 60%, #B99221);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 16px rgba(212,175,55,.18);
+      border:1px solid rgba(185,146,33,.55);
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+      min-height:48px;
+    }
+    .nav-dropdown .dropdown-content a:hover,
+    .nav-dropdown .dropdown-content a:focus-visible{
+      transform: translateY(-1px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 26px rgba(212,175,55,.30);
+      filter: brightness(1.03);
+      outline: 2px solid rgba(94,234,212,.0);
+    }
+    .nav-dropdown .dropdown-content a:focus-visible{
+      outline:2px solid var(--focus,#5EEAD4);
+      outline-offset:2px;
+    }
+    .nav-dropdown .dropdown-content .new-badge{
+      background:#121212;
+      color:#F9E5A8;
+      border:1px solid rgba(255,255,255,.18);
+      padding:.2rem .45rem;
+      border-radius:8px;
+      margin-left:.5rem;
+      font-size:.72rem;
+    }
+    @media (max-width:768px){
+      .nav-dropdown .dropdown-content{
+        position: fixed !important;
+        left: 5%;
+        right: 5%;
+        top: calc(var(--hdr,72px) + 8px);
+        max-height: calc(100vh - var(--hdr,72px) - 24px);
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+        backdrop-filter: blur(10px);
+      }
+      .nav-dropdown .dropdown-content a{
+        margin: 10px 8px;
+        font-size: 1.05rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -300,7 +290,6 @@ body.menu-open{ overflow: hidden; }
         </button>
         <div id="ecosysMenu" class="dropdown-content" role="menu" hidden>
           <a href="jointhetribe.html" role="menuitem">Join the Tribe</a>
-       <!-- keep as plain anchors -->
           <a href="founders.html" role="menuitem">Founders Circle</a>
           <a href="marketplace.html" role="menuitem">Marketplace</a>
           <a href="mint.html" role="menuitem">Mint NFTs</a>
@@ -415,9 +404,8 @@ body.menu-open{ overflow: hidden; }
         <div class="tokenomics-legend" id="tokenomicsLegend" role="list"></div>
       </div>
 
+      <!-- Screen reader table mirror -->
       <div class="visually-hidden" aria-live="polite">
-       
-        
         <table>
           <caption>Token distribution table</caption>
           <thead><tr><th>Category</th><th>Percent</th><th>Description</th></tr></thead>
@@ -425,14 +413,45 @@ body.menu-open{ overflow: hidden; }
         </table>
       </div>
 
+      <!-- UPDATED COPY HERE -->
       <script type="application/json" id="tokenomicsData">
       [
-        {"label":"Staking Rewards","pct":30,"desc":"30% of total supply allocated to reward long-term holders and participants in the ecosystem.","hue":"gold"},
-        {"label":"Liquidity","pct":25,"desc":"25% locked in PancakeSwap with keys held by multi-sig wallet for price stability.","hue":"teal"},
-        {"label":"Team & Development","pct":15,"desc":"15% vested over 3 years to ensure long-term commitment to the project.","hue":"gold"},
-        {"label":"Ecosystem Fund","pct":20,"desc":"20% reserved for partnerships, marketing, and future development initiatives.","hue":"teal"},
-        {"label":"Community Airdrops","pct":5,"desc":"5% distributed to early supporters and active community members.","hue":"gold"},
-        {"label":"Advisors","pct":5,"desc":"5% allocated to strategic advisors with vesting periods aligned to milestones.","hue":"teal"}
+        {
+          "label": "Staking Rewards",
+          "pct": 30,
+          "desc": "Fuel for long-term believers. 30% of supply rewards committed holders and active participants who secure the network through staking.",
+          "hue": "gold"
+        },
+        {
+          "label": "Liquidity",
+          "pct": 25,
+          "desc": "Locked for trust, secured for stability. 25% allocated to PancakeSwap and protected by multi-sig keys to support consistent market depth.",
+          "hue": "teal"
+        },
+        {
+          "label": "Team & Development",
+          "pct": 15,
+          "desc": "Built with vision, vested with time. Team allocation vests over 3 years to align incentives with long-term execution.",
+          "hue": "gold"
+        },
+        {
+          "label": "Ecosystem Fund",
+          "pct": 20,
+          "desc": "Expansion powered by innovation. Resources for partnerships, marketing, and future development to grow the KLY ecosystem.",
+          "hue": "teal"
+        },
+        {
+          "label": "Community Airdrops",
+          "pct": 5,
+          "desc": "Gratitude to the early tribe. Targeted drops for early supporters and active community members to spark adoption.",
+          "hue": "gold"
+        },
+        {
+          "label": "Advisors",
+          "pct": 5,
+          "desc": "Strategic guidance with accountability. Advisor tokens vest against milestones to align value with outcomes.",
+          "hue": "teal"
+        }
       ]
       </script>
     </section>
@@ -625,53 +644,51 @@ body.menu-open{ overflow: hidden; }
     });
 
     // Accessible Ecosystem dropdown
-  (function(){
-    const header = document.querySelector('.cyber-header');
-    const btn = document.getElementById('ecosysBtn');
-    const menu = document.getElementById('ecosysMenu');
-    if(!header || !btn || !menu) return;
+    (function(){
+      const header = document.querySelector('.cyber-header');
+      const btn = document.getElementById('ecosysBtn');
+      const menu = document.getElementById('ecosysMenu');
+      if(!header || !btn || !menu) return;
 
-    // keep CSS var in sync with actual header height (for safe offsets)
-    function setHdrVar(){
-      const h = header.getBoundingClientRect().height || 72;
-      document.documentElement.style.setProperty('--hdr', h + 'px');
-    }
-    setHdrVar();
-    window.addEventListener('resize', setHdrVar);
-    window.addEventListener('orientationchange', setHdrVar);
-
-    function open(){
-      menu.hidden = false;
-      btn.setAttribute('aria-expanded','true');
-      if (window.matchMedia('(max-width: 768px)').matches) {
-        document.body.classList.add('menu-open');
+      function setHdrVar(){
+        const h = header.getBoundingClientRect().height || 72;
+        document.documentElement.style.setProperty('--hdr', h + 'px');
       }
-    }
-    function close(){
-      menu.hidden = true;
-      btn.setAttribute('aria-expanded','false');
-      document.body.classList.remove('menu-open');
-    }
-    function toggle(){ (menu.hidden ? open : close)(); }
+      setHdrVar();
+      window.addEventListener('resize', setHdrVar);
+      window.addEventListener('orientationchange', setHdrVar);
 
-    btn.addEventListener('click', toggle);
-    btn.addEventListener('keydown', (e)=>{
-      if(e.key === 'ArrowDown'){ e.preventDefault(); open(); menu.querySelector('a')?.focus(); }
-      if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
-    });
+      function open(){
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded','true');
+        if (window.matchMedia('(max-width: 768px)').matches) {
+          document.body.classList.add('menu-open');
+        }
+      }
+      function close(){
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded','false');
+        document.body.classList.remove('menu-open');
+      }
+      function toggle(){ (menu.hidden ? open : close)(); }
 
-    menu.addEventListener('keydown', (e)=>{
-      if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
-    });
+      btn.addEventListener('click', toggle);
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'ArrowDown'){ e.preventDefault(); open(); menu.querySelector('a')?.focus(); }
+        if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
+      });
 
-    // click outside to close
-    document.addEventListener('click', (e)=>{
-      if (!menu.contains(e.target) && !btn.contains(e.target)) close();
-    });
+      menu.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
+      });
 
-    // defensive: close on page hide (iOS browser UI)
-    window.addEventListener('pagehide', close);
-  })();
+      document.addEventListener('click', (e)=>{
+        if (!menu.contains(e.target) && !btn.contains(e.target)) close();
+      });
+
+      window.addEventListener('pagehide', close);
+    })();
+
     // Tokenomics Donut (vanilla)
     (function(){
       const dataEl = document.getElementById('tokenomicsData');
