@@ -176,6 +176,46 @@
     @media (prefers-reduced-motion:reduce){
       .ring,.dna-strand{animation:none}
     }
+    /* --- MOBILE DROPDOWN FIX & SAFE AREAS --- */
+.cyber-header{ overflow: visible; }              /* ensure menu isn't clipped */
+.nav-dropdown{ position: relative; z-index: 20; }
+.dropdown-content{ 
+  z-index: 9999; 
+  max-height: calc(100vh - var(--hdr,72px) - 16px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  transform-origin: top left;
+}
+
+/* lock background scroll when menu is open on mobile */
+body.menu-open{ overflow: hidden; }
+
+/* make the dropdown a full-width floating sheet on small screens */
+@media (max-width: 768px){
+  .nav-dropdown{ position: static; } /* so the fixed sheet aligns with viewport */
+  .dropdown-content{
+    position: fixed;
+    left: 5%;
+    right: 5%;
+    top: calc(var(--hdr,72px) + 8px);
+    border-radius: 14px;
+    padding: 8px;
+  }
+  .dropdown-content a{
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+}
+
+/* --- CONTENT CUT-OFF / STICKY-HEADER OFFSET --- */
+/* when you jump to #anchors (or load kly-vault.html), keep content out from under header */
+:root{ scroll-padding-top: var(--hdr,72px); }
+
+/* iOS safe-area niceties */
+@supports (padding: max(0px)){
+  .footer{ padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+}
   </style>
 </head>
 <body>
@@ -516,56 +556,53 @@
     });
 
     // Accessible Ecosystem dropdown
-    (function(){
-      const btn = document.getElementById('ecosysBtn');
-      const menu = document.getElementById('ecosysMenu');
-      if(!btn || !menu) return;
+  (function(){
+    const header = document.querySelector('.cyber-header');
+    const btn = document.getElementById('ecosysBtn');
+    const menu = document.getElementById('ecosysMenu');
+    if(!header || !btn || !menu) return;
 
-      function open(){ menu.hidden = false; btn.setAttribute('aria-expanded','true'); }
-      function close(){ menu.hidden = true; btn.setAttribute('aria-expanded','false'); }
-      function toggle(){ (menu.hidden ? open : close)(); }
+    // keep CSS var in sync with actual header height (for safe offsets)
+    function setHdrVar(){
+      const h = header.getBoundingClientRect().height || 72;
+      document.documentElement.style.setProperty('--hdr', h + 'px');
+    }
+    setHdrVar();
+    window.addEventListener('resize', setHdrVar);
+    window.addEventListener('orientationchange', setHdrVar);
 
-      // Click/keyboard on button
-      btn.addEventListener('click', toggle);
-      btn.addEventListener('keydown', (e)=>{
-        if(e.key === 'ArrowDown'){ e.preventDefault(); open(); menu.querySelector('a')?.focus(); }
-        if(e.key === 'Escape'){ close(); btn.focus(); }
-      });
+    function open(){
+      menu.hidden = false;
+      btn.setAttribute('aria-expanded','true');
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        document.body.classList.add('menu-open');
+      }
+    }
+    function close(){
+      menu.hidden = true;
+      btn.setAttribute('aria-expanded','false');
+      document.body.classList.remove('menu-open');
+    }
+    function toggle(){ (menu.hidden ? open : close)(); }
 
-      // Keyboard in menu
-      menu.addEventListener('keydown', (e)=>{
-        const items = Array.from(menu.querySelectorAll('a'));
-        const i = items.indexOf(document.activeElement);
-        if(e.key === 'Escape'){ close(); btn.focus(); }
-        if(e.key === 'ArrowDown'){ e.preventDefault(); (items[i+1] || items[0]).focus(); }
-        if(e.key === 'ArrowUp'){ e.preventDefault(); (items[i-1] || items[items.length-1]).focus(); }
-      });
-
-      // Close when clicking outside or on focus out
-      document.addEventListener('click', (e)=>{ if(!menu.contains(e.target) && !btn.contains(e.target)) close(); });
-    })();
-
-    // Smooth anchors
-    document.querySelectorAll('a[href^="#"]').forEach(a=>{
-      a.addEventListener('click', function(e){
-        const id = this.getAttribute('href');
-        if(id.length > 1){ e.preventDefault(); document.querySelector(id)?.scrollIntoView({ behavior:'smooth', block:'start' }); }
-      });
+    btn.addEventListener('click', toggle);
+    btn.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowDown'){ e.preventDefault(); open(); menu.querySelector('a')?.focus(); }
+      if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
     });
 
-    // FAQ toggles (single-open optional)
-    (function(){
-      const items = document.querySelectorAll('.faq-item');
-      items.forEach(item=>{
-        const btn = item.querySelector('.faq-btn');
-        btn.addEventListener('click', ()=>{
-          const open = item.classList.toggle('active');
-          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        });
-        btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }});
-      });
-    })();
+    menu.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){ e.preventDefault(); close(); btn.focus(); }
+    });
 
+    // click outside to close
+    document.addEventListener('click', (e)=>{
+      if (!menu.contains(e.target) && !btn.contains(e.target)) close();
+    });
+
+    // defensive: close on page hide (iOS browser UI)
+    window.addEventListener('pagehide', close);
+  })();
     // Tokenomics Donut (vanilla)
     (function(){
       const dataEl = document.getElementById('tokenomicsData');
