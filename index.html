@@ -246,9 +246,17 @@
 a.is-disabled[aria-disabled="true"]{
   pointer-events: none; filter: saturate(.4) opacity(.6); cursor: not-allowed;
 }
+    /* Particle canvas sits behind content and never blocks clicks */
+#particles{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
   </style>
 </head>
 <body>
+  <canvas id="particles"></canvas>
 
   <!-- Sticky Topbar -->
   <header class="topbar" role="banner">
@@ -952,6 +960,149 @@ connectBtn?.addEventListener("click", connect);
   });
   window.addEventListener('blur', closeMenu);
   window.addEventListener('scroll', ()=>{ if(open) closeMenu(); }, { passive:true });
+})();
+  
+(function KLYParticles(){
+  const canvas = document.getElementById('particles');
+  if(!canvas) return; // graceful if missing
+
+  const ctx = canvas.getContext('2d', { alpha: true });
+  let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  let w, h, rafId, lastT = 0, paused = false;
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Config
+  const CFG = {
+    baseCount: 120,          // desktop baseline
+    mobileFactor: 0.55,      // density multiplier on mobile
+    speed: 0.20,             // base velocity (px/ms)
+    linkDist: 120,           // max px to draw a link
+    linkAlpha: 0.18,         // link opacity
+    particleSize: 1.6,       // px radius (before DPR)
+    jitter: 0.08,            // random drift
+    hue: 46,                 // warm gold-ish accent (no solid color set for charts rule; this is canvas)
+    bgAlpha: 0.08            // subtle fade to create trail
+  };
+
+  let nodes = [];
+
+  function resize(){
+    w = canvas.width  = Math.floor(window.innerWidth  * dpr);
+    h = canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width  = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+  }
+
+  function spawnNodes(){
+    const count = Math.floor(CFG.baseCount * (isMobile ? CFG.mobileFactor : 1) * (reduceMotion ? 0.4 : 1));
+    nodes = new Array(count).fill(0).map(()=>({
+      x: Math.random()*w,
+      y: Math.random()*h,
+      vx: (Math.random()*2 - 1) * CFG.speed * dpr,
+      vy: (Math.random()*2 - 1) * CFG.speed * dpr
+    }));
+  }
+
+  function step(t){
+    if(paused){ rafId = requestAnimationFrame(step); return; }
+    const dt = Math.min(40, t - lastT || 16);
+    lastT = t;
+
+    // subtle fade background for trails
+    ctx.fillStyle = `rgba(0,0,0,${CFG.bgAlpha})`;
+    ctx.fillRect(0,0,w,h);
+
+    // update + draw nodes
+    const r = CFG.particleSize * dpr;
+    ctx.beginPath();
+    for(let i=0;i<nodes.length;i++){
+      const n = nodes[i];
+      // jitter + velocity
+      n.vx += (Math.random()*2 - 1) * CFG.jitter * dpr;
+      n.vy += (Math.random()*2 - 1) * CFG.jitter * dpr;
+      n.x += n.vx * dt;
+      n.y += n.vy * dt;
+
+      // wrap edges
+      if(n.x < -50) n.x = w+50; else if(n.x > w+50) n.x = -50;
+      if(n.y < -50) n.y = h+50; else if(n.y > h+50) n.y = -50;
+
+      // draw particle
+      ctx.moveTo(n.x + r, n.y);
+      ctx.arc(n.x, n.y, r, 0, Math.PI*2);
+    }
+    ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.7)`;
+    ctx.fill();
+
+    // draw links (simple O(n^2) but tiny n)
+    const maxDist2 = Math.pow(CFG.linkDist * dpr, 2);
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a = nodes[i], b = nodes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d2 = dx*dx + dy*dy;
+        if(d2 <= maxDist2){
+          // fade with distance
+          const alpha = CFG.linkAlpha * (1 - (d2 / maxDist2));
+          ctx.strokeStyle = `hsla(${CFG.hue}, 86%, 62%, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    rafId = requestAnimationFrame(step);
+  }
+
+  function start(){
+    if(reduceMotion){ // still render static starfield if reduced motion
+      resize();
+      spawnNodes();
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.85)`;
+      for(const n of nodes){
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, CFG.particleSize * dpr, 0, Math.PI*2);
+        ctx.fill();
+      }
+      return;
+    }
+    cancelAnimationFrame(rafId);
+    resize();
+    spawnNodes();
+    // prime a dark base once to soften initial frame
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0,0,w,h);
+    rafId = requestAnimationFrame(step);
+  }
+
+  function stop(){
+    cancelAnimationFrame(rafId);
+  }
+
+  // Public helpers if you want to tweak later
+  window.KLYFX = {
+    startParticles: start,
+    stopParticles: stop,
+    setDensity(mult=1){
+      CFG.baseCount = Math.max(20, Math.floor(120 * mult));
+      spawnNodes();
+    }
+  };
+
+  // Events
+  window.addEventListener('resize', ()=>{ resize(); /* keep density */ });
+  document.addEventListener('visibilitychange', ()=>{
+    paused = document.hidden;
+    if(!paused && !reduceMotion) rafId || (rafId = requestAnimationFrame(step));
+  }, { passive:true });
+
+  // Kickoff
+  start();
 })();
 </script>
 </body>
