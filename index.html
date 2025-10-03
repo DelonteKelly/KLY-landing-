@@ -923,40 +923,38 @@ connectBtn?.addEventListener("click", connect);
   
 (function KLYParticles(){
   const canvas = document.getElementById('particles');
-  if(!canvas) return; // graceful if missing
+  if(!canvas) return;
 
   const ctx = canvas.getContext('2d', { alpha: true });
-  let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  let dpr = Math.min(2, window.devicePixelRatio || 1);
   let w, h, rafId, lastT = 0, paused = false;
 
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Config
   const CFG = {
-    baseCount: 120,          // desktop baseline
-    mobileFactor: 0.55,      // density multiplier on mobile
-    speed: 0.20,             // base velocity (px/ms)
-    linkDist: 120,           // max px to draw a link
-    linkAlpha: 0.18,         // link opacity
-    particleSize: 1.6,       // px radius (before DPR)
-    jitter: 0.08,            // random drift
-    hue: 46,                 // warm gold-ish accent
-    bgAlpha: 0.08            // subtle fade to create trail
+    baseCount: isMobile ? 28 : 70,
+    speed: isMobile ? 0.08 : 0.12,   // px/ms
+    linkDist: isMobile ? 80 : 110,
+    linkAlpha: 0.14,
+    particleSize: 1.4,
+    jitter: isMobile ? 0.02 : 0.04,
+    hue: 46,
+    bgAlpha: isMobile ? 0.18 : 0.12   // stronger fade = fewer trails
   };
 
   let nodes = [];
 
   function resize(){
-    w = canvas.width  = Math.floor(window.innerWidth  * dpr);
-    h = canvas.height = Math.floor(window.innerHeight * dpr);
-    canvas.style.width  = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
+    w = canvas.width  = Math.floor(innerWidth  * dpr);
+    h = canvas.height = Math.floor(innerHeight * dpr);
+    canvas.style.width  = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
   }
 
   function spawnNodes(){
-    const count = Math.floor(CFG.baseCount * (isMobile ? CFG.mobileFactor : 1) * (reduceMotion ? 0.4 : 1));
-    nodes = new Array(count).fill(0).map(()=>({
+    const count = Math.max(14, CFG.baseCount);
+    nodes = Array.from({length: count}, () => ({
       x: Math.random()*w,
       y: Math.random()*h,
       vx: (Math.random()*2 - 1) * CFG.speed * dpr,
@@ -966,50 +964,46 @@ connectBtn?.addEventListener("click", connect);
 
   function step(t){
     if(paused){ rafId = requestAnimationFrame(step); return; }
-    const dt = Math.min(40, t - lastT || 16);
+    const dtRaw = (t - (lastT || t));
+    const dt = Math.max(8, Math.min(24, dtRaw)); // clamp fps ~40–125, avoids “teleporting”
     lastT = t;
 
-    // subtle fade background for trails
     ctx.fillStyle = `rgba(0,0,0,${CFG.bgAlpha})`;
     ctx.fillRect(0,0,w,h);
 
-    // update + draw nodes
     const r = CFG.particleSize * dpr;
     ctx.beginPath();
-    for(let i=0;i<nodes.length;i++){
-      const n = nodes[i];
-      // jitter + velocity
+    for(const n of nodes){
       n.vx += (Math.random()*2 - 1) * CFG.jitter * dpr;
       n.vy += (Math.random()*2 - 1) * CFG.jitter * dpr;
+
+      // cap velocity so it never “goes crazy”
+      const vmax = CFG.speed * dpr * 2.2;
+      n.vx = Math.max(-vmax, Math.min(vmax, n.vx));
+      n.vy = Math.max(-vmax, Math.min(vmax, n.vy));
+
       n.x += n.vx * dt;
       n.y += n.vy * dt;
 
-      // wrap edges
-      if(n.x < -50) n.x = w+50; else if(n.x > w+50) n.x = -50;
-      if(n.y < -50) n.y = h+50; else if(n.y > h+50) n.y = -50;
+      if(n.x < -30) n.x = w+30; else if(n.x > w+30) n.x = -30;
+      if(n.y < -30) n.y = h+30; else if(n.y > h+30) n.y = -30;
 
-      // draw particle
       ctx.moveTo(n.x + r, n.y);
       ctx.arc(n.x, n.y, r, 0, Math.PI*2);
     }
-    ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.7)`;
+    ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.65)`;
     ctx.fill();
 
-    // draw links (simple O(n^2) but tiny n)
     const maxDist2 = Math.pow(CFG.linkDist * dpr, 2);
     for(let i=0;i<nodes.length;i++){
       for(let j=i+1;j<nodes.length;j++){
         const a = nodes[i], b = nodes[j];
-        const dx = a.x - b.x, dy = a.y - b.y;
-        const d2 = dx*dx + dy*dy;
+        const dx = a.x - b.x, dy = a.y - b.y, d2 = dx*dx + dy*dy;
         if(d2 <= maxDist2){
-          // fade with distance
-          const alpha = CFG.linkAlpha * (1 - (d2 / maxDist2));
+          const alpha = CFG.linkAlpha * (1 - d2 / maxDist2);
           ctx.strokeStyle = `hsla(${CFG.hue}, 86%, 62%, ${alpha})`;
           ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
+          ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
         }
       }
     }
@@ -1019,47 +1013,29 @@ connectBtn?.addEventListener("click", connect);
 
   function start(){
     if(reduceMotion){
-      resize();
-      spawnNodes();
-      ctx.clearRect(0,0,w,h);
-      ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.85)`;
-      for(const n of nodes){
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, CFG.particleSize * dpr, 0, Math.PI*2);
-        ctx.fill();
-      }
+      resize(); spawnNodes(); ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = `hsla(${CFG.hue}, 86%, 62%, 0.8)`;
+      for(const n of nodes){ ctx.beginPath(); ctx.arc(n.x,n.y,CFG.particleSize*dpr,0,Math.PI*2); ctx.fill(); }
       return;
     }
     cancelAnimationFrame(rafId);
-    resize();
-    spawnNodes();
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(0,0,w,h);
+    resize(); spawnNodes();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,w,h);
     rafId = requestAnimationFrame(step);
   }
 
-  function stop(){
-    cancelAnimationFrame(rafId);
-  }
+  function stop(){ cancelAnimationFrame(rafId); }
 
-  // Public helpers
   window.KLYFX = {
     startParticles: start,
     stopParticles: stop,
-    setDensity(mult=1){
-      CFG.baseCount = Math.max(20, Math.floor(120 * mult));
-      spawnNodes();
-    }
+    setDensity(mult=1){ CFG.baseCount = Math.max(14, Math.floor((isMobile?28:70) * mult)); spawnNodes(); }
   };
 
-  // Events
-  window.addEventListener('resize', ()=>{ resize(); });
-  document.addEventListener('visibilitychange', ()=>{
-    paused = document.hidden;
-    if(!paused && !reduceMotion) rafId || (rafId = requestAnimationFrame(step));
-  }, { passive:true });
+  addEventListener('resize', ()=>{ resize(); }); // keep density, just resize
+  addEventListener('visibilitychange', ()=>{ paused = document.hidden; }, { passive:true });
+  addEventListener('scroll', ()=>{ paused = true; clearTimeout(window.__kly_unpause); window.__kly_unpause = setTimeout(()=>{ paused=false; }, 120); }, { passive:true });
 
-  // Kickoff
   start();
 })();
 </script>
