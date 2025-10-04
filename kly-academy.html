@@ -594,38 +594,7 @@ function redeemInvite(codeRaw){
 }
 
   
-// Support both UMD globals + optional on-demand load
-const WC_UMD_URLS = {
-  ethereumProvider: "https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
-  modal:            "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"
-};
 
-function getWCEGlobal(){
-  return (
-    window.EthereumProvider ||           // most UMD builds export this
-    window.WalletConnectEthereumProvider // some builds/export names use this
-  );
-}
-
-function loadScriptOnce(src){
-  return new Promise((resolve, reject)=>{
-    if ([...document.scripts].some(s => s.src === src)) return resolve();
-    const tag = document.createElement("script");
-    tag.src = src; tag.async = true;
-    tag.onload = resolve;
-    tag.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(tag);
-  });
-}
-
-async function ensureWalletConnectUMD(){
-  if (getWCEGlobal()?.init) return;              // already present
-  await loadScriptOnce(WC_UMD_URLS.modal).catch(()=>{}); // optional pre-load
-  await loadScriptOnce(WC_UMD_URLS.ethereumProvider);
-  if (!getWCEGlobal()?.init) {
-    throw new Error("WalletConnect UMD not available after load");
-  }
-}
 /* ==============================
    WALLETCONNECT v2 + ETHERS v5
 ============================== */
