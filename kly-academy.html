@@ -15,16 +15,13 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-  <!-- Web3 -->
+  
 <!-- Ethers v5 -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
-<!-- Web3Modal v1 -->
-<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-
-<!-- WalletConnect v2 (UMD)  -->
+<!-- WalletConnect v2 (Modal + Ethereum Provider) -->
+<script src="https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"></script>
 <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js"></script>
-
   <style>
     :root{
       /* Neon + Gold palette (exclusive) */
@@ -1162,52 +1159,115 @@ function redeemInvite(codeRaw){
 }
 
 /* ==============================
-   WEB3
+   WEB3 — WalletConnect v2 only
 ============================== */
-const WALLETCONNECT_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // yours
+const WC_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // yours
+const BSC = { idDec:56, idHex:"0x38", name:"BNB Smart Chain", rpc:"https://bsc-dataseed.binance.org/" };
 
-  async function ensureWeb3Modal(){
-  if (typeof window.Web3Modal === "undefined") {
-    console.error("Web3Modal not loaded");
-    notify("Web3 Error","Web3Modal didn’t load. Refresh the page.","bad","fa-bug");
-    return false;
-  }
-  if (!web3Modal) await initWeb3Modal();
-  return true;
+let wcProvider = null;   // WalletConnect EIP-1193 provider
+let provider   = null;   // ethers provider
+let signer     = null;
+let account    = null;
+
+async function makeWCProvider(){
+  // Build the provider once (or when disconnected)
+  wcProvider = await window.WalletConnectProvider.init({
+    projectId: WC_PROJECT_ID,
+    chains: [BSC.idDec],
+    optionalChains: [BSC.idDec],
+    rpcMap: { [BSC.idDec]: BSC.rpc },
+    showQrModal: true,
+    metadata: {
+      name: "KLY Academy",
+      description: "KLY — Web3 Academy & DeFi DAO",
+      url: window.location.origin,
+      icons: ["https://bscscan.com/images/svg/brands/bnb.svg"]
+    }
+  });
+
+  // Re-wire listeners
+  wcProvider.removeAllListeners?.();
+  wcProvider.on?.("accountsChanged", async (accs)=>{
+    if(!accs?.length) return disconnect();
+    account = accs[0];
+    await afterConnect();
+  });
+  wcProvider.on?.("chainChanged", async (_chainId)=>{
+    provider = new ethers.providers.Web3Provider(wcProvider, "any");
+    signer   = provider.getSigner();
+    account  = await signer.getAddress().catch(()=>account);
+    await afterConnect();
+  });
+  wcProvider.on?.("disconnect", ()=> disconnect());
 }
 
-async function initWeb3Modal(){
-  // v2 UMD exposes WalletConnectProvider (sometimes under .default)
-  const WCProvider = window.WalletConnectProvider?.default || window.WalletConnectProvider;
-  if (!WCProvider) {
-    console.error("WalletConnect v2 UMD not loaded");
-  }
+async function connect(){
+  setConnectUI?.('connecting');
+  try{
+    if(!wcProvider) await makeWCProvider();
 
-  const providerOptions = {
-    walletconnect: {
-      package: WCProvider,
-      options: {
-        projectId: WALLETCONNECT_PROJECT_ID,
-        showQrModal: true,
-        chains: [56],                        // BSC
-        optionalChains: [56],
-        rpcMap: { 56: "https://bsc-dataseed.binance.org/" },
-        metadata: {
-          name: "KLY Academy",
-          description: "KLY — Web3 Academy & DeFi DAO",
-          url: window.location.origin,
-          icons: ["https://bscscan.com/images/svg/brands/bnb.svg"]
+    // Opens the WC modal (QR / deep link) and establishes a session
+    await wcProvider.connect();
+
+    // Wrap with ethers
+    provider = new ethers.providers.Web3Provider(wcProvider, "any");
+    signer   = provider.getSigner();
+    account  = await signer.getAddress();
+
+    // Ensure we’re on BSC (most wallets will already be)
+    const net = await provider.getNetwork().catch(()=>({ chainId:0 }));
+    if(net.chainId !== BSC.idDec){
+      try{
+        await wcProvider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: BSC.idHex }]
+        });
+      }catch(e){
+        if(e?.code === 4902){
+          await wcProvider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: BSC.idHex, chainName: BSC.name,
+              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+              rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
+            }]
+          });
+        }else{
+          throw e;
         }
       }
+      // refresh ethers wrapper after chain change
+      provider = new ethers.providers.Web3Provider(wcProvider, "any");
+      signer   = provider.getSigner();
+      account  = await signer.getAddress();
     }
-  };
 
-  web3Modal = new window.Web3Modal({
-    cacheProvider: true,
-    providerOptions,
-    theme: "dark"
-  });
+    await afterConnect();
+    setConnectUI?.('connected');
+  }catch(err){
+    console.error('[connect] failed:', err);
+    notify?.("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
+    setConnectUI?.('idle');
+  }
 }
+
+async function disconnect(){
+  try{ await wcProvider?.disconnect?.(); }catch{}
+  wcProvider = null;
+  provider = signer = account = null;
+
+  // your existing UI resets:
+  addrFull && (addrFull.textContent = "Not connected");
+  avatar   && (avatar.textContent   = "KA");
+  netNameEl&& (netNameEl.textContent= "Not connected");
+  klyBalanceEl && (klyBalanceEl.textContent = "—");
+  if (ring){ ring.style.setProperty("--p","0%"); ring.setAttribute("data-label","0%"); }
+
+  setConnectUI?.('idle');
+  updateAccessState?.(0);
+  notify?.("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
+}
+
   
 function setConnectUI(state){
   if (!btnConnect || !btnDisconnect || !pillAddr) return;
