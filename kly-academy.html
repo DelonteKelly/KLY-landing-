@@ -1205,7 +1205,11 @@ async function initWeb3Modal(){
       options: { rpc: { [BSC.idDec]: BSC.rpc }, chainId: BSC.idDec }
     }
   };
-  web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions, theme:"dark" });
+  web3Modal = new window.Web3Modal.default({
+    cacheProvider: true,
+    providerOptions,
+    theme: "dark"
+  });
 }
 
 function setConnectUI(state){
@@ -1249,14 +1253,20 @@ async function connect(){
     const net = await provider.getNetwork().catch(()=>({ chainId: 0 }));
     if(net.chainId !== BSC.idDec){
       try{
-        await walletInstance.request({ method:"wallet_switchEthereumChain", params:[{ chainId:BSC.idHex }] });
+        await walletInstance.request({
+          method:"wallet_switchEthereumChain",
+          params:[{ chainId:BSC.idHex }]
+        });
       }catch(e){
         if(e?.code === 4902){
-          await walletInstance.request({ method:"wallet_addEthereumChain", params:[{
-            chainId:BSC.idHex, chainName:BSC.name,
-            nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-            rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
-          }] });
+          await walletInstance.request({
+            method:"wallet_addEthereumChain",
+            params:[{
+              chainId:BSC.idHex, chainName:BSC.name,
+              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+              rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
+            }]
+          });
         }else{ throw e; }
       }
       provider = new ethers.providers.Web3Provider(walletInstance, "any");
@@ -1296,7 +1306,10 @@ async function afterConnect(){
     netNameEl.textContent = BSC.name;
 
     const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec] = await Promise.all([kly.balanceOf(account), kly.decimals().catch(()=>18)]);
+    const [raw, dec] = await Promise.all([
+      kly.balanceOf(account),
+      kly.decimals().catch(()=>18)
+    ]);
     const bal = Number(ethers.utils.formatUnits(raw, dec));
     klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
 
@@ -1329,7 +1342,6 @@ async function disconnect(){
   updateAccessState(0); // re-lock UI
   notifyAuto("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
 }
-
 /* ==============================
    ACCESS: Token OR Invite
 ============================== */
