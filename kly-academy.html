@@ -16,9 +16,14 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <!-- Web3 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+<!-- Ethers v5 -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
+<!-- Web3Modal v1 -->
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+
+<!-- WalletConnect v2 (UMD)  -->
+<script src="https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js"></script>
 
   <style>
     :root{
@@ -1159,14 +1164,23 @@ function redeemInvite(codeRaw){
 /* ==============================
    WEB3
 ============================== */
-async function initWeb3Modal(){
-  // WalletConnect v2 UMD exposes "WalletConnectProvider"
-  const WCProvider = window.WalletConnectProvider && window.WalletConnectProvider.default
-    ? window.WalletConnectProvider.default
-    : window.WalletConnectProvider;
+const WALLETCONNECT_PROJECT_ID = "df8063092ef3c627437d698df0977bc1"; // yours
 
+  async function ensureWeb3Modal(){
+  if (typeof window.Web3Modal === "undefined") {
+    console.error("Web3Modal not loaded");
+    notify("Web3 Error","Web3Modal didn’t load. Refresh the page.","bad","fa-bug");
+    return false;
+  }
+  if (!web3Modal) await initWeb3Modal();
+  return true;
+}
+
+async function initWeb3Modal(){
+  // v2 UMD exposes WalletConnectProvider (sometimes under .default)
+  const WCProvider = window.WalletConnectProvider?.default || window.WalletConnectProvider;
   if (!WCProvider) {
-    console.error("WalletConnect UMD not loaded");
+    console.error("WalletConnect v2 UMD not loaded");
   }
 
   const providerOptions = {
@@ -1175,11 +1189,9 @@ async function initWeb3Modal(){
       options: {
         projectId: WALLETCONNECT_PROJECT_ID,
         showQrModal: true,
-        // WC v2 uses EIP-155 chain IDs
-        chains: [BSC.idDec],
-        optionalChains: [BSC.idDec],
-        rpcMap: { [BSC.idDec]: BSC.rpc },
-        // optional UX
+        chains: [56],                        // BSC
+        optionalChains: [56],
+        rpcMap: { 56: "https://bsc-dataseed.binance.org/" },
         metadata: {
           name: "KLY Academy",
           description: "KLY — Web3 Academy & DeFi DAO",
@@ -1196,7 +1208,7 @@ async function initWeb3Modal(){
     theme: "dark"
   });
 }
-
+  
 function setConnectUI(state){
   if (!btnConnect || !btnDisconnect || !pillAddr) return;
   if(state === 'connecting'){
