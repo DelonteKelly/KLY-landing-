@@ -629,9 +629,44 @@ async function ensureWalletConnectUMD(){
 /* ==============================
    WALLETCONNECT v2 + ETHERS v5
 ============================== */
+
+// --- UMD fallback + lazy loader ---
+const WC_UMD_URLS = {
+  ethereumProvider: "https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
+  modal:            "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"
+};
+
+function getWCEGlobal(){
+  return (
+    window.EthereumProvider ||           // current UMD export
+    window.WalletConnectEthereumProvider // legacy export name
+  );
+}
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject)=>{
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
+    const tag = document.createElement("script");
+    tag.src = src; tag.async = true;
+    tag.onload = resolve;
+    tag.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(tag);
+  });
+}
+
+async function ensureWalletConnectUMD(){
+  if (getWCEGlobal()?.init) return; // already loaded
+  await loadScriptOnce(WC_UMD_URLS.modal).catch(()=>{});
+  await loadScriptOnce(WC_UMD_URLS.ethereumProvider);
+  if (!getWCEGlobal()?.init) {
+    throw new Error("WalletConnect UMD not available after load");
+  }
+}
+
+// --- Core logic ---
 async function makeWCProvider(){
   await ensureWalletConnectUMD();
-  const WCE = getWCEGlobal(); // ← works for both UMD names
+  const WCE = getWCEGlobal(); // works for both UMD exports
 
   wcProvider = await WCE.init({
     projectId: WC_PROJECT_ID,
@@ -670,6 +705,8 @@ async function makeWCProvider(){
   });
   wcProvider.on?.("disconnect", ()=> disconnect());
 }
+
+// --- Connect flow ---
 async function connect(){
   setConnectUI('connecting');
   try{
@@ -716,6 +753,7 @@ async function connect(){
   }
 }
 
+// --- Disconnect flow ---
 async function disconnect(){
   try{ await wcProvider?.disconnect?.(); }catch{}
   wcProvider = null;
@@ -733,6 +771,7 @@ async function disconnect(){
   notify("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
 }
 
+// --- UI helper ---
 function setConnectUI(state){
   const isConn = state==="connected";
   btnConnect   && (btnConnect.disabled = state==="connecting");
@@ -751,7 +790,7 @@ function setConnectUI(state){
   }
 }
 
-/* After connect: set UI, fetch balance, update access */
+// --- After connect ---
 async function afterConnect(){
   try{
     const addr = await signer.getAddress();
@@ -776,7 +815,6 @@ async function afterConnect(){
     notify("Wallet Error", e?.message || "Could not read wallet state", "bad", "fa-circle-xmark");
   }
 }
-
 /* ==============================
    MINT
 ============================== */
