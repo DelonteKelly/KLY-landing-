@@ -424,12 +424,13 @@
 /* ==============================
    CONFIG
 ============================== */
-const KLY_TOKEN_ADDRESS = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
-const NFT_CONTRACT_ADDRESS = "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Thirdweb ERC-721 you control
+const KLY_TOKEN_ADDRESS   = "0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52";
+const NFT_CONTRACT_ADDRESS= "0xDA76d35742190283E340dbeE2038ecc978a56950"; // Thirdweb ERC-721 you control
 
 const KLY_TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)"
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
 ];
 const NFT_CONTRACT_ABI = [
   "function mintTo(address to, string uri) public returns (uint256)"
@@ -454,16 +455,17 @@ const INVITES = new Set(["AURORA-777", "AURORA-888", "KLY-ALPHA", "NEON-PRIME"])
 /* ==============================
    STATE
 ============================== */
-let wcProvider = null;            // WalletConnect EIP-1193 provider
-let provider   = null;            // ethers.js provider
+let provider   = null;    // ethers.js Web3Provider
 let signer     = null;
 let account    = null;
+let wcProvider = null;    // WalletConnect EIP-1193 instance (if used)
 
 let completed = JSON.parse(localStorage.getItem("kly_completed_neon") || "[]");
 let opened    = localStorage.getItem("kly_open_neon") || null;
 let inviteUnlocked = localStorage.getItem("kly_invite_unlocked")==="1";
 
-let TOTAL_MODULES = 12; // overwritten after modules[] build
+let modules = window.modules || [];     // ensure defined (page may overwrite later)
+let TOTAL_MODULES = modules.length || 12;
 
 /* ==============================
    DOM (safe getters)
@@ -507,7 +509,6 @@ const menuRight          = el("menu-right");
 ============================== */
 const short = (addr)=> addr ? `${addr.slice(0,6)}…${addr.slice(-4)}` : "";
 const fmt = (n, d=2)=> Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
-function toBN(v){ return ethers.BigNumber.from(v); }
 function toUnits(bn, decimals){ return Number(ethers.utils.formatUnits(bn, decimals)); }
 
 /* Toast */
@@ -516,9 +517,9 @@ function notify(title, msg, kind="info", icon="fa-circle-info"){
   const safeMsg   = (msg   && String(msg).trim())   || "All set.";
   if (!toast) return alert(`${safeTitle}: ${safeMsg}`);
 
-  toastTitle.textContent = safeTitle;
-  toastMsg.textContent   = safeMsg;
-  toastIcon.className    = `fa-solid ${icon || "fa-circle-info"}`;
+  toastTitle && (toastTitle.textContent = safeTitle);
+  toastMsg   && (toastMsg.textContent   = safeMsg);
+  if (toastIcon) toastIcon.className = `fa-solid ${icon || "fa-circle-info"}`;
 
   toast.classList.remove("good","bad","warn");
   if(kind==="good") toast.classList.add("good");
@@ -555,6 +556,7 @@ function updateProgress(){
   const validIds = new Set((modules||[]).map(m=>m.id));
   const unique = [...new Set(completed)].filter(id => validIds.has(id));
   const done = unique.length;
+  TOTAL_MODULES = (modules && modules.length) ? modules.length : TOTAL_MODULES;
   const pct  = Math.min(100, Math.round(done / TOTAL_MODULES * 100));
   chipText.textContent     = `${done}/${TOTAL_MODULES} Complete`;
   certProgress.textContent = `${done} / ${TOTAL_MODULES}`;
@@ -593,9 +595,9 @@ function redeemInvite(codeRaw){
   }
 }
 
-// ============ WalletConnect v2 + ethers v5 (global-safe) ===========
-
-// Robust UMD loader (multi-CDN)
+/* ==============================
+   WalletConnect v2 + ethers v5 (UMD)
+============================== */
 const WC_UMD_URLS = {
   modal: [
     "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js",
@@ -610,6 +612,7 @@ const WC_UMD_URLS = {
 };
 
 function getWCEGlobal(){
+  // prefer new name, keep legacy fallbacks
   return (
     window.EthereumProvider ||
     window.WalletConnectEthereumProvider ||
@@ -640,7 +643,7 @@ async function ensureWalletConnectUMD(){
   }
 }
 
-// Prefer injected wallet (in-app browsers/extensions). Fallback to WC v2 QR.
+/* Prefer injected; fallback to WC v2 QR */
 async function getProviderInjectedOrWC(){
   if (window.ethereum) {
     await window.ethereum.request({ method:"eth_requestAccounts" });
@@ -648,26 +651,47 @@ async function getProviderInjectedOrWC(){
   }
   await ensureWalletConnectUMD();
   const WCE = getWCEGlobal();
-  const _wc = await WCE.init({
+  wcProvider = await WCE.init({
     projectId: WC_PROJECT_ID,
     chains: [BSC.idDec],
     rpcMap: { [BSC.idDec]: BSC.rpc },
     showQrModal: true,
+    methods: [
+      "eth_sendTransaction","eth_signTransaction","eth_sign","personal_sign",
+      "eth_signTypedData","wallet_switchEthereumChain","wallet_addEthereumChain"
+    ],
+    events: ["chainChanged","accountsChanged","disconnect"],
     metadata: {
-      name: "KLY Academy", description: "KLY — Web3 Academy & DeFi DAO",
-      url: location.origin, icons: [`${BSC.explorer}/images/svg/brands/bnb.svg`]
+      name: "KLY Academy",
+      description: "KLY — Web3 Academy & DeFi DAO",
+      url: location.origin,
+      icons: [location.origin + "/favicon.ico"]
     }
   });
-  // keep a reference so we can disconnect later
-  window.wcProvider = _wc;
-  return new ethers.providers.Web3Provider(_wc, "any");
+  // listeners
+  wcProvider.removeAllListeners?.();
+  wcProvider.on?.("accountsChanged", async (accs)=>{
+    if(!accs?.length) return window.disconnect();
+    account = accs[0];
+    await window.afterConnect();
+  });
+  wcProvider.on?.("chainChanged", async ()=>{
+    provider = new ethers.providers.Web3Provider(wcProvider, "any");
+    signer   = provider.getSigner();
+    account  = await signer.getAddress().catch(()=>account);
+    await window.afterConnect();
+  });
+  wcProvider.on?.("disconnect", ()=> window.disconnect());
+
+  return new ethers.providers.Web3Provider(wcProvider, "any");
 }
 
-// Ensure BSC network
+/* Ensure BSC network */
 async function ensureBsc(providerLike){
   const net = await providerLike.getNetwork().catch(()=>({ chainId:0 }));
-  if (net.chainId === BSC.idDec) return;
-  const eip1193 = providerLike.provider || providerLike;
+  if (Number(net.chainId) === Number(BSC.idDec)) return;
+
+  const eip1193 = providerLike.provider || providerLike; // ethers provider → underlying EIP-1193
   try{
     await eip1193.request({ method:"wallet_switchEthereumChain", params:[{ chainId: BSC.idHex }] });
   }catch(e){
@@ -681,41 +705,20 @@ async function ensureBsc(providerLike){
   }
 }
 
-/* ============ Global functions (iOS-friendly) ============ */
-window.makeWCProvider = async function(){
-  // kept for backward calls; now we initialize inside getProviderInjectedOrWC()
-  await ensureWalletConnectUMD();
-  const WCE = getWCEGlobal();
-  window.wcProvider = await WCE.init({
-    projectId: WC_PROJECT_ID,
-    chains: [BSC.idDec],
-    rpcMap: { [BSC.idDec]: BSC.rpc },
-    showQrModal: true
-  });
-  window.wcProvider.removeAllListeners?.();
-  window.wcProvider.on?.("accountsChanged", async (accs)=>{
-    if(!accs?.length) return window.disconnect();
-    window.account = accs[0];
-    await window.afterConnect();
-  });
-  window.wcProvider.on?.("chainChanged", async ()=>{
-    window.provider = new ethers.providers.Web3Provider(window.wcProvider, "any");
-    window.signer   = window.provider.getSigner();
-    window.account  = await window.signer.getAddress().catch(()=>window.account);
-    await window.afterConnect();
-  });
-  window.wcProvider.on?.("disconnect", ()=> window.disconnect());
-};
-
+/* ==============================
+   CONNECT / DISCONNECT (globals)
+============================== */
 window.connect = async function(){
   window.setConnectUI('connecting');
   try{
-    // get provider (injected first, otherwise WC v2)
-    window.provider = await getProviderInjectedOrWC();
-    await ensureBsc(window.provider);
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if(!isSecure){ throw new Error('Wallets require HTTPS or localhost.'); }
 
-    window.signer  = window.provider.getSigner();
-    window.account = await window.signer.getAddress();
+    provider = await getProviderInjectedOrWC();
+    await ensureBsc(provider);
+
+    signer  = provider.getSigner();
+    account = await signer.getAddress();
 
     await window.afterConnect();
     window.setConnectUI('connected');
@@ -727,13 +730,14 @@ window.connect = async function(){
 };
 
 window.disconnect = async function(){
-  try{ await window.wcProvider?.disconnect?.(); }catch{}
-  window.wcProvider = null;
-  window.provider   = null;
-  window.signer     = null;
-  window.account    = null;
+  try{ await wcProvider?.disconnect?.(); }catch{}
+  wcProvider = null;
+  provider   = null;
+  signer     = null;
+  account    = null;
 
   addrFull && (addrFull.textContent = "Not connected");
+  addrShort && (addrShort.textContent = "");
   avatar   && (avatar.textContent   = "KA");
   netNameEl&& (netNameEl.textContent= "Not connected");
   klyBalanceEl && (klyBalanceEl.textContent = "—");
@@ -745,36 +749,33 @@ window.disconnect = async function(){
 
 window.setConnectUI = function(state){
   const isConn = state==="connected";
-  btnConnect   && (btnConnect.disabled = state==="connecting");
-  btnModalConn && (btnModalConn.disabled = state==="connecting");
-  btnOverlayConnect && (btnOverlayConnect.disabled = state==="connecting");
+  const isBusy = state==="connecting";
+
+  btnConnect        && (btnConnect.disabled = isBusy, btnConnect.innerHTML = isBusy ? '<i class="fa-solid fa-spinner fa-spin"></i> Connecting' : (isConn ? '<i class="fa-solid fa-wallet"></i> Connected' : '<i class="fa-solid fa-wallet"></i> Connect Wallet'));
+  btnModalConn      && (btnModalConn.disabled = isBusy);
+  btnOverlayConnect && (btnOverlayConnect.disabled = isBusy);
 
   btnDisconnect && (btnDisconnect.hidden = !isConn);
   pillAddr      && (pillAddr.hidden = !isConn);
-
-  if(state==="connecting"){
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting');
-  }else if(isConn){
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connected');
-  }else{
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet');
-  }
 };
 
 window.afterConnect = async function(){
   try{
-    const addr = await window.signer.getAddress();
-    const net  = await window.provider.getNetwork();
+    const addr = await signer.getAddress();
+    const net  = await provider.getNetwork();
 
-    addrFull && (addrFull.textContent = addr);
+    addrFull  && (addrFull.textContent  = addr);
     addrShort && (addrShort.textContent = short(addr));
     pillAddr  && (pillAddr.hidden = false);
     avatar    && (avatar.textContent = (addr.slice(2,4)+addr.slice(-2)).toUpperCase());
-    netNameEl && (netNameEl.textContent = (net.chainId===BSC.idDec ? BSC.name : `Chain ${net.chainId}`));
+    netNameEl && (netNameEl.textContent = (Number(net.chainId)===Number(BSC.idDec) ? BSC.name : `Chain ${net.chainId}`));
 
-    // Read KLY balance
-    const erc20 = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, window.provider);
-    const [raw, dec] = await Promise.all([erc20.balanceOf(addr), erc20.decimals()]);
+    // Read KLY balance (and symbol)
+    const erc20 = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
+    const [raw, dec] = await Promise.all([
+      erc20.balanceOf(addr),
+      erc20.decimals().catch(()=>18)
+    ]);
     const bal = Number(ethers.utils.formatUnits(raw, dec));
     klyBalanceEl && (klyBalanceEl.textContent = `${fmt(bal, 4)} KLY`);
     updateAccessState(bal);
@@ -784,27 +785,29 @@ window.afterConnect = async function(){
   }
 };
 
-// Wire buttons to globals (guarded)
+/* Wire buttons to globals (guarded) */
 btnConnect        && btnConnect.addEventListener("click", window.connect);
 btnModalConn      && btnModalConn.addEventListener("click", window.connect);
 btnOverlayConnect && btnOverlayConnect.addEventListener("click", window.connect);
 btnDisconnect     && btnDisconnect.addEventListener("click", window.disconnect);
 
-// Optional: preload WC so QR opens instantly on desktop
-window.addEventListener("load", async ()=>{
-  try { await ensureWalletConnectUMD(); } catch (e) { console.warn("WC preload failed", e); }
-});
 /* ==============================
    MINT
 ============================== */
 async function mint(){
   if(!signer) return notify("Connect Wallet","Please connect your wallet first.","warn","fa-wallet");
+
+  // ensure modules list is loaded
+  modules = window.modules || modules || [];
+  TOTAL_MODULES = modules.length || TOTAL_MODULES;
+
   const validIds = new Set((modules||[]).map(m=>m.id));
   const unique   = [...new Set(completed)].filter(id => validIds.has(id));
   if(unique.length < TOTAL_MODULES) return notify("Finish Modules","Complete all modules first.","warn","fa-list-check");
 
   try{
-    btnMint.disabled=true; btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Minting…';
+    btnMint && (btnMint.disabled=true, btnMint.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Minting…');
+
     const to = await signer.getAddress();
     const nft = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
     const tokenURI = "ipfs://bafybeihkmkaf2mgx7xkrnkhmzd2uvhr6ddgj6z3vkqcgnvlaa3z7x263r4";
@@ -816,21 +819,20 @@ async function mint(){
     mintStatus && (mintStatus.innerHTML = `Tx submitted: <a target="_blank" rel="noopener" href="${BSC.explorer}/tx/${tx.hash}">view on BscScan</a>`);
     await tx.wait();
     notify("Minted","Certificate minted successfully!","good","fa-certificate");
-    btnMint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Minted';
+    btnMint && (btnMint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Minted');
     if(typeof confetti==="function"){
       confetti({particleCount:160, spread:70, origin:{y:.7}, colors:["#00eaff","#ff3bff","#9333ff"]});
     }
   }catch(e){
     console.error("[mint]", e);
     notify("Mint Failed", e?.data?.message || e?.reason || e?.message || "Unknown error", "bad", "fa-circle-xmark");
-    btnMint.disabled=false; btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate';
+    btnMint && (btnMint.disabled=false, btnMint.innerHTML='<i class="fa-solid fa-certificate"></i> Mint Certificate');
   }
 }
 
 /* ==============================
    CONTENT RENDERERS
 ============================== */
-/* Simple menus grouped by level */
 function renderMenus(){
   if(!Array.isArray(modules)) return;
   const groups = { Beginner:[], Master:[], Right:[] };
@@ -844,21 +846,20 @@ function renderMenus(){
     return b;
   };
 
-  menuBeginner && (menuBeginner.innerHTML = "");
-  menuMaster   && (menuMaster.innerHTML   = "");
-  menuRight    && (menuRight.innerHTML    = "");
+  if(menuBeginner) menuBeginner.innerHTML = "";
+  if(menuMaster)   menuMaster.innerHTML   = "";
+  if(menuRight)    menuRight.innerHTML    = "";
 
   groups.Beginner.forEach(m => menuBeginner?.appendChild(mkBtn(m)));
   groups.Master.forEach(m   => menuMaster?.appendChild(mkBtn(m)));
   groups.Right.forEach(m    => menuRight?.appendChild(mkBtn(m)));
 }
 
-/* Accordion for current module list (all modules) */
 function renderAccordion(){
   if(!accordionRoot) return;
   accordionRoot.innerHTML = "";
 
-  modules.forEach(m => {
+  (modules||[]).forEach(m => {
     const acc = document.createElement("div");
     acc.className = "acc";
     if(opened===m.id) acc.classList.add("open");
@@ -875,20 +876,19 @@ function renderAccordion(){
 
     const body = document.createElement("div");
     body.className = "acc-body";
-    body.innerHTML = m.sections.map(s => `
+    body.innerHTML = (m.sections||[]).map(s => `
       <h4 style="margin:12px 0 6px">${s.label}</h4>
       <div>${s.html}</div>
     `).join("");
 
     sum.addEventListener("click", (e)=>{
-      // If the check button was clicked, don't toggle open
-      if(e.target.closest("button")) return;
+      if(e.target.closest("button")) return; // prevent toggle when clicking "complete"
       opened = (opened===m.id)? null : m.id;
       localStorage.setItem("kly_open_neon", opened || "");
       renderAccordion();
     });
 
-    // Mark complete button
+    // Mark complete
     sum.querySelector("button")?.addEventListener("click", (e)=>{
       e.stopPropagation();
       markComplete(m.id);
@@ -910,6 +910,25 @@ function openModule(id, scrollIntoView=false){
   }
 }
 
+/* ==============================
+   EVENT WIRING
+============================== */
+btnMint && btnMint.addEventListener("click", mint);
+
+if(btnRedeem)  btnRedeem.addEventListener("click", ()=> redeemInvite(inviteInput?.value));
+if(btnRedeem2) btnRedeem2.addEventListener("click",()=> redeemInvite(inviteInput2?.value));
+
+/* Optional: preload WC so QR opens instantly on desktop */
+window.addEventListener("load", async ()=>{
+  try { await ensureWalletConnectUMD(); } catch (e) { console.warn("WC preload failed", e); }
+  // If modules were defined later via window.modules, rebuild UI now
+  modules = window.modules || modules || [];
+  TOTAL_MODULES = modules.length || TOTAL_MODULES;
+  renderMenus();
+  renderAccordion();
+  updateProgress();
+});
+  
 /* ==============================
    LESSON CONTENT
 ============================== */
