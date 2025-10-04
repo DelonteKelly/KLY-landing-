@@ -599,16 +599,27 @@ function redeemInvite(codeRaw){
    WALLETCONNECT v2 + ETHERS v5
 ============================== */
 
-// --- UMD fallback + lazy loader ---
+// --- Robust multi-CDN loader + broad global detection ---
 const WC_UMD_URLS = {
-  ethereumProvider: "https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
-  modal:            "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"
+  modal: [
+    "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js",
+    "https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.6.2/dist/index.umd.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/@walletconnect/modal/2.6.2/index.umd.min.js"
+  ],
+  ethereumProvider: [
+    "https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
+    "https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/@walletconnect/ethereum-provider/2.12.1/index.umd.min.js"
+  ]
 };
 
 function getWCEGlobal(){
+  // cover all observed UMD names across versions/bundlers
   return (
-    window.EthereumProvider ||           // current UMD export
-    window.WalletConnectEthereumProvider // legacy export name
+    window.EthereumProvider ||
+    window.WalletConnectEthereumProvider ||
+    window.WalletConnectProvider || // some builds (rare)
+    null
   );
 }
 
@@ -616,65 +627,46 @@ function loadScriptOnce(src){
   return new Promise((resolve, reject)=>{
     if ([...document.scripts].some(s => s.src === src)) return resolve();
     const tag = document.createElement("script");
-    tag.src = src; tag.async = true;
-    tag.onload = resolve;
+    tag.src = src;
+    tag.async = true;
+    tag.crossOrigin = "anonymous";
+    tag.referrerPolicy = "no-referrer";
+    tag.onload = () => resolve();
     tag.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(tag);
   });
 }
 
+async function loadFromAny(urls){
+  let lastErr;
+  for(const url of urls){
+    try{ await loadScriptOnce(url); return; }
+    catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("All CDN URLs failed");
+}
+
 async function ensureWalletConnectUMD(){
-  if (getWCEGlobal()?.init) return; // already loaded
-  await loadScriptOnce(WC_UMD_URLS.modal).catch(()=>{});
-  await loadScriptOnce(WC_UMD_URLS.ethereumProvider);
-  if (!getWCEGlobal()?.init) {
-    throw new Error("WalletConnect UMD not available after load");
+  // If present, we’re done
+  let WCE = getWCEGlobal();
+  if (WCE?.init) return;
+
+  // Load modal (optional but helps some wallets), then provider — try multiple CDNs
+  try { await loadFromAny(WC_UMD_URLS.modal); } catch(_) { /* optional */ }
+  await loadFromAny(WC_UMD_URLS.ethereumProvider);
+
+  // Re-check
+  WCE = getWCEGlobal();
+  console.log("[WC] globals after load:", {
+    EthereumProvider: !!window.EthereumProvider,
+    WalletConnectEthereumProvider: !!window.WalletConnectEthereumProvider,
+    WalletConnectProvider: !!window.WalletConnectProvider
+  });
+  if (!WCE?.init){
+    const wcKeys = Object.keys(window).filter(k=>k.toLowerCase().includes("walletconnect"));
+    throw new Error(`WalletConnect UMD not available after load (found keys: ${wcKeys.join(", ") || "none"})`);
   }
 }
-
-// --- Core logic ---
-async function makeWCProvider(){
-  await ensureWalletConnectUMD();
-  const WCE = getWCEGlobal(); // works for both UMD exports
-
-  wcProvider = await WCE.init({
-    projectId: WC_PROJECT_ID,
-    chains: [BSC.idDec],
-    optionalChains: [BSC.idDec],
-    rpcMap: { [BSC.idDec]: BSC.rpc },
-    showQrModal: true,
-    methods: [
-      "eth_sendTransaction","eth_signTransaction","eth_sign",
-      "personal_sign","eth_signTypedData_v4",
-      "wallet_switchEthereumChain","wallet_addEthereumChain"
-    ],
-    qrModalOptions: {
-      themeMode: "dark",
-      themeVariables: { "--wcm-background-color": "#0a0c1f" }
-    },
-    metadata: {
-      name: "KLY Academy",
-      description: "KLY — Web3 Academy & DeFi DAO",
-      url: window.location.origin,
-      icons: ["https://bscscan.com/images/svg/brands/bnb.svg"]
-    }
-  });
-
-  wcProvider.removeAllListeners?.();
-  wcProvider.on?.("accountsChanged", async (accs)=>{
-    if(!accs?.length) return disconnect();
-    account = accs[0];
-    await afterConnect();
-  });
-  wcProvider.on?.("chainChanged", async ()=>{
-    provider = new ethers.providers.Web3Provider(wcProvider, "any");
-    signer   = provider.getSigner();
-    account  = await signer.getAddress().catch(()=>account);
-    await afterConnect();
-  });
-  wcProvider.on?.("disconnect", ()=> disconnect());
-}
-
 // --- Connect flow ---
 async function connect(){
   setConnectUI('connecting');
