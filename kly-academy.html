@@ -1269,134 +1269,6 @@ async function disconnect(){
 }
 
   
-function setConnectUI(state){
-  if (!btnConnect || !btnDisconnect || !pillAddr) return;
-  if(state === 'connecting'){
-    btnConnect.disabled = true;
-    btnConnect.hidden = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
-  } else if(state === 'connected'){
-    btnConnect.disabled = false;
-    btnConnect.hidden = true;
-    btnDisconnect.hidden = false;
-    pillAddr.hidden = false;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-  } else {
-    btnConnect.disabled = false;
-    btnConnect.hidden = false;
-    btnDisconnect.hidden = true;
-    pillAddr.hidden = true;
-    btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
-  }
-}
-
-async function connect(){
-  setConnectUI('connecting');
-  try{
-    walletInstance = await web3Modal.connect();
-    walletInstance?.removeAllListeners?.();
-
-    provider = new ethers.providers.Web3Provider(walletInstance, "any");
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    account = await signer.getAddress();
-
-    const net = await provider.getNetwork().catch(()=>({ chainId: 0 }));
-    if(net.chainId !== BSC.idDec){
-      try{
-        await walletInstance.request({
-          method:"wallet_switchEthereumChain",
-          params:[{ chainId:BSC.idHex }]
-        });
-      }catch(e){
-        if(e?.code === 4902){
-          await walletInstance.request({
-            method:"wallet_addEthereumChain",
-            params:[{
-              chainId:BSC.idHex, chainName:BSC.name,
-              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-              rpcUrls:[BSC.rpc], blockExplorerUrls:["https://bscscan.com"]
-            }]
-          });
-        }else{ throw e; }
-      }
-      provider = new ethers.providers.Web3Provider(walletInstance, "any");
-      signer   = provider.getSigner();
-      account  = await signer.getAddress();
-    }
-
-    walletInstance?.on?.("accountsChanged", async (accs)=>{
-      if(!accs?.length) return disconnect();
-      account = accs[0];
-      await afterConnect();
-    });
-    walletInstance?.on?.("chainChanged", async ()=>{
-      provider = new ethers.providers.Web3Provider(walletInstance, "any");
-      signer   = provider.getSigner();
-      account  = await signer.getAddress().catch(()=>account);
-      await afterConnect();
-    });
-    walletInstance?.on?.("disconnect", ()=> disconnect());
-
-    await afterConnect();
-    setConnectUI('connected');
-  }catch(err){
-    console.error('[connect] failed:', err);
-    notify("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
-    setConnectUI('idle');
-  }
-}
-
-async function afterConnect(){
-  try{
-    if(!provider || !signer || !account) throw new Error('Missing provider/signer/account');
-    if (addrShort) addrShort.textContent = `${account.slice(0,6)}…${account.slice(-4)}`;
-    if (addrFull)  addrFull.textContent  = account;
-    if (avatar)    avatar.textContent    = account.slice(2,4).toUpperCase();
-    if (netNameEl) netNameEl.textContent = BSC.name;
-
-    const kly = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec] = await Promise.all([
-      kly.balanceOf(account),
-      kly.decimals().catch(()=>18)
-    ]);
-    const bal = Number(ethers.utils.formatUnits(raw, dec));
-    if (klyBalanceEl) klyBalanceEl.textContent = `${bal.toLocaleString(undefined,{ maximumFractionDigits: 4 })} KLY`;
-
-    // Show ring progress relative to REQUIRED_KLY
-    const p = Math.max(0, Math.min(100, Math.round((Math.min(bal, REQUIRED_KLY) / REQUIRED_KLY) * 100)));
-    if (ring){
-      ring.style.setProperty("--p", p + "%");
-      ring.setAttribute("data-label", p + "%");
-    }
-
-    updateAccessState(bal);
-    updateProgress();
-  }catch(e){
-    console.error('[afterConnect] error:', e);
-    notify("Read Error","Could not read KLY balance.","bad","fa-bug");
-  }
-}
-
-async function disconnect(){
-  try{ await walletInstance?.disconnect?.(); }catch{}
-  try{ await web3Modal?.clearCachedProvider?.(); }catch{}
-
-  walletInstance = null;
-  provider = signer = account = null;
-
-  if (addrFull)     addrFull.textContent = "Not connected";
-  if (avatar)       avatar.textContent   = "KA";
-  if (netNameEl)    netNameEl.textContent= "Not connected";
-  if (klyBalanceEl) klyBalanceEl.textContent = "—";
-  if (ring){
-    ring.style.setProperty("--p", "0%");
-    ring.setAttribute("data-label", "0%");
-  }
-  setConnectUI('idle');
-  updateAccessState(0); // re-lock UI
-  notify("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
-}
 
 /* ==============================
    MINT
@@ -1457,12 +1329,10 @@ window.addEventListener("beforeunload", ()=>{ if(opened) localStorage.setItem("k
 
 window.addEventListener("load", async ()=>{
   initUI();
-  await initWeb3Modal();
+  // Build WC provider up-front so the modal opens instantly on first click
+  try { await makeWCProvider(); } catch (e) { console.warn("WC init failed", e); }
   // restore invite access on load
   if(inviteUnlocked && curriculumWrap){ curriculumWrap.classList.remove('locked'); }
-  if(window.Web3Modal && web3Modal.cachedProvider){
-    try{ await connect(); }catch{}
-  }
 });
 </script>
 </body>
