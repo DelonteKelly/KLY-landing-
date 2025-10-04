@@ -593,11 +593,9 @@ function redeemInvite(codeRaw){
   }
 }
 
-  
-
 // ============ WalletConnect v2 + ethers v5 (global-safe) ===========
 
-// 1) Robust UMD loader (tries multiple CDNs)
+// Robust UMD loader (multi-CDN)
 const WC_UMD_URLS = {
   modal: [
     "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js",
@@ -621,115 +619,109 @@ function getWCEGlobal(){
 function loadScriptOnce(src){
   return new Promise((resolve, reject)=>{
     if ([...document.scripts].some(s => s.src === src)) return resolve();
-    const tag = document.createElement("script");
-    tag.src = src; tag.async = true; tag.crossOrigin="anonymous"; tag.referrerPolicy="no-referrer";
-    tag.onload = resolve; tag.onerror = ()=>reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(tag);
+    const s = document.createElement("script");
+    s.src = src; s.async = true; s.crossOrigin="anonymous"; s.referrerPolicy="no-referrer";
+    s.onload = resolve; s.onerror = ()=>reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
   });
 }
 async function loadFromAny(urls){
   let lastErr;
-  for(const url of urls){
-    try{ await loadScriptOnce(url); return; }catch(e){ lastErr=e; }
-  }
+  for(const u of urls){ try{ await loadScriptOnce(u); return; } catch(e){ lastErr=e; } }
   throw lastErr || new Error("All CDN URLs failed");
 }
 async function ensureWalletConnectUMD(){
   if (getWCEGlobal()?.init) return;
   try { await loadFromAny(WC_UMD_URLS.modal); } catch(_) { /* optional */ }
   await loadFromAny(WC_UMD_URLS.ethereumProvider);
-  const g = getWCEGlobal();
-  console.log("[WC] globals after load:", {
-    EthereumProvider: !!window.EthereumProvider,
-    WalletConnectEthereumProvider: !!window.WalletConnectEthereumProvider,
-    WalletConnectProvider: !!window.WalletConnectProvider
-  });
-  if(!g?.init){
+  if (!getWCEGlobal()?.init){
     const keys = Object.keys(window).filter(k=>k.toLowerCase().includes("walletconnect")).slice(0,20);
-    throw new Error(`WalletConnect UMD not available after load (found: ${keys.join(", ")||"none"})`);
+    throw new Error(`WalletConnect UMD not available (found: ${keys.join(", ")||"none"})`);
   }
 }
 
-// 2) Put functions on window so handlers can find them (iOS-friendly)
+// Prefer injected wallet (in-app browsers/extensions). Fallback to WC v2 QR.
+async function getProviderInjectedOrWC(){
+  if (window.ethereum) {
+    await window.ethereum.request({ method:"eth_requestAccounts" });
+    return new ethers.providers.Web3Provider(window.ethereum, "any");
+  }
+  await ensureWalletConnectUMD();
+  const WCE = getWCEGlobal();
+  const _wc = await WCE.init({
+    projectId: WC_PROJECT_ID,
+    chains: [BSC.idDec],
+    rpcMap: { [BSC.idDec]: BSC.rpc },
+    showQrModal: true,
+    metadata: {
+      name: "KLY Academy", description: "KLY — Web3 Academy & DeFi DAO",
+      url: location.origin, icons: [`${BSC.explorer}/images/svg/brands/bnb.svg`]
+    }
+  });
+  // keep a reference so we can disconnect later
+  window.wcProvider = _wc;
+  return new ethers.providers.Web3Provider(_wc, "any");
+}
+
+// Ensure BSC network
+async function ensureBsc(providerLike){
+  const net = await providerLike.getNetwork().catch(()=>({ chainId:0 }));
+  if (net.chainId === BSC.idDec) return;
+  const eip1193 = providerLike.provider || providerLike;
+  try{
+    await eip1193.request({ method:"wallet_switchEthereumChain", params:[{ chainId: BSC.idHex }] });
+  }catch(e){
+    if(e?.code === 4902){
+      await eip1193.request({ method:"wallet_addEthereumChain", params:[{
+        chainId: BSC.idHex, chainName: BSC.name,
+        nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
+        rpcUrls:[BSC.rpc], blockExplorerUrls:[BSC.explorer]
+      }]});
+    }else{ throw e; }
+  }
+}
+
+/* ============ Global functions (iOS-friendly) ============ */
 window.makeWCProvider = async function(){
+  // kept for backward calls; now we initialize inside getProviderInjectedOrWC()
   await ensureWalletConnectUMD();
   const WCE = getWCEGlobal();
   window.wcProvider = await WCE.init({
     projectId: WC_PROJECT_ID,
     chains: [BSC.idDec],
-    optionalChains: [BSC.idDec],
     rpcMap: { [BSC.idDec]: BSC.rpc },
-    showQrModal: true,
-    methods: [
-      "eth_sendTransaction","eth_signTransaction","eth_sign",
-      "personal_sign","eth_signTypedData_v4",
-      "wallet_switchEthereumChain","wallet_addEthereumChain"
-    ],
-    qrModalOptions: { themeMode: "dark" },
-    metadata: {
-      name: "KLY Academy",
-      description: "KLY — Web3 Academy & DeFi DAO",
-      url: window.location.origin,
-      icons: ["https://bscscan.com/images/svg/brands/bnb.svg"]
-    }
+    showQrModal: true
   });
-
-  wcProvider.removeAllListeners?.();
-  wcProvider.on?.("accountsChanged", async (accs)=>{
+  window.wcProvider.removeAllListeners?.();
+  window.wcProvider.on?.("accountsChanged", async (accs)=>{
     if(!accs?.length) return window.disconnect();
     window.account = accs[0];
     await window.afterConnect();
   });
-  wcProvider.on?.("chainChanged", async ()=>{
-    window.provider = new ethers.providers.Web3Provider(wcProvider, "any");
-    window.signer   = provider.getSigner();
-    window.account  = await signer.getAddress().catch(()=>window.account);
+  window.wcProvider.on?.("chainChanged", async ()=>{
+    window.provider = new ethers.providers.Web3Provider(window.wcProvider, "any");
+    window.signer   = window.provider.getSigner();
+    window.account  = await window.signer.getAddress().catch(()=>window.account);
     await window.afterConnect();
   });
-  wcProvider.on?.("disconnect", ()=> window.disconnect());
+  window.wcProvider.on?.("disconnect", ()=> window.disconnect());
 };
 
 window.connect = async function(){
   window.setConnectUI('connecting');
   try{
-    if(!window.wcProvider) await window.makeWCProvider();
-    await window.wcProvider.connect();
+    // get provider (injected first, otherwise WC v2)
+    window.provider = await getProviderInjectedOrWC();
+    await ensureBsc(window.provider);
 
-    window.provider = new ethers.providers.Web3Provider(window.wcProvider, "any");
-    window.signer   = provider.getSigner();
-    window.account  = await signer.getAddress();
-
-    const net = await provider.getNetwork().catch(()=>({ chainId:0 }));
-    if(net.chainId !== BSC.idDec){
-      try{
-        await wcProvider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: BSC.idHex }]
-        });
-      }catch(e){
-        if(e?.code === 4902){
-          await wcProvider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: BSC.idHex, chainName: BSC.name,
-              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-              rpcUrls:[BSC.rpc], blockExplorerUrls:[BSC.explorer]
-            }]
-          });
-        }else{
-          throw e;
-        }
-      }
-      window.provider = new ethers.providers.Web3Provider(window.wcProvider, "any");
-      window.signer   = provider.getSigner();
-      window.account  = await signer.getAddress();
-    }
+    window.signer  = window.provider.getSigner();
+    window.account = await window.signer.getAddress();
 
     await window.afterConnect();
     window.setConnectUI('connected');
   }catch(err){
     console.error('[connect] failed:', err);
-    notify("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
+    notify("Connection Failed", err?.message || "Unable to connect", "bad", "fa-circle-xmark");
     window.setConnectUI('idle');
   }
 };
@@ -775,15 +767,16 @@ window.afterConnect = async function(){
     const net  = await window.provider.getNetwork();
 
     addrFull && (addrFull.textContent = addr);
-    addrShort && (addrShort.textContent = (addr ? `${addr.slice(0,6)}…${addr.slice(-4)}` : ""));
+    addrShort && (addrShort.textContent = short(addr));
     pillAddr  && (pillAddr.hidden = false);
     avatar    && (avatar.textContent = (addr.slice(2,4)+addr.slice(-2)).toUpperCase());
     netNameEl && (netNameEl.textContent = (net.chainId===BSC.idDec ? BSC.name : `Chain ${net.chainId}`));
 
+    // Read KLY balance
     const erc20 = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, window.provider);
     const [raw, dec] = await Promise.all([erc20.balanceOf(addr), erc20.decimals()]);
     const bal = Number(ethers.utils.formatUnits(raw, dec));
-    klyBalanceEl && (klyBalanceEl.textContent = `${Number(bal).toLocaleString(undefined,{maximumFractionDigits:4})} KLY`);
+    klyBalanceEl && (klyBalanceEl.textContent = `${fmt(bal, 4)} KLY`);
     updateAccessState(bal);
   }catch(e){
     console.error("[afterConnect]", e);
@@ -791,126 +784,16 @@ window.afterConnect = async function(){
   }
 };
 
-// 3) Wire buttons to globals (if not already wired)
+// Wire buttons to globals (guarded)
 btnConnect        && btnConnect.addEventListener("click", window.connect);
 btnModalConn      && btnModalConn.addEventListener("click", window.connect);
 btnOverlayConnect && btnOverlayConnect.addEventListener("click", window.connect);
 btnDisconnect     && btnDisconnect.addEventListener("click", window.disconnect);
 
-// Optional: preload WC to make first click instant
+// Optional: preload WC so QR opens instantly on desktop
 window.addEventListener("load", async ()=>{
-  try { await window.makeWCProvider(); } catch (e) { console.warn("WC pre-init failed", e); }
+  try { await ensureWalletConnectUMD(); } catch (e) { console.warn("WC preload failed", e); }
 });
-
-// --- Connect flow ---
-async function connect(){
-  setConnectUI('connecting');
-  try{
-    if(!wcProvider) await makeWCProvider();
-    await wcProvider.connect(); // open modal if no session
-
-    provider = new ethers.providers.Web3Provider(wcProvider, "any");
-    signer   = provider.getSigner();
-    account  = await signer.getAddress();
-
-    // Ensure BSC
-    const net = await provider.getNetwork().catch(()=>({ chainId:0 }));
-    if(net.chainId !== BSC.idDec){
-      try{
-        await wcProvider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: BSC.idHex }]
-        });
-      }catch(e){
-        if(e?.code === 4902){
-          await wcProvider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: BSC.idHex, chainName: BSC.name,
-              nativeCurrency:{ name:"BNB", symbol:"BNB", decimals:18 },
-              rpcUrls:[BSC.rpc], blockExplorerUrls:[BSC.explorer]
-            }]
-          });
-        }else{
-          throw e;
-        }
-      }
-      provider = new ethers.providers.Web3Provider(wcProvider, "any");
-      signer   = provider.getSigner();
-      account  = await signer.getAddress();
-    }
-
-    await afterConnect();
-    setConnectUI('connected');
-  }catch(err){
-    console.error('[connect] failed:', err);
-    notify("Connection Failed", err?.message || "User rejected", "bad", "fa-circle-xmark");
-    setConnectUI('idle');
-  }
-}
-
-// --- Disconnect flow ---
-async function disconnect(){
-  try{ await wcProvider?.disconnect?.(); }catch{}
-  wcProvider = null;
-  provider   = null;
-  signer     = null;
-  account    = null;
-
-  addrFull && (addrFull.textContent = "Not connected");
-  avatar   && (avatar.textContent   = "KA");
-  netNameEl&& (netNameEl.textContent= "Not connected");
-  klyBalanceEl && (klyBalanceEl.textContent = "—");
-  if (ring){ ring.style.setProperty("--p","0%"); ring.setAttribute("data-label","0%"); }
-  updateAccessState(0);
-  setConnectUI('idle');
-  notify("Disconnected","Wallet disconnected","good","fa-right-from-bracket");
-}
-
-// --- UI helper ---
-function setConnectUI(state){
-  const isConn = state==="connected";
-  btnConnect   && (btnConnect.disabled = state==="connecting");
-  btnModalConn && (btnModalConn.disabled = state==="connecting");
-  btnOverlayConnect && (btnOverlayConnect.disabled = state==="connecting");
-
-  btnDisconnect && (btnDisconnect.hidden = !isConn);
-  pillAddr      && (pillAddr.hidden = !isConn);
-
-  if(state==="connecting"){
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting');
-  }else if(isConn){
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connected');
-  }else{
-    btnConnect && (btnConnect.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet');
-  }
-}
-
-// --- After connect ---
-async function afterConnect(){
-  try{
-    const addr = await signer.getAddress();
-    const net  = await provider.getNetwork();
-
-    addrFull && (addrFull.textContent = addr);
-    addrShort && (addrShort.textContent = short(addr));
-    pillAddr  && (pillAddr.hidden = false);
-    avatar    && (avatar.textContent = (addr.slice(2,4)+addr.slice(-2)).toUpperCase());
-
-    netNameEl && (netNameEl.textContent = (net.chainId===BSC.idDec ? BSC.name : `Chain ${net.chainId}`));
-
-    // Read KLY balance on BSC
-    const erc20 = new ethers.Contract(KLY_TOKEN_ADDRESS, KLY_TOKEN_ABI, provider);
-    const [raw, dec] = await Promise.all([erc20.balanceOf(addr), erc20.decimals()]);
-    const bal = toUnits(raw, dec);
-    klyBalanceEl && (klyBalanceEl.textContent = `${fmt(bal, 4)} KLY`);
-
-    updateAccessState(bal);
-  }catch(e){
-    console.error("[afterConnect]", e);
-    notify("Wallet Error", e?.message || "Could not read wallet state", "bad", "fa-circle-xmark");
-  }
-}
 /* ==============================
    MINT
 ============================== */
@@ -1610,33 +1493,41 @@ function initUI(){
   renderAccordion();
   updateProgress();
   if (modules && modules[0]) openModule(opened || modules[0].id, false);
-  const y = el("year"); if (y) y.textContent = new Date().getFullYear();
+
+  const y = el("year");
+  if (y) y.textContent = new Date().getFullYear();
 
   // Restore invite access on load
-  if(inviteUnlocked && curriculumWrap){ curriculumWrap.classList.remove('locked'); }
+  if (inviteUnlocked && curriculumWrap) {
+    curriculumWrap.classList.remove('locked');
+  }
 
   // A11y: toast announces updates
-  if(toast){
+  if (toast) {
     toast.setAttribute("role","status");
     toast.setAttribute("aria-live","polite");
   }
 }
 
-// Bind events (guarded)
-btnConnect        && btnConnect.addEventListener("click", connect);
-btnDisconnect     && btnDisconnect.addEventListener("click", disconnect);
+// Bind events (guarded) — use GLOBAL versions
+btnConnect        && btnConnect.addEventListener("click", window.connect);
+btnDisconnect     && btnDisconnect.addEventListener("click", window.disconnect);
+btnOverlayConnect && btnOverlayConnect.addEventListener("click", window.connect);
 btnMint           && btnMint.addEventListener("click", mint);
-btnOverlayConnect && btnOverlayConnect.addEventListener("click", connect);
 btnRedeem         && btnRedeem.addEventListener("click", ()=> redeemInvite(inviteInput?.value));
 btnRedeem2        && btnRedeem2.addEventListener("click", ()=> redeemInvite(inviteInput2?.value));
 btnAbout          && btnAbout.addEventListener("click", ()=> { if (modal) modal.style.display="block"; });
 modalClose        && modalClose.addEventListener("click", ()=> { if (modal) modal.style.display="none"; });
 
-window.addEventListener("beforeunload", ()=>{ if(opened) localStorage.setItem("kly_open_neon", opened); });
+window.addEventListener("beforeunload", ()=> {
+  if (opened) localStorage.setItem("kly_open_neon", opened);
+});
 
 window.addEventListener("load", async ()=>{
   initUI();
-  try { await makeWCProvider(); } catch (e) { console.warn("WC init failed", e); }
+  // Optional: preload WC UMD so QR opens instantly on desktop.
+  // (Do NOT call makeWCProvider here; we only initialize WC when needed.)
+  try { await ensureWalletConnectUMD(); } catch (e) { console.warn("WC preload failed", e); }
 });
 </script>
 </body>
