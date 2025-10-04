@@ -593,22 +593,57 @@ function redeemInvite(codeRaw){
   }
 }
 
+  
+// Support both UMD globals + optional on-demand load
+const WC_UMD_URLS = {
+  ethereumProvider: "https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js",
+  modal:            "https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"
+};
+
+function getWCEGlobal(){
+  return (
+    window.EthereumProvider ||           // most UMD builds export this
+    window.WalletConnectEthereumProvider // some builds/export names use this
+  );
+}
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject)=>{
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
+    const tag = document.createElement("script");
+    tag.src = src; tag.async = true;
+    tag.onload = resolve;
+    tag.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(tag);
+  });
+}
+
+async function ensureWalletConnectUMD(){
+  if (getWCEGlobal()?.init) return;              // already present
+  await loadScriptOnce(WC_UMD_URLS.modal).catch(()=>{}); // optional pre-load
+  await loadScriptOnce(WC_UMD_URLS.ethereumProvider);
+  if (!getWCEGlobal()?.init) {
+    throw new Error("WalletConnect UMD not available after load");
+  }
+}
 /* ==============================
    WALLETCONNECT v2 + ETHERS v5
 ============================== */
 async function makeWCProvider(){
-  // UMD global: window.WalletConnectEthereumProvider
-  const WCE = window.WalletConnectEthereumProvider;
-  if(!WCE || typeof WCE.init !== "function"){
-    throw new Error("WalletConnect Ethereum Provider not loaded");
-  }
+  await ensureWalletConnectUMD();
+  const WCE = getWCEGlobal(); // ← works for both UMD names
+
   wcProvider = await WCE.init({
     projectId: WC_PROJECT_ID,
     chains: [BSC.idDec],
     optionalChains: [BSC.idDec],
     rpcMap: { [BSC.idDec]: BSC.rpc },
     showQrModal: true,
-    methods: ["eth_sendTransaction","eth_signTransaction","eth_sign","personal_sign","eth_signTypedData_v4","wallet_switchEthereumChain","wallet_addEthereumChain"],
+    methods: [
+      "eth_sendTransaction","eth_signTransaction","eth_sign",
+      "personal_sign","eth_signTypedData_v4",
+      "wallet_switchEthereumChain","wallet_addEthereumChain"
+    ],
     qrModalOptions: {
       themeMode: "dark",
       themeVariables: { "--wcm-background-color": "#0a0c1f" }
@@ -622,13 +657,12 @@ async function makeWCProvider(){
   });
 
   wcProvider.removeAllListeners?.();
-
   wcProvider.on?.("accountsChanged", async (accs)=>{
     if(!accs?.length) return disconnect();
     account = accs[0];
     await afterConnect();
   });
-  wcProvider.on?.("chainChanged", async (_chainId)=>{
+  wcProvider.on?.("chainChanged", async ()=>{
     provider = new ethers.providers.Web3Provider(wcProvider, "any");
     signer   = provider.getSigner();
     account  = await signer.getAddress().catch(()=>account);
@@ -636,7 +670,6 @@ async function makeWCProvider(){
   });
   wcProvider.on?.("disconnect", ()=> disconnect());
 }
-
 async function connect(){
   setConnectUI('connecting');
   try{
