@@ -339,8 +339,10 @@
           <div id="menu-beginner" class="menu"></div>
           <div class="muted" style="margin:16px 0 8px">Master</div>
           <div id="menu-master" class="menu"></div>
+          <div class="muted" style="margin:16px 0 8px">Right Knowledge</div>
+         <div id="menu-right" class="menu"></div>
         </div>
-      </aside>
+        </aside>
 
       <!-- Lessons (locked until access) -->
       <main id="curriculum-wrap" class="card lock-wrap locked">
@@ -429,7 +431,7 @@ const KLY_TOKEN_ABI = [
 const NFT_CONTRACT_ABI = [
   "function mintTo(address to, string uri) public"
 ];
-const TOTAL_MODULES = 12;
+let TOTAL_MODULES = 12; // temporary; will set dynamically after modules[] is defined
 const BSC = { idDec:56, idHex:"0x38", name:"BNB Smart Chain", rpc:"https://bsc-dataseed.binance.org/" };
 
 /* Invite codes (client-side demo). Replace with your backend/allowlist when ready. */
@@ -821,22 +823,119 @@ const modules = [
     {label:"Hands-On", html:`<p>Write a 1-page plan: targets, allocation bands, rebalance rules, security steps. Do a seed recovery simulation and verify balances.</p>`}
   ])
 ];
+
+  /* ==============================
+   RIGHT KNOWLEDGE — 7 Modules + Bonus
+============================== */
+const RK = (num, title, sections)=> M(`rk-${num}`, "Right", num, title, sections);
+
+modules.push(
+  RK(1, "What is Right Knowledge?", [
+    {label:"Objectives", html:`<ul>
+      <li>Distinguish belief from Right Knowledge.</li>
+      <li>Adopt the triad: Right Knowledge, Right Wisdom, Right Overstanding.</li>
+      <li>Install a daily Right Reasoning drill.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p><strong>Right Knowledge</strong> is verified, tested, and lived. Belief repeats; Knowledge confirms. The triad keeps you immune to deception.</p>
+    <p>Daily drill: Who told me this? How do I know? Can nature confirm it? Who benefits if I believe it?</p>`},
+    {label:"Practice", html:`<ol>
+      <li>Pick one “fact” you were taught.</li>
+      <li>Run the drill and journal what remains.</li>
+    </ol>`}
+  ]),
+
+  RK(2, "The Science of 9 Ether", [
+    {label:"Objectives", html:`<ul>
+      <li>Understand 9 Ether vs 6 Ether as living codes.</li>
+      <li>Connect breath + tone to etheric awareness.</li>
+      <li>Begin a 7-minute daily activation.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>9 Ether = living intelligence manifesting through breath, hair, melanin, sound. Treat as a working hypothesis—confirm by results.</p>`},
+    {label:"Practice", html:`<p>Breath 4-4-4 with a soft hum on exhale for 7 minutes. Note sensation in skull/sinuses (antenna effect).</p>`}
+  ]),
+
+  RK(3, "Time & the Illusion of History", [
+    {label:"Objectives", html:`<ul>
+      <li>See calendar systems as consciousness programs.</li>
+      <li>Spot timeline edits that distort identity.</li>
+      <li>Rebuild your sovereign timeline.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>False timelines fracture memory. Reclaim time → reclaim mind.</p>`},
+    {label:"Practice", html:`<p>Draw your life timeline. Mark labels that never fit your spirit and write what’s true instead.</p>`}
+  ]),
+
+  RK(4, "Language & Codes of Creation", [
+    {label:"Objectives", html:`<ul>
+      <li>Experience words as vibration.</li>
+      <li>Reclaim sacred tones/names.</li>
+      <li>Use speech as creative command.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>Every tongue carries a current. Words build worlds. Speak to align reality with truth.</p>`},
+    {label:"Practice", html:`<p>Choose one mantra and recite morning/night for 9 days. Track mood, clarity, synchronicities.</p>`}
+  ]),
+
+  RK(5, "The Astral Sciences", [
+    {label:"Objectives", html:`<ul>
+      <li>Map physical, astral, etheric layers.</li>
+      <li>Honor nightly learning (dream recall).</li>
+      <li>Relate lunar/planetary cycles to choice.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>After dark is classroom time. Attention + memory = curriculum.</p>`},
+    {label:"Practice", html:`<p>Bedside capture: record first 60–90 seconds on waking. Title the theme and one action.</p>`}
+  ]),
+
+  RK(6, "Enemy Tools: Religion, Media, School", [
+    {label:"Objectives", html:`<ul>
+      <li>Identify capture mechanisms.</li>
+      <li>Install discernment rituals.</li>
+      <li>Run a 48-hour media fast.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>Programs compete for your attention. Decide who gets fed.</p>`},
+    {label:"Practice", html:`<p>48-hour fast: replace screens with breath, reading, nature. Log clarity shifts.</p>`}
+  ]),
+
+  RK(7, "Becoming the Living Scroll", [
+    {label:"Objectives", html:`<ul>
+      <li>Integrate the triad daily.</li>
+      <li>Design personal rituals.</li>
+      <li>Commit to service & legacy.</li>
+    </ul>`},
+    {label:"Lesson", html:`<p>When knowledge becomes nature, the scroll is you.</p>`},
+    {label:"Practice", html:`<p>Write your “Scroll of Self-Truth” — 9 lines you live by. Place where you see it daily.</p>`}
+  ]),
+
+  // BONUS
+  M("rk-bonus","Right",8,"⚡ The Return of the Ancient Ones",[
+    {label:"Lesson", html:`<p>Right Knowledge returns in cycles to those who carry it. Choose your role in this wave.</p>`},
+    {label:"Practice", html:`<p>Define a 30-day mission (who you help, how, proof). Share with an accountability partner.</p>`}
+  ])
+);
+
+// After pushing new modules, set TOTAL_MODULES dynamically:
+TOTAL_MODULES = modules.length;
 /* ==============================
    RENDER
 ============================== */
 function menuBtn(m){
   const b = document.createElement("button");
   b.id = `menu-${m.id}`;
-  b.innerHTML = `<i class="fa-solid ${m.level==='Beginner'?'fa-book-open':'fa-crown'}"></i> ${m.title} <span class="badge">${m.level==='Beginner'?m.num:'M'+m.num}</span>`;
+  const badge = (m.level==='Beginner') ? m.num : (m.level==='Master' ? ('M'+m.num) : ('RK'+m.num));
+  b.innerHTML = `<i class="fa-solid ${m.level==='Beginner'?'fa-book-open': (m.level==='Master'?'fa-crown':'fa-scroll') }"></i> ${m.title} <span class="badge">${badge}</span>`;
   b.onclick = ()=>openModule(m.id, true);
   return b;
 }
 function renderMenus(){
   const beg = document.getElementById("menu-beginner");
   const mst = document.getElementById("menu-master");
-  beg.innerHTML=""; mst.innerHTML="";
+  const rgt = document.getElementById("menu-right");
+  beg.innerHTML=""; mst.innerHTML=""; if(rgt) rgt.innerHTML="";
+
   modules.filter(x=>x.level==="Beginner").forEach(m=>beg.appendChild(menuBtn(m)));
   modules.filter(x=>x.level==="Master").forEach(m=>mst.appendChild(menuBtn(m)));
+  // New: Right Knowledge
+  if(rgt){
+    modules.filter(x=>x.level==="Right").forEach(m=>rgt.appendChild(menuBtn(m)));
+  }
 }
 function renderAccordion(){
   const elA = document.getElementById("accordion");
