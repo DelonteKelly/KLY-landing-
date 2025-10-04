@@ -713,7 +713,7 @@ async function ensureBsc(providerLike){
       }]});
     }else{ throw e; }
   }
-}
+}o
 
 /* ==============================
    CONNECT / DISCONNECT (globals)
@@ -739,6 +739,25 @@ window.connect = async function(){
   }
 };
 
+  // React to account / chain changes for injected wallets
+if (window.ethereum && window.ethereum.on) {
+  window.ethereum.removeAllListeners?.('accountsChanged');
+  window.ethereum.removeAllListeners?.('chainChanged');
+
+  window.ethereum.on('accountsChanged', async (accs)=>{
+    if(!accs?.length) return window.disconnect();
+    account = accs[0];
+    await window.afterConnect();
+  });
+
+  window.ethereum.on('chainChanged', async ()=>{
+    provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+    signer   = provider.getSigner();
+    account  = await signer.getAddress().catch(()=>account);
+    await window.afterConnect();
+  });
+}
+  
 window.disconnect = async function(){
   try{ await wcProvider?.disconnect?.(); }catch{}
   wcProvider = null;
@@ -944,7 +963,8 @@ window.addEventListener("load", async ()=>{
 ============================== */
 const M = (id, level, num, title, sections) => ({id, level, num, title, sections});
 
-const modules = [
+// Assign to existing variable instead of redeclaring it
+modules = [
   /* =========================
      BEGINNER 1–5
   ========================= */
