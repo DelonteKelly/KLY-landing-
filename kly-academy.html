@@ -24,14 +24,14 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
 
-  <!-- Web3 Core -->
-  <!-- Ethers v5 (required; keep non-deferred so your app code can use it immediately) -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-  <!-- WalletConnect v2 (optional to preload; safe to remove if you rely on ensureWalletConnectUMD()) -->
-  <script defer src="https://unpkg.com/@walletconnect/modal@2.6.2/dist/index.umd.js"></script>
-  <script defer src="https://unpkg.com/@walletconnect/ethereum-provider@2.12.1/dist/umd/index.min.js"></script>
-
+  <!-- ✅ Ethers v5 UMD (global window.ethers, no defer/async) -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js" data-cfasync="false"></script>
+<script>
+  // Fallback if the first CDN fails
+  if (!window.ethers) {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"><\/script>');
+  }
+</script>
   <style>
     :root{
       /* Neon + Gold palette (exclusive) */
@@ -605,6 +605,25 @@ function redeemInvite(codeRaw){
   }
 }
 
+const ETHERS_UMD_URLS = [
+  "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js",
+  "https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"
+];
+
+async function ensureEthersUMD(){
+  if (window.ethers && window.ethers.providers) return;
+  await new Promise((res, rej)=>{
+    const s=document.createElement("script");
+    s.src=ETHERS_UMD_URLS[0];
+    s.onload=res; s.onerror=()=>rej(new Error("ethers load failed"));
+    document.head.appendChild(s);
+  });
+  if (!(window.ethers && window.ethers.providers)) {
+    throw new Error("Ethers (UMD) failed to load.");
+  }
+}
+  
 /* ==============================
    WalletConnect v2 + ethers v5 (UMD)
 ============================== */
@@ -719,10 +738,13 @@ async function ensureBsc(providerLike){
    CONNECT / DISCONNECT (globals)
 ============================== */
 window.connect = async function(){
-  window.setConnectUI('connecting');
+  window.setConnectUI?.('connecting');
   try{
     const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if(!isSecure){ throw new Error('Wallets require HTTPS or localhost.'); }
+
+    // ✅ guarantee ethers is loaded before any use
+    await ensureEthersUMD();
 
     provider = await getProviderInjectedOrWC();
     await ensureBsc(provider);
@@ -730,15 +752,14 @@ window.connect = async function(){
     signer  = provider.getSigner();
     account = await signer.getAddress();
 
-    await window.afterConnect();
-    window.setConnectUI('connected');
+    await window.afterConnect?.();
+    window.setConnectUI?.('connected');
   }catch(err){
     console.error('[connect] failed:', err);
-    notify("Connection Failed", err?.message || "Unable to connect", "bad", "fa-circle-xmark");
-    window.setConnectUI('idle');
+    notify?.("Connection Failed", err?.message || "Unable to connect", "bad", "fa-circle-xmark");
+    window.setConnectUI?.('idle');
   }
 };
-
   // React to account / chain changes for injected wallets
 if (window.ethereum && window.ethereum.on) {
   window.ethereum.removeAllListeners?.('accountsChanged');
