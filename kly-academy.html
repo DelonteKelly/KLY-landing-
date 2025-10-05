@@ -276,19 +276,59 @@
       .acc-body{ padding:0 12px 12px; }
       .two{ grid-template-columns:1fr; }
     }
+
+    .topbar { position: sticky; top: 0; z-index: 40; }
+.topbar-inner {
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; padding:14px 0;
+}
+
+.brand { display:flex; align-items:center; gap:8px; font-weight:700; }
+.brand i.fa-graduation-cap {
+  color:#00eaff; font-size:1.1em; margin-right:2px;
+  text-shadow:0 0 8px rgba(0,234,255,.6);
+  transition: transform .4s ease, filter .4s ease, text-shadow .4s ease;
+}
+.brand .text { letter-spacing:.5px; }
+
+.ribbon {
+  margin-left:10px; padding:5px 10px; border-radius:8px;
+  background:rgba(255,255,255,.08); color:#ffd98a;
+  display:flex; align-items:center; gap:6px; font-weight:600; font-size:.9em;
+}
+.ribbon i { color:#ffd98a; }
+
+/* Pills/buttons quick styling (optional) */
+.chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:999px;
+  background:rgba(255,255,255,.08); backdrop-filter: blur(6px);
+}
+.btn { display:inline-flex; align-items:center; gap:8px; }
+
+/* Connected celebration state */
+.brand i.fa-graduation-cap.celebrate {
+  transform: rotate(-10deg) scale(1.08);
+  text-shadow: 0 0 14px rgba(0,234,255,1), 0 0 26px rgba(0,234,255,.8);
+  filter: drop-shadow(0 0 12px rgba(0,234,255,.6));
+}
+
+/* Mobile tweaks */
+@media (max-width: 480px){
+  .ribbon { font-size:.85em; padding:4px 8px; }
+  .topbar-inner { gap:8px; }
+}
   </style>
 </head>
 <body>
-  <!-- Topbar -->
+<!-- Topbar -->
   <div class="topbar">
-  <div class="container topbar-inner">
-    <div class="brand">
-      <i class="fa-solid fa-graduation-cap"></i>
-      <div class="text">KLY ACADEMY</div>
-      <span class="ribbon"><i class="fa-solid fa-lock"></i> Private Cohort</span>
-    </div>
-  </div>
-</div>
+    <div class="container topbar-inner">
+      <div class="brand">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <div class="text">KLY ACADEMY</div>
+        <span class="ribbon"><i class="fa-solid fa-lock"></i> Private Cohort</span>
+      </div>
       <div style="display:flex;gap:10px;align-items:center">
         <span id="chip-progress" class="chip"><i class="fa-solid fa-chart-simple"></i> <span id="chip-text">0/12 Complete</span></span>
         <button id="btn-connect" class="btn"><i class="fa-solid fa-wallet"></i> Connect Wallet</button>
@@ -800,17 +840,22 @@ window.disconnect = async function(){
 };
 
 window.setConnectUI = function(state){
-  const isConn = state==="connected";
-  const isBusy = state==="connecting";
+  const isConn = state === "connected";
+  const isBusy = state === "connecting";
 
-  btnConnect        && (btnConnect.disabled = isBusy, btnConnect.innerHTML = isBusy ? '<i class="fa-solid fa-spinner fa-spin"></i> Connecting' : (isConn ? '<i class="fa-solid fa-wallet"></i> Connected' : '<i class="fa-solid fa-wallet"></i> Connect Wallet'));
-  btnModalConn      && (btnModalConn.disabled = isBusy);
-  btnOverlayConnect && (btnOverlayConnect.disabled = isBusy);
+  btnConnect && (btnConnect.disabled = isBusy,
+    btnConnect.innerHTML = isBusy
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Connecting'
+      : (isConn
+          ? '<i class="fa-solid fa-wallet"></i> Connected'
+          : '<i class="fa-solid fa-wallet"></i> Connect Wallet'));
 
   btnDisconnect && (btnDisconnect.hidden = !isConn);
-  pillAddr      && (pillAddr.hidden = !isConn);
-};
+  pillAddr && (pillAddr.hidden = !isConn);
 
+  // 🎓 glow the cap when connected
+  document.querySelector('.fa-graduation-cap')?.classList.toggle('celebrate', isConn);
+};
 window.afterConnect = async function(){
   try{
     const addr = await signer.getAddress();
