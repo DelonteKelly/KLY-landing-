@@ -328,11 +328,29 @@
       <button class="btn btn-primary" id="confirmUnstake" type="button">Confirm Unstake</button>
     </div>
   </div>
+  <!-- Vault Modal -->
+<div class="modal" id="vaultModal" role="dialog" aria-modal="true" aria-labelledby="vaultTitle">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="vaultTitle">KLY Vault Details</h3>
+      <button class="close-modal" data-close="vaultModal" aria-label="Close">&times;</button>
+    </div>
+    <p style="color:var(--gray);margin-bottom:1rem">
+      Your KLY stays in your wallet. The staking contract records your staked balance and accrues rewards on BNB Smart Chain.
+    </p>
+    <ul style="list-style:none;padding-left:0;line-height:1.9">
+      <li><i class="fas fa-lock" style="width:20px"></i> Smart-contract based (non-custodial)</li>
+      <li><i class="fas fa-hourglass-half" style="width:20px"></i> 7-day cooldown on unstake</li>
+      <li><i class="fas fa-bolt" style="width:20px"></i> Rewards claimable anytime</li>
+      <li><i class="fas fa-shield-alt" style="width:20px"></i> Contract: <a href="https://bscscan.com/address/0x7bBa73C25cf5384b58DBA280eCB49c9749437823" target="_blank" rel="noopener">view on BscScan</a></li>
+    </ul>
+  </div>
+</div>
 <script>
 /* =====================================================
    KLY Stake — FINAL wiring for your contract (BNB Chain)
    - Uses ethers v5.7.2 + Web3Modal
-   - stake(uint256 _amount) payable  <-- exact ABI
+   - stake(uint256 _amount) payable
    - withdraw(uint256 _amount)
    - withdrawRewardTokens()
    - Exact-amount approvals (NO unlimited allowance)
@@ -351,7 +369,7 @@ const BSC = {
 const TOKEN_ADDR   = '0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52'; // KLY ERC-20
 const STAKING_ADDR = '0x7bBa73C25cf5384b58DBA280eCB49c9749437823'; // Staking
 
-/* --------- ABIs (match your screenshot) --------- */
+/* --------- ABIs --------- */
 const ERC20_ABI = [
   'function decimals() view returns (uint8)',
   'function balanceOf(address) view returns (uint256)',
@@ -359,7 +377,6 @@ const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)'
 ];
 
-// IMPORTANT: stake is payable and takes a single _amount
 const STAKING_ABI = [
   'function stake(uint256 _amount) payable',
   'function withdraw(uint256 _amount) external',
@@ -415,7 +432,7 @@ async function ensureBSC(eth){
   }
 }
 
-/* --------- Connect --------- */
+/* --------- Connect / Disconnect --------- */
 $('connectWallet')?.addEventListener('click', connect);
 
 async function connect(){
@@ -436,6 +453,25 @@ async function connect(){
     setText('walletAddress', shorten(account));
     setText('network', BSC.name);
 
+    // Add a disconnect button dynamically
+    if (!$('disconnectBtn')){
+      const btn = document.createElement('button');
+      btn.id = 'disconnectBtn';
+      btn.className = 'wallet-connect';
+      btn.style.background = 'var(--dark)';
+      btn.style.fontWeight = '700';
+      btn.style.gap = '6px';
+      btn.innerHTML = '<i class="fas fa-plug-circle-xmark" aria-hidden="true"></i> Disconnect';
+      $('walletInfo').appendChild(btn);
+      btn.addEventListener('click', disconnect);
+    }
+
+    // click address to copy
+    $('walletAddress')?.addEventListener('click', async ()=>{
+      await navigator.clipboard.writeText(account);
+      toast('Address copied');
+    });
+
     extProvider.on?.('accountsChanged', ()=>location.reload());
     extProvider.on?.('chainChanged',   ()=>location.reload());
     extProvider.on?.('disconnect',     ()=>location.reload());
@@ -446,6 +482,14 @@ async function connect(){
     console.error('[connect]', err);
     toast(parseError(err),'error');
   }
+}
+
+async function disconnect(){
+  try{
+    if (extProvider?.disconnect) await extProvider.disconnect();
+  }catch{}
+  try{ await web3Modal.clearCachedProvider(); }catch{}
+  location.reload();
 }
 
 /* --------- Reads / UI paint --------- */
@@ -494,17 +538,20 @@ $('confirmStake')?.addEventListener('click', handleStake);
 $('confirmUnstake')?.addEventListener('click', handleUnstake);
 $('claimBtn')?.addEventListener('click', handleClaim);
 
+// open/close modals
 $('stakeBtn')?.addEventListener('click', ()=>openModal('stakeModal'));
 $('unstakeBtn')?.addEventListener('click', ()=>openModal('unstakeModal'));
+$('vaultBtn')?.addEventListener('click', ()=>openModal('vaultModal'));
+
 document.querySelectorAll('.close-modal').forEach(b=> b.addEventListener('click', e=> closeModal(e.currentTarget.dataset.close)));
-window.addEventListener('click', (e)=>{ if(e.target===$('stakeModal')) closeModal('stakeModal'); if(e.target===$('unstakeModal')) closeModal('unstakeModal'); });
-document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeModal('stakeModal'); closeModal('unstakeModal'); } });
+window.addEventListener('click', (e)=>{ if(e.target===$('stakeModal')) closeModal('stakeModal'); if(e.target===$('unstakeModal')) closeModal('unstakeModal'); if(e.target===$('vaultModal')) closeModal('vaultModal'); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeModal('stakeModal'); closeModal('unstakeModal'); closeModal('vaultModal'); } });
 
 function openModal(id){ const m=$(id); if(!m) return; m.style.display='flex'; m.querySelector('.close-modal')?.focus(); }
 function closeModal(id){ const m=$(id); if(!m) return; m.style.display='none'; }
-
 function requireConnected(){ if(!signer||!account) throw new Error('Connect your wallet first.'); }
 
+/* --------- Stake/Unstake helpers --------- */
 async function ensureAllowance(amountBN){
   const current = await token.allowance(account, STAKING_ADDR);
   if (current.gte(amountBN)) return;
@@ -522,7 +569,6 @@ async function handleStake(){
     const amountBN = window.ethers.utils.parseUnits(raw, tokenDecimals);
     await ensureAllowance(amountBN);
 
-    // stake(uint256 _amount) payable — send with { value: 0 }
     const tx = await staking.stake(amountBN, { value: 0 });
     toast('Staking submitted…');
     await tx.wait();
@@ -542,7 +588,6 @@ async function handleUnstake(){
     if (!raw || Number(raw)<=0) throw new Error('Enter a valid unstake amount.');
 
     const amountBN = window.ethers.utils.parseUnits(raw, tokenDecimals);
-    // withdraw(uint256 _amount)
     const tx = await staking.withdraw(amountBN);
     toast('Unstake submitted…');
     await tx.wait();
@@ -558,7 +603,6 @@ async function handleUnstake(){
 async function handleClaim(){
   try{
     requireConnected();
-    // withdrawRewardTokens()
     const tx = await staking.withdrawRewardTokens();
     toast('Claiming rewards…');
     await tx.wait();
@@ -569,6 +613,74 @@ async function handleClaim(){
     toast(parseError(err),'error');
   }
 }
+
+/* --------- NEW: Tier buttons -> actionable --------- */
+const TIERS = {
+  Basic:    { min: 100,   apy: '10% APY', idx: 0 },
+  Klystron: { min: 1000,  apy: '15% APY', idx: 1 },
+  Apex:     { min: 10000, apy: '18% APY', idx: 2 }
+};
+
+// wire up the 3 "Select Tier" buttons in order
+(function wireTierButtons(){
+  const tierButtons = document.querySelectorAll('.tiers-grid .tier-card button');
+  const order = ['Basic','Klystron','Apex'];
+  tierButtons.forEach((btn, i)=>{
+    const name = order[i];
+    const cfg = TIERS[name];
+    if(!cfg) return;
+    btn.addEventListener('click', ()=>{
+      // open Stake modal with preselected tier + min amount
+      openModal('stakeModal');
+      const sel = $('stakeTier');
+      const amt = $('stakeAmount');
+      if (sel){
+        sel.selectedIndex = cfg.idx;
+      }
+      if (amt){
+        amt.value = cfg.min.toString();
+      }
+      // reflect APY in the modal badge
+      setText('apyCurrent', cfg.apy);
+    });
+  });
+})();
+
+/* --------- NEW: "Max" buttons for stake/unstake --------- */
+(function addMaxButtons(){
+  function makeMaxBtn(forInputId, onClick){
+    const inp = $(forInputId);
+    if (!inp || inp.dataset.maxbtn) return;
+    inp.dataset.maxbtn = '1';
+    const wrap = inp.parentElement;
+    const b = document.createElement('button');
+    b.type='button';
+    b.textContent='Max';
+    b.className='btn btn-outline';
+    b.style.width='auto';
+    b.style.marginTop='.6rem';
+    b.addEventListener('click', onClick);
+    wrap.appendChild(b);
+  }
+
+  makeMaxBtn('stakeAmount', async ()=>{
+    try{
+      requireConnected();
+      const bal = await token.balanceOf(account);
+      const balF = window.ethers.utils.formatUnits(bal, tokenDecimals);
+      $('stakeAmount').value = Math.max(0, Number(balF)).toString();
+    }catch(e){ toast(parseError(e),'error'); }
+  });
+
+  makeMaxBtn('unstakeAmount', async ()=>{
+    try{
+      requireConnected();
+      const s = await staking.stakedBalance(account);
+      const sF = window.ethers.utils.formatUnits(s, tokenDecimals);
+      $('unstakeAmount').value = Math.max(0, Number(sF)).toString();
+    }catch(e){ toast(parseError(e),'error'); }
+  });
+})();
 
 /* --------- Error parsing --------- */
 function parseError(err){
