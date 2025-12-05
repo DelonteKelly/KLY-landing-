@@ -739,6 +739,7 @@
   </footer>
 
 <script>
+<script>
   // sparkles
   function seedSparkles(){
     const wrap = document.getElementById('sparkles');
@@ -769,7 +770,8 @@
 
     // Smooth scroll buttons & links
     document.querySelectorAll('[data-scroll]').forEach(el=>{
-      el.addEventListener('click', ()=>{
+      el.addEventListener('click', (e)=>{
+        e.preventDefault();
         const target = document.querySelector(el.dataset.scroll);
         target?.scrollIntoView({ behavior:'smooth', block:'start' });
       });
@@ -784,19 +786,43 @@
     });
   }
 
-  // Handle membership form submit: just disable button and let browser submit to Formspree
+  // Handle membership form submit with JS -> Formspree -> redirect to your page
   function handleForm(){
     const form = document.getElementById('tribeApplicationForm');
     if(!form) return;
 
-    form.addEventListener('submit', (e)=>{
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault(); // stop default Formspree "Thanks" page
+
       const submitBtn = form.querySelector('button[type="submit"]');
       if(submitBtn){
         submitBtn.disabled = true;
         submitBtn.innerHTML = 'Submitting…';
       }
-      // Do NOT call e.preventDefault() here.
-      // Form posts to Formspree, which then redirects to application-received.html
+
+      const formData = new FormData(form);
+
+      try{
+        const res = await fetch(form.action, {
+          method: form.method || 'POST',
+          body: formData,
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if(res.ok){
+          // ✅ Formspree got the submission – now send them to YOUR thank-you page
+          window.location.href = 'https://kellylegacyestates.com/application-received.html';
+        }else{
+          throw new Error('Formspree responded with an error');
+        }
+      }catch(err){
+        console.error(err);
+        if(submitBtn){
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Submit Membership Application <i class="fas fa-arrow-right"></i>';
+        }
+        alert('Something went wrong submitting your application. Please try again.');
+      }
     });
   }
 
@@ -805,5 +831,6 @@
     attachHandlers();
     handleForm();
   })();
-</script></body>
+</script>
+</body>
 </html>
