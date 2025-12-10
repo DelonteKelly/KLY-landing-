@@ -743,99 +743,74 @@
     </div>
   </footer>
 
-<script>
-<script>
-  // sparkles
-  function seedSparkles(){
-    const wrap = document.getElementById('sparkles');
-    if(!wrap || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const count = Math.min(28, Math.max(12, Math.floor(window.innerWidth/50)));
-    for(let i=0;i<count;i++){
-      const dot = document.createElement('i');
-      const left = Math.random()*100;
-      const dur  = 12 + Math.random()*16;
-      const delay = Math.random()*-dur;
-      dot.style.left = left+'%';
-      dot.style.bottom = (-10 + Math.random()*10)+'svh';
-      dot.style.animationDuration = dur+'s';
-      dot.style.animationDelay = delay+'s';
-      wrap.appendChild(dot);
+  <script>
+    // sparkles
+    function seedSparkles(){
+      const wrap = document.getElementById('sparkles');
+      if(!wrap || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const count = Math.min(28, Math.max(12, Math.floor(window.innerWidth/50)));
+      for(let i=0;i<count;i++){
+        const dot = document.createElement('i');
+        const left = Math.random()*100;
+        const dur  = 12 + Math.random()*16;
+        const delay = Math.random()*-dur;
+        dot.style.left = left+'%';
+        dot.style.bottom = (-10 + Math.random()*10)+'svh';
+        dot.style.animationDuration = dur+'s';
+        dot.style.animationDelay = delay+'s';
+        wrap.appendChild(dot);
+      }
     }
-  }
 
-  function attachHandlers(){
-    const header = document.getElementById('header');
-    const navToggle = document.getElementById('navToggle');
+    function attachHandlers(){
+      const header = document.getElementById('header');
+      const navToggle = document.getElementById('navToggle');
 
-    // Header shrink
-    window.addEventListener('scroll',()=>{
-      if(window.scrollY>24) header.classList.add('is-scrolled');
-      else header.classList.remove('is-scrolled');
-    });
-
-    // Smooth scroll buttons & links
-    document.querySelectorAll('[data-scroll]').forEach(el=>{
-      el.addEventListener('click', (e)=>{
-        e.preventDefault();
-        const target = document.querySelector(el.dataset.scroll);
-        target?.scrollIntoView({ behavior:'smooth', block:'start' });
+      // Header shrink
+      window.addEventListener('scroll',()=>{
+        if(window.scrollY>24) header.classList.add('is-scrolled');
+        else header.classList.remove('is-scrolled');
       });
-    });
 
-    // Mobile nav toggle
-    navToggle.addEventListener('click', ()=>{
-      const nav = document.querySelector('.nav');
-      const open = nav.style.display !== 'flex';
-      nav.style.display = open ? 'flex' : 'none';
-      navToggle.innerHTML = open ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-    });
-  }
+      // Smooth scroll buttons & links
+      document.querySelectorAll('[data-scroll]').forEach(el=>{
+        el.addEventListener('click', (e)=>{
+          e.preventDefault();
+          const target = document.querySelector(el.dataset.scroll);
+          target?.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      });
 
-  // Handle membership form submit with JS -> Formspree -> redirect to your page
-  function handleForm(){
-    const form = document.getElementById('tribeApplicationForm');
-    if(!form) return;
+      // Mobile nav toggle
+      navToggle.addEventListener('click', ()=>{
+        const nav = document.querySelector('.nav');
+        const open = nav.style.display !== 'flex';
+        nav.style.display = open ? 'flex' : 'none';
+        navToggle.innerHTML = open ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+      });
+    }
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault(); // stop default Formspree "Thanks" page
+    // Simple handler: just lock the button, let Formspree handle POST + redirect
+    function handleForm(){
+      const form = document.getElementById('tribeApplicationForm');
+      if(!form) return;
 
       const submitBtn = form.querySelector('button[type="submit"]');
-      if(submitBtn){
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = 'Submitting…';
-      }
 
-      const formData = new FormData(form);
-
-      try{
-        const res = await fetch(form.action, {
-          method: form.method || 'POST',
-          body: formData,
-          headers: { 'Accept': 'application/json' }
-        });
-
-        if(res.ok){
-          // ✅ Formspree got the submission – now send them to YOUR thank-you page
-          window.location.href = 'https://kellylegacyestates.com/application-received.html';
-        }else{
-          throw new Error('Formspree responded with an error');
+      form.addEventListener('submit', () => {
+        // DO NOT preventDefault — we want the normal POST so `_next` works.
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting…';
         }
-      }catch(err){
-        console.error(err);
-        if(submitBtn){
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = 'Submit Membership Application <i class="fas fa-arrow-right"></i>';
-        }
-        alert('Something went wrong submitting your application. Please try again.');
-      }
-    });
-  }
+      });
+    }
 
-  (function init(){
-    seedSparkles();
-    attachHandlers();
-    handleForm();
-  })();
-</script>
+    (function init(){
+      seedSparkles();
+      attachHandlers();
+      handleForm();
+    })();
+  </script>
 </body>
 </html>
