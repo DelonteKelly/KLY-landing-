@@ -10,353 +10,315 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Syncopate:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Syncopate:wght@400;700&display=swap" rel="stylesheet" />
 
   <style>
-    :root{
-      --primary:#D4AF37;
-      --primary-bright:#FFD700;
-      --accent:#ffffff;
-      --dark:#000000;
-      --darker:#050505;
-      --surface:#111111;
-      --text:#ffffff;
-      --text-dim:#888888;
-      --transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
-      --shadow: 0 20px 50px rgba(0,0,0,0.8);
-      --glow: 0 0 20px rgba(212,175,55,0.3);
-      --radius: 4px;
-      --hdr: 80px;
+    :root {
+      --primary: #D4AF37;
+      --primary-bright: #FFD700;
+      --accent: #ffffff;
+      --dark: #000000;
+      --darker: #050505;
+      --surface: rgba(17, 17, 17, 0.7);
+      --text: #ffffff;
+      --text-dim: #a0a0a0;
+      --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+      --shadow: 0 30px 60px rgba(0,0,0,0.9);
+      --gold-glow: 0 0 15px rgba(212, 175, 55, 0.2);
+      --radius: 2px;
+      --hdr: 90px;
     }
 
-    *{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth}
-    body{
-      font-family:'Inter', sans-serif;
-      background:var(--darker);
-      color:var(--text);
-      line-height:1.5;
-      overflow-x:hidden;
-    }
-    :root{scroll-padding-top: var(--hdr);}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: var(--hdr); }
 
-    /* Background */
-    #particles-js{
-      position:fixed; inset:0; z-index:-2;
-      background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
-    }
-    .bg-texture{
-      position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.03;
-      background-image:url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--darker);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      letter-spacing: -0.01em;
     }
 
-    .wrap{max-width:1300px;margin:0 auto;padding:0 5%}
-    section{padding:6rem 0;position:relative}
+    /* Cinematic Background */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: -2;
+      background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%);
+    }
+
+    .mesh-gradient {
+      position: fixed; inset: 0; z-index: -1;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(212, 175, 55, 0.05) 0, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(212, 175, 55, 0.03) 0, transparent 50%);
+      pointer-events: none;
+    }
+
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 0 6%; }
+    section { padding: 8rem 0; position: relative; }
 
     /* Typography */
-    .section-title{
-      font-family:'Syncopate', sans-serif;
-      font-weight:700;
-      font-size: clamp(1.6rem, 4.5vw, 2.8rem);
-      letter-spacing:-1px;
-      text-transform:uppercase;
-      margin-bottom:3rem;
-      border-left:8px solid var(--primary);
-      padding-left:1.5rem;
+    .section-title {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      letter-spacing: -2px;
+      text-transform: uppercase;
+      margin-bottom: 4rem;
+      position: relative;
+      display: inline-block;
     }
-    .muted{color:var(--text-dim)}
-
-    /* Header */
-    .header{
-      height:var(--hdr);
-      position:sticky; top:0; z-index:100;
-      background:rgba(0,0,0,0.95);
-      border-bottom:1px solid rgba(255,255,255,0.05);
-      backdrop-filter: blur(20px);
+    .section-title::after {
+      content: ""; position: absolute; bottom: -10px; left: 0;
+      width: 60px; height: 4px; background: var(--primary);
     }
-    .header-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem}
 
-    .brand{ text-decoration:none; color:white; display:flex; flex-direction:column; line-height:1; }
-    .brand .topline{
-      font-family:'Syncopate', sans-serif;
-      font-weight:700; font-size:1.05rem; letter-spacing:2px;
+    /* Header & Navigation */
+    .header {
+      height: var(--hdr);
+      position: fixed; top: 0; width: 100%; z-index: 1000;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(15px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex; align-items: center;
+      padding: 20px 0;
+      transition: var(--transition);
+    }
+    .header-inner { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+    .brand { text-decoration: none; color: white; display: flex; flex-direction: column; }
+    .brand .topline {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700; font-size: 1.1rem; letter-spacing: 3px;
       background: linear-gradient(to right, #fff, var(--primary));
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-      text-transform:uppercase;
-      white-space:nowrap;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
     }
-    .brand .subline{
-      font-size:0.7rem;
-      letter-spacing:2.5px;
-      color:rgba(255,255,255,.55);
-      text-transform:uppercase;
-      margin-top:.25rem;
-      white-space:nowrap;
+    .brand .subline {
+      font-size: 0.65rem;
+      letter-spacing: 4px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 4px;
     }
 
-    .nav{display:flex;align-items:center   ;gap:2rem}
-    .nav a.simple{
-      text-decoration:none;
-      font-weight:800;
-      text-transform:uppercase;
-      font-size:0.78rem;
-      letter-spacing:1.5px;
-      color:var(--text-dim);
-      transition:var(--transition);
+    .nav { display: flex; align-items: center; gap: 2.5rem; }
+    .nav a.link {
+      text-decoration: none; font-weight: 600; text-transform: uppercase;
+      font-size: 0.75rem; letter-spacing: 2px; color: var(--text-dim);
+      transition: var(--transition);
+      position: relative;
     }
-    .nav a.simple:hover{color:var(--primary)}
+    .nav a.link:hover { color: var(--primary); transform: translateY(-2px); }
 
     /* Buttons */
-    .btn{
-      padding:1.1rem 2.2rem;
-      font-family:'Syncopate', sans-serif;
-      font-weight:700;
-      text-transform:uppercase;
-      font-size:0.78rem;
-      cursor:pointer;
-      transition:var(--transition);
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      gap:0.85rem;
-      border-radius:0;
-      letter-spacing:1.2px;
-      white-space:nowrap;
+    .btn {
+      padding: 1.2rem 2.5rem;
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700; text-transform: uppercase;
+      font-size: 0.75rem; cursor: pointer; transition: var(--transition);
+      text-decoration: none; display: inline-flex; align-items: center;
+      gap: 1rem; letter-spacing: 2px; position: relative; overflow: hidden;
+      border-radius: var(--radius);
+      justify-content: center;
+      white-space: nowrap;
     }
-    .btn-primary{background:var(--primary);color:black;border:none}
-    .btn-primary:hover{background:white;transform:scale(1.03)}
-    .btn-outline{background:transparent;color:white;border:1px solid rgba(255,255,255,0.2)}
-    .btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+    .btn-primary { background: var(--primary); color: black; border: none; }
+    .btn-primary:hover { background: white; transform: scale(1.04); box-shadow: var(--gold-glow); }
+
+    .btn-outline { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: rgba(212,175,55,0.05); }
 
     /* Mobile menu */
     .menu-btn{
       display:none;
       background:transparent;
-      border:1px solid rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.14);
       color:white;
-      padding:.55rem .75rem;
+      padding:.7rem .9rem;
       font-size:1rem;
       cursor:pointer;
+      border-radius: var(--radius);
     }
     .menu-panel{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.82);
-      backdrop-filter: blur(16px);
+      position:fixed; inset:0; z-index:2000;
+      background:rgba(0,0,0,.78);
+      backdrop-filter: blur(18px);
       display:none;
-      z-index:999;
     }
-    .menu-panel.open{display:block}
+    .menu-panel.open{ display:block; }
     .menu-sheet{
-      position:absolute;
-      right:0; top:0; height:100%; width:min(420px, 92vw);
+      position:absolute; right:0; top:0; height:100%;
+      width:min(430px, 92vw);
       background:#070707;
       border-left:1px solid rgba(255,255,255,0.08);
-      padding:1.5rem;
+      padding:1.4rem;
     }
-    .menu-sheet .menu-head{
+    .menu-head{
       display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:1.2rem;
+      gap:1rem; margin-bottom:1.2rem;
     }
     .menu-close{
       background:transparent; border:1px solid rgba(255,255,255,0.14);
-      color:white; padding:.55rem .75rem; cursor:pointer;
+      color:white; padding:.7rem .9rem; cursor:pointer;
+      border-radius: var(--radius);
     }
-    .menu-links{display:grid; gap:12px; margin-top:1rem}
+    .menu-links{ display:grid; gap:12px; margin-top:1rem; }
     .menu-links a{
       text-decoration:none;
       color:white;
       font-family:'Syncopate', sans-serif;
       text-transform:uppercase;
       font-size:.82rem;
-      letter-spacing:1.6px;
+      letter-spacing:1.8px;
       padding:14px 14px;
       border:1px solid rgba(255,255,255,0.08);
       background:#0f0f0f;
+      border-radius: var(--radius);
     }
-    .menu-links a:hover{border-color:rgba(212,175,55,.35);color:var(--primary)}
-    .menu-sheet .menu-cta{margin-top:1.2rem}
+    .menu-links a:hover{ border-color: rgba(212,175,55,.35); color: var(--primary); }
+    .menu-cta{ margin-top: 1rem; }
+    .menu-note{
+      margin-top:1rem;
+      font-size:0.72rem;
+      color:rgba(255,255,255,.55);
+      letter-spacing:1.5px;
+      text-transform:uppercase;
+      line-height:1.6;
+    }
 
     /* Hero */
-    .hero{padding-top:8rem}
-    .hero-inner{display:grid;grid-template-columns:1.2fr 0.8fr;gap:4rem;align-items:center}
-    .hero h1{
-      font-family:'Syncopate', sans-serif;
-      font-weight:700;
-      line-height:0.92;
-      font-size:clamp(2.8rem, 7.5vw, 5.8rem);
-      margin:1.4rem 0;
-      text-transform:uppercase;
+    .hero { min-height: 100vh; display: flex; align-items: center; padding-top: 120px; }
+    .hero-grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 5rem; align-items: center; }
+    .hero h1 {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700; line-height: 0.9;
+      font-size: clamp(3rem, 8vw, 6.5rem);
+      margin: 2rem 0; text-transform: uppercase;
     }
-    .gold-stroke{color:transparent;-webkit-text-stroke: 1px var(--primary)}
-    .pill{
-      background:var(--primary); color:black;
-      padding:0.55rem 1rem;
-      font-weight:900;
-      font-size:0.7rem;
-      text-transform:uppercase;
-      letter-spacing:2.2px;
-      border-radius:0;
-      display:inline-block;
+    .hero .gold-stroke { color: transparent; -webkit-text-stroke: 1.5px var(--primary); opacity: 0.85; }
+
+    .pill {
+      border: 1px solid var(--primary); color: var(--primary);
+      padding: 0.6rem 1.2rem; font-weight: 800; font-size: 0.65rem;
+      text-transform: uppercase; letter-spacing: 3px; display: inline-block;
+      border-radius: var(--radius);
     }
 
-    /* Cards */
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2rem}
-    .card{
-      background:var(--surface);
-      border:1px solid #222;
-      padding:3rem 2rem;
-      transition:var(--transition);
-      position:relative;
-      overflow:hidden;
+    /* Content Cards */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2.5rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 4rem 2.5rem; transition: var(--transition);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
     }
-    .card:hover{
-      border-color:var(--primary);
-      transform: translateY(-10px);
+    .card:hover {
+      border-color: var(--primary);
+      background: rgba(20,20,20,0.9);
+      transform: translateY(-15px);
       box-shadow: var(--shadow);
     }
-    .card::before{
-      content:"";
-      position:absolute;top:0;left:0;width:100%;height:4px;
-      background:var(--primary);
-      transform:scaleX(0);
-      transition:var(--transition);
+    .card h3 {
+      font-family: 'Syncopate', sans-serif; font-size: 1.1rem;
+      margin: 1.5rem 0 1rem; color: var(--primary); text-transform: uppercase;
     }
-    .card:hover::before{transform:scaleX(1)}
-    .card h3{
-      font-family:'Syncopate', sans-serif;
-      font-size:1.05rem;
-      margin:1.4rem 0 0.9rem;
-      color:var(--primary);
-      text-transform:uppercase;
-      letter-spacing:1px;
-    }
-    .icon-box{font-size:2rem;color:var(--primary)}
-    .card p{color:#bdbdbd;font-weight:650}
+    .card p { color: #ccc; font-size: 0.95rem; font-weight: 400; }
+    .icon-box { font-size: 2.5rem; color: var(--primary); opacity: 0.85; }
 
-    /* Sidebar / Hero Card */
-    .hero-card{
-      background:#0f0f0f;
-      padding:2.5rem;
-      border:1px solid #333;
-      border-left:5px solid var(--primary);
+    /* Executive Protocol Sidebar */
+    .hero-sidebar {
+      background: rgba(212, 175, 55, 0.03);
+      padding: 3rem; border: 1px solid rgba(212,175,55,0.1);
+      border-top: 4px solid var(--primary);
+      border-radius: var(--radius);
     }
-    .hero-card h4{
-      font-family:'Syncopate', sans-serif;
-      margin-bottom:1.5rem;
-      font-size:0.9rem;
-      color:var(--primary);
-      text-transform:uppercase;
-      letter-spacing:1.5px;
+    .hero-sidebar h4 {
+      font-family: 'Syncopate', sans-serif;
+      margin-bottom: 2rem;
+      color: var(--primary);
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
-    .hero-card ul{list-style:none}
-    .hero-card li{
-      margin-bottom:1rem;
-      display:flex;
-      gap:1rem;
-      font-weight:800;
-      color:#cfcfcf;
-      letter-spacing:.2px;
+    .hero-sidebar ul { list-style: none; }
+    .hero-sidebar li {
+      margin-bottom: 1.2rem;
+      display: flex;
+      gap: 1rem;
+      font-weight: 600;
+      color: #eee;
+      font-size: 0.9rem;
+      align-items: flex-start;
     }
-
-    /* Split */
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
-    .panel{
-      background:#0f0f0f;
-      border:1px solid #222;
-      padding:2.25rem 2rem;
-    }
-    .panel h3{
-      font-family:'Syncopate', sans-serif;
-      text-transform:uppercase;
-      letter-spacing:1.3px;
-      font-size:1rem;
-      color:var(--primary);
-      margin-bottom:1rem;
-    }
-    .bullets{list-style:none;display:grid;gap:12px;margin-top:1rem}
-    .bullets li{display:flex;gap:12px;align-items:flex-start;color:#cfcfcf;font-weight:700}
-    .bullets i{color:var(--primary);margin-top:3px}
-
-    /* Join block */
-    .join{
-      border:1px solid rgba(212,175,55,.25);
-      background: linear-gradient(180deg, rgba(212,175,55,.07), rgba(0,0,0,.25));
-      padding:3rem 2rem;
-    }
-    .join .big{
-      font-family:'Syncopate', sans-serif;
-      text-transform:uppercase;
-      letter-spacing:1px;
-      font-size: clamp(1.4rem, 3vw, 2rem);
-      margin-bottom:1rem;
-    }
-    .join .row{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1.4rem}
 
     /* Footer */
-    footer{
-      padding:4rem 0;
-      border-top:1px solid #222;
-      text-align:center;
-    }
-    .foot{
-      font-family:'Syncopate', sans-serif;
-      font-size:0.7rem;
-      color:var(--text-dim);
-      letter-spacing:3px;
-      text-transform:uppercase;
-      line-height:1.8;
-      padding:0 5%;
+    footer { padding: 6rem 0; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; }
+    .disclaimer {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 2rem;
+      max-width: 720px;
+      margin-inline: auto;
+      opacity: 0.65;
+      line-height: 1.7;
     }
 
-    @media (max-width: 980px){
-      .hero-inner{grid-template-columns:1fr}
-      .nav{display:none}
-      .menu-btn{display:inline-flex;align-items:center;gap:10px}
-      section{padding:4.5rem 0}
-      .hero{padding-top:6rem}
-      .split{grid-template-columns:1fr}
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .menu-btn { display:inline-flex; align-items:center; gap:10px; }
+      .section-title { font-size: 2.5rem; }
+    }
+    @media (max-width: 520px){
+      .btn{ width:100%; }
     }
   </style>
 </head>
 
 <body>
-  <div id="particles-js" aria-hidden="true"></div>
-  <div class="bg-texture" aria-hidden="true"></div>
+  <div id="bg-canvas" aria-hidden="true"></div>
+  <div class="mesh-gradient" aria-hidden="true"></div>
 
   <header class="header">
     <div class="wrap header-inner">
       <a class="brand" href="#top" aria-label="Kelly Legacy Institute Home">
         <div class="topline">KELLY LEGACY INSTITUTE</div>
-        <div class="subline">School of Law & Jurisdiction</div>
+        <div class="subline">SCHOOL OF LAW & JURISDICTION</div>
       </a>
 
       <nav class="nav" aria-label="Primary">
-        <a class="simple" href="#programs">The Programs</a>
-        <a class="simple" href="#doctrine">The Doctrine</a>
-        <a class="simple" href="#community">The Network</a>
+        <a class="link" href="#programs">Programs</a>
+        <a class="link" href="#doctrine">Doctrine</a>
+        <a class="link" href="#pricing">Pricing</a>
 
-        <!-- ✅ Corrected: Header Join goes directly to SKOOL -->
-        <a class="btn btn-primary" style="padding: 0.7rem 1.5rem;"
+        <!-- ✅ Corrected: use your SKOOL ref link, open in new tab -->
+        <a class="btn btn-primary" style="padding: 0.6rem 1.4rem;"
            href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
            target="_blank" rel="noopener">
-          Join Now
+          Join Institute
         </a>
       </nav>
 
+      <!-- ✅ Added: mobile menu button -->
       <button class="menu-btn" id="openMenu" aria-label="Open menu">
         <i class="fa-solid fa-bars"></i> Menu
       </button>
     </div>
   </header>
 
-  <!-- Mobile Menu -->
+  <!-- ✅ Added: Mobile Menu Panel -->
   <div class="menu-panel" id="menuPanel" aria-hidden="true">
     <div class="menu-sheet" role="dialog" aria-modal="true" aria-label="Site menu">
       <div class="menu-head">
         <div class="brand" style="pointer-events:none">
           <div class="topline">KELLY LEGACY INSTITUTE</div>
-          <div class="subline">School of Law & Jurisdiction</div>
+          <div class="subline">SCHOOL OF LAW & JURISDICTION</div>
         </div>
         <button class="menu-close" id="closeMenu" aria-label="Close menu">
           <i class="fa-solid fa-xmark"></i>
@@ -364,249 +326,169 @@
       </div>
 
       <div class="menu-links">
-        <a href="#programs">The Programs</a>
-        <a href="#doctrine">The Doctrine</a>
-        <a href="#community">The Network</a>
-
-        <!-- ✅ Corrected: Mobile Join goes directly to SKOOL -->
-        <a href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
-           target="_blank" rel="noopener">
-          Join Now
-        </a>
+        <a href="#programs">Programs</a>
+        <a href="#doctrine">Doctrine</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5" target="_blank" rel="noopener">Join Institute</a>
       </div>
 
       <div class="menu-cta">
         <a class="btn btn-primary"
            href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
            target="_blank" rel="noopener"
-           style="width:100%;justify-content:center">
-          <i class="fa-solid fa-door-open"></i> Enter the Institute
+           style="width:100%">
+          <i class="fa-solid fa-bolt"></i> Access the Campus
         </a>
       </div>
 
-      <p class="muted" style="margin-top:1rem;font-weight:700">
-        Education only. No legal advice. No attorney-client relationship.
-      </p>
+      <div class="menu-note">
+        Educational platform. No legal advice. No attorney-client relationship.
+      </div>
     </div>
   </div>
 
   <main class="wrap">
-    <!-- HERO -->
     <section class="hero" id="home">
-      <div class="hero-inner">
+      <div class="hero-grid">
         <div>
-          <span class="pill">Authority Over Everything</span>
-
-          <h1><span class="gold-stroke">MASTER</span><br/>JURISDICTION.</h1>
-
-          <p style="font-size: 1.15rem; color: var(--text-dim); margin-bottom: 2.5rem; max-width: 620px;">
-            Modern Black Excellence isn’t a vibe—it’s a standard. Kelly Legacy Institute is an elite training ground for mastering
-            law, equity, fiduciary intelligence, and administrative process so you move with discipline, timing, and authority.
+          <span class="pill">Jurisdictional Authority</span>
+          <h1><span class="gold-stroke">MOVE WITH</span><br/>DISCIPLINE.</h1>
+          <p style="font-size: 1.2rem; color: var(--text-dim); margin-bottom: 3rem; max-width: 650px; font-weight: 300;">
+            Elevating Modern Black Excellence through the mastery of Law, Equity, and Fiduciary Intelligence.
+            This is not a theory—it is a structure for those who demand authority over their own affairs.
           </p>
 
-          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;">
-            <!-- ✅ Corrected: Hero CTA goes directly to SKOOL -->
+          <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+            <!-- ✅ Corrected: use SKOOL ref link, open in new tab -->
             <a class="btn btn-primary"
                href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
                target="_blank" rel="noopener">
-              <i class="fa-solid fa-door-open"></i> Enter the Institute
+              <i class="fa-solid fa-bolt"></i> Access the Campus
             </a>
-
-            <!-- ✅ Corrected: Doctrine anchor exists -->
-            <a href="#doctrine" class="btn btn-outline"><i class="fa-solid fa-book"></i> The Doctrine</a>
+            <!-- ✅ Doctrine section exists below -->
+            <a href="#doctrine" class="btn btn-outline">Review Doctrine</a>
           </div>
-
-          <!-- ✅ Added: Pricing quick line to match your tiers -->
-          <p class="muted" style="font-weight:900;margin-top:1.4rem;">
-            Standard: <span style="color:var(--primary)">$33/mo</span> • Premium: <span style="color:var(--primary)">$97/mo</span> • VIP: <span style="color:var(--primary)">$197/mo</span>
-          </p>
         </div>
 
-        <aside class="hero-card" aria-label="Executive Protocol">
-          <h4>The Executive Protocol</h4>
+        <aside class="hero-sidebar">
+          <h4>THE EXECUTIVE PROTOCOL</h4>
           <ul>
-            <li><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> Master the Administrative Process</li>
-            <li><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> Strategic Notice Templates</li>
-            <li><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> Elite Community Access</li>
-            <li><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> High-Level Strategy Drops</li>
+            <li><i class="fa-solid fa-shield-halved" style="color:var(--primary)"></i> Administrative Supremacy</li>
+            <li><i class="fa-solid fa-file-contract" style="color:var(--primary)"></i> Fiduciary Intelligence</li>
+            <li><i class="fa-solid fa-gavel" style="color:var(--primary)"></i> Jurisdictional Standing</li>
+            <li><i class="fa-solid fa-network-wired" style="color:var(--primary)"></i> Strategic Notice Process</li>
           </ul>
         </aside>
       </div>
     </section>
 
-    <!-- PROGRAMS -->
     <section id="programs">
-      <h2 class="section-title">The Master Classes</h2>
-
+      <h2 class="section-title">The Curriculum</h2>
       <div class="grid">
         <div class="card">
-          <div class="icon-box"><i class="fa-solid fa-crown"></i></div>
+          <div class="icon-box"><i class="fa-solid fa-landmark"></i></div>
           <h3>Jurisdiction & Standing</h3>
-          <p>Define the field of play. Subject matter, personal, venue, due process—how authority is claimed and how to challenge it clean.</p>
+          <p>The foundation of all power. Learn to define venue, challenge authority correctly, and establish yourself as the moving party.</p>
         </div>
-
         <div class="card">
-          <div class="icon-box"><i class="fa-solid fa-hand-fist"></i></div>
+          <div class="icon-box"><i class="fa-solid fa-pen-nib"></i></div>
           <h3>Administrative Mastery</h3>
-          <p>The paper trail is the power trail. Records, notices, timelines, rebuttals—so default doesn’t get built on you.</p>
+          <p>Paperwork is the engine. Master the record, strategic notices, and timing so your position is preserved and clear.</p>
         </div>
-
         <div class="card">
-          <div class="icon-box"><i class="fa-solid fa-chess-knight"></i></div>
-          <h3>Equity & Fiduciary Intelligence</h3>
-          <p>Trusts, duties, remedies, enforcement—move with structure and understand who owes what, and why.</p>
+          <div class="icon-box"><i class="fa-solid fa-scale-balanced"></i></div>
+          <h3>Equity & Trust</h3>
+          <p>Understand fiduciary duty, equitable remedies, and the governance logic behind high-level interactions.</p>
         </div>
       </div>
     </section>
 
-    <!-- DOCTRINE -->
+    <!-- ✅ Added: Doctrine section (your nav links to it) -->
     <section id="doctrine">
-      <h2 class="section-title">The Doctrine</h2>
-
-      <div class="split">
-        <div class="panel">
-          <h3>What We Train</h3>
-          <p class="muted" style="font-weight:700">
-            We teach black-letter foundations and practical execution. No internet mythology. No “magic words.”
-            Clean moves, correct timing, disciplined record-building.
-          </p>
-
-          <ul class="bullets">
-            <li><i class="fa-solid fa-check"></i><span><strong>Jurisdiction</strong> — scope, authority, and lawful procedure.</span></li>
-            <li><i class="fa-solid fa-check"></i><span><strong>Procedure</strong> — deadlines, service, pleadings, motions.</span></li>
-            <li><i class="fa-solid fa-check"></i><span><strong>Record</strong> — notices, evidence, administrative proof.</span></li>
-            <li><i class="fa-solid fa-check"></i><span><strong>Equity</strong> — remedies, maxims, fiduciary enforcement.</span></li>
-          </ul>
-        </div>
-
-        <div class="panel">
-          <h3>How You Level Up</h3>
-          <p class="muted" style="font-weight:700">
-            Short lessons. Then drills. You learn the move, apply it, and build competence that holds up in real life.
-          </p>
-
-          <ul class="bullets">
-            <li><i class="fa-solid fa-bolt"></i><span><strong>Weekly Drops</strong> — focused lessons + drills.</span></li>
-            <li><i class="fa-solid fa-file-lines"></i><span><strong>Templates</strong> — notices, objections, process tools.</span></li>
-            <li><i class="fa-solid fa-chess"></i><span><strong>Strategy</strong> — timing, posture, preservation.</span></li>
-            <li><i class="fa-solid fa-people-group"></i><span><strong>Network</strong> — accountability and analysis.</span></li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- COMMUNITY -->
-    <section id="community">
-      <h2 class="section-title">The Network</h2>
-
-      <div class="split">
-        <div class="panel">
-          <h3>Why The Network Matters</h3>
-          <p class="muted" style="font-weight:700">
-            You don’t build mastery alone. The network is the training floor: drops, analysis, templates, and disciplined discussion.
-          </p>
-          <ul class="bullets">
-            <li><i class="fa-solid fa-check"></i><span>Weekly prompts that force application.</span></li>
-            <li><i class="fa-solid fa-check"></i><span>Template library + procedural checklists.</span></li>
-            <li><i class="fa-solid fa-check"></i><span>Community review lanes (by tier).</span></li>
-          </ul>
-        </div>
-
-        <div class="panel">
-          <h3>Access</h3>
-          <p class="muted" style="font-weight:700">
-            Enter the SKOOL campus and choose your tier.
-          </p>
-          <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;">
-            <a class="btn btn-primary"
-               href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
-               target="_blank" rel="noopener">
-              <i class="fa-solid fa-right-to-bracket"></i> Enter the Campus
-            </a>
-            <a class="btn btn-outline" href="#pricing"><i class="fa-solid fa-tags"></i> Pricing</a>
-          </div>
-          <p class="muted" style="margin-top:1rem;font-weight:700">
-            Educational content only. No legal advice. No representation.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- PRICING -->
-    <section id="pricing">
-      <h2 class="section-title">Pricing</h2>
-
+      <h2 class="section-title">Doctrine</h2>
       <div class="grid">
         <div class="card">
-          <div class="icon-box"><i class="fa-solid fa-layer-group"></i></div>
-          <h3>Standard — $33/mo</h3>
-          <p>
-            Core curriculum library • Weekly doctrinal instruction • Foundational jurisdiction drills • Community discussion forum.
-          </p>
+          <div class="icon-box"><i class="fa-solid fa-chess"></i></div>
+          <h3>Black-Letter First</h3>
+          <p>Rules, procedure, and record-building. No myth. No shortcuts. Just disciplined execution.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box"><i class="fa-solid fa-file-lines"></i></div>
+          <h3>Process Over Emotion</h3>
+          <p>Timing, service, objections, and preservation. How defaults are built—and how to stop them.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box"><i class="fa-solid fa-people-group"></i></div>
+          <h3>Community Drill Culture</h3>
+          <p>Apply the lesson, refine your language, tighten your posture, and move with clarity.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <h2 class="section-title">Tiers of Entry</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="icon-box"><i class="fa-solid fa-circle-nodes"></i></div>
+          <h3>Standard</h3>
+          <p style="font-size: 2rem; color: var(--primary); margin: 1rem 0;">$33<span style="font-size: 0.8rem; color: white;">/mo</span></p>
+          <p>Core curriculum library • Weekly doctrinal instruction • Foundational jurisdiction drills • Community forum.</p>
+          <a href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5" target="_blank" rel="noopener"
+             class="btn btn-outline" style="width:100%; margin-top: 2rem;">
+            Select Tier
+          </a>
         </div>
 
-        <div class="card">
-          <div class="icon-box"><i class="fa-solid fa-pen-ruler"></i></div>
-          <h3>Premium — $97/mo</h3>
-          <p>
-            Monthly procedural workshop • Template architecture walkthroughs • Rule-based challenge analysis • Limited record review submissions.
-          </p>
+        <div class="card" style="border-color: var(--primary); background: rgba(212,175,55,0.05);">
+          <div class="icon-box"><i class="fa-solid fa-gem"></i></div>
+          <h3>Premium</h3>
+          <p style="font-size: 2rem; color: var(--primary); margin: 1rem 0;">$97<span style="font-size: 0.8rem; color: white;">/mo</span></p>
+          <p>Monthly procedural workshop • Template architecture walkthroughs • Rule-based challenge analysis • Limited record review submissions.</p>
+          <a href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5" target="_blank" rel="noopener"
+             class="btn btn-primary" style="width:100%; margin-top: 2rem;">
+            Most Popular
+          </a>
         </div>
 
         <div class="card">
           <div class="icon-box"><i class="fa-solid fa-crown"></i></div>
-          <h3>VIP — $197/mo</h3>
-          <p>
-            Small cohort strategic roundtable • Priority record review queue • Quarterly private institutional session • Case theory refinement & positioning.
-          </p>
-        </div>
-      </div>
-
-      <div class="join" style="margin-top:2rem;">
-        <div class="big">Choose Your Tier. Enter The Standard.</div>
-        <p class="muted" style="font-weight:800;max-width:70ch">
-          Standard builds foundation. Premium builds execution. VIP builds positioning and refinement.
-        </p>
-        <div class="row">
-          <a class="btn btn-primary"
-             href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5"
-             target="_blank" rel="noopener">
-            <i class="fa-solid fa-door-open"></i> Join on SKOOL
+          <h3>VIP</h3>
+          <p style="font-size: 2rem; color: var(--primary); margin: 1rem 0;">$197<span style="font-size: 0.8rem; color: white;">/mo</span></p>
+          <p>Small cohort strategic roundtable • Priority record review queue • Quarterly private institutional session • Case theory refinement & positioning.</p>
+          <a href="https://www.skool.com/tamaquah-nation-school-of-law-9231/about?ref=eaac86290c9a4c12b9f1f6f2b33547e5" target="_blank" rel="noopener"
+             class="btn btn-outline" style="width:100%; margin-top: 2rem;">
+            Select Tier
           </a>
-          <a class="btn btn-outline" href="#programs"><i class="fa-solid fa-graduation-cap"></i> See Programs</a>
         </div>
-        <p class="muted" style="margin-top:1.2rem;font-weight:700">
-          Educational content only. No legal advice. No attorney-client relationship.
-        </p>
       </div>
     </section>
   </main>
 
   <footer>
-    <p class="foot">
-      © 2026 KELLY LEGACY INSTITUTE.<br/>
-      EDUCATIONAL CONTENT ONLY • NO LEGAL ADVICE • NO ATTORNEY-CLIENT RELATIONSHIP.
-    </p>
+    <div class="wrap">
+      <div class="brand" style="align-items: center; margin-bottom: 2rem;">
+        <div class="topline">KELLY LEGACY INSTITUTE</div>
+        <div class="subline">THE STANDARD OF EXCELLENCE</div>
+      </div>
+
+      <p class="disclaimer">
+        The Kelly Legacy Institute is an educational platform. We are not attorneys, do not provide legal advice, and no attorney-client relationship is formed.
+        All content is for education only. Your actions and decisions are your own.
+      </p>
+    </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
   <script>
-    // Particles
-    try{
-      particlesJS('particles-js', {
-        particles: {
-          number: { value: 40, density: { enable: true, value_area: 800 } },
-          color: { value: "#D4AF37" },
-          shape: { type: "circle" },
-          opacity: { value: 0.2 },
-          size: { value: 2 },
-          line_linked: { enable: true, distance: 150, color: "#D4AF37", opacity: 0.1, width: 1 },
-          move: { enable: true, speed: 1 }
-        },
-        interactivity: { events: { onhover: { enable: true, mode: "grab" } }, modes: { grab: { distance: 160, line_linked: { opacity: 0.16 } } } },
-        retina_detect: true
-      });
-    }catch(e){}
+    // Scroll Header Effect (safe: doesn't rely on initial inline padding)
+    window.addEventListener('scroll', () => {
+      const header = document.querySelector('.header');
+      if (!header) return;
+      if (window.scrollY > 50) {
+        header.style.background = 'rgba(0,0,0,0.95)';
+      } else {
+        header.style.background = 'rgba(0,0,0,0.85)';
+      }
+    });
 
     // Mobile menu
     (function(){
@@ -614,14 +496,26 @@
       const panel = document.getElementById('menuPanel');
       const closeBtn = document.getElementById('closeMenu');
 
-      const open = () => { panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; };
-      const close = () => { panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); document.body.style.overflow=''; };
+      const open = () => {
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      };
+      const close = () => {
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      };
 
-      openBtn && openBtn.addEventListener('click', open);
-      closeBtn && closeBtn.addEventListener('click', close);
-      panel && panel.addEventListener('click', (e) => { if(e.target === panel) close(); });
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-      panel && panel.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+      if (openBtn && panel) openBtn.addEventListener('click', open);
+      if (closeBtn) closeBtn.addEventListener('click', close);
+
+      if (panel) {
+        panel.addEventListener('click', (e) => { if (e.target === panel) close(); });
+        panel.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+      }
+
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     })();
   </script>
 </body>
