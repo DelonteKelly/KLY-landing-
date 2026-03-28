@@ -33,6 +33,7 @@
       --text-soft: #CFCFCF;
       --text-muted: #8F8F8F;
       --success: #78D18E;
+      --danger: #FF8A8A;
       --glow-gold: 0 0 35px rgba(212,175,55,0.35);
       --glow-purple: 0 0 40px rgba(130,71,229,0.22);
       --radius: 20px;
@@ -349,12 +350,15 @@
 
     .wallet-status {
       margin-top: 14px;
-      min-height: 1.2em;
+      min-height: 1.3em;
       color: var(--primary);
       font-family: var(--font-mono);
       font-size: 0.74rem;
       letter-spacing: 0.8px;
     }
+
+    .wallet-status.success { color: var(--success); }
+    .wallet-status.error { color: var(--danger); }
 
     .token-card {
       padding: 32px;
@@ -748,7 +752,7 @@
             </a>
 
             <button class="btn-secondary" id="walletBtn" type="button">
-              <i class="fa-solid fa-wallet"></i> Wallet Integration Soon
+              <i class="fa-solid fa-wallet"></i> Connect Wallet
             </button>
           </div>
 
@@ -1016,6 +1020,98 @@
     const contractText = document.getElementById('contractText');
     const copyStatus = document.getElementById('copyStatus');
 
+    const POLYGON_MAINNET = {
+      chainId: '0x89',
+      chainName: 'Polygon Mainnet',
+      nativeCurrency: {
+        name: 'POL',
+        symbol: 'POL',
+        decimals: 18
+      },
+      rpcUrls: ['https://polygon-rpc.com/'],
+      blockExplorerUrls: ['https://polygonscan.com/']
+    };
+
+    function setWalletMessage(message, type = '') {
+      if (!walletMessage) return;
+      walletMessage.textContent = message;
+      walletMessage.className = 'wallet-status';
+      if (type) walletMessage.classList.add(type);
+    }
+
+    function shortenAddress(address) {
+      if (!address || address.length < 10) return address;
+      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+
+    async function ensurePolygonNetwork() {
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+      if (currentChainId === POLYGON_MAINNET.chainId) {
+        return true;
+      }
+
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: POLYGON_MAINNET.chainId }]
+        });
+        return true;
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [POLYGON_MAINNET]
+            });
+            return true;
+          } catch (addError) {
+            setWalletMessage('Polygon network was not added. Please approve Polygon in MetaMask.', 'error');
+            return false;
+          }
+        }
+
+        setWalletMessage('Please switch MetaMask to Polygon Mainnet.', 'error');
+        return false;
+      }
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        setWalletMessage('MetaMask was not detected on this device.', 'error');
+        return;
+      }
+
+      try {
+        setWalletMessage('Connecting to MetaMask...');
+        const polygonReady = await ensurePolygonNetwork();
+        if (!polygonReady) return;
+
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts'
+        });
+
+        if (!accounts || !accounts.length) {
+          setWalletMessage('No wallet account was returned by MetaMask.', 'error');
+          return;
+        }
+
+        const address = accounts[0];
+        const shortAddress = shortenAddress(address);
+
+        walletBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Wallet Connected';
+        walletBtn.classList.remove('btn-secondary');
+        walletBtn.classList.add('btn-primary');
+        setWalletMessage(`Connected: ${shortAddress}`, 'success');
+      } catch (error) {
+        if (error.code === 4001) {
+          setWalletMessage('Wallet connection was cancelled.', 'error');
+          return;
+        }
+        setWalletMessage('Wallet connection failed. Please try again.', 'error');
+      }
+    }
+
     menuToggle?.addEventListener('click', () => {
       const isOpen = siteNav.classList.toggle('open');
       menuToggle.setAttribute('aria-expanded', String(isOpen));
@@ -1028,14 +1124,33 @@
       });
     });
 
-    walletBtn?.addEventListener('click', () => {
-      if (walletMessage) {
-        walletMessage.textContent = 'Polygon wallet integration will be enabled in a future release.';
-        setTimeout(() => {
-          walletMessage.textContent = '';
-        }, 2600);
-      }
-    });
+    walletBtn?.addEventListener('click', connectWallet);
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (!accounts || !accounts.length) {
+          walletBtn.innerHTML = '<i class="fa-solid fa-wallet"></i> Connect Wallet';
+          walletBtn.classList.remove('btn-primary');
+          walletBtn.classList.add('btn-secondary');
+          setWalletMessage('Wallet disconnected.');
+          return;
+        }
+
+        const shortAddress = shortenAddress(accounts[0]);
+        walletBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Wallet Connected';
+        walletBtn.classList.remove('btn-secondary');
+        walletBtn.classList.add('btn-primary');
+        setWalletMessage(`Connected: ${shortAddress}`, 'success');
+      });
+
+      window.ethereum.on('chainChanged', (chainId) => {
+        if (chainId === POLYGON_MAINNET.chainId) {
+          setWalletMessage('Connected to Polygon Mainnet.', 'success');
+        } else {
+          setWalletMessage('Wallet is connected, but not on Polygon Mainnet.', 'error');
+        }
+      });
+    }
 
     copyContractBtn?.addEventListener('click', async () => {
       try {
