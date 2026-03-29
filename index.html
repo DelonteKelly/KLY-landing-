@@ -705,7 +705,7 @@
           >
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Enter Institute
           </a>
-          <button class="btn btn-gold" type="button" onclick="connectWallet()">
+          <button class="btn btn-gold" type="button" data-connect-wallet>
             <i class="fa-solid fa-fingerprint"></i> Sync Identity
           </button>
           <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu">
@@ -744,7 +744,7 @@
           >
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Enter Institute
           </a>
-          <button class="btn btn-outline" type="button" onclick="connectWallet()">
+          <button class="btn btn-outline" type="button" data-connect-wallet>
             <i class="fa-solid fa-link"></i> Initialize Access
           </button>
         </div>
@@ -918,7 +918,7 @@
           </div>
 
           <div class="wallet-note">
-            This version confirms wallet connectivity and Polygon alignment. Add live token balance reads once the holder interface is ready for public use.
+            This version confirms wallet connectivity and Polygon alignment. If the contract can be read, it will also display holder status.
           </div>
         </div>
       </div>
@@ -943,7 +943,7 @@
           >
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Enter Institute
           </a>
-          <button class="btn btn-outline" type="button" onclick="connectWallet()">
+          <button class="btn btn-outline" type="button" data-connect-wallet>
             <i class="fa-solid fa-fingerprint"></i> Sync Identity
           </button>
         </div>
@@ -963,7 +963,7 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script>
     const CONTRACT_ADDRESS = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
-    const POLYGON_CHAIN_ID = "0x89";
+    const POLYGON_CHAIN_ID_HEX = "0x89";
 
     const cursor = document.querySelector(".cursor");
     const walletStatus = document.getElementById("walletStatus");
@@ -976,6 +976,7 @@
     const copyStatus = document.getElementById("copyStatus");
     const menuToggle = document.getElementById("menuToggle");
     const mobileNav = document.getElementById("mobileNav");
+    const syncButtons = document.querySelectorAll("[data-connect-wallet]");
 
     if (window.innerWidth > 1024 && cursor) {
       document.addEventListener("mousemove", (e) => {
@@ -1034,18 +1035,34 @@
       walletStatus.style.borderColor = "var(--danger)";
     }
 
+    function setErrorState(message) {
+      walletAddressDisplay.textContent = "Connection failed";
+      networkDisplay.textContent = "Error";
+      accessDisplay.textContent = "Denied";
+      holderDisplay.textContent = "Unavailable";
+      walletStatus.textContent = message;
+      walletStatus.style.color = "var(--danger)";
+      walletStatus.style.borderColor = "var(--danger)";
+    }
+
     async function ensurePolygon() {
+      const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+
+      if (currentChainId === POLYGON_CHAIN_ID_HEX) {
+        return;
+      }
+
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: POLYGON_CHAIN_ID }]
+          params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
         });
       } catch (error) {
         if (error.code === 4902) {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
             params: [{
-              chainId: POLYGON_CHAIN_ID,
+              chainId: POLYGON_CHAIN_ID_HEX,
               chainName: "Polygon Mainnet",
               nativeCurrency: {
                 name: "POL",
@@ -1062,6 +1079,29 @@
       }
     }
 
+    async function readKlatBalance(account) {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          [
+            "function balanceOf(address) view returns (uint256)",
+            "function decimals() view returns (uint8)"
+          ],
+          provider
+        );
+
+        const [rawBalance, decimals] = await Promise.all([
+          contract.balanceOf(account),
+          contract.decimals()
+        ]);
+
+        return ethers.utils.formatUnits(rawBalance, decimals);
+      } catch (error) {
+        return null;
+      }
+    }
+
     async function connectWallet() {
       if (!window.ethereum) {
         setNoWalletState();
@@ -1074,19 +1114,34 @@
         walletStatus.style.borderColor = "var(--institutional-gold)";
         accessDisplay.textContent = "Connecting";
         networkDisplay.textContent = "Checking";
-
-        await ensurePolygon();
+        holderDisplay.textContent = "Checking";
 
         const accounts = await window.ethereum.request({
           method: "eth_requestAccounts"
         });
 
+        if (!accounts || !accounts.length) {
+          setErrorState("ACCESS DENIED: NO ACCOUNT RETURNED");
+          return;
+        }
+
         const account = accounts[0];
+
+        await ensurePolygon();
 
         walletAddressDisplay.textContent = shortAddress(account);
         networkDisplay.textContent = "Polygon Mainnet";
         accessDisplay.textContent = "Granted";
-        holderDisplay.textContent = "Connection verified";
+
+        const balance = await readKlatBalance(account);
+
+        if (balance === null) {
+          holderDisplay.textContent = "Contract unreadable";
+        } else if (Number(balance) > 0) {
+          holderDisplay.textContent = `Verified holder (${Number(balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} KLAT)`;
+        } else {
+          holderDisplay.textContent = "Connected — no KLAT";
+        }
 
         walletStatus.innerHTML = `
           <span style="color: var(--success);">IDENTITY VERIFIED:</span> ${shortAddress(account)}
@@ -1096,16 +1151,19 @@
         walletStatus.style.color = "var(--institutional-gold)";
         walletStatus.style.borderColor = "var(--institutional-gold)";
       } catch (error) {
-        walletAddressDisplay.textContent = "Connection failed";
-        networkDisplay.textContent = "Error";
-        accessDisplay.textContent = "Denied";
-        holderDisplay.textContent = "Unavailable";
-        walletStatus.textContent = "ACCESS DENIED OR NETWORK ERROR";
-        walletStatus.style.color = "var(--danger)";
-        walletStatus.style.borderColor = "var(--danger)";
         console.error(error);
+
+        if (error.code === 4001) {
+          setErrorState("ACCESS DENIED: USER CANCELLED");
+        } else {
+          setErrorState(error.message || "ACCESS DENIED OR NETWORK ERROR");
+        }
       }
     }
+
+    syncButtons.forEach((btn) => {
+      btn.addEventListener("click", connectWallet);
+    });
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", async (accounts) => {
