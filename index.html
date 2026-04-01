@@ -1331,7 +1331,7 @@
           <div class="stat-list">
             <div class="stat-row">
               <label>Asset</label>
-              <span>KLAT Access Token</span>
+              <span id="assetNameDisplay">KLAT Access Token</span>
             </div>
             <div class="stat-row">
               <label>Network</label>
@@ -1383,7 +1383,7 @@
 
       <div class="proof-grid">
         <div class="proof-left">
-          <div class="panel proof-card" data-progress="14.82M">
+          <div class="panel proof-card">
             <div class="proof-label">Live Protocol Stats</div>
             <div class="proof-value"><span class="countup" data-target="14.82" data-suffix="M">0</span> verified events</div>
             <div class="proof-text">
@@ -1626,6 +1626,7 @@
     const networkDisplay = document.getElementById("networkDisplay");
     const accessDisplay = document.getElementById("accessDisplay");
     const holderDisplay = document.getElementById("holderDisplay");
+    const assetNameDisplay = document.getElementById("assetNameDisplay");
     const copyContractBtn = document.getElementById("copyContractBtn");
     const contractBox = document.getElementById("contractBox");
     const menuBtn = document.getElementById("menuBtn");
@@ -1670,6 +1671,7 @@
       networkDisplay.textContent = "Unverified";
       accessDisplay.textContent = "Waiting for input";
       holderDisplay.textContent = "Not yet checked";
+      assetNameDisplay.textContent = "KLAT Access Token";
     }
 
     function setNoWalletState() {
@@ -1677,6 +1679,7 @@
       networkDisplay.textContent = "Unavailable";
       accessDisplay.textContent = "Wallet required";
       holderDisplay.textContent = "Unavailable";
+      assetNameDisplay.textContent = "KLAT Access Token";
     }
 
     function setConnectedState(account, networkLabel) {
@@ -1720,17 +1723,44 @@
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const contract = new ethers.Contract(CONTRACT_ADDRESS, KLAT_ABI, provider);
 
-      const [name, symbol, decimals, rawBalance] = await Promise.all([
-        contract.name(),
-        contract.symbol(),
-        contract.decimals(),
-        contract.balanceOf(account)
-      ]);
+      let name = "KLAT Access Token";
+      let symbol = "KLAT";
+      let decimals = 18;
+      let rawBalance = ethers.BigNumber.from("0");
+
+      try {
+        rawBalance = await contract.balanceOf(account);
+      } catch (error) {
+        console.error("balanceOf failed:", error);
+        throw new Error("BALANCE_READ_FAILED");
+      }
+
+      try {
+        const tokenName = await contract.name();
+        if (tokenName) name = tokenName;
+      } catch (error) {
+        console.warn("name() failed, using fallback:", error);
+      }
+
+      try {
+        const tokenSymbol = await contract.symbol();
+        if (tokenSymbol) symbol = tokenSymbol;
+      } catch (error) {
+        console.warn("symbol() failed, using fallback:", error);
+      }
+
+      try {
+        const tokenDecimals = await contract.decimals();
+        if (typeof tokenDecimals !== "undefined") decimals = Number(tokenDecimals);
+      } catch (error) {
+        console.warn("decimals() failed, using fallback 18:", error);
+      }
 
       return {
         name,
         symbol,
         decimals,
+        rawBalance,
         balance: ethers.utils.formatUnits(rawBalance, decimals)
       };
     }
@@ -1780,24 +1810,32 @@
           const tokenData = await readTokenData(account);
           const numericBalance = Number(tokenData.balance);
 
+          assetNameDisplay.textContent = tokenData.name || "KLAT Access Token";
+
           if (Number.isFinite(numericBalance) && numericBalance > 0) {
             holderDisplay.textContent =
               `Verified holder (${numericBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${tokenData.symbol})`;
             accessDisplay.textContent = "Intelligence unlocked";
+
+            showToast(
+              `<strong>Identity verified.</strong><br><br>Wallet ${shortAddress(account)} synchronized on ${networkLabel}. Holder status confirmed.`
+            );
           } else {
             holderDisplay.textContent = `Connected — no ${tokenData.symbol}`;
             accessDisplay.textContent = "Recognized";
-          }
 
-          showToast(
-            `<strong>Identity verified.</strong><br><br>Wallet ${shortAddress(account)} synchronized on ${networkLabel}.`
-          );
+            showToast(
+              `<strong>Wallet synchronized.</strong><br><br>Identity verified on ${networkLabel}, but no KLAT balance was detected for this wallet.`
+            );
+          }
         } catch (contractError) {
           console.error(contractError);
-          holderDisplay.textContent = "Wallet connected — contract read failed";
+          holderDisplay.textContent = "Balance read failed";
           accessDisplay.textContent = "Recognized";
+          assetNameDisplay.textContent = "KLAT Access Token";
+
           showToast(
-            `<strong>Wallet synchronized.</strong><br><br>Identity verified, but holder recognition could not be read from the contract.`,
+            `<strong>Wallet synchronized.</strong><br><br>Identity verified, but the balance check could not be completed.`,
             "error"
           );
         }
@@ -1807,6 +1845,7 @@
         networkDisplay.textContent = "Error";
         accessDisplay.textContent = "Unavailable";
         holderDisplay.textContent = "Unavailable";
+        assetNameDisplay.textContent = "KLAT Access Token";
 
         if (error.code === 4001) {
           showToast(`<strong>Connection request declined.</strong><br><br>User cancelled wallet authorization.`, "error");
@@ -1846,6 +1885,8 @@
           const tokenData = await readTokenData(account);
           const numericBalance = Number(tokenData.balance);
 
+          assetNameDisplay.textContent = tokenData.name || "KLAT Access Token";
+
           if (Number.isFinite(numericBalance) && numericBalance > 0) {
             holderDisplay.textContent =
               `Verified holder (${numericBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${tokenData.symbol})`;
@@ -1856,8 +1897,9 @@
           }
         } catch (contractError) {
           console.error(contractError);
-          holderDisplay.textContent = "Wallet connected — contract read failed";
+          holderDisplay.textContent = "Balance read failed";
           accessDisplay.textContent = "Recognized";
+          assetNameDisplay.textContent = "KLAT Access Token";
         }
       } catch (error) {
         console.error(error);
@@ -1982,15 +2024,13 @@
     const canvas = document.getElementById("heroCanvas");
     if (canvas) {
       const ctx = canvas.getContext("2d");
-      let width = 0;
-      let height = 0;
       let particles = [];
       let pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2, active: false };
 
       function resizeCanvas() {
         const rect = canvas.getBoundingClientRect();
-        width = canvas.width = Math.floor(rect.width * devicePixelRatio);
-        height = canvas.height = Math.floor(rect.height * devicePixelRatio);
+        canvas.width = Math.floor(rect.width * devicePixelRatio);
+        canvas.height = Math.floor(rect.height * devicePixelRatio);
         ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
 
         const count = Math.min(80, Math.max(34, Math.floor(rect.width / 18)));
