@@ -1,183 +1,247 @@
 <!DOCTYPE html>
-<html lang="en"> 
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KLAT Access Terminal</title>
-
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-<style>
-  body {
-    background:#061018;
-    color:#e6f1ff;
-    font-family: Arial, sans-serif;
-    text-align:center;
-    padding:40px;
-  }
-
-  button {
-    padding:14px 22px;
-    margin:10px;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-    font-weight:bold;
-    background:#0ff;
-    color:#000;
-  }
-
-  .card {
-    margin-top:30px;
-    padding:20px;
-    border:1px solid rgba(255,255,255,0.1);
-    border-radius:12px;
-  }
-
-  .status {
-    margin-top:20px;
-    font-size:14px;
-    color:#7fdfff;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KLAT Access Terminal</title>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      background: #061018;
+      color: #e6f1ff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    button {
+      padding: 14px 22px;
+      margin: 10px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #19e6f2;
+      color: #000;
+    }
+    .card {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .debug {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #7fdfff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+  </style>
 </head>
-
 <body>
 
-<h1>KLAT ACCESS TERMINAL</h1>
+  <h1>KLAT ACCESS TERMINAL</h1>
 
-<button onclick="connectWallet()">CONNECT WALLET</button>
+  <button id="connectBtn">CONNECT WALLET</button>
 
-<div class="card">
-  <p><strong>Wallet:</strong> <span id="wallet">-</span></p>
-  <p><strong>Network:</strong> <span id="network">-</span></p>
-  <p><strong>Status:</strong> <span id="status">Awaiting</span></p>
-</div>
+  <div class="card">
+    <p><strong>Wallet:</strong> <span id="wallet">-</span></p>
+    <p><strong>Network:</strong> <span id="network">-</span></p>
+    <p><strong>Name:</strong> <span id="tokenName">-</span></p>
+    <p><strong>Symbol:</strong> <span id="tokenSymbol">-</span></p>
+    <p><strong>Decimals:</strong> <span id="tokenDecimals">-</span></p>
+    <p><strong>Status:</strong> <span id="status">Awaiting</span></p>
+  </div>
 
-<div class="status" id="debug"></div>
+  <div class="debug" id="debug"></div>
 
-<script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    const CONTRACT_ADDRESS = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
+    const POLYGON_CHAIN_ID_HEX = "0x89";
 
-<script>
-  const CONTRACT_ADDRESS = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
-  const POLYGON_CHAIN_ID_HEX = "0x89";
-
-  const ABI = [
-    "function balanceOf(address) view returns (uint256)",
-    "function decimals() view returns (uint8)"
-  ];
-
-  const connectBtn = document.querySelector("button");
-  const walletDisplay = document.getElementById("wallet");
-  const networkDisplay = document.getElementById("network");
-  const statusDisplay = document.getElementById("status");
-  const debugDisplay = document.getElementById("debug");
-
-  function shortAddress(addr) {
-    return addr.slice(0, 6) + "..." + addr.slice(-4);
-  }
-
-  function setStatus(text) {
-    statusDisplay.textContent = text;
-  }
-
-  function setDebug(text) {
-    debugDisplay.textContent = text;
-  }
-
-  connectBtn.addEventListener("click", async () => {
-    try {
-      if (!window.ethereum) {
-        setStatus("No wallet detected");
-        setDebug("Open in MetaMask browser.");
-        return;
+    const ABI = [
+      {
+        "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
+        "name": "balanceOf",
+        "outputs": [{ "internalType": "uint256", "name": "result", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "name",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+        "stateMutability": "view",
+        "type": "function"
       }
+    ];
 
-      setStatus("Requesting wallet");
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts"
+    const connectBtn = document.getElementById("connectBtn");
+    const walletEl = document.getElementById("wallet");
+    const networkEl = document.getElementById("network");
+    const tokenNameEl = document.getElementById("tokenName");
+    const tokenSymbolEl = document.getElementById("tokenSymbol");
+    const tokenDecimalsEl = document.getElementById("tokenDecimals");
+    const statusEl = document.getElementById("status");
+    const debugEl = document.getElementById("debug");
+
+    function shortAddress(addr) {
+      return addr.slice(0, 6) + "..." + addr.slice(-4);
+    }
+
+    function setDebug(msg) {
+      console.log(msg);
+      debugEl.textContent = String(msg);
+    }
+
+    function extractErrorMessage(err) {
+      if (!err) return "Unknown error";
+      if (err.reason) return err.reason;
+      if (err.data && err.data.message) return err.data.message;
+      if (err.error && err.error.message) return err.error.message;
+      if (err.message) return err.message;
+      return JSON.stringify(err);
+    }
+
+    async function switchToPolygon() {
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (chainId === POLYGON_CHAIN_ID_HEX) return;
+
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
       });
+    }
 
-      const account = accounts[0];
-      walletDisplay.textContent = shortAddress(account);
-
-      let chainId = await window.ethereum.request({
-        method: "eth_chainId"
-      });
-
-      if (chainId !== POLYGON_CHAIN_ID_HEX) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
-          });
-        } catch (switchError) {
-          console.error("SWITCH ERROR:", switchError);
-          setStatus("Polygon switch failed");
-          setDebug(switchError.message || "Could not switch to Polygon");
+    connectBtn.addEventListener("click", async () => {
+      try {
+        if (typeof ethers === "undefined") {
+          statusEl.textContent = "READ FAILED";
+          setDebug("ethers failed to load");
           return;
         }
+
+        if (!window.ethereum) {
+          statusEl.textContent = "NO WALLET";
+          setDebug("No wallet detected. Open this page in MetaMask browser.");
+          return;
+        }
+
+        statusEl.textContent = "Requesting wallet";
+        setDebug("Connecting wallet...");
+
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
+
+        const account = accounts[0];
+        walletEl.textContent = shortAddress(account);
+
+        try {
+          await switchToPolygon();
+        } catch (switchErr) {
+          statusEl.textContent = "SWITCH FAILED";
+          setDebug("Polygon switch failed: " + extractErrorMessage(switchErr));
+          return;
+        }
+
+        networkEl.textContent = "Polygon Mainnet";
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+        // Step 1: name()
+        let tokenName = "-";
+        try {
+          statusEl.textContent = "Reading name()";
+          tokenName = await contract.name();
+          tokenNameEl.textContent = tokenName;
+        } catch (err) {
+          tokenNameEl.textContent = "FAILED";
+          setDebug("name() failed: " + extractErrorMessage(err));
+          throw err;
+        }
+
+        // Step 2: symbol()
+        let tokenSymbol = "-";
+        try {
+          statusEl.textContent = "Reading symbol()";
+          tokenSymbol = await contract.symbol();
+          tokenSymbolEl.textContent = tokenSymbol;
+        } catch (err) {
+          tokenSymbolEl.textContent = "FAILED";
+          setDebug("symbol() failed: " + extractErrorMessage(err));
+          throw err;
+        }
+
+        // Step 3: decimals()
+        let decimals = 18;
+        try {
+          statusEl.textContent = "Reading decimals()";
+          decimals = await contract.decimals();
+          tokenDecimalsEl.textContent = decimals;
+        } catch (err) {
+          tokenDecimalsEl.textContent = "FAILED";
+          setDebug("decimals() failed: " + extractErrorMessage(err));
+          throw err;
+        }
+
+        // Step 4: balanceOf()
+        try {
+          statusEl.textContent = "Reading balanceOf()";
+          const rawBalance = await contract.balanceOf(account);
+          const formatted = ethers.utils.formatUnits(rawBalance, decimals);
+
+          if (Number(formatted) > 0) {
+            statusEl.textContent = `VERIFIED HOLDER (${formatted} ${tokenSymbol})`;
+            setDebug(
+              "SUCCESS\n" +
+              "contract: " + CONTRACT_ADDRESS + "\n" +
+              "wallet: " + account + "\n" +
+              "name: " + tokenName + "\n" +
+              "symbol: " + tokenSymbol + "\n" +
+              "decimals: " + decimals + "\n" +
+              "raw balance: " + rawBalance.toString() + "\n" +
+              "formatted balance: " + formatted
+            );
+          } else {
+            statusEl.textContent = "NO TOKEN DETECTED";
+            setDebug(
+              "Connected successfully, but no balance detected.\n" +
+              "raw balance: " + rawBalance.toString()
+            );
+          }
+        } catch (err) {
+          statusEl.textContent = "BALANCE READ FAILED";
+          setDebug("balanceOf() failed: " + extractErrorMessage(err));
+        }
+
+      } catch (err) {
+        statusEl.textContent = "READ FAILED";
+        setDebug("General failure: " + extractErrorMessage(err));
       }
-
-      networkDisplay.textContent = "Polygon Mainnet";
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-      console.log("ethers version:", ethers.version);
-      console.log("contract:", CONTRACT_ADDRESS);
-      console.log("account:", account);
-
-      setStatus("Reading decimals()");
-      const decimals = await contract.decimals();
-      console.log("decimals:", decimals);
-
-      setStatus("Reading balanceOf()");
-      const balance = await contract.balanceOf(account);
-      console.log("raw balance:", balance.toString());
-
-      const formatted = ethers.utils.formatUnits(balance, decimals);
-      console.log("formatted balance:", formatted);
-
-      if (Number(formatted) > 0) {
-        setStatus(`VERIFIED HOLDER (${formatted} KLAT)`);
-        setDebug("Holder status confirmed.");
-      } else {
-        setStatus("NO TOKEN DETECTED");
-        setDebug("Wallet connected, but no KLAT balance found.");
-      }
-
-    } catch (err) {
-      console.error("FULL READ ERROR:", err);
-
-      let message = "READ FAILED";
-
-      if (err?.reason) message = err.reason;
-      else if (err?.data?.message) message = err.data.message;
-      else if (err?.error?.message) message = err.error.message;
-      else if (err?.message) message = err.message;
-
-      setStatus(message);
-      setDebug(message);
-    }
-  });
-</script>
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-      const balance = await contract.balanceOf(account);
-      const decimals = await contract.decimals();
-
-      const formatted = ethers.utils.formatUnits(balance, decimals);
-
-      if (Number(formatted) > 0) {
-        statusDisplay.textContent = "VERIFIED HOLDER";
-      } else {
-        statusDisplay.textContent = "NO TOKEN DETECTED";
-      }
-
-    } catch (err) {
-      console.error(err);
-      statusDisplay.textContent = "READ FAILED";
-    }
-  });
-</script>
+    });
+  </script>
+</body>
+</html>
