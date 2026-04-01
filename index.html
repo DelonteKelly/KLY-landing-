@@ -1057,11 +1057,11 @@
       right: 16px;
       bottom: 18px;
       z-index: 3000;
-      max-width: 520px;
+      max-width: 560px;
       margin: 0 auto;
       border-radius: 16px;
       border: 1px solid var(--line);
-      background: rgba(7,16,25,0.92);
+      background: rgba(7,16,25,0.94);
       backdrop-filter: blur(18px);
       box-shadow: var(--shadow-lg);
       padding: 16px 18px;
@@ -1334,16 +1334,16 @@
               <span id="assetNameDisplay">KLAT Access Token</span>
             </div>
             <div class="stat-row">
-              <label>Network</label>
-              <span>ERC-20 / Polygon</span>
+              <label>Symbol</label>
+              <span id="assetSymbolDisplay">KLAT</span>
+            </div>
+            <div class="stat-row">
+              <label>Decimals</label>
+              <span id="assetDecimalsDisplay">18</span>
             </div>
             <div class="stat-row">
               <label>Current Live Function</label>
               <span>Verification + Holder Recognition</span>
-            </div>
-            <div class="stat-row">
-              <label>Max Supply</label>
-              <span>1,000,000 KLAT</span>
             </div>
           </div>
 
@@ -1601,7 +1601,7 @@
           <div style="display:flex; gap:18px; flex-wrap:wrap;">
             <a href="#overview">Network Status</a>
             <a href="#proof">Vault Metrics</a>
-            <a href="#activate">Access Layer v3.1.0</a>
+            <a href="#activate">Access Layer v3.2.0</a>
           </div>
         </div>
       </div>
@@ -1610,16 +1610,40 @@
 
   <div class="floating-toast" id="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
     const CONTRACT_ADDRESS = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
     const POLYGON_CHAIN_ID_HEX = "0x89";
 
-    const KLAT_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function decimals() view returns (uint8)",
-      "function symbol() view returns (string)",
-      "function name() view returns (string)"
+    const FULL_ABI = [
+      {
+        "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
+        "name": "balanceOf",
+        "outputs": [{ "internalType": "uint256", "name": "result", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "name",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
 
     const walletAddressDisplay = document.getElementById("walletAddressDisplay");
@@ -1627,6 +1651,8 @@
     const accessDisplay = document.getElementById("accessDisplay");
     const holderDisplay = document.getElementById("holderDisplay");
     const assetNameDisplay = document.getElementById("assetNameDisplay");
+    const assetSymbolDisplay = document.getElementById("assetSymbolDisplay");
+    const assetDecimalsDisplay = document.getElementById("assetDecimalsDisplay");
     const copyContractBtn = document.getElementById("copyContractBtn");
     const contractBox = document.getElementById("contractBox");
     const menuBtn = document.getElementById("menuBtn");
@@ -1666,12 +1692,18 @@
       toast.classList.remove("show");
     }
 
+    function setDefaultTokenFields() {
+      assetNameDisplay.textContent = "KLAT Access Token";
+      assetSymbolDisplay.textContent = "KLAT";
+      assetDecimalsDisplay.textContent = "18";
+    }
+
     function setWaitingState() {
       walletAddressDisplay.textContent = "Awaiting connection";
       networkDisplay.textContent = "Unverified";
       accessDisplay.textContent = "Waiting for input";
       holderDisplay.textContent = "Not yet checked";
-      assetNameDisplay.textContent = "KLAT Access Token";
+      setDefaultTokenFields();
     }
 
     function setNoWalletState() {
@@ -1679,7 +1711,7 @@
       networkDisplay.textContent = "Unavailable";
       accessDisplay.textContent = "Wallet required";
       holderDisplay.textContent = "Unavailable";
-      assetNameDisplay.textContent = "KLAT Access Token";
+      setDefaultTokenFields();
     }
 
     function setConnectedState(account, networkLabel) {
@@ -1688,107 +1720,81 @@
       accessDisplay.textContent = "Recognized";
     }
 
+    function extractErrorMessage(err) {
+      if (!err) return "Unknown error";
+      if (err.reason) return err.reason;
+      if (err.data && err.data.message) return err.data.message;
+      if (err.error && err.error.message) return err.error.message;
+      if (err.message) return err.message;
+      try {
+        return JSON.stringify(err);
+      } catch {
+        return "Unknown error";
+      }
+    }
+
     async function ensurePolygon() {
       const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
       if (currentChainId === POLYGON_CHAIN_ID_HEX) return;
 
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
-        });
-      } catch (error) {
-        if (error.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: POLYGON_CHAIN_ID_HEX,
-              chainName: "Polygon Mainnet",
-              nativeCurrency: {
-                name: "POL",
-                symbol: "POL",
-                decimals: 18
-              },
-              rpcUrls: ["https://polygon-rpc.com/"],
-              blockExplorerUrls: ["https://polygonscan.com/"]
-            }]
-          });
-        } else {
-          throw error;
-        }
-      }
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
+      });
     }
 
     async function readTokenData(account) {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, KLAT_ABI, provider);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, FULL_ABI, provider);
 
-      let name = "KLAT Access Token";
-      let symbol = "KLAT";
-      let decimals = 18;
-      let rawBalance = ethers.BigNumber.from("0");
-
-      try {
-        rawBalance = await contract.balanceOf(account);
-      } catch (error) {
-        console.error("balanceOf failed:", error);
-        throw new Error("BALANCE_READ_FAILED");
-      }
-
-      try {
-        const tokenName = await contract.name();
-        if (tokenName) name = tokenName;
-      } catch (error) {
-        console.warn("name() failed, using fallback:", error);
-      }
-
-      try {
-        const tokenSymbol = await contract.symbol();
-        if (tokenSymbol) symbol = tokenSymbol;
-      } catch (error) {
-        console.warn("symbol() failed, using fallback:", error);
-      }
-
-      try {
-        const tokenDecimals = await contract.decimals();
-        if (typeof tokenDecimals !== "undefined") decimals = Number(tokenDecimals);
-      } catch (error) {
-        console.warn("decimals() failed, using fallback 18:", error);
-      }
+      const name = await contract.name();
+      const symbol = await contract.symbol();
+      const decimals = await contract.decimals();
+      const rawBalance = await contract.balanceOf(account);
 
       return {
         name,
         symbol,
-        decimals,
+        decimals: Number(decimals),
         rawBalance,
         balance: ethers.utils.formatUnits(rawBalance, decimals)
       };
     }
 
+    function accessClassFromBalance(balanceNumber) {
+      if (balanceNumber >= 100000) return "Intelligence access";
+      if (balanceNumber >= 10000) return "Calibrated";
+      if (balanceNumber > 0) return "Verified";
+      return "Recognized";
+    }
+
     async function connectWallet() {
       hideToast();
 
-      if (!window.ethereum || typeof window.ethereum.request !== "function") {
-        setNoWalletState();
-
-        if (isMobile()) {
-          showToast(
-            `<strong>No wallet provider detected.</strong><br><br><a href="${getMetaMaskDeepLink()}">Open this page in MetaMask</a> to continue wallet synchronization.`,
-            "error"
-          );
-        } else {
-          showToast(
-            `<strong>No wallet provider detected.</strong><br><br>Please install or enable MetaMask, then reload this page.`,
-            "error"
-          );
-        }
-        return;
-      }
-
       try {
+        if (typeof ethers === "undefined") {
+          throw new Error("ethers failed to load");
+        }
+
+        if (!window.ethereum || typeof window.ethereum.request !== "function") {
+          setNoWalletState();
+
+          if (isMobile()) {
+            showToast(
+              `<strong>No wallet provider detected.</strong><br><br><a href="${getMetaMaskDeepLink()}">Open this page in MetaMask</a> to continue wallet synchronization.`,
+              "error"
+            );
+          } else {
+            showToast(
+              `<strong>No wallet provider detected.</strong><br><br>Please install or enable MetaMask, then reload this page.`,
+              "error"
+            );
+          }
+          return;
+        }
+
         accessDisplay.textContent = "Connecting";
-        networkDisplay.textContent = "Checking";
-        holderDisplay.textContent = "Checking";
+        holderDisplay.textContent = "Requesting wallet";
         showToast(`<strong>Biometric scan initiated.</strong><br><br>Establishing secure wallet link...`);
 
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -1798,64 +1804,88 @@
         }
 
         const account = accounts[0];
-
-        await ensurePolygon();
-
-        const chainId = await window.ethereum.request({ method: "eth_chainId" });
-        const networkLabel = chainId === POLYGON_CHAIN_ID_HEX ? "Polygon Mainnet" : chainId;
-
-        setConnectedState(account, networkLabel);
+        walletAddressDisplay.textContent = shortAddress(account);
 
         try {
+          await ensurePolygon();
+        } catch (switchError) {
+          networkDisplay.textContent = "Switch failed";
+          accessDisplay.textContent = "Polygon required";
+          holderDisplay.textContent = "Polygon switch failed";
+          showToast(
+            `<strong>Network switch failed.</strong><br><br>${extractErrorMessage(switchError)}`,
+            "error"
+          );
+          return;
+        }
+
+        networkDisplay.textContent = "Polygon Mainnet";
+
+        try {
+          holderDisplay.textContent = "Reading token data";
           const tokenData = await readTokenData(account);
           const numericBalance = Number(tokenData.balance);
 
           assetNameDisplay.textContent = tokenData.name || "KLAT Access Token";
+          assetSymbolDisplay.textContent = tokenData.symbol || "KLAT";
+          assetDecimalsDisplay.textContent = String(tokenData.decimals ?? 18);
 
           if (Number.isFinite(numericBalance) && numericBalance > 0) {
+            const accessClass = accessClassFromBalance(numericBalance);
+            accessDisplay.textContent = accessClass;
             holderDisplay.textContent =
               `Verified holder (${numericBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${tokenData.symbol})`;
-            accessDisplay.textContent = "Intelligence unlocked";
 
             showToast(
-              `<strong>Identity verified.</strong><br><br>Wallet ${shortAddress(account)} synchronized on ${networkLabel}. Holder status confirmed.`
+              `<strong>Identity verified.</strong><br><br>Wallet ${shortAddress(account)} synchronized on Polygon Mainnet. Holder status confirmed.`
             );
           } else {
-            holderDisplay.textContent = `Connected — no ${tokenData.symbol}`;
             accessDisplay.textContent = "Recognized";
+            holderDisplay.textContent = `Connected — no ${tokenData.symbol}`;
 
             showToast(
-              `<strong>Wallet synchronized.</strong><br><br>Identity verified on ${networkLabel}, but no KLAT balance was detected for this wallet.`
+              `<strong>Wallet synchronized.</strong><br><br>Identity verified on Polygon Mainnet, but no KLAT balance was detected for this wallet.`
             );
           }
         } catch (contractError) {
-          console.error(contractError);
-          holderDisplay.textContent = "Balance read failed";
+          console.error("TOKEN READ FAILED:", contractError);
+          setDefaultTokenFields();
           accessDisplay.textContent = "Recognized";
-          assetNameDisplay.textContent = "KLAT Access Token";
+          holderDisplay.textContent = "Balance read failed";
 
           showToast(
-            `<strong>Wallet synchronized.</strong><br><br>Identity verified, but the balance check could not be completed.`,
+            `<strong>Wallet synchronized.</strong><br><br>Identity verified, but the balance check could not be completed.<br><br>${extractErrorMessage(contractError)}`,
             "error"
           );
         }
       } catch (error) {
-        console.error(error);
+        console.error("WALLET CONNECTION FAILED:", error);
         walletAddressDisplay.textContent = "Connection failed";
         networkDisplay.textContent = "Error";
         accessDisplay.textContent = "Unavailable";
         holderDisplay.textContent = "Unavailable";
-        assetNameDisplay.textContent = "KLAT Access Token";
+        setDefaultTokenFields();
 
         if (error.code === 4001) {
-          showToast(`<strong>Connection request declined.</strong><br><br>User cancelled wallet authorization.`, "error");
+          showToast(
+            `<strong>Connection request declined.</strong><br><br>User cancelled wallet authorization.`,
+            "error"
+          );
         } else {
-          showToast(`<strong>Wallet connection failed.</strong><br><br>${error.message || "Unknown error"}`, "error");
+          showToast(
+            `<strong>Wallet connection failed.</strong><br><br>${extractErrorMessage(error)}`,
+            "error"
+          );
         }
       }
     }
 
     async function refreshWalletState() {
+      if (typeof ethers === "undefined") {
+        setNoWalletState();
+        return;
+      }
+
       if (!window.ethereum || typeof window.ethereum.request !== "function") {
         setNoWalletState();
         return;
@@ -1877,32 +1907,29 @@
 
         if (chainId !== POLYGON_CHAIN_ID_HEX) {
           holderDisplay.textContent = "Switch to Polygon required";
-          accessDisplay.textContent = "Chain mismatch";
+          accessDisplay.textContent = "Polygon required";
           return;
         }
 
-        try {
-          const tokenData = await readTokenData(account);
-          const numericBalance = Number(tokenData.balance);
+        const tokenData = await readTokenData(account);
+        const numericBalance = Number(tokenData.balance);
 
-          assetNameDisplay.textContent = tokenData.name || "KLAT Access Token";
+        assetNameDisplay.textContent = tokenData.name || "KLAT Access Token";
+        assetSymbolDisplay.textContent = tokenData.symbol || "KLAT";
+        assetDecimalsDisplay.textContent = String(tokenData.decimals ?? 18);
 
-          if (Number.isFinite(numericBalance) && numericBalance > 0) {
-            holderDisplay.textContent =
-              `Verified holder (${numericBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${tokenData.symbol})`;
-            accessDisplay.textContent = "Intelligence unlocked";
-          } else {
-            holderDisplay.textContent = `Connected — no ${tokenData.symbol}`;
-            accessDisplay.textContent = "Recognized";
-          }
-        } catch (contractError) {
-          console.error(contractError);
-          holderDisplay.textContent = "Balance read failed";
+        if (Number.isFinite(numericBalance) && numericBalance > 0) {
+          accessDisplay.textContent = accessClassFromBalance(numericBalance);
+          holderDisplay.textContent =
+            `Verified holder (${numericBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${tokenData.symbol})`;
+        } else {
           accessDisplay.textContent = "Recognized";
-          assetNameDisplay.textContent = "KLAT Access Token";
+          holderDisplay.textContent = `Connected — no ${tokenData.symbol}`;
         }
       } catch (error) {
-        console.error(error);
+        console.error("REFRESH FAILED:", error);
+        accessDisplay.textContent = "Recognized";
+        holderDisplay.textContent = "Balance read failed";
       }
     }
 
@@ -1910,9 +1937,14 @@
       copyContractBtn.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(contractBox.textContent.trim());
-          showToast(`<strong>Contract copied.</strong><br><br>The KLAT contract address is now on your clipboard.`);
+          showToast(
+            `<strong>Contract copied.</strong><br><br>The KLAT contract address is now on your clipboard.`
+          );
         } catch (error) {
-          showToast(`<strong>Copy failed.</strong><br><br>Clipboard access was not granted.`, "error");
+          showToast(
+            `<strong>Copy failed.</strong><br><br>Clipboard access was not granted.`,
+            "error"
+          );
         }
       });
     }
@@ -1994,11 +2026,7 @@
     window.addEventListener("load", setActiveNav);
 
     function updateVault(step) {
-      const values = {
-        1: 34,
-        2: 67,
-        3: 100
-      };
+      const values = { 1: 34, 2: 67, 3: 100 };
       const percent = values[step] || 14;
       vaultFill.style.width = percent + "%";
       vaultPercent.textContent = percent + "% synchronized";
