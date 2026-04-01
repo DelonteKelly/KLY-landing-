@@ -56,78 +56,71 @@
 
 <div class="status" id="debug"></div>
 
+<!-- ✅ LOAD ETHERS FIRST (RELIABLE CDN) -->
+<script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+<!-- ✅ YOUR SCRIPT -->
 <script>
-const CONTRACT = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
-const POLYGON = "0x89";
-
-function log(msg){
-  console.log(msg);
-  document.getElementById("debug").innerText = msg;
-}
-
-function short(addr){
-  return addr.slice(0,6)+"..."+addr.slice(-4);
-}
-
-async function connectWallet(){
-
-  if(!window.ethereum){
-    alert("No wallet detected");
-    return;
+  // SAFETY CHECK
+  if (typeof ethers === "undefined") {
+    alert("Ethers failed to load. Please refresh the page.");
   }
 
-  try{
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const CONTRACT_ADDRESS = "0x0eC422119173558541BED4BF2f0Ef4807D66A4f4";
+  const POLYGON_CHAIN_ID_HEX = "0x89";
 
-    const accounts = await window.ethereum.request({
-      method:"eth_requestAccounts"
-    });
+  const ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)"
+  ];
 
-    const account = accounts[0];
+  const connectBtn = document.querySelector("[data-connect-wallet]");
+  const walletDisplay = document.getElementById("walletAddressDisplay");
+  const networkDisplay = document.getElementById("networkDisplay");
+  const statusDisplay = document.getElementById("holderDisplay");
 
-    document.getElementById("wallet").innerText = short(account);
+  connectBtn.addEventListener("click", async () => {
+    try {
+      if (!window.ethereum) {
+        alert("No wallet detected. Open in MetaMask browser.");
+        return;
+      }
 
-    // Ensure Polygon
-    let chainId = await window.ethereum.request({method:"eth_chainId"});
-
-    if(chainId !== POLYGON){
-      await window.ethereum.request({
-        method:"wallet_switchEthereumChain",
-        params:[{chainId:POLYGON}]
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts"
       });
+
+      const account = accounts[0];
+
+      walletDisplay.textContent =
+        account.slice(0, 6) + "..." + account.slice(-4);
+
+      // SWITCH TO POLYGON
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: POLYGON_CHAIN_ID_HEX }]
+      });
+
+      networkDisplay.textContent = "Polygon Mainnet";
+
+      // CONNECT PROVIDER
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+      const balance = await contract.balanceOf(account);
+      const decimals = await contract.decimals();
+
+      const formatted = ethers.utils.formatUnits(balance, decimals);
+
+      if (Number(formatted) > 0) {
+        statusDisplay.textContent = "VERIFIED HOLDER";
+      } else {
+        statusDisplay.textContent = "NO TOKEN DETECTED";
+      }
+
+    } catch (err) {
+      console.error(err);
+      statusDisplay.textContent = "READ FAILED";
     }
-
-    document.getElementById("network").innerText = "Polygon";
-
-    log("Reading contract...");
-
-    const contract = new ethers.Contract(
-      CONTRACT,
-      ["function balanceOf(address) view returns (uint256)"],
-      provider
-    );
-
-    const balance = await contract.balanceOf(account);
-
-    const formatted = Number(ethers.utils.formatUnits(balance,18));
-
-    log("Balance raw: " + balance.toString());
-
-    if(formatted > 0){
-      document.getElementById("status").innerText =
-        "VERIFIED HOLDER (" + formatted.toFixed(2) + " KLAT)";
-    } else {
-      document.getElementById("status").innerText =
-        "CONNECTED — NO KLAT";
-    }
-
-  }catch(e){
-    console.error(e);
-    document.getElementById("status").innerText = "READ FAILED";
-    log("ERROR: " + (e.message || e));
-  }
-}
+  });
 </script>
-
-</body>
-</html>
