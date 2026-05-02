@@ -1,169 +1,65 @@
-# KLY-landing-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kelly Legacy Token (KLY)</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0c0c0c;
-      color: #ffffff;
-    }
+# KLY-landing-
 
-    header {
-      background: #111;
-      padding: 20px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+Kelly Legacy Estates public web infrastructure for the KLAT Access Node and Kelly Legacy Institute training system.
 
-    header h1 {
-      color: #00ffcc;
-    }
+## SYSTEM PURPOSE
 
-    nav a {
-      margin: 0 15px;
-      color: #ccc;
-      text-decoration: none;
-    }
+This repository functions as the public-facing access layer for KLAT (Kelly Legacy Access Token) verification, institutional intake routing, and controlled training module access. This is not a standalone application. It is an interface layer connected to structured administrative systems.
 
-    nav a:hover {
-      color: #00ffcc;
-    }
+## CURRENT STRUCTURE
 
-    .hero {
-      text-align: center;
-      padding: 80px 20px;
-      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-    }
+KLY-landing-
+├── assets/
+├── components/
+│   └── training/
+│       └── module-1/
+│           └── index.html
+├── CNAME
+├── README.md
+└── index.html
 
-    .hero h2 {
-      font-size: 2.8em;
-      margin-bottom: 20px;
-    }
+## ENTRY POINT
 
-    .hero p {
-      font-size: 1.2em;
-      max-width: 700px;
-      margin: 0 auto 30px;
-    }
+/index.html
 
-    .hero button {
-      padding: 15px 30px;
-      font-size: 1em;
-      color: #0c0c0c;
-      background: #00ffcc;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
+This file operates as the KLAT Institutional Access Node. It handles wallet connection on Polygon, token verification, access classification, and intake routing.
 
-    .section {
-      padding: 60px 20px;
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+## TRAINING SYSTEM
 
-    .section h3 {
-      font-size: 2em;
-      margin-bottom: 20px;
-      color: #00ffcc;
-    }
+/components/training/module-1/index.html
 
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 30px;
-    }
+Module 1: Status, Standing, Capacity
 
-    .feature-box {
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 10px;
-    }
+Controlled sequence includes:
+Lesson 1 — Status
+Lesson 2 — Standing
+Lesson 3 — Capacity
+Lesson 4 — Capacity Errors
+Lesson 5 — Procedural Order
+Lesson 6 — Completion Gate
 
-    .feature-box h4 {
-      color: #00ffcc;
-      margin-bottom: 10px;
-    }
+Progression is not UI-based. It is record-based.
 
-    footer {
-      text-align: center;
-      padding: 40px 20px;
-      background: #111;
-      color: #777;
-    }
-  </style>
-</head>
-<body>
+## GOVERNANCE MODEL
 
-  <header>
-    <h1>KLY Token</h1>
-    <nav>
-      <a href="#about">About</a>
-      <a href="#features">Features</a>
-      <a href="#stake">Staking</a>
-      <a href="#join">Join</a>
-    </nav>
-  </header>
+All activity within this system is governed by fiduciary duty standards, institutional record requirements, controlled intake procedures, and verified submission review. No access, certification, or recognition is granted without submission, review, and formal recording.
 
-  <section class="hero">
-    <h2>The Future of Wealth is Tokenized</h2>
-    <p>Kelly Legacy Token (KLY) powers a new economy of education, ownership, and decentralized opportunity.</p>
-    <button onclick="location.href='https://bscscan.com/token/0x2e4fEB2Fe668c8Ebe84f19e6c8fE8Cf8131B4E52'">View on BscScan</button>
-  </section>
+## OPERATIONAL RULES
 
-  <section class="section" id="about">
-    <h3>What is KLY?</h3>
-    <p>
-      KLY is the native utility token of the Kelly Legacy ecosystem — designed to empower learners, entrepreneurs, and investors with a token-backed economy for staking, token creation, course access, and passive income generation.
-    </p>
-  </section>
+Wallet verification does not equal institutional recognition. UI interaction does not equal completion. Downloading materials does not equal certification. Only recorded actions produce institutional outcome.
 
-  <section class="section" id="features">
-    <h3>Core Features</h3>
-    <div class="features">
-      <div class="feature-box">
-        <h4>Staking Rewards</h4>
-        <p>Earn passive income by staking your KLY tokens directly on our platform.</p>
-      </div>
-      <div class="feature-box">
-        <h4>Token Launchpad</h4>
-        <p>Use 10,000 KLY to launch your own token. 5% goes to the KLY Treasury.</p>
-      </div>
-      <div class="feature-box">
-        <h4>Course Access</h4>
-        <p>Unlock exclusive business and wealth-building courses using KLY.</p>
-      </div>
-      <div class="feature-box">
-        <h4>Airdrop & Gamification</h4>
-        <p>Earn KLY from learning, referring, and completing tasks in the ecosystem.</p>
-      </div>
-    </div>
-  </section>
+## DATA & RECORD SYSTEM
 
-  <section class="section" id="stake">
-    <h3>Stake Your KLY</h3>
-    <p>
-      Secure your stake in the ecosystem. Earn KLY for every KLY you stake — with flexible lock periods and real-time rewards.
-    </p>
-    <button onclick="location.href='https://yourstakingapp.com'">Start Staking</button>
-  </section>
+Primary system of record is the KLI Master Ledger (external). It tracks Participant ID, intake status, lesson completion, review status, and certification status. This repository does not store official records.
 
-  <section class="section" id="join">
-    <h3>Join the Legacy Movement</h3>
-    <p>
-      Build wealth. Teach others. Leave a legacy. All powered by the Kelly Legacy Token.
-    </p>
-    <button onclick="location.href='https://youronboardinglink.com'">Get Started</button>
-  </section>
+## AUTHORITY
 
-  <footer>
-    &copy; 2025 Kelly Legacy Token. All rights reserved.
-  </footer>
+Issued under the Office of the Fiduciary, Kelly Legacy Estates Trust, and Kelly Legacy Institute.
 
-</body>
-</html>
+## NOTICE
+
+This system is educational in nature, administratively structured, and governed by institutional rules. It does not constitute legal advice, financial advice, or investment solicitation.
+
+## COPYRIGHT
+
+© 2026 Kelly Legacy Estates Trust. All rights reserved.
