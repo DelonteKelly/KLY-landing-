@@ -118,12 +118,18 @@
       font-weight: 600;
       color: var(--gold);
     }
-    .access-code-input {
+    .access-control {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 1rem;
       margin-top: 1rem;
+    }
+    .access-code-input {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
     }
     .access-code-input input {
       background: rgba(0,0,0,0.6);
@@ -136,19 +142,26 @@
       text-align: center;
       font-size: 1rem;
     }
-    .access-code-input button {
+    .access-code-input button, .reset-access-btn {
       background: var(--gold);
       border: none;
       border-radius: 60px;
-      padding: 0.8rem 2rem;
+      padding: 0.8rem 1.5rem;
       font-family: 'Inter', sans-serif;
       font-weight: 600;
       color: #0A0F1A;
       cursor: pointer;
       transition: 0.2s;
     }
-    .access-code-input button:hover { background: #b38f47; transform: translateY(-2px); }
+    .reset-access-btn {
+      background: transparent;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+    }
+    .access-code-input button:hover, .reset-access-btn:hover { background: #b38f47; transform: translateY(-2px); color: #0A0F1A; }
+    .reset-access-btn:hover { background: rgba(198,161,91,0.2); color: var(--gold); }
 
+    /* Tracks */
     .track-card {
       background: var(--glass-bg);
       backdrop-filter: blur(8px);
@@ -177,13 +190,37 @@
     .track-content.open { display: block; }
     .lesson-list { margin: 1rem 0; }
     .lesson-item {
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 0.75rem 0;
+    }
+    .lesson-header {
       display: flex;
       align-items: center;
       gap: 1rem;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
     }
-    .lesson-item input { width: 18px; height: 18px; accent-color: var(--gold); }
+    .lesson-header input { width: 18px; height: 18px; accent-color: var(--gold); margin-top: 0; }
+    .lesson-title {
+      flex: 1;
+      font-weight: 500;
+    }
+    .lesson-toggle {
+      color: var(--gold);
+      font-size: 0.8rem;
+      transition: 0.2s;
+    }
+    .lesson-content {
+      margin-top: 1rem;
+      margin-left: 2rem;
+      padding-left: 1rem;
+      border-left: 1px solid rgba(198,161,91,0.3);
+      font-size: 0.9rem;
+      color: #cbd5e6;
+      display: none;
+    }
+    .lesson-content p, .lesson-content ul, .lesson-content div {
+      margin-bottom: 0.8rem;
+    }
     .vip-badge {
       background: rgba(198,161,91,0.2);
       border: 1px solid var(--gold);
@@ -203,6 +240,7 @@
       .track-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
       .container { padding: 0 1.5rem; }
       .nav { flex-direction: column; text-align: center; }
+      .lesson-header { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -228,11 +266,12 @@
       Tracks 0–3. Curriculum progression requires verified participation, administrative recordkeeping, and issued access authorization.
     </p>
 
+    <!-- Enrollment Access Card -->
     <div class="access-card">
       <i class="fa-solid fa-file-invoice-dollar" style="font-size: 2rem; color: var(--gold);"></i>
       <h2 style="font-size: 1.7rem; margin: 0.5rem 0;">Enrollment Access & Remittance</h2>
       <p style="max-width: 760px; margin: 0 auto 1rem; color:#cbd5e1;">
-        Curriculum access is issued after enrollment remittance is received and verified by Kelly Legacy Estates LLC.
+        Curriculum access is issued after enrollment remittance is received and verified.
       </p>
 
       <div class="single-price-card">
@@ -255,13 +294,17 @@
         </p>
       </div>
 
-      <div class="access-code-input">
-        <input type="text" id="accessCode" placeholder="Enter issued access code" autocomplete="off">
-        <button id="unlockBtn">Verify Access</button>
+      <div class="access-control">
+        <div class="access-code-input">
+          <input type="text" id="accessCode" placeholder="Enter issued access code" autocomplete="off">
+          <button id="unlockBtn">Verify Access</button>
+        </div>
+        <button id="resetAccessBtn" class="reset-access-btn">Reset Access (lock again)</button>
       </div>
       <div id="unlockMessage" style="margin-top: 1rem; font-size: 0.8rem; color: var(--gold);"></div>
     </div>
 
+    <!-- Tracks Container -->
     <div id="tracksContainer"></div>
   </div>
 </section>
@@ -275,72 +318,67 @@
 </footer>
 
 <script>
+  // ------------------------------------------------------------------
+  // TRACK 0 – FULL LESSON CONTENT (from your orientation PDF)
+  const track0Lessons = [
+    { title: "Program Expectations & Educational Limitations", 
+      content: `<p><strong>Program Expectations</strong></p><ul><li>adherence to program instructions and participation guidelines</li><li>maintenance of personal study notes and educational records</li><li>respectful and professional conduct</li><li>compliance with applicable program policies and Terms of Service</li></ul><p><strong>Educational Purpose Only</strong></p><p>This program is not a substitute for legal, tax, financial, or professional advice. Participation does not create an attorney-client or fiduciary relationship, nor confer trustee authority or legal standing.</p>` },
+    { title: "Terms of Participation & Acknowledgment", 
+      content: `<p>Participation is governed by KLI Terms of Service. By proceeding, participant acknowledges reading and understanding the educational nature and limitations of the program, and agrees to comply with program standards. No legal authority or fiduciary status is conferred.</p>` },
+    { title: "Participant Capacity & Conduct Notice", 
+      content: `<p><strong>I. Participant Status</strong> – Participants act solely as individual educational participants. No authorization to act on behalf of KLI or any related entity exists without separate written agreement.</p><p><strong>II. Prohibited Conduct</strong> – Falsely representing as a fiduciary, asserting authority over others, or presenting materials as legal advice may result in removal.</p>` },
+    { title: "Program Recordkeeping & Submission Standards", 
+      content: `<p>Submissions should be clearly organized, complete, and follow formatting instructions. Required components: name, date, assignment title, response/analysis, completion confirmation.</p>` },
+    { title: "Track 0 Orientation Tasks (Replication, Submission, Sequencing)", 
+      content: `<p><strong>Task 1 – Instruction Replication:</strong> Reproduce exactly:</p><div style="background:#00000033; padding:0.8rem; border-left:3px solid var(--gold); margin:0.5rem 0;"><em>“Procedure precedes remedy. Record precedes recognition. Capacity determines consequence. Structure determines outcome.”</em></div><p><strong>Task 2 – Structured Submission:</strong> Prepare with Name, Date, Task Completed, Statement of Completion.</p><p><strong>Task 3 – Procedural Sequencing:</strong> Order correctly: Instruction, Action, Record, Verification.</p>` },
+    { title: "Submission & Verification Procedures", 
+      content: `<p>Post orientation submissions in the designated category: ENTRY & ORIENTATION. Include the statement: “I have completed the required Track 0 orientation tasks and submitted this entry in accordance with the applicable program instructions.”</p>` },
+    { title: "Program Intake & Enrollment Completion", 
+      content: `<p>Complete the official intake form before participating. Providing inaccurate information may result in rejection or removal. Intake is required for progression.</p>` }
+  ];
+
+  // TRACK 1 – FOUNDATIONAL DOCTRINE (full substantive content)
+  const track1Lessons = [
+    { title: "LESSON 1 – System Position", content: `<p><strong>System Position</strong> refers to the legal/administrative role an entity or person occupies within a fiduciary framework. Understanding your position determines the duties owed and remedies available.</p><p><strong>Exercise:</strong> Write one sentence describing your current position in any fiduciary relationship you manage.</p>` },
+    { title: "LESSON 2 – Legal Identity", content: `<p>Legal identity – the recognized name and capacity under which an individual or entity operates. In trust administration, using the correct legal identity is essential for valid records.</p><p>Example: Trustee of the Smith Family Trust vs. John Smith individually.</p>` },
+    { title: "LESSON 3 – Status Structure", content: `<p>Status is the recognized standing conferred by law or agreement. It determines what procedural rights and obligations exist. Without proper status, a party may lack standing to enforce fiduciary duties.</p>` },
+    { title: "LESSON 4 – Agency & Representation", content: `<p>Agency relationships arise when one person (principal) authorizes another (agent) to act on their behalf. In fiduciary governance, agents owe duties of loyalty and care to the principal.</p>` },
+    { title: "LESSON 5 – Status Failure", content: `<p>Status failure occurs when a party cannot prove their legal standing or authority. Consequences include dismissal of claims, inability to enforce remedies, and procedural bars.</p><p><strong>Task:</strong> Identify a situation where status failure might occur in trust administration.</p>` },
+    { title: "LESSON 6 – Application Task", content: `<p>Apply the concepts of status, standing, and capacity to a hypothetical trust dispute. Draft a short analysis (2‑3 paragraphs) and submit.</p>` },
+    { title: "LESSON 7 – Status Analysis Template", content: `<p>Download the Status Analysis Template (PDF) from the resources section. Use it to evaluate any fiduciary relationship.</p><p><em>Template link: coming soon – you can replace with actual URL.</em></p>` },
+    { title: "MODULE II – Standing (Threshold Documentation)", content: `<p>Standing is the right to bring a claim or appear before a tribunal. It requires showing actual injury, causation, and redressability. In trust law, beneficiaries have standing to enforce the trust.</p>` },
+    { title: "MODULE III – Capacity", content: `<p>Capacity refers to the legal ability to enter into binding obligations or make decisions. Minors, incapacitated persons, and some entities may lack capacity. Trustees must assess capacity before taking actions.</p>` },
+    { title: "MODULE IV – Deployment (Procedural Sequence)", content: `<p>Procedural sequence: Notice → Response → Hearing → Determination → Appeal. Each step has specific rules and deadlines. Deviating from procedure can forfeit rights.</p>` },
+    { title: "MODULE V – Fiduciary Record", content: `<p>The fiduciary record is the official documentation of decisions, communications, and transactions. Records must be contemporaneous, complete, and verifiable. Without a record, the action effectively did not occur.</p>` },
+    { title: "MODULE VI – Evidence Standards & Admissibility", content: `<p>Evidence must be relevant, authentic, and not privileged. Written records (emails, letters, minutes) are generally admissible if properly authenticated. Hearsay rules may apply.</p><p><strong>Tip:</strong> Always date and sign records.</p>` },
+    { title: "MODULE VII – Notice & Disclosure", content: `<p>Fiduciaries have a duty to provide timely notice to interested parties and disclose material facts. Failure to give proper notice can void actions and expose the fiduciary to liability.</p>` }
+  ];
+
+  // TRACK 2 – FIDUCIARY GOVERNANCE (full substantive)
+  const track2Lessons = [
+    { title: "MODULE VIII – Fiduciary Duty", content: `<p>Fiduciary duty includes loyalty (act solely in beneficiary’s interest), care (act with prudence and diligence), good faith (honesty in fact), and disclosure (transparency about material facts). Breach of any duty may result in liability.</p>` },
+    { title: "MODULE IX – Breach & Liability", content: `<p>Breach occurs when a fiduciary fails to meet their duties. Remedies include surcharge (personal liability), removal of trustee, accounting, constructive trust, and attorneys’ fees. Participants must understand both breach and defenses.</p>` },
+    { title: "MODULE X – Remedies & Recourse", content: `<p>Remedies in equity: rescission, reformation, accounting, constructive trust, and injunctions. Legal remedies: damages for loss caused by breach. Recourse requires proper procedural steps: notice, demand, cure period, then formal action.</p>` },
+    { title: "MODULE XI – Administrative Enforcement", content: `<p>Administrative enforcement includes internal investigation, record review, and potential removal from office or suspension of rights. This track covers how fiduciaries can be held accountable through administrative processes.</p>` },
+    { title: "MODULE XII – Accounting & Reporting", content: `<p>Fiduciaries must keep accurate accounts of all assets, income, expenses, and distributions. Regular reporting to beneficiaries is required. Failure to account can result in removal and surcharge.</p><p><strong>Download template:</strong> Standard account form.</p>` }
+  ];
+
+  // TRACK 3 – RESTORATION & COMMERCIAL REMEDIES (VIP)
+  const track3Lessons = [
+    { title: "RESTORATION CANON I – Equity Restoration", content: `<p>Equity restoration aims to return the parties to their original position before the breach. Mechanisms include rescission of contracts, restitution of unjust enrichment, and imposition of a constructive trust.</p><p><strong>Case analogy:</strong> A trustee who misappropriates funds must restore the full amount with interest.</p>` },
+    { title: "RESTORATION CANON II – Accountability & Remedies", content: `<p>Holding fiduciaries accountable: surcharge, removal, surer’s liability, and personal liability for co‑trustees. This canon details how to enforce accountability through administrative and judicial proceedings.</p>` },
+    { title: "RESTORATION CANON III – Enforcement Procedures", content: `<p>Procedural steps for enforcement: demand letter → notice of breach → cure period → filing of complaint → hearing → judgment. Each step must be documented in the administrative record.</p>` },
+    { title: "COMMERCIAL REMEDIES & ENFORCEMENT – UCC & Advanced Strategies", content: `<p>Under the Uniform Commercial Code, parties have additional remedies for negotiable instruments, secured transactions, and investment securities. This lesson covers UCC remedies including acceleration, repossession, and deficiency judgments.</p><p><strong>Advanced strategy:</strong> Use of setoff, recoupment, and interpleader.</p>` }
+  ];
+
   const tracksData = [
-    {
-      id: "track0",
-      title: "Track 0 – Orientation & Program Entry",
-      description: "Program expectations, acknowledgment, orientation tasks, intake procedures, and submission standards.",
-      lessons: [
-        "Program Expectations & Educational Limitations",
-        "Terms of Participation & Acknowledgment",
-        "Participant Capacity & Conduct Notice",
-        "Program Recordkeeping & Submission Standards",
-        "Track 0 Orientation Tasks (Replication, Submission, Sequencing)",
-        "Submission & Verification Procedures",
-        "Program Intake & Enrollment Completion"
-      ],
-      vip: false
-    },
-    {
-      id: "track1",
-      title: "Track 1 – Foundational Doctrine",
-      description: "Structured fiduciary training enforcing status, standing, capacity, and record discipline.",
-      lessons: [
-        "LESSON 1 – System Position",
-        "LESSON 2 – Legal Identity",
-        "LESSON 3 – Status Structure",
-        "LESSON 4 – Agency & Representation",
-        "LESSON 5 – Status Failure",
-        "LESSON 6 – Application Task",
-        "LESSON 7 – Status Analysis Template",
-        "MODULE II – Standing (Threshold Documentation)",
-        "MODULE III – Capacity",
-        "MODULE IV – Deployment (Procedural Sequence)",
-        "MODULE V – Fiduciary Record",
-        "MODULE VI – Evidence Standards & Admissibility",
-        "MODULE VII – Notice & Disclosure"
-      ],
-      vip: false
-    },
-    {
-      id: "track2",
-      title: "Track 2 – Fiduciary Governance",
-      description: "Governs the conduct, discipline, and liability of any individual operating within a fiduciary framework.",
-      lessons: [
-        "MODULE VIII – Fiduciary Duty",
-        "MODULE IX – Breach & Liability",
-        "MODULE X – Remedies & Recourse",
-        "MODULE XI – Administrative Enforcement",
-        "MODULE XII – Accounting & Reporting"
-      ],
-      vip: false
-    },
-    {
-      id: "track3",
-      title: "Track 3 – Restoration & Commercial Remedies (VIP Module)",
-      description: "Advanced fiduciary training for restoration, remedies, and commercial enforcement strategies.",
-      lessons: [
-        "RESTORATION CANON I – Equity Restoration",
-        "RESTORATION CANON II – Accountability & Remedies",
-        "RESTORATION CANON III – Enforcement Procedures",
-        "COMMERCIAL REMEDIES & ENFORCEMENT – UCC & Advanced Strategies"
-      ],
-      vip: true
-    }
+    { id: "track0", title: "Track 0 – Orientation & Program Entry", description: "Program expectations, acknowledgment, tasks, intake, and submission standards.", lessons: track0Lessons, vip: false },
+    { id: "track1", title: "Track 1 – Foundational Doctrine", description: "Structured fiduciary training enforcing status, standing, capacity, and record discipline.", lessons: track1Lessons, vip: false },
+    { id: "track2", title: "Track 2 – Fiduciary Governance", description: "Governs the conduct, discipline, and liability of any individual operating within a fiduciary framework.", lessons: track2Lessons, vip: false },
+    { id: "track3", title: "Track 3 – Restoration & Commercial Remedies (VIP Module)", description: "Advanced fiduciary training for restoration, remedies, and commercial enforcement strategies.", lessons: track3Lessons, vip: true }
   ];
 
   const VALID_ACCESS_CODE = "KLI-2026";
-
   let unlocked = false;
 
   function loadProgress() {
@@ -353,12 +391,9 @@
     });
     return initial;
   }
-
   let progress = loadProgress();
 
-  function saveProgress() {
-    localStorage.setItem('kli_track_progress', JSON.stringify(progress));
-  }
+  function saveProgress() { localStorage.setItem('kli_track_progress', JSON.stringify(progress)); }
 
   function calculateTrackCompletion(trackId) {
     const track = tracksData.find(t => t.id === trackId);
@@ -394,25 +429,27 @@
         </div>
       `;
       container.appendChild(trackCard);
-
       const contentDiv = document.getElementById(`content-${track.id}`);
       const lessonList = contentDiv.querySelector('.lesson-list');
       track.lessons.forEach((lesson, idx) => {
-        const isChecked = progress[track.id] && progress[track.id][idx];
+        const checked = progress[track.id] && progress[track.id][idx];
         const lessonDiv = document.createElement('div');
         lessonDiv.className = 'lesson-item';
         lessonDiv.innerHTML = `
-          <input type="checkbox" id="${track.id}_${idx}" data-track="${track.id}" data-lesson="${idx}" ${isChecked ? 'checked' : ''} ${!unlocked ? 'disabled' : ''}>
-          <label for="${track.id}_${idx}" style="flex:1;">${lesson}</label>
+          <div class="lesson-header" data-track="${track.id}" data-lesson="${idx}">
+            <input type="checkbox" ${checked ? 'checked' : ''} ${!unlocked ? 'disabled' : ''}>
+            <span class="lesson-title">${lesson.title}</span>
+            <span class="lesson-toggle"><i class="fa-regular fa-chevron-right"></i></span>
+          </div>
+          <div class="lesson-content">${lesson.content}</div>
         `;
         lessonList.appendChild(lessonDiv);
       });
-
       if (unlocked) {
-        lessonList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        lessonList.querySelectorAll('.lesson-header input').forEach(cb => {
           cb.addEventListener('change', (e) => {
-            const trackId = cb.dataset.track;
-            const lessonIdx = parseInt(cb.dataset.lesson);
+            const trackId = cb.closest('.lesson-header').dataset.track;
+            const lessonIdx = parseInt(cb.closest('.lesson-header').dataset.lesson);
             progress[trackId][lessonIdx] = cb.checked;
             saveProgress();
             const newCompletion = calculateTrackCompletion(trackId);
@@ -425,9 +462,24 @@
             }
           });
         });
+        lessonList.querySelectorAll('.lesson-header').forEach(header => {
+          header.addEventListener('click', (e) => {
+            if (e.target.type !== 'checkbox') {
+              const contentDiv = header.nextElementSibling;
+              const toggleIcon = header.querySelector('.lesson-toggle i');
+              if (contentDiv.style.display === 'none' || !contentDiv.style.display) {
+                contentDiv.style.display = 'block';
+                toggleIcon.className = 'fa-regular fa-chevron-down';
+              } else {
+                contentDiv.style.display = 'none';
+                toggleIcon.className = 'fa-regular fa-chevron-right';
+              }
+            }
+          });
+          header.nextElementSibling.style.display = 'none';
+        });
       }
     });
-
     document.querySelectorAll('.track-header').forEach(header => {
       header.addEventListener('click', (e) => {
         const trackId = header.dataset.track;
@@ -441,32 +493,32 @@
     unlocked = true;
     localStorage.setItem('kli_curriculum_unlocked', 'true');
     renderTracks();
-    document.getElementById('unlockMessage').innerHTML = '<i class="fa-regular fa-circle-check"></i> Access granted. You may now track your progress.';
+    document.getElementById('unlockMessage').innerHTML = '<i class="fa-regular fa-circle-check"></i> Access granted. You may now view lesson content and track progress.';
   }
 
+  function lockCurriculum() {
+    unlocked = false;
+    localStorage.removeItem('kli_curriculum_unlocked');
+    renderTracks();
+    document.getElementById('unlockMessage').innerHTML = '<i class="fa-regular fa-lock"></i> Access locked. Enter valid code to unlock.';
+  }
+
+  // Initial render from localStorage
   const storedUnlock = localStorage.getItem('kli_curriculum_unlocked');
-  if (storedUnlock === 'true') {
-    unlocked = true;
-  }
-
+  if (storedUnlock === 'true') unlocked = true;
   renderTracks();
+  if (unlocked) document.getElementById('unlockMessage').innerHTML = '<i class="fa-regular fa-circle-check"></i> Curriculum unlocked. You have full access.';
 
-  const unlockBtn = document.getElementById('unlockBtn');
-  const accessCodeInput = document.getElementById('accessCode');
-  const unlockMessage = document.getElementById('unlockMessage');
-
-  unlockBtn.addEventListener('click', () => {
-    const code = accessCodeInput.value.trim();
-    if (code === VALID_ACCESS_CODE) {
-      unlockCurriculum();
-    } else {
-      unlockMessage.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Invalid access code. Please verify your code or contact support.';
-    }
+  // Event listeners
+  document.getElementById('unlockBtn').addEventListener('click', () => {
+    const code = document.getElementById('accessCode').value.trim();
+    if (code === VALID_ACCESS_CODE) unlockCurriculum();
+    else document.getElementById('unlockMessage').innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Invalid access code.';
   });
-
-  if (unlocked) {
-    unlockMessage.innerHTML = '<i class="fa-regular fa-circle-check"></i> Curriculum unlocked. You have full access.';
-  }
+  document.getElementById('resetAccessBtn').addEventListener('click', () => {
+    lockCurriculum();
+    document.getElementById('accessCode').value = '';
+  });
 </script>
 </body>
 </html>
